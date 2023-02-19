@@ -92,11 +92,6 @@
                	  	 	<h5>Hours Shooting</h5>
                	  	 </div>
                	  </div>
-               </div>
-               <!-- contact btn -->
-               <a href="#" class="btn btn-01">Contact Me</a>
-
- 			</div>
  		</div>
  	</div>
  </section>
@@ -107,7 +102,7 @@
  	<div class="container">
  		<div class="row">
  			<div class="section-title">
- 				<h1>What I Do ?</h1>
+ 				<h1>What I Do </h1>
  			</div>
  		</div>
  		<div class="row">
@@ -321,25 +316,29 @@
 		</div>
         <div class="row">
         	<div class="contact-form">
-        		<form class="form">
+        		<form class="form" onsubmit="sendEmail(); reset(); return false;">
         			<div class="row">
         				<div class="left input-group">
-        					<label>Name</label>
-        					<input type="text" placeholder="Your Name Here" class="input-control">
+        					<label for="name">Name</label>
+        					<input type="text" id = "name" placeholder="Your Name" class="input-control" required>
         				</div>
         				<div class="right input-group">
-        					<label>Email or Phone</label>
-        					<input type="text" placeholder="Your Email or Phone Here" class="input-control">
+        					<label for="email">Email</label>
+        					<input type="email" id = "email" placeholder="Your Email" class="input-control" required>
+        				</div>
+						<div class="right input-group">
+        					<label for="phone">Phone Number</label>
+        					<input type="text" id = "phone" placeholder="Phone Number" class="input-control" required>
         				</div>
         			</div>
         			<div class="row">
         				<div class="input-group">
-        					<label>Message</label>
-        					<textarea class="input-control" placeholder="Your Message Here"></textarea>
+        					<label for="message">Message</label>
+        					<textarea class="input-control" id = "message" placeholder="Your Message"></textarea>
         				</div>
         			</div>
         			<div class="form-btn">
-        				<button type="button" class="btn btn-01">Send Message</button>
+        				<button type="submit" class="btn btn-01">Send Message</button>
         			</div>
         		</form>
         	</div>
@@ -350,26 +349,21 @@
         			<!-- info item start -->
         			<div class="info-item">
         				<h5>Address</h5>
-        				<p>Sec - 123, New Delhi, 121211</p>
+        				<p>Austin, Texas</p>
         			</div>
         			<!-- info item end -->
         			<!-- info item start -->
-        			<div class="info-item">
-        				<h5>Phone</h5>
-        				<p>91 000 000 0000</p>
-        			</div>
-        			<!-- info item end -->
         			<!-- info item start -->
         			<div class="info-item">
         				<h5>Email</h5>
-        				<p>yourmail@gmail.com</p>
+        				<p>hello@tarloksingh.com</p>
         			</div>
         			<!-- info item end -->
         		</div>
         	</div>
         </div>
-
-        <div class="row">
+<!--Social Media Links-->
+       <!-- <div class="row">
         	<div class="social-links">
         		<a href="#" title="facebook"><img src="img/icons/facebook.svg" alt="facebook"></a>
         		<a href="#" title="twitter"><img src="img/icons/twitter.svg" alt="twitter"></a>
@@ -379,11 +373,12 @@
         </div>
 
 	</div>
+	-->
 </section>
 <!-- Contact Section End -->
 
 <!-- copyright text -->
-<p class="copyright">&copy; 2020 The WebShala</p>
+<p class="copyright">&copy; 2014 Tarlok Singh</p>
 
 
  <!-- lightbox start -->
@@ -414,5 +409,29 @@
 
 <script src="js/jquery.min.js"></script>
 <script src="js/main.js"></script>
+<script src="https://smtpjs.com/v3/smtp.js"></script>
+<script>
+	function sendEmail(){
+		GetName = document.getElementById("name").value; 
+		GetEmail = document.getElementById("email").value;
+		GetNumber = document.getElementById("phone").value;
+		GetMessage = document.getElementById("message").value;
+		Email.send({
+			Host : "smtp.elasticemail.com",
+			Username : "tarloksinghfilms@gmail.com",
+			Password : "E69E1858386B351B33D1B33B071712CD710B",
+			To : "terryswan1993@gmail.com",
+			From : "tarloksinghfilms@gmail.com",
+			Subject : "New Contact Form",
+			Body : "Name: " + GetName 
+				+ "<br> Email: " + GetEmail
+				+ "<br> Phone: " + GetNumber
+				+ "<br> Message: " + GetMessage
+		}).then(
+		message => alert("Message Sent Successfully!")
+		);
+	}
+</script>
 </body>
 </html>
+<!--Port  Number 2525-->
