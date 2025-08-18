@@ -1,0 +1,344 @@
+/* Main Container */
+.container {
+    max-width: var(--container-max-width);
+    margin: 0 auto;
+    padding: var(--container-padding-y) var(--container-padding-x);
+    min-height: 100vh;
+}
+
+/* Header Styles */
+.header {
+    margin-bottom: 60px;
+}
+
+.header-content {
+    max-width: 1000px;
+}
+
+.name {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-regular);
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 15px;
+}
+
+.tagline {
+    color: #262626;
+    font-family: Lato;
+    font-size: 48px;
+    font-style: normal;
+    font-weight: 800;
+    line-height: normal;
+    letter-spacing: 9.6px;
+    text-transform: uppercase;
+    margin-bottom: 15px;
+}
+
+.description {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-regular);
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 3.2px;
+    line-height: 1.8;
+    max-width: 1000px;
+}
+
+/* Projects Grid - Adjusted for 6 rows of content */
+.projects-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    grid-template-rows: repeat(6, 1fr); /* 6 rows for the actual projects */
+    gap: var(--grid-gap);
+    width: 100%;
+    height: calc((100vw - 300px - 60px) * 6 / 5); /* Updated ratio for 6 rows */
+    max-height: calc((1920px - 300px - 60px) * 6 / 5);
+}
+
+/* Project Card Base */
+.project-card {
+    position: relative;
+    background: var(--color-white);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    cursor: pointer;
+}
+
+/* Project Card Sizes */
+.project-large {
+    grid-column: span 2;
+    grid-row: span 2;
+}
+
+.project-medium {
+    grid-column: span 1;
+    grid-row: span 2;
+}
+
+.project-small {
+    grid-column: span 1;
+    grid-row: span 1;
+}
+
+.project-wide {
+    grid-column: span 2;
+    grid-row: span 1;
+}
+
+/* Project Card Complete Styles */
+.project-card {
+    position: relative;
+    background: var(--color-white);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+/* Project Content */
+.project-content {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 30px;
+}
+
+.project-info {
+    position: relative;
+    z-index: var(--z-dropdown);
+    margin-bottom: auto;
+}
+
+.project-title {
+    font-size: 14px;
+    font-weight: var(--font-weight-bold);
+    text-transform: uppercase;
+    letter-spacing: 2.8px;
+    color: var(--color-white);
+    margin-bottom: 8px;
+}
+
+.project-category {
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Project Media */
+.project-media {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: var(--z-base);
+    overflow: hidden;
+}
+
+.project-media video,
+.project-media img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    border-radius: var(--radius-xl);
+    /* Removed hover scaling transition */
+}
+
+/* Removed hover scaling for videos and images */
+
+/* Project Expand Button */
+.project-expand {
+    position: absolute;
+    bottom: 30px;
+    right: 30px;
+    width: 48px;
+    height: 48px;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: var(--z-dropdown);
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.project-expand:hover,
+.project-card:hover .project-expand {
+    background: rgba(255, 255, 255, 0.4);
+    transform: scale(1.1) rotate(90deg);
+    backdrop-filter: blur(15px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
+.expand-icon {
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-light);
+    color: var(--color-white);
+    line-height: 1;
+}
+
+
+/* EXISTING PROJECT COLOR VARIANTS */
+.project-card[data-project="capsule-c1"] .project-media {
+    background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+}
+
+.project-card[data-project="mr-takahashi"] .project-media {
+    background: linear-gradient(135deg, #d4af37 0%, #f1c40f 100%);
+}
+
+.project-card[data-project="mr-takahashi"] .project-title,
+.project-card[data-project="mr-takahashi"] .project-category {
+    color: #593504 !important;
+    background: none !important;
+    background-color: transparent !important;
+}
+
+.project-card[data-project="lovetap"] .project-media {
+    background: none; /* Remove pink gradient since using custom image */
+}
+
+.project-card[data-project="lovetap"] .project-title,
+.project-card[data-project="lovetap"] .project-category {
+    color: #FF3F6C !important;
+}
+
+.project-card[data-project="alcoholic-fish"] .project-media {
+    background: linear-gradient(135deg, #e5e5e5 0%, #f5f5f5 100%);
+}
+
+.project-card[data-project="alcoholic-fish"] .project-title,
+.project-card[data-project="alcoholic-fish"] .project-category {
+    color: var(--color-text-primary);
+}
+
+.project-card[data-project="slider-engine"] .project-media {
+    background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+}
+
+/* NEW PROJECT COLOR VARIANTS - HARMONIOUS VIBRANT PALETTE */
+
+.project-card[data-project="adam"] .project-media {
+    background: linear-gradient(135deg, #2D2D2D 0%, #3e3e3e 100%);
+}
+
+/* STITCHFAM - Electric Cyan (keeping as you liked) */
+.project-card[data-project="stitchfam"] .project-media {
+    background: linear-gradient(135deg, #54c6e5 0%, #86ddf5 100%);
+}
+
+/* Scale down Stitchfam video */
+.project-card[data-project="stitchfam"] .project-media video {
+    transform: scale(0.5); /* Scale to 70% of original size */
+    object-fit: contain; /* Keep aspect ratio, show full video */
+    
+}
+
+/* ADAM - Square centered video with rounded corners */
+.project-card[data-project="adam"] .project-media {
+    border-radius: 0 !important; /* Remove parent border radius */
+    overflow: visible !important; /* Allow video border radius to show */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.project-card[data-project="adam"] .project-media video {
+    width: 200px !important; /* Fixed square width */
+    height: 200px !important; /* Fixed square height */
+    object-fit: cover !important; /* Fill the square area */
+    border-radius: 25px !important; /* Rounded corners */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); /* Subtle shadow */
+    transform: none !important; /* Remove transform scaling */
+    position: relative !important; /* Override absolute positioning */
+    top: auto !important;
+    left: auto !important;
+}
+
+/* PLUS ONE - Deep Purple (keeping as you liked) */
+.project-card[data-project="plus-one"] .project-media {
+    background: linear-gradient(135deg, #825de8 0%, #af93fd 100%);
+}
+
+/* OPENUP - Vibrant Warm Orange (high contrast with blue icon, energetic pop) */
+.project-card[data-project="openup"] .project-media {
+    background: linear-gradient(135deg, #ea580c 0%, #fb923c 100%);
+}
+
+.project-card[data-project="openup"] .project-title,
+.project-card[data-project="openup"] .project-category {
+    color: var(--color-white);
+}
+.project-card[data-project="by-the-people"] .project-media {
+    background: #09B4B7; /* Exact turquoise color from Figma */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 20px;
+    padding: 40px;
+}
+
+/* BY THE PEOPLE - Animated blocks container */
+.by-the-people-blocks {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 80%;
+    max-width: 280px;
+}
+
+.by-the-people-block {
+    height: 35px;
+    transition: transform 0.2s ease;
+}
+
+.block-yellow {
+    background: #E8E15A;
+    width: 60%;
+}
+
+.block-blue {
+    background: #50CDFF;
+    width: 100%;
+}
+
+.block-pink {
+    background: #FCB2F4;
+    width: 75%;
+    margin-left: auto;
+}
+
+/* BLOCK BUILDER - Golden Yellow (harmonious with existing gold) */
+.project-card[data-project="block-builder"] .project-media {
+    background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+}
+
+/* GALA REEL - Rose Pink (harmonious with existing pink) */
+.project-card[data-project="gala-reel"] .project-media {
+    background: linear-gradient(135deg, #E27A7A 0%, #FFB1B1 100%);
+}
+
+/* MECHA STATION - Light background with dark text */
+.project-card[data-project="mecha-station"] .project-media {
+    background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+}
+
+.project-card[data-project="mecha-station"] .project-title,
+.project-card[data-project="mecha-station"] .project-category {
+    color: var(--color-text-primary);
+}
+

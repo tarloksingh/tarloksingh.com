@@ -1,0 +1,136 @@
+/* NAVIGATION STYLES - SHARED ACROSS ALL PAGES */
+
+.navigation-footer {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10000;
+}
+
+.main-navigation {
+    display: flex;
+    gap: 0;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 28px;
+    padding: 4px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.nav-link {
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: rgba(22, 22, 22, 0.7);
+    transition: all 0.3s ease;
+    position: relative;
+    padding: 12px 20px;
+    border-radius: 24px;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.nav-link:hover {
+    color: rgba(22, 22, 22, 0.9);
+}
+
+.nav-active {
+    color: var(--color-white);
+    background: rgba(22, 22, 22, 1);
+}
+
+/* HOMEPAGE NAVIGATION ANIMATIONS */
+.container ~ .navigation-footer {
+    opacity: 0;
+    animation: menuAppear 0.8s cubic-bezier(0.23, 1, 0.320, 1) forwards;
+    animation-delay: 2.5s;
+}
+
+.container ~ .navigation-footer .main-navigation {
+    transform: scale(0);
+    animation: menuScale 0.6s cubic-bezier(0.23, 1, 0.320, 1) forwards;
+    animation-delay: 2.7s;
+}
+
+.container ~ .navigation-footer .nav-link {
+    opacity: 0;
+    animation: navContentAppear 0.4s ease forwards;
+}
+
+.container ~ .navigation-footer .nav-link:nth-child(1) { animation-delay: 3.0s; }
+.container ~ .navigation-footer .nav-link:nth-child(2) { animation-delay: 3.1s; }
+
+/* PRODUCT PAGE NAVIGATION ANIMATIONS */
+.product-container ~ .navigation-footer {
+    opacity: 0;
+    animation: menuAppear 0.8s cubic-bezier(0.23, 1, 0.320, 1) forwards;
+    animation-delay: 1.5s;
+}
+
+.product-container ~ .navigation-footer .main-navigation {
+    transform: scale(0);
+    animation: menuScale 0.6s cubic-bezier(0.23, 1, 0.320, 1) forwards;
+    animation-delay: 1.7s;
+}
+
+.product-container ~ .navigation-footer .nav-link {
+    opacity: 0;
+    animation: navContentAppear 0.4s ease forwards;
+}
+
+.product-container ~ .navigation-footer .nav-link:nth-child(1) { animation-delay: 2.0s; }
+.product-container ~ .navigation-footer .nav-link:nth-child(2) { animation-delay: 2.1s; }
+.product-container ~ .navigation-footer .nav-link:nth-child(3) { animation-delay: 2.2s; }
+
+@keyframes menuAppear {
+    0% {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+@keyframes menuScale {
+    0% {
+        transform: scale(0);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+@keyframes navContentAppear {
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+/* Navigation Animation - Same as Homepage */
+.navigation-footer {
+    opacity: 0;
+    animation: menuAppear 0.8s cubic-bezier(0.23, 1, 0.320, 1) forwards;
+    animation-delay: 1.5s;
+}
+
+.main-navigation {
+    transform: scale(0);
+    animation: menuScale 0.6s cubic-bezier(0.23, 1, 0.320, 1) forwards;
+    animation-delay: 1.7s;
+}
+
+.nav-link {
+    opacity: 0;
+    animation: navContentAppear 0.4s ease forwards;
+}
+
+/* Staggered nav link animations */
+.nav-link:nth-child(1) { animation-delay: 2.0s; } /* HOME */
+.nav-link:nth-child(2) { animation-delay: 2.1s; } /* CAPSULE C1 */
+.nav-link:nth-child(3) { animation-delay: 2.2s; } /* CONTACT */

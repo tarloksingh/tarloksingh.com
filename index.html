@@ -1,435 +1,322 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-	<title>Tarlok - Photographer</title>
-	<meta name="viewport" content="width=device-width,initial-scale=1.0">
-	<link rel="stylesheet" type="text/css" href="css/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tarlok Singh - Product Designer</title>
+
+  <!-- Prevent flash of header elements -->
+  <style>
+    .name, .tagline, .description {
+      opacity: 1 !important;
+      transform: none !important;
+      animation: none !important;
+    }
+    .header {
+      opacity: 1 !important;
+      transform: none !important;
+      animation: none !important;
+    }
+  </style>
+
+  <!-- CSS Files -->
+  <link rel="stylesheet" href="css/reset.css">
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/animations.css">
+  <link rel="stylesheet" href="../css/navigation.css">
+
+  <!-- Responsive CSS -->
+  <link rel="stylesheet" href="css/mobile.css" media="screen and (max-width: 768px)">
+  <link rel="stylesheet" href="css/tablet.css" media="screen and (min-width: 769px) and (max-width: 1024px)">
+  <link rel="stylesheet" href="css/desktop.css" media="screen and (min-width: 1025px)">
+
+  <!-- Preload Critical Fonts -->
+  <link rel="preload" href="fonts/lato/Lato-Regular.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="preload" href="fonts/lato/Lato-Bold.ttf" as="font" type="font/ttf" crossorigin>
 </head>
 <body>
-
-  <!-- Preloader Start  -->
-  <div class="preloader">
-     <div class="loader">
-     </div>
-  </div>
-  <!-- Preloader End  -->
- 
- <!-- Header Start -->
- <header class="header">
- 	<div class="container">
- 		<div class="row justify-content-between align-items-center">
- 			<div class="brand-name">
- 				<a href="index.html">Austin</a>
- 			</div>
-      <div class="nav-toggle">
-        <span></span>
+  <!-- Main Container -->
+  <div class="container">
+    
+    <!-- Header Section -->
+    <header class="header">
+      <div class="header-content">
+        <h1 class="name">TARLOK SINGH</h1>
+        <h2 class="tagline">I DESIGN PRODUCTS<br>FROM APPS TO HARDWARE</h2>
+        <p class="description">
+          17 PRODUCTS DESIGNED IN UNDER 2 YEARS. GAMES, AI COMPANIONS, CUSTOM HARDWARE.<br>
+          NO-CODE PLATFORM. FROM CONCEPT TO COMPLETE IN WEEKS, NOT MONTHS.
+        </p>
       </div>
- 			<nav class="nav">
- 				<ul>
- 					<li><a href="#home">Home</a></li>
- 					<li><a href="#about">About</a></li>
- 					<li><a href="#services">Services</a></li>
- 					<li><a href="#works">Works</a></li>
- 					<li><a href="#contact">Contact</a></li>
- 				</ul>
- 			</nav>
- 		</div>
- 	</div>
- </header>
- <!-- Header End -->
+    </header>
 
- <!-- Home Section Start -->
- <section class="home-section" id="home">
- 	<!-- shape -->
- 	<div class="shape-01">
- 	</div>
- 	<div class="container">
- 		<div class="row align-items-center">
- 			<div class="home-content">
- 				<h4>Tarlok Singh</h4>
- 				<h1>Photographer</h1>
- 			</div>
- 		</div>
- 	</div>
- 	<!-- scroll down -->
- 	<a href="#about" class="scroll-down">
- 		<img src="img/icons/arrow-down.svg" alt="scroll Down">
- 	</a>
- </section>
- <!-- Home Section End -->
+    <!-- Projects Grid -->
+    <main class="projects-grid">
 
- <!-- About Section Start -->
- <section class="about-section" id="about">
- 	<div class="container">
- 		<div class="row">
- 			<div class="about-img">
- 				<div class="img-box">
- 					<div class="shape-02">
- 					</div>
- 					<img src="img/about.jpg" alt="about me">
- 				</div>
- 			</div>
- 			<div class="about-content">
- 			   <div class="row">
-                 <div class="section-title">
-               	   <h1>About Me</h1>
-                 </div>
-               </div>
-               <p>Welcome to Tarlok Singh Photography! With 15+ years of experience, I'm a professional photographer in Austin, passionate about creating timeless images that tell a story. My style is a blend of classic and contemporary, using natural light to capture candid moments. From family portraits to commercial work, I work closely with each client to deliver stunning results that reflect their unique vision. As an Austin native, I seek out the area's natural beauty and diverse culture to create one-of-a-kind images. Thank you for considering me for your photography needs. Explore my portfolio and contact me to learn more about my services. Let's capture your special moments and create memories that last a lifetime.</p>
-
-               <div class="stats">
-               	  <div class="row">
-               	  	 <div class="stat-box">
-               	  	 	<h2>8</h2>
-               	  	 	<h5>Happy Brides</h5>
-               	  	 </div>
-               	  	 <div class="stat-box">
-               	  	 	<h2>72</h2>
-               	  	 	<h5>Happy Clients</h5>
-               	  	 </div>
-               	  	 <div class="stat-box">
-               	  	 	<h2>10000</h2>
-               	  	 	<h5>Hours Of Shooting</h5>
-               	  	 </div>
-               	  </div>
- 		</div>
- 	</div>
- </section>
- <!-- About Section End -->
-
- <!-- Service Section Start -->
- <section class="service-section" id="services">
- 	<div class="container">
- 		<div class="row">
- 			<div class="section-title">
- 				<h1>What I Do </h1>
- 			</div>
- 		</div>
- 		<div class="row">
- 			<!-- service Item Start -->
- 			<div class="service-item">
- 				<div class="service-item-inner">
- 					<img src="img/service/1.png" alt="service">
- 					<div class="overlay">
- 						<h4>Wedding Photography</h4>
- 					</div>
- 				</div>
- 			</div>
- 			<!-- service Item End -->
- 			<!-- service Item Start -->
- 			<div class="service-item">
- 				<div class="service-item-inner">
- 					<img src="img/service/2.jpg" alt="service">
- 					<div class="overlay">
- 						<h4>Portrait Photography</h4>
- 					</div>
- 				</div>
- 			</div>
- 			<!-- service Item End -->
- 			<!-- service Item Start -->
- 			<div class="service-item">
- 				<div class="service-item-inner">
- 					<img src="img/service/3.jpg" alt="service">
- 					<div class="overlay">
- 						<h4>Maternity Photography</h4>
- 					</div>
- 				</div>
- 			</div>
- 			<!-- service Item End -->
- 			<!-- service Item Start -->
- 			<div class="service-item">
- 				<div class="service-item-inner">
- 					<img src="img/service/4.jpg" alt="service">
- 					<div class="overlay">
- 						<h4>Model Photography</h4>
- 					</div>
- 				</div>
- 			</div>
- 			<!-- service Item End -->
- 			<!-- service Item Start -->
- 			<div class="service-item">
- 				<div class="service-item-inner">
- 					<img src="img/service/5.jpg" alt="service">
- 					<div class="overlay">
- 						<h4>Engagement Photography</h4>
- 					</div>
- 				</div>
- 			</div>
- 			<!-- service Item End -->
- 			<!-- service Item Start -->
- 			<div class="service-item">
- 				<div class="service-item-inner">
- 					<img src="img/service/6.jpg" alt="service">
- 					<div class="overlay">
- 						<h4>Fasion Photography</h4>
- 					</div>
- 				</div>
- 			</div>
- 			<!-- service Item End -->
- 		</div>
- 	</div>
- </section>
- <!-- Service Section End -->
-
- <!-- Work Section Start -->
- <section class="work-section" id="works">
- 	<div class="container">
- 		<div class="row">
- 			<div class="section-title">
- 				<h1>My Selected Works</h1>
- 			</div>
- 		</div>
- 		<div class="row">
- 			<!-- Work Item Start -->
- 			<div class="work-item">
- 				<div class="work-item-inner">
- 					<img src="img/works/thumb/DSC01194.jpg" data-large="img/works/large/DSC01194.jpg" alt="work">
- 				</div>
- 			</div>
- 			<!-- Work Item End -->
- 			<!-- Work Item Start -->
- 			<div class="work-item">
- 				<div class="work-item-inner">
- 					<img src="img/works/thumb/DSC00903.jpg" data-large="img/works/large/DSC00903.jpg" alt="work">
- 				</div>
- 			</div>
- 			<!-- Work Item End -->
- 			<!-- Work Item Start -->
- 			<div class="work-item">
- 				<div class="work-item-inner">
- 					<img src="img/works/thumb/DSC09887.jpg" data-large="img/works/large/DSC09887.jpg" alt="work">
- 				</div>
- 			</div>
- 			<!-- Work Item End -->
-			 <div class="work-item">
-				<div class="work-item-inner">
-					<img src="img/works/thumb/1.jpg" data-large="img/works/large/1.jpg" alt="work">
-				</div>
-			</div>
-			<!-- Work Item End -->
- 			<!-- Work Item Start -->
- 			<div class="work-item">
- 				<div class="work-item-inner">
- 					<img src="img/works/thumb/kelly0.jpg" data-large="img/works/large/kelly0.jpg" alt="work">
- 				</div>
- 			</div>
- 			<!-- Work Item End -->
- 			<!-- Work Item Start -->
- 			<div class="work-item">
- 				<div class="work-item-inner">
- 					<img src="img/works/thumb/kelly1.jpg" data-large="img/works/large/kelly1.jpg" alt="work">
- 				</div>
- 			</div>
- 			<!-- Work Item End -->
- 			<!-- Work Item Start -->
- 			<div class="work-item">
- 				<div class="work-item-inner">
- 					<img src="img/works/thumb/kelly2.jpg" data-large="img/works/large/kelly2.jpg" alt="work">
- 				</div>
- 			</div>
- 			<!-- Work Item End -->
-			 			<!-- Work Item Start -->
- 			<div class="work-item">
- 				<div class="work-item-inner">
- 					<img src="img/works/thumb/kelly3.jpg" data-large="img/works/large/kelly3.jpg" alt="work">
- 				</div>
- 			</div>
- 			<!-- Work Item End -->
-			 <div class="work-item">
-				<div class="work-item-inner">
-					<img src="img/works/thumb/kelly4.jpg" data-large="img/works/large/kelly4.jpg" alt="work">
-				</div>
-			</div>
-			<!-- Work Item End -->
- 			<!-- Work Item End -->
-			 <div class="work-item">
-				<div class="work-item-inner">
-					<img src="img/works/thumb/Sumeet Pregnant Pic 9 month.jpg" data-large="img/works/large/Sumeet Pregnant Pic 9 month.jpg" alt="work">
-				</div>
-			</div>
-			<!-- Work Item End -->			
-			 <div class="work-item">
-				<div class="work-item-inner">
-					<img src="img/works/thumb/DSC04702.JPG" data-large="img/works/large/DSC04702.JPG" alt="work">
-				</div>
-			</div>
-			<!-- Work Item End -->
-			 <div class="work-item">
-				<div class="work-item-inner">
-					<img src="img/works/thumb/DSC03969.jpg" data-large="img/works/large/DSC03969.jpg" alt="work">
-				</div>
-			</div>
-			<!-- Work Item End -->
-			<div class="work-item">
-				<div class="work-item-inner">
-					<img src="img/works/thumb/DSC03498.jpg" data-large="img/works/large/DSC03498.jpg" alt="work">
-				</div>
-			</div>
-			<!-- Work Item End -->				 
-			<div class="work-item">
-				<div class="work-item-inner">
-					<img src="img/works/thumb/Sloth.jpg" data-large="img/works/large/Sloth.jpg" alt="work">
-				</div>
-			</div>
-			<!-- Work Item End -->				 <div class="work-item">
-			<div class="work-item-inner">
-					<img src="img/works/thumb/DSC00427.jpg" data-large="img/works/large/DSC00427.jpg" alt="work">
-				</div>
-			</div>
-			<!-- Work Item End -->
-			<div class="work-item">
-				<div class="work-item-inner">
-					<img src="img/works/thumb/DSC03064.jpg" data-large="img/works/large/DSC03064.jpg" alt="work">
-				</div>
-			</div>
-			<!-- Work Item End -->
-			<div class="work-item">
-				<div class="work-item-inner">
-					<img src="img/works/thumb/DSC03221.jpg" data-large="img/works/large/DSC03221.jpg" alt="work">
-				</div>
-			</div>
-			<!-- Work Item End -->
-			<div class="work-item">
-				<div class="work-item-inner">
-					<img src="img/works/thumb/Visual story.jpg" data-large="img/works/large/Visual story.jpg" alt="work">
-				</div>
-			</div>
-			<!-- Work Item End -->		
-				
- 		</div>
- 	</div>
- </section>
- <!-- Work Section End --> 
-
-
-<!-- Contact Section Start -->
-<section class="contact-section" id="contact">
-	<div class="container">
-		<div class="row">
-			<div class="contact-img">
-				<div class="img-box">
-					<div class="section-title">
-						<h1>Contact Me</h1>
-					</div>
-				</div>
-			</div>
-		</div>
-        <div class="row">
-        	<div class="contact-form">
-        		<form class="form" onsubmit="sendEmail(); reset(); return false;">
-        			<div class="row">
-        				<div class="left input-group">
-        					<label for="name">Name</label>
-        					<input type="text" id = "name" placeholder="Your Name" class="input-control" required>
-        				</div>
-        				<div class="right input-group">
-        					<label for="email">Email</label>
-        					<input type="email" id = "email" placeholder="Your Email" class="input-control" required>
-        				</div>
-						<div class="right input-group">
-        					<label for="phone">Phone Number</label>
-        					<input type="text" id = "phone" placeholder="Phone Number" class="input-control" required>
-        				</div>
-        			</div>
-        			<div class="row">
-        				<div class="input-group">
-        					<label for="message">Message</label>
-        					<textarea class="input-control" id = "message" placeholder="Your Message"></textarea>
-        				</div>
-        			</div>
-        			<div class="form-btn">
-        				<button type="submit" class="btn btn-01">Send Message</button>
-        			</div>
-        		</form>
-        	</div>
+      <!-- Capsule C1 -->
+      <article class="project-card project-large" data-project="capsule-c1">
+        <div class="project-content">
+          <div class="project-info">
+            <h3 class="project-title">CAPSULE C1</h3>
+            <p class="project-category">HARDWARE / 2025</p>
+          </div>
+          <div class="project-media">
+            <video autoplay muted loop playsinline>
+              <source src="projects/capsule-c1/visuals/hero.mp4" type="video/mp4">
+            </video>
+          </div>
+          <a href="projects/capsule-c1/capsule-c1.html" class="project-expand" aria-label="View Capsule C1 Project">
+            <span class="expand-icon">+</span>
+          </a>
         </div>
-        <div class="row">
-        	<div class="contact-info">
-        		<div class="row">
-        			<!-- info item start -->
-        			<div class="info-item">
-        				<h5>Address</h5>
-        				<p>Austin, Texas</p>
-        			</div>
-        			<!-- info item end -->
-        			<!-- info item start -->
-        			<!-- info item start -->
-        			<div class="info-item">
-        				<h5>Email</h5>
-        				<p>hello@tarloksingh.com</p>
-        			</div>
-        			<!-- info item end -->
-        		</div>
-        	</div>
+      </article>
+
+      <!-- Mr. Takahashi -->
+      <article class="project-card project-small" data-project="mr-takahashi">
+        <div class="project-content">
+          <div class="project-info">
+            <h3 class="project-title">MR. TAKAHASHI</h3>
+            <p class="project-category">AI / IOS / 2024</p>
+          </div>
+          <div class="project-media">
+            <video autoplay muted loop playsinline>
+              <source src="projects/mr-takahashi/visuals/hero.mp4" type="video/mp4">
+            </video>
+          </div>
+          <a href="projects/mr-takahashi/mr-takahashi.html" class="project-expand" aria-label="View Mr. Takahashi Project">
+            <span class="expand-icon">+</span>
+          </a>
         </div>
-<!--Social Media Links-->
-       <!-- <div class="row">
-        	<div class="social-links">
-        		<a href="#" title="facebook"><img src="img/icons/facebook.svg" alt="facebook"></a>
-        		<a href="#" title="twitter"><img src="img/icons/twitter.svg" alt="twitter"></a>
-        		<a href="#" title="linkedin"><img src="img/icons/linkedin.svg" alt="linkedin"></a>
-        		<a href="#" title="instagram"><img src="img/icons/instagram.svg" alt="instagram"></a>
-        	</div>
+      </article>
+
+      <!-- LoveTap -->
+      <article class="project-card project-wide" data-project="lovetap">
+        <div class="project-content">
+          <div class="project-info">
+            <h3 class="project-title">LOVETAP</h3>
+            <p class="project-category">IOS / 2024</p>
+          </div>
+          <div class="project-media">
+            <img src="projects/lovetap/visuals/hero.png" alt="LoveTap">
+          </div>
+          <a href="projects/lovetap/lovetap.html" class="project-expand" aria-label="View LoveTap Project">
+            <span class="expand-icon">+</span>
+          </a>
         </div>
+      </article>
 
-	</div>
-	-->
-</section>
-<!-- Contact Section End -->
+      <!-- Mecha Station -->
+      <article class="project-card project-small" data-project="mecha-station">
+        <div class="project-content">
+          <div class="project-info">
+            <h3 class="project-title">MECHA STATION</h3>
+            <p class="project-category">SOFTWARE / 2024</p>
+          </div>
+          <div class="project-media">
+            <video autoplay muted loop playsinline>
+              <source src="projects/mecha-station/visuals/hero.mp4" type="video/mp4">
+            </video>
+          </div>
+          <a href="projects/mecha-station/mecha-station.html" class="project-expand" aria-label="View Mecha Station Project">
+            <span class="expand-icon">+</span>
+          </a>
+        </div>
+      </article>
 
-<!-- copyright text -->
-<p class="copyright">&copy; 2023 Tarlok Singh</p>
+      <!-- Slider Engine -->
+      <article class="project-card project-wide" data-project="slider-engine">
+        <div class="project-content">
+          <div class="project-info">
+            <h3 class="project-title">SLIDER ENGINE</h3>
+            <p class="project-category">GAME ENGINE / 2025</p>
+          </div>
+          <div class="project-media">
+            <video autoplay muted loop playsinline>
+              <source src="projects/slider-engine/visuals/hero.mp4" type="video/mp4">
+            </video>
+          </div>
+          <a href="projects/slider-engine/slider-engine.html" class="project-expand" aria-label="View Slider Engine Project">
+            <span class="expand-icon">+</span>
+          </a>
+        </div>
+      </article>
 
-
- <!-- lightbox start -->
-<div class="lightbox">
-  <div class="img-box">
-    <div class="lightbox-close">&times;</div>
-    <img src="img/works/large/2.jpg" class="lightbox-img" alt="img">
-    <div class="lightbox-caption">
-      <div class="lightbox-category">
-        
-      </div>
-      <div class="lightbox-counter">
-        
-      </div>
-    </div>
-    <div class="lightbox-controls">
-      <div class="prev">
-        <img src="img/icons/prev.svg" alt="prev">
+      <!-- Plus One -->
+      <article class="project-card project-medium" data-project="plus-one">
+        <div class="project-content">
+          <div class="project-info">
+            <h3 class="project-title">PLUS ONE</h3>
+            <p class="project-category">SOFTWARE / 2024</p>
+          </div>
+          <div class="project-media">
+            <div class="floating-card">
+              <div class="card-inner"></div>
             </div>
-            <div class="next">
-              <img src="img/icons/next.svg" alt="next">
+          </div>
+          <a href="projects/plus-one/plus-one.html" class="project-expand" aria-label="View Plus One Project">
+            <span class="expand-icon">+</span>
+          </a>
+        </div>
+      </article>
+
+      <!-- Stitchfam -->
+      <article class="project-card project-medium" data-project="stitchfam">
+        <div class="project-content">
+          <div class="project-info">
+            <h3 class="project-title">STITCHFAM</h3>
+            <p class="project-category">WEB APP / 2024</p>
+          </div>
+          <div class="project-media">
+            <video autoplay muted loop playsinline>
+              <source src="projects/stitchfam/visuals/hero.mp4" type="video/mp4">
+            </video>
+          </div>
+          <a href="projects/stitchfam/stitchfam.html" class="project-expand" aria-label="View Stitchfam Project">
+            <span class="expand-icon">+</span>
+          </a>
+        </div>
+      </article>
+
+      <!-- Alcoholic Fish -->
+      <article class="project-card project-medium" data-project="alcoholic-fish">
+        <div class="project-content">
+          <div class="project-info">
+            <h3 class="project-title">THE ALCOHOLIC FISH</h3>
+            <p class="project-category">GAME / 2025</p>
+          </div>
+          <div class="project-media">
+            <video autoplay muted loop playsinline>
+              <source src="projects/alcoholic-fish/visuals/hero.mp4" type="video/mp4">
+            </video>
+          </div>
+          <a href="projects/alcoholic-fish/alcoholic-fish.html" class="project-expand" aria-label="View Alcoholic Fish Project">
+            <span class="expand-icon">+</span>
+          </a>
+        </div>
+      </article>
+
+      <!-- Wyte Card -->
+      <article class="project-card project-wide" data-project="wyte-card">
+        <div class="project-content">
+          <div class="project-info">
+            <h3 class="project-title">WYTE CARD</h3>
+            <p class="project-category">IOS / 2023</p>
+          </div>
+          <div class="project-media">
+            <div class="wyte-card-container">
+              <div class="wyte-card-shadow"></div>
+              <div class="wyte-card"></div>
             </div>
-    </div>
+          </div>
+          <a href="projects/wyte-card/wyte-card.html" class="project-expand" aria-label="View Wyte Card Project">
+            <span class="expand-icon">+</span>
+          </a>
+        </div>
+      </article>
+
+      <!-- Adam -->
+      <article class="project-card project-wide" data-project="adam">
+        <div class="project-content">
+          <div class="project-info">
+            <h3 class="project-title">ADAM</h3>
+            <p class="project-category">SOFTWARE / 2024</p>
+          </div>
+          <div class="project-media">
+            <video autoplay muted loop playsinline>
+              <source src="projects/adam/visuals/hero.mp4" type="video/mp4">
+            </video>
+          </div>
+          <a href="projects/adam/adam.html" class="project-expand" aria-label="View Adam Project">
+            <span class="expand-icon">+</span>
+          </a>
+        </div>
+      </article>
+
+      <!-- Gala Reel -->
+      <article class="project-card project-wide" data-project="gala-reel">
+        <div class="project-content">
+          <div class="project-info">
+            <h3 class="project-title">GALA REEL</h3>
+            <p class="project-category">PARTY APP / 2025</p>
+          </div>
+          <div class="project-media">
+            <img src="projects/gala-reel/visuals/hero.png" alt="Gala Reel">
+          </div>
+          <a href="projects/gala-reel/gala-reel.html" class="project-expand" aria-label="View Gala Reel Project">
+            <span class="expand-icon">+</span>
+          </a>
+        </div>
+      </article>
+
+      <!-- Block Builder -->
+      <article class="project-card project-wide" data-project="block-builder">
+        <div class="project-content">
+          <div class="project-info">
+            <h3 class="project-title">BLOCK BUILDER</h3>
+            <p class="project-category">SOFTWARE / 2024</p>
+          </div>
+          <div class="project-media">
+            <video autoplay muted loop playsinline>
+              <source src="projects/block-builder/visuals/hero.mp4" type="video/mp4">
+            </video>
+          </div>
+          <a href="projects/block-builder/block-builder.html" class="project-expand" aria-label="View Block Builder Project">
+            <span class="expand-icon">+</span>
+          </a>
+        </div>
+      </article>
+
+      <!-- By The People -->
+      <article class="project-card project-small" data-project="by-the-people">
+        <div class="project-content">
+          <div class="project-info">
+            <h3 class="project-title">BY THE PEOPLE</h3>
+            <p class="project-category">SOFTWARE / 2024</p>
+          </div>
+          <div class="project-media">
+            <div class="by-the-people-blocks">
+              <div class="by-the-people-block block-yellow"></div>
+              <div class="by-the-people-block block-blue"></div>
+              <div class="by-the-people-block block-pink"></div>
+            </div>
+          </div>
+          <a href="projects/by-the-people/by-the-people.html" class="project-expand" aria-label="View By The People Project">
+            <span class="expand-icon">+</span>
+          </a>
+        </div>
+      </article>
+
+    </main>
   </div>
-</div>
-<!-- lightbox end -->
 
+  <!-- Navigation Footer -->
+  <div class="navigation-footer">
+    <nav class="main-navigation">
+      <a href="#projects" class="nav-link nav-active">PRODUCTS</a>
+      <a href="#contact" class="nav-link">CONTACT</a>
+    </nav>
+  </div>
 
-<script src="js/jquery.min.js"></script>
-<script src="js/main.js"></script>
-<script src="https://smtpjs.com/v3/smtp.js"></script>
-<script>
-	function sendEmail(){
-		GetName = document.getElementById("name").value; 
-		GetEmail = document.getElementById("email").value;
-		GetNumber = document.getElementById("phone").value;
-		GetMessage = document.getElementById("message").value;
-		Email.send({
-			SecureToken : "1c9dc10a-03d1-48cf-8195-09fb35b0f47f",
-			To : "terryswan1993@gmail.com",
-			From : "tarloksinghfilms@gmail.com",
-			Subject : "New Contact Form",
-			Body : "Name: " + GetName 
-				+ "<br> Email: " + GetEmail
-				+ "<br> Phone: " + GetNumber
-				+ "<br> Message: " + GetMessage
-		}).then(
-		message => alert("Message Sent Successfully!")
-		);
-	}
-</script>
+  <!-- SVG Filter for Liquid Glass Effect -->
+  <svg style="position:absolute;width:0;height:0">
+    <filter id="frosted" primitiveUnits="objectBoundingBox">
+      <feImage href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==" x="0" y="0" width="1" height="1" result="map"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="0.02" result="blur"/>
+      <feDisplacementMap id="disp" in="blur" in2="map" scale="1" xChannelSelector="R" yChannelSelector="G">
+        <animate attributeName="scale" to="1.4" dur="0.3s" begin="mouseover" fill="freeze"/>
+        <animate attributeName="scale" to="1" dur="0.3s" begin="mouseout" fill="freeze"/>
+      </feDisplacementMap>
+    </filter>
+  </svg>
+
+  <!-- JavaScript Files -->
+  <script src="js/utils.js"></script>
+  <script src="js/navigation.js"></script>
+  <script src="js/animations.js"></script>
+  <script src="js/timer.js"></script>
+  <script src="js/main.js"></script>
 </body>
 </html>
-<!--Port  Number 2525-->

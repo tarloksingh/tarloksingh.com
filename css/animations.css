@@ -1,0 +1,719 @@
+/* True Apple Liquid Glass Plus Button */
+.project-expand {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    width: 48px;
+    height: 48px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid transparent;
+    border-radius: 50%;
+    box-shadow: 
+        0 0 0 1px rgba(255, 255, 255, 0.6),
+        0 16px 32px rgba(0, 0, 0, 0.12);
+    backdrop-filter: url(#frosted);
+    -webkit-backdrop-filter: url(#frosted);
+    display: grid;
+    place-items: center;
+    z-index: var(--z-dropdown);
+    cursor: pointer;
+    outline: 0;
+    transition: all 0.3s ease;
+}
+
+/* Plus icon using pseudo-elements (like the reference) */
+.project-expand::before,
+.project-expand::after {
+    content: "";
+    position: absolute;
+    width: 60%;
+    height: 2px;
+    background: #fff;
+    border-radius: 2px;
+    transition: all 0.3s ease;
+}
+
+.project-expand::after {
+    transform: rotate(90deg);
+}
+
+/* Plus button hover effects - only on card hover */
+.project-card:hover .project-expand::before,
+.project-card:hover .project-expand::after {
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+}
+
+/* Dark plus icon for light backgrounds - Alcoholic Fish and Mecha Station */
+.project-card[data-project="alcoholic-fish"] .project-expand::before,
+.project-card[data-project="alcoholic-fish"] .project-expand::after,
+.project-card[data-project="mecha-station"] .project-expand::before,
+.project-card[data-project="mecha-station"] .project-expand::after {
+    background: #333;
+}
+
+.project-card[data-project="alcoholic-fish"]:hover .project-expand::before,
+.project-card[data-project="alcoholic-fish"]:hover .project-expand::after,
+.project-card[data-project="mecha-station"]:hover .project-expand::before,
+.project-card[data-project="mecha-station"]:hover .project-expand::after {
+    background: #000;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.3);
+}
+
+/* White plus icon for Wyte Card */
+.project-card[data-project="wyte-card"] .project-expand::before,
+.project-card[data-project="wyte-card"] .project-expand::after {
+    background: #ffffff;
+}
+
+.project-card[data-project="wyte-card"]:hover .project-expand::before,
+.project-card[data-project="wyte-card"]:hover .project-expand::after {
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+}
+
+/* Remove the expand-icon span since we're using pseudo-elements */
+.expand-icon {
+    display: none;
+}
+
+/* Floating animation for ambient movement */
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-2px);
+    }
+}
+
+.project-expand {
+    animation: float 4s ease-in-out infinite;
+}
+
+.project-expand:hover {
+    animation: none; /* Stop floating on hover */
+}
+
+/* Enhanced card hover effects */
+.project-card {
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    z-index: 1;
+}
+
+.project-card:hover {
+    transform: translateY(-20px) scale(1.05);
+    z-index: 10;
+    box-shadow: 
+        0 40px 80px rgba(0, 0, 0, 0.25),
+        0 20px 40px rgba(0, 0, 0, 0.15),
+        0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Beautiful page load animations */
+.project-card {
+    opacity: 0;
+    transform: translateY(60px) scale(0.9) rotateX(15deg);
+    animation: cardFadeIn 1.2s cubic-bezier(0.23, 1, 0.320, 1) forwards;
+}
+
+@keyframes cardFadeIn {
+    0% {
+        opacity: 0;
+        transform: translateY(60px) scale(0.9) rotateX(15deg);
+    }
+    60% {
+        opacity: 0.8;
+        transform: translateY(-5px) scale(1.02) rotateX(0deg);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1) rotateX(0deg);
+    }
+}
+
+/* BY THE PEOPLE - Beautiful jiggle animation for blocks */
+@keyframes jiggleYellow {
+    0%, 90%, 100% {
+        transform: translateX(0) rotate(0deg);
+    }
+    5% {
+        transform: translateX(-3px) rotate(-2deg);
+    }
+    10% {
+        transform: translateX(4px) rotate(1.5deg);
+    }
+    15% {
+        transform: translateX(-2px) rotate(-1deg);
+    }
+    20% {
+        transform: translateX(2px) rotate(0.5deg);
+    }
+    25% {
+        transform: translateX(-1px) rotate(-0.5deg);
+    }
+    30% {
+        transform: translateX(0) rotate(0deg);
+    }
+}
+
+@keyframes jiggleBlue {
+    0%, 20%, 90%, 100% {
+        transform: translateX(0) rotate(0deg);
+    }
+    25% {
+        transform: translateX(-4px) rotate(-2.5deg);
+    }
+    30% {
+        transform: translateX(5px) rotate(2deg);
+    }
+    35% {
+        transform: translateX(-3px) rotate(-1.5deg);
+    }
+    40% {
+        transform: translateX(3px) rotate(1deg);
+    }
+    45% {
+        transform: translateX(-2px) rotate(-0.5deg);
+    }
+    50% {
+        transform: translateX(0) rotate(0deg);
+    }
+}
+
+@keyframes jigglePink {
+    0%, 50%, 90%, 100% {
+        transform: translateX(0) rotate(0deg);
+    }
+    55% {
+        transform: translateX(3px) rotate(2deg);
+    }
+    60% {
+        transform: translateX(-4px) rotate(-2.5deg);
+    }
+    65% {
+        transform: translateX(3px) rotate(1.5deg);
+    }
+    70% {
+        transform: translateX(-2px) rotate(-1deg);
+    }
+    75% {
+        transform: translateX(1px) rotate(0.5deg);
+    }
+    80% {
+        transform: translateX(0) rotate(0deg);
+    }
+}
+
+/* Apply jiggle animations to the blocks */
+.block-yellow {
+    animation: jiggleYellow 6s ease-in-out infinite;
+    transform-origin: center center;
+}
+
+.block-blue {
+    animation: jiggleBlue 6s ease-in-out infinite;
+    transform-origin: center center;
+}
+
+.block-pink {
+    animation: jigglePink 6s ease-in-out infinite;
+    transform-origin: center center;
+}
+
+/* WYTE CARD REALISTIC SHADOW ANIMATION - MATCHING RIGHT IMAGE */
+.project-card[data-project="wyte-card"] {
+    background: #c8c8c8 !important;
+}
+
+.project-card[data-project="wyte-card"] .project-media {
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: visible !important;
+}
+
+.project-card[data-project="wyte-card"] .wyte-card-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+
+.project-card[data-project="wyte-card"] .wyte-card {
+    width: 200px;
+    height: 130px;
+    background: #ffffff;
+    border-radius: 8px;
+    position: relative;
+    z-index: 2;
+    animation: movingCardShadow 8s linear infinite;
+}
+
+.project-card[data-project="wyte-card"] .wyte-card-shadow {
+    display: none; /* Remove the separate shadow element */
+}
+
+@keyframes movingCardShadow {
+    0% {
+        box-shadow: 
+            60px 20px 60px rgba(0, 0, 0, 0),
+            50px 15px 40px rgba(0, 0, 0, 0),
+            40px 10px 20px rgba(0, 0, 0, 0),
+            0px 2px 8px rgba(0, 0, 0, 0.03);
+    }
+    10% {
+        box-shadow: 
+            50px 20px 60px rgba(0, 0, 0, 0.08),
+            40px 15px 40px rgba(0, 0, 0, 0.06),
+            30px 10px 20px rgba(0, 0, 0, 0.04),
+            0px 2px 8px rgba(0, 0, 0, 0.03);
+    }
+    20% {
+        box-shadow: 
+            35px 20px 60px rgba(0, 0, 0, 0.12),
+            28px 15px 40px rgba(0, 0, 0, 0.10),
+            20px 10px 20px rgba(0, 0, 0, 0.08),
+            0px 2px 8px rgba(0, 0, 0, 0.03);
+    }
+    35% {
+        box-shadow: 
+            15px 20px 60px rgba(0, 0, 0, 0.15),
+            12px 15px 40px rgba(0, 0, 0, 0.12),
+            8px 10px 20px rgba(0, 0, 0, 0.10),
+            0px 2px 8px rgba(0, 0, 0, 0.03);
+    }
+    50% {
+        box-shadow: 
+            0px 25px 70px rgba(0, 0, 0, 0.18),
+            0px 18px 45px rgba(0, 0, 0, 0.14),
+            0px 12px 25px rgba(0, 0, 0, 0.12),
+            0px 2px 8px rgba(0, 0, 0, 0.03);
+    }
+    65% {
+        box-shadow: 
+            -15px 20px 60px rgba(0, 0, 0, 0.15),
+            -12px 15px 40px rgba(0, 0, 0, 0.12),
+            -8px 10px 20px rgba(0, 0, 0, 0.10),
+            0px 2px 8px rgba(0, 0, 0, 0.03);
+    }
+    80% {
+        box-shadow: 
+            -35px 20px 60px rgba(0, 0, 0, 0.12),
+            -28px 15px 40px rgba(0, 0, 0, 0.10),
+            -20px 10px 20px rgba(0, 0, 0, 0.08),
+            0px 2px 8px rgba(0, 0, 0, 0.03);
+    }
+    90% {
+        box-shadow: 
+            -50px 20px 60px rgba(0, 0, 0, 0.08),
+            -40px 15px 40px rgba(0, 0, 0, 0.06),
+            -30px 10px 20px rgba(0, 0, 0, 0.04),
+            0px 2px 8px rgba(0, 0, 0, 0.03);
+    }
+    100% {
+        box-shadow: 
+            -60px 20px 60px rgba(0, 0, 0, 0),
+            -50px 15px 40px rgba(0, 0, 0, 0),
+            -40px 10px 20px rgba(0, 0, 0, 0),
+            0px 2px 8px rgba(0, 0, 0, 0.03);
+    }
+}
+
+/* Wyte Card text styling */
+.project-card[data-project="wyte-card"] .project-title,
+.project-card[data-project="wyte-card"] .project-category {
+    color: #ffffff !important;
+}
+
+/* LoveTap Heart Animation - No blinking on page load */
+.project-card[data-project="lovetap"] .project-content::before,
+.project-card[data-project="lovetap"] .project-content::after,
+.project-card[data-project="lovetap"] .project-media::before,
+.project-card[data-project="lovetap"] .project-media::after {
+    content: "♥";
+    position: absolute;
+    color: rgba(255, 255, 255, 0.7);
+    pointer-events: none;
+    opacity: 0; /* Start hidden */
+    animation: continuousFloatingHearts 6s infinite linear;
+    z-index: 10;
+}
+
+/* Heart 1 - Top left area (original position) */
+.project-card[data-project="lovetap"] .project-media::before {
+    top: 25%;
+    left: 15%;
+    font-size: 18px;
+    animation-delay: 0s;
+}
+
+/* Heart 2 - Bottom right area (original position) */
+.project-card[data-project="lovetap"] .project-media::after {
+    bottom: 30%;
+    right: 20%;
+    font-size: 16px;
+    animation-delay: 2s;
+}
+
+/* Heart 3 - Top right area (original position) */
+.project-card[data-project="lovetap"] .project-content::before {
+    top: 20%;
+    right: 15%;
+    font-size: 14px;
+    animation-delay: 4s;
+}
+
+/* Heart 4 - Bottom left area (original position) */
+.project-card[data-project="lovetap"] .project-content::after {
+    bottom: 25%;
+    left: 20%;
+    font-size: 20px;
+    animation-delay: 1s;
+}
+
+/* Additional hearts using data attributes */
+.project-card[data-project="lovetap"]::before,
+.project-card[data-project="lovetap"]::after {
+    content: "♥";
+    position: absolute;
+    color: rgba(255, 255, 255, 0.6);
+    pointer-events: none;
+    opacity: 0; /* Start hidden */
+    animation: continuousFloatingHearts 7s infinite linear;
+    z-index: 10;
+}
+
+/* Heart 5 - Center left (original position) */
+.project-card[data-project="lovetap"]::before {
+    top: 50%;
+    left: 10%;
+    font-size: 15px;
+    animation-delay: 3s;
+}
+
+/* Heart 6 - Center right (original position) */
+.project-card[data-project="lovetap"]::after {
+    top: 45%;
+    right: 12%;
+    font-size: 17px;
+    animation-delay: 5s;
+}
+
+/* Plus One Floating 3D Polaroid Card Animation */
+.project-card[data-project="plus-one"] .project-media {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.project-card[data-project="plus-one"] .floating-card {
+    width: 125px;
+    height: 200px;
+    background: white;
+    border-radius: 0; /* No rounded corners */
+    box-shadow: none; /* No shadow */
+    transform-style: preserve-3d;
+    animation: cardFloat 6s ease-in-out infinite;
+    position: relative;
+    overflow: hidden;
+    padding: 6px 6px 20px 6px; /* Better polaroid proportions */
+}
+
+.project-card[data-project="plus-one"] .card-inner {
+    width: 100%;
+    height: 90%;
+    border-radius: 0; /* No rounded corners */
+    background: 
+        linear-gradient(43deg, #ff006e 0%, #8338ec 14%, #3a86ff 28%, #06ffa5 42%, #ffbe0b 57%, #fb5607 71%, #ff006e 85%, #8338ec 100%),
+        linear-gradient(127deg, #06ffa5 0%, #ff006e 25%, #3a86ff 50%, #ffbe0b 75%, #8338ec 100%),
+        linear-gradient(217deg, #ffbe0b 0%, #fb5607 20%, #ff006e 40%, #06ffa5 60%, #3a86ff 80%, #8338ec 100%),
+        linear-gradient(315deg, #3a86ff 0%, #ffbe0b 30%, #ff006e 60%, #8338ec 90%);
+    background-size: 400% 400%, 350% 350%, 500% 500%, 300% 300%;
+    animation: randomPsychedelic 15s ease-in-out infinite;
+    position: relative;
+    overflow: hidden;
+    filter: blur(px); /* Add gaussian blur to smooth the psychedelic effect */
+}
+
+.project-card[data-project="plus-one"] .card-inner::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        linear-gradient(78deg, transparent 20%, rgba(255, 255, 255, 0.15) 25%, transparent 35%),
+        linear-gradient(158deg, rgba(255, 0, 150, 0.2) 0%, transparent 30%, rgba(0, 255, 255, 0.25) 55%, transparent 80%),
+        linear-gradient(244deg, transparent 15%, rgba(255, 190, 11, 0.2) 45%, transparent 65%),
+        radial-gradient(ellipse at 70% 30%, rgba(251, 86, 7, 0.3) 0%, transparent 40%);
+    background-size: 600% 600%, 450% 450%, 350% 350%, 200% 200%;
+    animation: chaosOverlay 18s ease-in-out infinite reverse;
+}
+
+.project-card[data-project="plus-one"] .card-inner::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        conic-gradient(from 0deg at 30% 40%, transparent 0%, rgba(255, 255, 255, 0.1) 45%, transparent 90%),
+        conic-gradient(from 180deg at 70% 60%, transparent 0%, rgba(138, 43, 226, 0.15) 30%, transparent 60%),
+        conic-gradient(from 90deg at 20% 80%, transparent 20%, rgba(0, 255, 255, 0.12) 70%, transparent 100%);
+    background-size: 300% 300%, 250% 250%, 400% 400%;
+    animation: swirlChaos 12s linear infinite;
+    mix-blend-mode: overlay;
+}
+
+@keyframes cardFloat {
+    0%, 100% {
+        transform: translateY(0px) rotateX(3deg) rotateY(-1deg) rotateZ(-1deg);
+    }
+    25% {
+        transform: translateY(-4px) rotateX(4deg) rotateY(0.5deg) rotateZ(1deg);
+    }
+    50% {
+        transform: translateY(-6px) rotateX(2deg) rotateY(1deg) rotateZ(-0.5deg);
+    }
+    75% {
+        transform: translateY(-3px) rotateX(3deg) rotateY(-0.5deg) rotateZ(2deg);
+    }
+}
+
+@keyframes randomPsychedelic {
+    0% {
+        background-position: 0% 50%, 100% 0%, 50% 100%, 75% 25%;
+    }
+    12% {
+        background-position: 23% 77%, 8% 92%, 88% 12%, 41% 59%;
+    }
+    27% {
+        background-position: 91% 9%, 64% 36%, 15% 85%, 72% 28%;
+    }
+    41% {
+        background-position: 7% 43%, 95% 5%, 52% 48%, 19% 81%;
+    }
+    56% {
+        background-position: 68% 32%, 21% 79%, 84% 16%, 53% 47%;
+    }
+    73% {
+        background-position: 34% 66%, 87% 13%, 6% 94%, 78% 22%;
+    }
+    89% {
+        background-position: 89% 11%, 42% 58%, 76% 24%, 14% 86%;
+    }
+    100% {
+        background-position: 0% 50%, 100% 0%, 50% 100%, 75% 25%;
+    }
+}
+
+@keyframes chaosOverlay {
+    0%, 100% {
+        background-position: 0% 0%, 100% 100%, 50% 50%, 25% 75%;
+        opacity: 0.6;
+    }
+    17% {
+        background-position: 83% 17%, 29% 71%, 94% 6%, 61% 39%;
+        opacity: 0.8;
+    }
+    33% {
+        background-position: 46% 54%, 78% 22%, 11% 89%, 85% 15%;
+        opacity: 0.4;
+    }
+    51% {
+        background-position: 92% 8%, 5% 95%, 67% 33%, 38% 62%;
+        opacity: 0.7;
+    }
+    68% {
+        background-position: 19% 81%, 86% 14%, 43% 57%, 74% 26%;
+        opacity: 0.5;
+    }
+    84% {
+        background-position: 77% 23%, 31% 69%, 98% 2%, 12% 88%;
+        opacity: 0.9;
+    }
+}
+
+@keyframes swirlChaos {
+    0% {
+        transform: rotate(0deg) scale(1);
+        background-position: 0% 0%, 100% 100%, 50% 50%;
+    }
+    25% {
+        transform: rotate(90deg) scale(1.1);
+        background-position: 75% 25%, 25% 75%, 90% 10%;
+    }
+    50% {
+        transform: rotate(180deg) scale(0.9);
+        background-position: 50% 50%, 80% 20%, 20% 80%;
+    }
+    75% {
+        transform: rotate(270deg) scale(1.05);
+        background-position: 25% 75%, 60% 40%, 85% 15%;
+    }
+    100% {
+        transform: rotate(360deg) scale(1);
+        background-position: 0% 0%, 100% 100%, 50% 50%;
+    }
+}
+
+@keyframes continuousFloatingHearts {
+    0% {
+        opacity: 0;
+        transform: translateY(0px);
+    }
+    10% {
+        opacity: 0.8;
+        transform: translateY(-10px);
+    }
+    90% {
+        opacity: 0.8;
+        transform: translateY(-50px);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-60px);
+    }
+}
+
+.project-card:nth-child(1) { animation-delay: 0.1s; }    /* Capsule C1 */
+.project-card:nth-child(2) { animation-delay: 0.25s; }   /* Mr. Takahashi */
+.project-card:nth-child(3) { animation-delay: 0.4s; }    /* LoveTap */
+.project-card:nth-child(4) { animation-delay: 0.55s; }   /* Mecha Station */
+.project-card:nth-child(5) { animation-delay: 0.7s; }    /* Slider Engine */
+.project-card:nth-child(6) { animation-delay: 0.85s; }   /* Plus One */
+.project-card:nth-child(7) { animation-delay: 1.0s; }    /* Stitchfam */
+.project-card:nth-child(8) { animation-delay: 1.15s; }   /* Adam */
+.project-card:nth-child(9) { animation-delay: 1.3s; }    /* Alcoholic Fish */
+.project-card:nth-child(10) { animation-delay: 1.45s; }  /* Wyte Card */
+.project-card:nth-child(11) { animation-delay: 1.6s; }   /* Block Builder */
+.project-card:nth-child(12) { animation-delay: 1.75s; }  /* By The People */
+.project-card:nth-child(13) { animation-delay: 1.9s; }   /* Gala Reel */
+
+/* Beautiful text fade-in with bounce */
+.project-info {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+    animation: textFadeIn 1s cubic-bezier(0.23, 1, 0.320, 1) forwards;
+}
+
+@keyframes textFadeIn {
+    0% {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+    }
+    70% {
+        opacity: 0.9;
+        transform: translateY(-2px) scale(1.02);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Staggered text animation - slightly after cards */
+.project-card:nth-child(1) .project-info { animation-delay: 0.3s; }    /* Capsule C1 */
+.project-card:nth-child(2) .project-info { animation-delay: 0.45s; }   /* Mr. Takahashi */
+.project-card:nth-child(3) .project-info { animation-delay: 0.6s; }    /* LoveTap */
+.project-card:nth-child(4) .project-info { animation-delay: 0.75s; }   /* Mecha Station */
+.project-card:nth-child(5) .project-info { animation-delay: 0.9s; }    /* Slider Engine */
+.project-card:nth-child(6) .project-info { animation-delay: 1.05s; }   /* Plus One */
+.project-card:nth-child(7) .project-info { animation-delay: 1.2s; }    /* Stitchfam */
+.project-card:nth-child(8) .project-info { animation-delay: 1.35s; }   /* Adam */
+.project-card:nth-child(9) .project-info { animation-delay: 1.5s; }    /* Alcoholic Fish */
+.project-card:nth-child(10) .project-info { animation-delay: 1.65s; }  /* Wyte Card */
+.project-card:nth-child(11) .project-info { animation-delay: 1.8s; }   /* Block Builder */
+.project-card:nth-child(12) .project-info { animation-delay: 1.95s; }  /* By The People */
+.project-card:nth-child(13) .project-info { animation-delay: 2.1s; }   /* Gala Reel */
+
+/* Header animations - all same style, different timing */
+.name {
+    opacity: 0;
+    transform: translateY(30px);
+    animation: headerFadeIn 0.8s cubic-bezier(0.23, 1, 0.320, 1) forwards;
+    animation-delay: 0s;
+}
+
+.tagline {
+    opacity: 0;
+    transform: translateY(30px);
+    animation: headerFadeIn 0.8s cubic-bezier(0.23, 1, 0.320, 1) forwards;
+    animation-delay: 0.3s;
+}
+
+.description {
+    opacity: 0;
+    transform: translateY(30px);
+    animation: headerFadeIn 0.8s cubic-bezier(0.23, 1, 0.320, 1) forwards;
+    animation-delay: 0.6s;
+}
+
+@keyframes headerFadeIn {
+    0% {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Menu beautiful expanding animation - simplified */
+.navigation-footer {
+    opacity: 0;
+    animation: menuAppear 0.8s cubic-bezier(0.23, 1, 0.320, 1) forwards;
+    animation-delay: 2.5s; /* Delayed to come after all projects */
+}
+
+.main-navigation {
+    transform: scale(0);
+    animation: menuScale 0.6s cubic-bezier(0.23, 1, 0.320, 1) forwards;
+    animation-delay: 2.7s; /* Slightly after navigation-footer */
+}
+
+.nav-link {
+    opacity: 0;
+    animation: navContentAppear 0.4s ease forwards;
+}
+
+/* Staggered nav link animations */
+.nav-link:nth-child(1) { animation-delay: 3.0s; }
+.nav-link:nth-child(2) { animation-delay: 3.1s; }
+
+@keyframes menuAppear {
+    0% {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+@keyframes menuScale {
+    0% {
+        transform: scale(0);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+@keyframes navContentAppear {
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+}
