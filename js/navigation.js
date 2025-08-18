@@ -68,4 +68,20 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Audio Toggle Functionality
+    const audioToggle = document.getElementById('audio-toggle');
+    const demoVideo = document.getElementById('demo-video');
+    
+    if (audioToggle && demoVideo) {
+        audioToggle.addEventListener('click', function() {
+            if (demoVideo.muted) {
+                demoVideo.muted = false;
+                audioToggle.classList.add('audio-on');
+            } else {
+                demoVideo.muted = true;
+                audioToggle.classList.remove('audio-on');
+            }
+        });
+    }
+
 });
