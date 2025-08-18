@@ -25,16 +25,6 @@
                     <source src="design/Demo_Video.mp4" type="video/mp4">
                 </video>
                 
-                <!-- Play/Pause Button -->
-                <button class="play-pause-btn" id="play-pause-btn" aria-label="Play/Pause Video">
-                    <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M8 5v14l11-7z"/>
-                    </svg>
-                    <svg class="pause-icon" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
-                    </svg>
-                </button>
-                
                 <!-- Video Controls -->
                 <div class="video-controls">
                     <button class="control-btn replay-btn" id="replay-btn" aria-label="Replay Video">
@@ -62,7 +52,7 @@
                     </button>
                 </div>
                 
-                <div class="image-label">Demo Video</div>
+                <div class="image-label">Capsule Calling Demo</div>
             </div>
             
             <div class="image-item">
@@ -172,76 +162,42 @@
             const playPauseBtn = document.getElementById('play-pause-btn');
             const replayBtn = document.getElementById('replay-btn');
             
-            console.log('Elements found:', { audioToggle, demoVideo, playPauseBtn, replayBtn });
-            
             // Play/Pause Button
             if (playPauseBtn && demoVideo) {
-                // Add click feedback
-                playPauseBtn.addEventListener('mousedown', function() {
-                    this.classList.add('clicked');
-                    console.log('Button mousedown detected!');
-                });
-                
-                playPauseBtn.addEventListener('mouseup', function() {
-                    this.classList.remove('clicked');
-                    console.log('Button mouseup detected!');
-                });
-                
                 playPauseBtn.addEventListener('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log('Play button clicked!');
                     
-                    // Add visual feedback
-                    this.style.background = 'rgba(255, 0, 0, 0.8)';
-                    setTimeout(() => {
-                        this.style.background = '';
-                    }, 200);
-                    
-                    console.log('Current video paused state:', demoVideo.paused);
-                    
+                    // Toggle video play/pause
                     if (demoVideo.paused) {
-                        console.log('Video is paused, attempting to play');
                         demoVideo.play().then(() => {
-                            console.log('Video play successful');
+                            console.log('Video playing');
                         }).catch(error => {
                             console.error('Video play failed:', error);
                         });
                     } else {
-                        console.log('Video is playing, attempting to pause');
                         demoVideo.pause();
+                        console.log('Video paused');
                     }
                 });
                 
                 // Update button state when video plays/pauses
                 demoVideo.addEventListener('play', function() {
-                    console.log('Video play event fired');
                     playPauseBtn.classList.add('playing');
                 });
                 
                 demoVideo.addEventListener('pause', function() {
-                    console.log('Video pause event fired');
                     playPauseBtn.classList.remove('playing');
                 });
                 
-                // Wait for video to load and set initial state
+                // Set initial state when video loads
                 demoVideo.addEventListener('loadedmetadata', function() {
-                    console.log('Video metadata loaded');
-                    // Check if video is actually playing
-                    if (demoVideo.readyState >= 2) {
-                        if (demoVideo.paused) {
-                            console.log('Video is paused, showing play icon');
-                            playPauseBtn.classList.remove('playing');
-                        } else {
-                            console.log('Video is playing, showing pause icon');
-                            playPauseBtn.classList.add('playing');
-                        }
+                    if (demoVideo.paused) {
+                        playPauseBtn.classList.remove('playing');
+                    } else {
+                        playPauseBtn.classList.add('playing');
                     }
                 });
-                
-                // Test if button is clickable
-                console.log('Play button element:', playPauseBtn);
-                console.log('Video element:', demoVideo);
             }
             
             // Replay Button
