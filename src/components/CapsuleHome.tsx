@@ -145,7 +145,15 @@ export default function CapsuleHome() {
       ) : (
         <Leva hidden />
       )}
-      {!opened ? <TapeSeal onOpen={() => setOpened(true)} /> : null}
+      {/* Position and type size come from the ring, so the tape sits exactly
+          where the flat line of the product name appears when it clears. */}
+      {!opened ? (
+        <TapeSeal
+          offsetY={ring.offsetY}
+          fontSize={ring.fontSize}
+          onOpen={() => setOpened(true)}
+        />
+      ) : null}
 
       <aside className="ch-title-area">
         <div className="ch-title">

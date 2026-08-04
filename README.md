@@ -35,18 +35,27 @@ Vercel. Pushing this branch does not deploy anything.
 `src/components/CapsuleHome.tsx`, built to a 2048x1080 frame: a fixed 405px
 stone sidebar carrying the identity, and a gradient stage holding the product.
 
-**On load the page is taped shut** (`TapeSeal.tsx`) — two crossed strips
-carrying `TARLOK SINGH`, and a tap breaks them. Nothing that animates is
-mounted until they clear, so the copy reveal, the ring and the product all
-start from the same moment rather than having run behind the tape.
+**On load the page is taped shut** (`TapeSeal.tsx`) — one horizontal strip
+carrying `TARLOK SINGH`, cut where you click rather than at a fixed seam. Both
+halves hold the identical run and are clipped to their side of the cut, so the
+letters land in the same places and the blade can fall mid-glyph; they then
+retract along the tape.
+
+The strip sits at the ring's own `offsetY` and `fontSize`, passed in rather
+than duplicated, because the whole point is that it lands exactly where the
+flat line of the product name appears. What you cut open is what curls up into
+`CAPSULE C1`.
+
+Nothing that animates is mounted until the tape clears, so the copy reveal, the
+ring and the product all start from the same moment rather than having run
+behind it.
 
 **Once it opens**, the copy reveals block by block, each clipped to its own box
-so the characters climb into view from under the cut. The label starts as one
-straight run of type across the stage and curls into the ring — the projection
-is blended between a flat line and the closed cylinder, so it visibly wraps
-rather than arriving already formed — while the product turns into place and
-hands that motion over to the idle float. The tape and the line the ring
-unwraps from are the same shape on purpose.
+so the characters climb into view from under the cut. The label unwraps from
+that flat line into the ring — the projection is blended between the line and
+the closed cylinder, so it visibly curls rather than arriving already formed —
+while the product turns into place and hands that motion over to the idle
+float.
 
 `.ch-stage` spans the whole content area rather than sitting as a flex row
 between menu and credit. As a row its bottom edge fell above the credit line
@@ -57,24 +66,42 @@ mid-air rather than coming in off the bottom of the screen.
 flat on a turntable. Each glyph sits on the surface of a cylinder facing
 outward, so the front of the ring reads square to camera.
 
-Two things about it are easy to undo by accident:
+**The cylinder is projected in JS, not handed to CSS 3D.** That is a
+performance decision. The 3D version needed every glyph duplicated across two
+`preserve-3d` layers, one either side of the model, because a 3D rendering
+context sorts by depth and *ignores z-index* — so no single layer could
+straddle the model, and the model is a WebGL canvas that cannot join that
+context at all. At the tuned settings that came to ~590 spans, each
+re-rasterised every frame, since a rotated 3D transform is not something the
+compositor can reuse. That was the jank.
+
+Projecting by hand gives one set of glyphs, plain 2D transforms and z-index
+working normally against the canvas, with spaces dropped from the DOM while
+still holding their slot: ~590 nodes down to ~190. `.ch-stage` carries
+`isolation: isolate` so the far arc's `-1` stays inside the stage instead of
+dropping behind the page gradient.
+
+Four things are easy to undo by accident:
 
 - **It is a cylinder, not a flattened ellipse.** Upright glyphs on a 2D ellipse
   look right at the top and bottom and fall apart at the sides, where the path
   runs vertical on screen, the horizontal gap between neighbours collapses and
   the letters pile into an unreadable clump. Rotation spends that spacing
   evenly the whole way round.
-- **The glyphs are duplicated across two layers**, one either side of the model,
-  each hiding the half it does not own. `preserve-3d` puts every glyph into one
-  3D rendering context that sorts by depth and *ignores z-index*, so a single
-  layer could never straddle the model — and the model is a WebGL canvas, which
-  cannot join that context at all. Perspective therefore lives on `.ch-stage`,
-  the shared parent of both layers and the canvas.
+- **The roll has to reach the glyph, not just its position.** Rotating only the
+  placement leaves every letter bolt upright while the baseline runs
+  diagonally, which reads as a staircase rather than as tilted type.
+- **Far-arc glyphs mirror.** In 3D they genuinely faced away and the browser
+  drew their backface. Without it the back of the ring reads as the label
+  spelled backwards rather than as its reverse.
+- **Glyphs are placed one at a time, not one word at a time.** Perspective
+  scale across a word is what gives it its taper. Whole words would cut the
+  node count by an order of magnitude and flatten that out.
 
 There was a depth blur on the far arc. It is gone: a CSS blur re-rasterises its
 element, and ~200 of those a frame is well past what compositing absorbs. The
-far arc fades instead, and the loop skips any glyph whose opacity bucket has
-not changed.
+far arc fades instead, and the loop skips any glyph whose bucket has not
+changed.
 
 ## The card page
 

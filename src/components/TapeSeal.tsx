@@ -1,87 +1,94 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 interface TapeSealProps {
-  /** Carried along each strip, repeated. */
+  /** Carried along the tape, repeated. */
   label?: string
+  /** Matches the ring's own offset so the tape sits exactly where the flat
+   *  line of the product name is about to appear. */
+  offsetY?: number
+  /** Matches the ring's glyph size, for the same reason. */
+  fontSize?: number
   /** Fires once the tape is off and the page underneath should start. */
   onOpen: () => void
-  /** Seconds the tape takes to leave. Matches the CSS transition. */
-  peelDuration?: number
+  /** Seconds the cut halves take to clear. Matches the CSS transition. */
+  cutDuration?: number
 }
 
-// Two strips crossing at opposing angles, the way a box gets taped shut.
-const STRIPS = [
-  { angle: -14, top: '38%' },
-  { angle: 11, top: '58%' }
-]
-
 /**
- * The page arrives sealed: strips of tape carrying the name, which have to be
- * broken to get in.
+ * The page arrives sealed under a single strip of tape carrying the name.
+ * Clicking cuts it — at the point you clicked, not at some fixed seam — and
+ * the two halves retract.
  *
- * It gates the page's own intro rather than playing alongside it — the copy
- * reveal, the ring unwrapping out of its line and the product turning into
- * place all start from the moment this clears, so the whole thing reads as
- * one continuous opening rather than an animation that ran while nobody was
- * looking.
- *
- * The strips carry the same repeated-label treatment the ring uses, so the
- * flat line the ring unwraps from is visually the tape that just came off.
+ * The strip is deliberately the same shape, position and type size as the
+ * flat line `ProductRing` unwraps from, so the handoff reads as one object:
+ * the tape you just cut is what curls up into the product's name. That only
+ * holds while the two agree, so `offsetY` and `fontSize` are passed in from
+ * the ring's own settings rather than duplicated here.
  */
 export default function TapeSeal({
   label = 'TARLOK SINGH',
+  offsetY = 0,
+  fontSize = 19,
   onOpen,
-  peelDuration = 0.9
+  cutDuration = 0.75
 }: TapeSealProps) {
-  const [peeling, setPeeling] = useState(false)
+  const [cutAt, setCutAt] = useState<number | null>(null)
   const timer = useRef(0)
 
-  // Long enough to run past the widest screen at any angle.
-  const run = useMemo(() => `${label}  `.repeat(24), [label])
+  // Long enough to run past the widest screen.
+  const run = useMemo(() => `${label}  `.repeat(30), [label])
 
   useEffect(() => () => window.clearTimeout(timer.current), [])
 
-  const open = () => {
-    if (peeling) return
-    setPeeling(true)
-    timer.current = window.setTimeout(onOpen, peelDuration * 1000)
+  const cut = (clientX: number) => {
+    if (cutAt !== null) return
+    setCutAt((clientX / window.innerWidth) * 100)
+    timer.current = window.setTimeout(onOpen, cutDuration * 1000)
   }
 
-  // Enter and Space land here through the button role, so a keyboard gets in
-  // the same way a pointer does.
+  const isCut = cutAt !== null
+  // Before the cut the two halves meet at the middle and read as one strip.
+  const seam = cutAt ?? 50
+
   return (
     <div
-      className={`ch-seal${peeling ? ' is-peeling' : ''}`}
-      onPointerDown={open}
+      className={`ch-seal${isCut ? ' is-cut' : ''}`}
+      onPointerDown={(e) => cut(e.clientX)}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
-          open()
+          cut(window.innerWidth / 2)
         }
       }}
       role="button"
       tabIndex={0}
-      aria-label={`${label} — open`}
-      style={{ '--peel': `${peelDuration}s` } as React.CSSProperties}
+      aria-label={`${label} — cut to open`}
+      style={{ '--cut': `${cutDuration}s` } as React.CSSProperties}
     >
-      {STRIPS.map((strip, i) => (
+      <div className="ch-seal-band" style={{ top: `calc(50% + ${offsetY}px)` }}>
+        {/* Two copies of the same run, each clipped to its side of the seam.
+            Clipping rather than splitting the text keeps the letters landing
+            in identical places, so the cut can fall mid-glyph the way a real
+            blade would. */}
         <div
-          key={i}
-          className="ch-seal-strip"
-          style={{
-            top: strip.top,
-            // Each strip leaves the way it lies, so the two part rather than
-            // sliding off together.
-            ['--angle' as string]: `${strip.angle}deg`,
-            ['--exit' as string]: i % 2 === 0 ? '-120%' : '120%'
-          }}
-          aria-hidden="true"
+          className="ch-seal-half is-left"
+          style={{ clipPath: `inset(-50% ${100 - seam}% -50% -50%)` }}
         >
-          <span className="ch-seal-run">{run}</span>
+          <span className="ch-seal-run" style={{ fontSize }}>
+            {run}
+          </span>
         </div>
-      ))}
+        <div
+          className="ch-seal-half is-right"
+          style={{ clipPath: `inset(-50% -50% -50% ${seam}%)` }}
+        >
+          <span className="ch-seal-run" style={{ fontSize }}>
+            {run}
+          </span>
+        </div>
+      </div>
 
-      <span className="ch-seal-cue">TAP TO OPEN</span>
+      <span className="ch-seal-cue">TAP TO CUT</span>
     </div>
   )
 }
