@@ -259,7 +259,12 @@ export default function ProductRing({
         // The ring overshoots its resting angle and unwinds into it, so the
         // label arrives already turning rather than from a standstill.
         const spin = (period === 0 ? 0 : (seconds / period) * 360) + introWind * (1 - wrap)
-        draw(spin, wrap, 0)
+        // Picks the halves up exactly where the cut threw them and draws them
+        // back in as the ring closes. Dropping to 0 here instead snaps the
+        // line back to a flat, centred run of the *new* text — which reads as
+        // the product's name simply appearing, and is the one thing this
+        // whole sequence is meant to avoid.
+        draw(spin, wrap, 1 - wrap)
       }
 
       raf = requestAnimationFrame(tick)

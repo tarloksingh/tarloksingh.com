@@ -61,6 +61,8 @@ export default function CapsuleHome() {
     'Ring',
     restoreSchema('Ring', {
       label: { value: 'CAPSULE C1', label: 'Text' },
+      // What the line reads before it is cut. It curls into `label` after.
+      sealLabel: { value: 'TARLOK SINGH', label: 'Seal text' },
       separator: { value: '', label: 'Separator' },
       gap: { value: 2, min: 1, max: 24, step: 1, label: 'Gap (spaces)' },
       repeats: { value: 21, min: 1, max: 48, step: 1, label: 'How many' },

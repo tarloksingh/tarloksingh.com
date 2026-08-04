@@ -173,6 +173,10 @@
   margin: 0;
   white-space: pre;
   font-weight: 700;
+  /* Dragging to cut would otherwise select the ring as text and leave every
+     glyph sitting in a highlight. */
+  user-select: none;
+  -webkit-user-select: none;
   /* Glyphs are placed one by one, so spacing is angular — a tracking value
      here would only shift each one off its own centre. */
   letter-spacing: 0;
@@ -222,6 +226,8 @@
   inset: 0;
   z-index: 40;
   cursor: crosshair;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .ch-ring-cutter:focus-visible {
