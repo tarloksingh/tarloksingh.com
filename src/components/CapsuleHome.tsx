@@ -1,9 +1,21 @@
+import { button, Leva, useControls } from 'leva'
 import BlurText from './BlurText'
 import ProductRing from './ProductRing'
 import CapsuleStage from '../three/CapsuleStage'
+import {
+  clearPersistedControls,
+  exportPersistedControls,
+  restoreSchema,
+  usePersistControls
+} from '../hooks/persistControls'
 import './CapsuleHome.css'
 
 const CONTACT_EMAIL = 'tarloksinghfilms@gmail.com'
+
+// Open the page with `?tune` on the end to get the sliders. Absent without it,
+// so they never show up for anyone else.
+const showTuner =
+  typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('tune')
 
 const FOCUS = [
   'PRODUCT DESIGN',
@@ -39,8 +51,66 @@ const reveal = (startDelay: number) => ({
  * The card version is untouched in `Home.tsx` — `App.tsx` picks between them.
  */
 export default function CapsuleHome() {
+  const ring = useControls(
+    'Ring',
+    restoreSchema('Ring', {
+      label: { value: 'CAPSULE C1', label: 'Text' },
+      separator: { value: '', label: 'Separator' },
+      gap: { value: 4, min: 1, max: 14, step: 1, label: 'Gap (spaces)' },
+      repeats: { value: 6, min: 1, max: 14, step: 1, label: 'How many' },
+      fontSize: { value: 26, min: 8, max: 72, step: 1, label: 'Text size' },
+      radius: { value: 300, min: 80, max: 700, step: 5, label: 'Ring size' },
+      period: { value: 24, min: -90, max: 90, step: 1, label: 'Spin (s/turn)' },
+      tiltX: { value: -12, min: -80, max: 80, step: 1, label: 'Tip' },
+      tiltZ: { value: -15, min: -80, max: 80, step: 1, label: 'Roll' },
+      offsetX: { value: 0, min: -400, max: 400, step: 1, label: 'Nudge X' },
+      offsetY: { value: 0, min: -400, max: 400, step: 1, label: 'Nudge Y' },
+      maxBlur: { value: 3.5, min: 0, max: 14, step: 0.1, label: 'Depth blur' }
+    })
+  )
+
+  const product = useControls(
+    'Product',
+    restoreSchema('Product', {
+      focalLength: { value: 50, min: 14, max: 200, step: 1, label: 'Lens (mm)' },
+      modelScale: { value: 1, min: 0.2, max: 3, step: 0.02, label: 'Size' },
+      rpm: { value: 3, min: -30, max: 30, step: 0.5, label: 'Spin (rpm)' },
+      exposure: { value: 1.15, min: 0.1, max: 3, step: 0.05, label: 'Exposure' },
+      envIntensity: { value: 1, min: 0, max: 4, step: 0.05, label: 'Environment' },
+      keyIntensity: { value: 1.6, min: 0, max: 8, step: 0.1, label: 'Key light' },
+      ambientIntensity: { value: 0.35, min: 0, max: 3, step: 0.05, label: 'Ambient' },
+      // Both logos reach glTF without a material block and would otherwise
+      // take the spec default, which renders as bright chrome.
+      fallbackColor: { value: '#000000', label: 'Untyped material' }
+    })
+  )
+
+  useControls('Export', {
+    'Copy all settings': button(() => {
+      const json = exportPersistedControls(['Ring', 'Product'])
+      navigator.clipboard?.writeText(json).catch(() => console.log(json))
+    }),
+    'Reset all settings': button(() => {
+      clearPersistedControls()
+      window.location.reload()
+    })
+  })
+
+  usePersistControls('Ring', ring)
+  usePersistControls('Product', product)
+
   return (
     <main className="capsule-home">
+      {/* Leva raises its own floating panel as soon as any useControls call
+          runs, so the un-tuned page needs an explicit hidden one rather than
+          simply not rendering ours. */}
+      {showTuner ? (
+        <div className="ch-tuner">
+          <Leva fill flat titleBar={false} />
+        </div>
+      ) : (
+        <Leva hidden />
+      )}
       <aside className="ch-title-area">
         <div className="ch-title">
           <BlurText text="ARTIST" className="ch-label" {...reveal(0.15)} />
@@ -85,8 +155,8 @@ export default function CapsuleHome() {
         </nav>
 
         <div className="ch-stage">
-          <ProductRing label="CAPSULE C1" />
-          <CapsuleStage />
+          <ProductRing {...ring} />
+          <CapsuleStage {...product} />
         </div>
 
         <BlurText

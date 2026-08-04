@@ -200,24 +200,6 @@
   white-space: nowrap;
 }
 
-/* Soft contact shadow under the ring — the blurred slab from the spec. */
-.ch-ring-shadow {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  z-index: -2;
-  width: 600px;
-  height: 229px;
-  transform: translate(-50%, -50%) rotate(-15deg);
-  background: linear-gradient(159.42deg, #000000 18.36%, #d1d1d1 105.36%);
-  filter: blur(5.3px);
-  /* Barely there — enough to seat the ring on the gradient without reading
-     as a grey disc behind the product. */
-  opacity: 0.035;
-  border-radius: 50%;
-  pointer-events: none;
-}
-
 /* ---- model ---- */
 
 .ch-model {
@@ -237,17 +219,26 @@
   display: block;
 }
 
-/* The placeholder note only shows until a real .glb is dropped in. */
-.ch-model-note {
-  position: absolute;
-  bottom: -18px;
-  left: 50%;
-  transform: translateX(-50%);
-  white-space: nowrap;
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  color: rgba(0, 0, 0, 0.32);
+/* Tuning panel, only mounted behind ?tune. */
+.ch-tuner {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  width: 300px;
+  z-index: 100;
+}
+
+@media screen and (max-width: 700px) {
+  .ch-tuner {
+    top: auto;
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
+    width: auto;
+    max-height: 46vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 /* ---- narrow screens ---- */

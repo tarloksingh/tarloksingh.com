@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useRef } from 'react'
 
 interface ProductRingProps {
-  /** Repeated around the ring, separated by `separator`. */
+  /** Repeated around the ring. */
   label: string
+  /** Character between repeats. Empty runs the label round on its own. */
   separator?: string
+  /** Spaces padding each repeat, which is what sets the gap between them. */
+  gap?: number
   /** How many times the label appears in one full turn. */
   repeats?: number
   /** Radius of the cylinder in px. */
@@ -12,6 +15,9 @@ interface ProductRingProps {
   tiltX?: number
   /** Screen-plane tilt of the whole ring, degrees. */
   tiltZ?: number
+  /** Nudges the ring off the stage's centre, px. */
+  offsetX?: number
+  offsetY?: number
   /** Seconds for one full revolution. Negative runs it anticlockwise. */
   period?: number
   /** Blur on the glyph furthest from the camera. */
@@ -40,11 +46,14 @@ interface ProductRingProps {
  */
 export default function ProductRing({
   label,
-  separator = '|',
+  separator = '',
+  gap = 4,
   repeats = 6,
   radius = 300,
   tiltX = -12,
   tiltZ = -15,
+  offsetX = 0,
+  offsetY = 0,
   period = 24,
   maxBlur = 3.5,
   fontSize = 26
@@ -54,12 +63,13 @@ export default function ProductRing({
   const backGlyphs = useRef<(HTMLSpanElement | null)[]>([])
   const frontGlyphs = useRef<(HTMLSpanElement | null)[]>([])
 
-  // One unit is the label plus its separator, padded so the two never collide
-  // once they are spread round the ring.
+  // One unit is the label and the space after it. With a separator the space
+  // is split either side of it; without one it all falls between repeats.
   const glyphs = useMemo(() => {
-    const unit = `${label}   ${separator}   `
-    return Array.from(unit.repeat(repeats))
-  }, [label, separator, repeats])
+    const pad = ' '.repeat(Math.max(1, gap))
+    const unit = separator ? `${label}${pad}${separator}${pad}` : `${label}${pad}${pad}`
+    return Array.from(unit.repeat(Math.max(1, repeats)))
+  }, [label, separator, gap, repeats])
 
   useEffect(() => {
     const count = glyphs.length
@@ -73,7 +83,9 @@ export default function ProductRing({
     const draw = (spin: number) => {
       // One write per layer turns the whole ring; the glyphs inside are
       // static and just come along for the ride.
-      const frame = `rotateZ(${tiltZ}deg) rotateX(${tiltX}deg) rotateY(${spin}deg)`
+      const frame =
+        `translate(${offsetX}px, ${offsetY}px) ` +
+        `rotateZ(${tiltZ}deg) rotateX(${tiltX}deg) rotateY(${spin}deg)`
       if (backRef.current) backRef.current.style.transform = frame
       if (frontRef.current) frontRef.current.style.transform = frame
 
@@ -111,7 +123,7 @@ export default function ProductRing({
 
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [glyphs, radius, tiltX, tiltZ, period, maxBlur])
+  }, [glyphs, radius, tiltX, tiltZ, offsetX, offsetY, period, maxBlur])
 
   const layer = (
     which: 'back' | 'front',
@@ -139,7 +151,6 @@ export default function ProductRing({
 
   return (
     <>
-      <div className="ch-ring-shadow" aria-hidden="true" />
       {layer('back', backRef, backGlyphs)}
       {layer('front', frontRef, frontGlyphs)}
       <span className="ch-ring-label">{label}</span>
