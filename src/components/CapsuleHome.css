@@ -138,14 +138,17 @@
 
 /* The stage is its own row between menu and credit so the ring stays
    optically centred no matter how tall those two get. */
+/* Spans the whole content area rather than sitting as a flex row between the
+   menu and the credit. As a row its bottom edge fell above the credit line,
+   and the canvas ended there — so a product entering from below was cut off
+   in mid-air at that line instead of coming in off the bottom of the screen.
+   The menu and credit float over it on z-index 2. */
 .ch-stage {
-  position: relative;
-  flex: 1 1 auto;
-  width: 100%;
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 0;
   /* The ring is projected in JS, so there is no CSS perspective here — but
      the far arc still sits at z-index -1, and without a stacking context of
      its own that would drop behind the page gradient rather than behind the
@@ -208,6 +211,88 @@
 
 .ch-model canvas {
   display: block;
+}
+
+/* ---- tape seal ---- */
+
+.ch-seal {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  overflow: hidden;
+  cursor: pointer;
+  /* The page underneath is unfinished until this clears, so it is covered
+     rather than merely overlaid. */
+  background: #f3f3ef;
+}
+
+.ch-seal:focus-visible {
+  outline: 2px solid #000000;
+  outline-offset: -4px;
+}
+
+.ch-seal-strip {
+  position: absolute;
+  left: 50%;
+  width: 260vmax;
+  padding: 18px 0;
+  transform: translate(-50%, -50%) rotate(var(--angle));
+  background: rgba(255, 255, 255, 0.92);
+  /* Edges rather than a border, so it reads as something laid on top. */
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.06) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.06) inset,
+    0 12px 30px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  white-space: nowrap;
+  transition:
+    transform var(--peel) cubic-bezier(0.65, 0, 0.35, 1),
+    opacity var(--peel) ease-in;
+  will-change: transform, opacity;
+}
+
+.ch-seal-run {
+  display: inline-block;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 0.34em;
+  line-height: 1;
+  color: #000000;
+}
+
+.ch-seal-cue {
+  position: absolute;
+  left: 50%;
+  bottom: 40px;
+  transform: translateX(-50%);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.24em;
+  color: rgba(0, 0, 0, 0.45);
+  transition: opacity 0.25s ease-out;
+}
+
+.ch-seal.is-peeling {
+  /* Pointer events go first so a second tap cannot land mid-peel. */
+  pointer-events: none;
+  background: transparent;
+  transition: background var(--peel) ease-out;
+}
+
+.ch-seal.is-peeling .ch-seal-strip {
+  transform: translate(calc(-50% + var(--exit)), -50%) rotate(var(--angle));
+  opacity: 0;
+}
+
+.ch-seal.is-peeling .ch-seal-cue {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ch-seal-strip,
+  .ch-seal-cue {
+    transition-duration: 0.01s;
+  }
 }
 
 /* Tuning panel, only mounted behind ?tune. */

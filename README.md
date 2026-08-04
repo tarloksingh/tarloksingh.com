@@ -35,11 +35,23 @@ Vercel. Pushing this branch does not deploy anything.
 `src/components/CapsuleHome.tsx`, built to a 2048x1080 frame: a fixed 405px
 stone sidebar carrying the identity, and a gradient stage holding the product.
 
-**On load** the copy reveals first — each block clipped to its own box so the
-characters climb into view from under the cut, cascading one block after the
-next. The product rises into frame from below while that is still running, on
-position alone: scaling it up would read as the product moving toward the
-camera, and the page holds a fixed lens on a fixed subject.
+**On load the page is taped shut** (`TapeSeal.tsx`) — two crossed strips
+carrying `TARLOK SINGH`, and a tap breaks them. Nothing that animates is
+mounted until they clear, so the copy reveal, the ring and the product all
+start from the same moment rather than having run behind the tape.
+
+**Once it opens**, the copy reveals block by block, each clipped to its own box
+so the characters climb into view from under the cut. The label starts as one
+straight run of type across the stage and curls into the ring — the projection
+is blended between a flat line and the closed cylinder, so it visibly wraps
+rather than arriving already formed — while the product turns into place and
+hands that motion over to the idle float. The tape and the line the ring
+unwraps from are the same shape on purpose.
+
+`.ch-stage` spans the whole content area rather than sitting as a flex row
+between menu and credit. As a row its bottom edge fell above the credit line
+and the canvas ended there, so a product entering from below was cut off in
+mid-air rather than coming in off the bottom of the screen.
 
 **The name ring** is a band of type standing up around the product, not lying
 flat on a turntable. Each glyph sits on the surface of a cylinder facing
@@ -118,7 +130,8 @@ video it has never seen.
 | Path | What it does |
 |---|---|
 | `src/components/CapsuleHome.tsx` | The product page: layout, copy reveals, both control groups |
-| `src/components/ProductRing.tsx` | The name ring — cylinder placement, two layers, spin |
+| `src/components/ProductRing.tsx` | The name ring — cylinder projection, unwrap, spin |
+| `src/components/TapeSeal.tsx` | The tape the page arrives sealed under |
 | `src/three/CapsuleStage.tsx` | Canvas, camera rig, environment, entrance, float, model load |
 | `src/components/Home.tsx` | The card page: intro, shuffle, swipe/scroll, controls |
 | `src/components/BlurText.tsx` | Per-character reveal, forward and reverse |
@@ -184,12 +197,16 @@ On the product page:
 | | Spin (s/turn) | Seconds per revolution; negative runs it anticlockwise |
 | | Tip / Roll | Tilt toward the viewer, and in the screen plane |
 | | Nudge X/Y | Moves the ring off the stage's centre |
+| Ring | Depth | Viewing distance. Low values magnify the near arc hard |
+| Intro | Delay / Time | When the opening starts and how long it runs |
+| | Line spacing | How spread the label is while still a flat line |
+| | Ring unwind | Extra degrees the ring turns through as it closes |
+| | Product from / turn | How far below it starts and how far it rotates in |
 | Product | Lens (mm) | Real focal length against a full-frame back, not a raw fov |
 | | Size | Multiplies the auto-fit |
 | | Camera back / height / around | Distance, elevation and orbit. The camera always aims at the model |
 | | Spin (rpm) | Turntable rotation |
 | | Float rise / loll / speed | Idle drift, usable *instead* of the spin — set one to 0 |
-| | Rise from / delay / time | The entrance: how far below frame it starts, and when |
 | | Exposure / Environment / Key light / Ambient | Tone-mapping exposure and the three light sources |
 | | Untyped material | Colour for materials that arrived without a PBR block |
 

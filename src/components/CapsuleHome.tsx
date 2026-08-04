@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { button, Leva, useControls } from 'leva'
 import BlurText from './BlurText'
 import ProductRing from './ProductRing'
+import TapeSeal from './TapeSeal'
 import CapsuleStage from '../three/CapsuleStage'
 import {
   clearPersistedControls,
@@ -51,6 +53,12 @@ const reveal = (startDelay: number) => ({
  * The card version is untouched in `Home.tsx` — `App.tsx` picks between them.
  */
 export default function CapsuleHome() {
+  // The page arrives taped shut. Nothing that animates is mounted until the
+  // seal clears, so the copy reveal, the ring unwrapping and the product
+  // turning into place all start from the same moment rather than having run
+  // behind the tape.
+  const [opened, setOpened] = useState(false)
+
   const ring = useControls(
     'Ring',
     restoreSchema('Ring', {
@@ -137,9 +145,11 @@ export default function CapsuleHome() {
       ) : (
         <Leva hidden />
       )}
+      {!opened ? <TapeSeal onOpen={() => setOpened(true)} /> : null}
+
       <aside className="ch-title-area">
         <div className="ch-title">
-          <BlurText text="ARTIST" className="ch-label" {...reveal(0.15)} />
+          {opened ? <BlurText text="ARTIST" className="ch-label" {...reveal(0.15)} /> : null}
           {/* The visible name is built from BlurText, which renders <p> — not
               valid inside <h1> — so the heading is carried separately for
               document structure and hidden from view. */}
@@ -147,61 +157,73 @@ export default function CapsuleHome() {
           {/* Two blocks rather than one with a line break, so each line is
               clipped by its own box and rises out of its own cut. */}
           <div className="ch-name" aria-hidden="true">
-            <BlurText text="TARLOK" {...reveal(0)} />
-            <BlurText text="SINGH" {...reveal(0.08)} />
+            {opened ? <BlurText text="TARLOK" {...reveal(0)} /> : null}
+            {opened ? <BlurText text="SINGH" {...reveal(0.08)} /> : null}
           </div>
         </div>
 
         <div className="ch-meta">
           <div className="ch-meta-block">
-            <BlurText text="PASSION" className="ch-label ch-label-muted" {...reveal(0.45)} />
             {/* Literal curly quotes — BlurText splits raw text into spans,
                 so an HTML entity would render as its own characters. */}
-            <BlurText
-              text={'“BUILDING BEAUTIFUL PRODUCTS”'}
-              className="ch-passion"
-              {...reveal(0.52)}
-            />
+            {opened ? (
+              <>
+                <BlurText text="PASSION" className="ch-label ch-label-muted" {...reveal(0.45)} />
+                <BlurText
+                  text={'“BUILDING BEAUTIFUL PRODUCTS”'}
+                  className="ch-passion"
+                  {...reveal(0.52)}
+                />
+              </>
+            ) : null}
           </div>
           <div className="ch-meta-block">
-            <BlurText text="FOCUS" className="ch-label ch-label-muted" {...reveal(0.62)} />
-            <BlurText text={FOCUS} className="ch-focus" {...reveal(0.7)} />
+            {opened ? (
+              <>
+                <BlurText text="FOCUS" className="ch-label ch-label-muted" {...reveal(0.62)} />
+                <BlurText text={FOCUS} className="ch-focus" {...reveal(0.7)} />
+              </>
+            ) : null}
           </div>
         </div>
       </aside>
 
       <section className="ch-content">
         <nav className="ch-menu">
-          <a href="#home">
-            <BlurText text="HOME" {...reveal(0.25)} />
-          </a>
+          <a href="#home">{opened ? <BlurText text="HOME" {...reveal(0.25)} /> : null}</a>
           <a className="is-dim" href={`mailto:${CONTACT_EMAIL}`}>
-            <BlurText text="CONTACT" {...reveal(0.33)} />
+            {opened ? <BlurText text="CONTACT" {...reveal(0.33)} /> : null}
           </a>
         </nav>
 
         <div className="ch-stage">
-          <ProductRing
-            {...ring}
-            introSpacing={intro.ringSpacing}
-            introWind={intro.ringWind}
-            introDelay={intro.delay}
-            introDuration={intro.duration}
-          />
-          <CapsuleStage
-            {...product}
-            introFrom={intro.productRise}
-            introTurn={intro.productTurn}
-            introDelay={intro.delay}
-            introDuration={intro.duration}
-          />
+          {opened ? (
+            <>
+              <ProductRing
+                {...ring}
+                introSpacing={intro.ringSpacing}
+                introWind={intro.ringWind}
+                introDelay={intro.delay}
+                introDuration={intro.duration}
+              />
+              <CapsuleStage
+                {...product}
+                introFrom={intro.productRise}
+                introTurn={intro.productTurn}
+                introDelay={intro.delay}
+                introDuration={intro.duration}
+              />
+            </>
+          ) : null}
         </div>
 
-        <BlurText
-          text="WEBSITE DESIGNED & ENGINEERED BY TARLOK SINGH"
-          className="ch-credit"
-          {...reveal(0.85)}
-        />
+        {opened ? (
+          <BlurText
+            text="WEBSITE DESIGNED & ENGINEERED BY TARLOK SINGH"
+            className="ch-credit"
+            {...reveal(0.85)}
+          />
+        ) : null}
       </section>
     </main>
   )
