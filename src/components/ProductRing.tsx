@@ -33,6 +33,10 @@ interface ProductRingProps {
   introDuration?: number
   /** How far the banner hangs at the centre of the screen, px. */
   sag?: number
+  /** How far the banner lifts and falls in the wind, px. */
+  wind?: number
+  /** How quickly the wind travels along it. */
+  windSpeed?: number
   /** Degrees the cut ends swing down through. */
   fallAngle?: number
   /** Seconds the ends take to fall. */
@@ -76,6 +80,9 @@ interface ProductRingProps {
  * far arc's -1 stays inside the stage rather than dropping behind the page
  * gradient.
  */
+/** Wavelength of the gust travelling along the banner, px. */
+const WIND_LENGTH = 320
+
 export default function ProductRing({
   label,
   sealLabel = 'TARLOK SINGH',
@@ -95,6 +102,8 @@ export default function ProductRing({
   introDelay = 0.15,
   introDuration = 2.6,
   sag = 46,
+  wind = 9,
+  windSpeed = 0.9,
   fallAngle = 34,
   cutDuration = 0.7,
   onCut
@@ -104,6 +113,11 @@ export default function ProductRing({
   const glyphRefs = useRef<(HTMLSpanElement | null)[]>([])
   const cutSlot = useRef(0)
   const stageRef = useRef<HTMLDivElement>(null)
+  // Set once, when the cut lands. The draw effect re-runs whenever `chars`
+  // changes — which it does at the text swap, mid-animation — so a clock
+  // started inside that effect resets there and the whole cut plays a second
+  // time. Held out here it survives.
+  const cutAt = useRef(0)
 
   // A fixed run length, so the same elements carry both labels and the text
   // can change on them mid-flight rather than re-mounting the whole ring.
@@ -130,6 +144,7 @@ export default function ProductRing({
       const box = stageRef.current?.getBoundingClientRect()
       const centre = box ? box.left + box.width / 2 : window.innerWidth / 2
       cutSlot.current = (clientX - centre - offsetX + lineHalf) / introSpacing
+      cutAt.current = performance.now()
       setCut(true)
     },
     [cut, offsetX, lineHalf, introSpacing]
@@ -165,11 +180,10 @@ export default function ProductRing({
     const half = window.innerWidth / 2
 
     const hidden = new Uint8Array(total)
-    const startedAt = performance.now()
     let raf = 0
 
     /** `wrap` 0 is the hanging banner; 1 is the closed ring. */
-    const draw = (spin: number, wrap: number, fall: number) => {
+    const draw = (spin: number, wrap: number, fall: number, gust: number) => {
       const closed = wrap >= 0.999
       const theta0 = fallAngle * fall * (Math.PI / 180)
 
@@ -195,10 +209,17 @@ export default function ProductRing({
         // dead flat, which is exactly the weightlessness this is fixing.
         const bx = i * introSpacing - lineHalf
         const u = Math.max(-1, Math.min(1, bx / half))
-        const by = sag * (1 - u * u)
-        // Slope of that curve, so each glyph lies along the banner rather
-        // than sitting bolt upright on it.
-        const bAngle = Math.atan2(-sag * 2 * u, half)
+        // A travelling wave on top of the sag, so the cloth lifts and falls
+        // along its length instead of hanging dead still. Held to zero at the
+        // supports — a banner does not flap where it is tied.
+        const ends = 1 - u * u
+        const phase = bx / WIND_LENGTH + gust
+        const by = sag * ends + wind * ends * Math.sin(phase)
+        // Slope of the whole curve, so each glyph lies along the banner
+        // rather than sitting bolt upright on it.
+        const slope =
+          (-2 * sag * u) / half + (wind * ends * Math.cos(phase)) / WIND_LENGTH
+        const bAngle = Math.atan(slope)
 
         // The end that was cut swings down about its support; the support
         // itself does not move.
@@ -250,25 +271,27 @@ export default function ProductRing({
       }
     }
 
-    if (!cut) {
-      // Hanging, not yet cut. Nothing is moving, so it is drawn once.
-      draw(0, 0, 0)
-      return
-    }
-
     if (reduced) {
-      draw(0, 1, 0)
+      draw(0, cut ? 1 : 0, 0, 0)
       return
     }
 
     const tick = () => {
-      const seconds = (performance.now() - startedAt) / 1000
-      // Gravity: the ends accelerate as they drop rather than easing out.
-      const fall = Math.min(1, seconds / cutDuration) ** 2
-      const t = Math.min(1, Math.max(0, (seconds - introDelay) / introDuration))
-      const wrap = 1 - Math.pow(1 - t, 3)
-      const spin = (period === 0 ? 0 : (seconds / period) * 360) + introWind * (1 - wrap)
-      draw(spin, wrap, fall)
+      const now = performance.now()
+      const gust = (now / 1000) * windSpeed
+      if (!cut) {
+        // Hanging, waiting. Only the wind is moving.
+        draw(0, 0, 0, gust)
+      } else {
+        // Measured from the cut itself, not from when this effect last ran.
+        const seconds = (now - cutAt.current) / 1000
+        // Gravity: the ends accelerate as they drop rather than easing out.
+        const fall = Math.min(1, seconds / cutDuration) ** 2
+        const t = Math.min(1, Math.max(0, (seconds - introDelay) / introDuration))
+        const wrap = 1 - Math.pow(1 - t, 3)
+        const spin = (period === 0 ? 0 : (seconds / period) * 360) + introWind * (1 - wrap)
+        draw(spin, wrap, fall, gust)
+      }
       raf = requestAnimationFrame(tick)
     }
 
@@ -292,6 +315,8 @@ export default function ProductRing({
     introDelay,
     introDuration,
     sag,
+    wind,
+    windSpeed,
     fallAngle,
     cutDuration
   ])

@@ -102,6 +102,11 @@
   align-self: stretch;
   min-width: 0;
   background: linear-gradient(180deg, #ffffff 0%, #d7d6d0 100%);
+  /* Above the sidebar's 2. The banner is far wider than this column and
+     overflows it on both sides; underneath, the sidebar cut it off at the
+     column edge and it stopped dead partway across the screen. Only the
+     overflow crosses over — this box does not overlap the sidebar. */
+  z-index: 3;
 }
 
 .ch-menu {
