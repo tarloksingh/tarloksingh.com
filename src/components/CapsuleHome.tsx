@@ -64,7 +64,10 @@ export default function CapsuleHome() {
       tiltX: { value: -5, min: -80, max: 80, step: 1, label: 'Tip' },
       tiltZ: { value: 18, min: -80, max: 80, step: 1, label: 'Roll' },
       offsetX: { value: -16, min: -800, max: 800, step: 1, label: 'Nudge X' },
-      offsetY: { value: -68, min: -800, max: 800, step: 1, label: 'Nudge Y' }
+      offsetY: { value: -68, min: -800, max: 800, step: 1, label: 'Nudge Y' },
+      // Viewing distance. Low values magnify the near arc hard; high values
+      // flatten the ring toward a plain ellipse of evenly-sized type.
+      perspective: { value: 2100, min: 800, max: 6000, step: 25, label: 'Depth' }
     })
   )
 
@@ -81,10 +84,6 @@ export default function CapsuleHome() {
       floatIntensity: { value: 0.9, min: 0, max: 6, step: 0.05, label: 'Float rise' },
       floatRotation: { value: 0.8, min: 0, max: 3, step: 0.05, label: 'Float loll' },
       floatSpeed: { value: 2.5, min: 0, max: 8, step: 0.1, label: 'Float speed' },
-      // Entrance: rises into frame while the copy is still revealing.
-      introFrom: { value: -4, min: -12, max: 0, step: 0.1, label: 'Rise from' },
-      introDelay: { value: 0.5, min: 0, max: 4, step: 0.05, label: 'Rise delay' },
-      introDuration: { value: 2.4, min: 0.2, max: 6, step: 0.05, label: 'Rise time' },
       exposure: { value: 0.1, min: 0.1, max: 3, step: 0.05, label: 'Exposure' },
       envIntensity: { value: 4, min: 0, max: 8, step: 0.05, label: 'Environment' },
       keyIntensity: { value: 4.4, min: 0, max: 12, step: 0.1, label: 'Key light' },
@@ -95,9 +94,22 @@ export default function CapsuleHome() {
     })
   )
 
+  // Shared so the ring and the product rise together. The two distances are
+  // in different units — the product moves in world units through a camera,
+  // the ring in screen pixels — but they run off one clock and one easing.
+  const intro = useControls(
+    'Intro',
+    restoreSchema('Intro', {
+      delay: { value: 0.5, min: 0, max: 4, step: 0.05, label: 'Delay' },
+      duration: { value: 2.4, min: 0.2, max: 6, step: 0.05, label: 'Time' },
+      productRise: { value: -1.5, min: -8, max: 0, step: 0.05, label: 'Product from' },
+      ringRise: { value: 730, min: 0, max: 2000, step: 10, label: 'Ring from' }
+    })
+  )
+
   useControls('Export', {
     'Copy all settings': button(() => {
-      const json = exportPersistedControls(['Ring', 'Product'])
+      const json = exportPersistedControls(['Ring', 'Product', 'Intro'])
       navigator.clipboard?.writeText(json).catch(() => console.log(json))
     }),
     'Reset all settings': button(() => {
@@ -108,6 +120,7 @@ export default function CapsuleHome() {
 
   usePersistControls('Ring', ring)
   usePersistControls('Product', product)
+  usePersistControls('Intro', intro)
 
   return (
     <main className="capsule-home">
@@ -165,8 +178,18 @@ export default function CapsuleHome() {
         </nav>
 
         <div className="ch-stage">
-          <ProductRing {...ring} />
-          <CapsuleStage {...product} />
+          <ProductRing
+            {...ring}
+            introFrom={intro.ringRise}
+            introDelay={intro.delay}
+            introDuration={intro.duration}
+          />
+          <CapsuleStage
+            {...product}
+            introFrom={intro.productRise}
+            introDelay={intro.delay}
+            introDuration={intro.duration}
+          />
         </div>
 
         <BlurText

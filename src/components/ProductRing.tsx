@@ -21,26 +21,44 @@ interface ProductRingProps {
   /** Seconds for one full revolution. Negative runs it anticlockwise. */
   period?: number
   fontSize?: number
+  /** Viewing distance for the projection. Matches CSS `perspective`. */
+  perspective?: number
+  /** Pixels below its resting place the ring rises in from. */
+  introFrom?: number
+  introDelay?: number
+  introDuration?: number
 }
 
 /**
  * The product name standing up around the product — a band of type on a
- * turntable, not type printed flat on one. Each glyph sits on the surface of
- * a cylinder facing outward, so the front of the ring reads square to camera.
+ * turntable, not type printed flat on one. Each glyph faces the camera, so
+ * the front of the ring reads square on.
  *
- * Two things to know before changing this:
+ * The cylinder is projected by hand rather than handed to CSS 3D, which is
+ * what makes it affordable. The 3D version needed the glyphs duplicated
+ * across two `preserve-3d` layers — one either side of the model, each hiding
+ * the half it did not own — because a 3D rendering context sorts by depth and
+ * ignores z-index, and the model is a WebGL canvas that cannot join that
+ * context at all. At the tuned settings that came to ~590 spans, every one of
+ * them re-rasterised each frame, because a rotated 3D transform is not
+ * something the compositor can reuse.
  *
- * A flattened 2D ellipse with upright glyphs looks right at the top and
- * bottom and falls apart at the sides: where the path runs vertical on screen
- * the horizontal gap between neighbours collapses and the letters pile up.
- * Placing them on a real cylinder spends the spacing as rotation instead, so
- * it stays even the whole way round.
+ * Projecting here instead means one set of glyphs, plain 2D transforms, and
+ * z-index working normally against the canvas. `.ch-stage` carries
+ * `isolation: isolate` so the far arc's -1 stays inside the stage rather than
+ * dropping behind the page gradient.
  *
- * The glyphs are duplicated across two layers, one behind the model and one
- * in front, each hiding the half it does not own. `preserve-3d` puts every
- * glyph in a single 3D rendering context that sorts by depth and ignores
- * z-index, so one layer could never straddle the model — and the model is a
- * WebGL canvas, which cannot join that context at all.
+ * Two things to know before changing the geometry:
+ *
+ * Upright glyphs on a flattened 2D ellipse look right at the top and bottom
+ * and fall apart at the sides, where the path runs vertical on screen the
+ * horizontal gap between neighbours collapses and the letters pile up. The
+ * cylinder spends that spacing as rotation, so it stays even the whole way
+ * round.
+ *
+ * Perspective scale is what gives a word its taper, so glyphs are placed one
+ * at a time rather than a word at a time. Rendering whole words would cut the
+ * node count by an order of magnitude and flatten that taper out.
  */
 export default function ProductRing({
   label,
@@ -53,19 +71,34 @@ export default function ProductRing({
   offsetX = -16,
   offsetY = -68,
   period = -126,
-  fontSize = 19
+  fontSize = 19,
+  // How hard the near arc is magnified against the far one: the ratio across
+  // the ring is (perspective + radius) / (perspective - radius), so the
+  // smaller this gets the more violent the taper. 1100 matched the CSS
+  // version's own `perspective` but reads far heavier at a 695 radius.
+  perspective = 2100,
+  introFrom = 730,
+  introDelay = 0.5,
+  introDuration = 2.4
 }: ProductRingProps) {
-  const backRef = useRef<HTMLDivElement>(null)
-  const frontRef = useRef<HTMLDivElement>(null)
-  const backGlyphs = useRef<(HTMLSpanElement | null)[]>([])
-  const frontGlyphs = useRef<(HTMLSpanElement | null)[]>([])
+  const glyphRefs = useRef<(HTMLSpanElement | null)[]>([])
 
   // One unit is the label and the space after it. With a separator the space
   // is split either side of it; without one it all falls between repeats.
-  const glyphs = useMemo(() => {
+  //
+  // Spaces are dropped from the DOM but still consume their slot, so spacing
+  // is unchanged and roughly a third of the nodes never exist. `slot` is the
+  // position round the ring; `total` is how many slots there are.
+  const { glyphs, total } = useMemo(() => {
     const pad = ' '.repeat(Math.max(1, gap))
     const unit = separator ? `${label}${pad}${separator}${pad}` : `${label}${pad}${pad}`
-    return Array.from(unit.repeat(Math.max(1, repeats)))
+    const all = Array.from(unit.repeat(Math.max(1, repeats)))
+    return {
+      total: all.length,
+      glyphs: all
+        .map((char, slot) => ({ char, slot }))
+        .filter(({ char }) => char.trim().length > 0)
+    }
   }, [label, separator, gap, repeats])
 
   useEffect(() => {
@@ -73,91 +106,114 @@ export default function ProductRing({
     if (!count) return
 
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    const step = 360 / count
-    // Last style bucket written per glyph, so unchanged ones are skipped.
-    const lastKey = new Int32Array(count).fill(-1)
+    const step = 360 / total
+    const rx = (tiltX * Math.PI) / 180
+    const rz = (tiltZ * Math.PI) / 180
+    const cosX = Math.cos(rx)
+    const sinX = Math.sin(rx)
+    const cosZ = Math.cos(rz)
+    const sinZ = Math.sin(rz)
+    // Anything this close to the eye is past the viewer's shoulder; CSS clips
+    // it, and without the guard the divide below blows up.
+    const zLimit = perspective * 0.92
+
+    const lastDepth = new Int8Array(count).fill(2)
+    const startedAt = performance.now()
     let raf = 0
-    let start = 0
 
-    const draw = (spin: number) => {
-      // One write per layer turns the whole ring; the glyphs inside are
-      // static and just come along for the ride.
-      const frame =
-        `translate(${offsetX}px, ${offsetY}px) ` +
-        `rotateZ(${tiltZ}deg) rotateX(${tiltX}deg) rotateY(${spin}deg)`
-      if (backRef.current) backRef.current.style.transform = frame
-      if (frontRef.current) frontRef.current.style.transform = frame
-
+    const draw = (spin: number, rise: number) => {
       for (let i = 0; i < count; i += 1) {
-        const rad = ((i * step + spin) * Math.PI) / 180
-        // +1 dead ahead, -1 directly behind the product.
-        const facing = Math.cos(rad)
-        const behind = Math.max(0, -facing)
+        const el = glyphRefs.current[i]
+        if (!el) continue
 
-        // Opacity only. There was a depth blur here, and it was the whole
-        // performance problem: a blur filter re-rasterises the element, and
-        // ~200 of those a frame is far beyond what compositing absorbs.
-        // Fading the far arc gives the same read for nothing.
-        const dimStep = Math.round((1 - 0.55 * behind) / 0.02)
-        const isFront = facing > 0
+        const theta = ((glyphs[i].slot * step + spin) * Math.PI) / 180
+        // A point on the cylinder, then tipped and rolled — the same order
+        // the CSS version applied, solved rather than delegated.
+        const x0 = radius * Math.sin(theta)
+        const z0 = radius * Math.cos(theta)
+        const y1 = -z0 * sinX
+        const z1 = z0 * cosX
+        const x2 = x0 * cosZ - y1 * sinZ
+        const y2 = x0 * sinZ + y1 * cosZ
 
-        // Bit 0 carries which half owns the glyph, so one crossing the seam
-        // still writes even when its opacity has not moved.
-        const key = (dimStep << 1) | (isFront ? 1 : 0)
-        if (lastKey[i] === key) continue
-        lastKey[i] = key
+        if (z1 >= zLimit) {
+          el.style.visibility = 'hidden'
+          continue
+        }
 
-        const dim = (dimStep * 0.02).toFixed(2)
-        const back = backGlyphs.current[i]
-        if (back) back.style.opacity = isFront ? '0' : dim
-        const front = frontGlyphs.current[i]
-        if (front) front.style.opacity = isFront ? dim : '0'
+        const scale = perspective / (perspective - z1)
+        const x = x2 * scale + offsetX
+        const y = y2 * scale + offsetY + rise
+
+        // Glyphs on the far arc are seen from behind, so they mirror. The 3D
+        // version got this for free — the element genuinely faced away and
+        // the browser drew its backface. Without it the back of the ring
+        // reads as the label spelled backwards rather than as its reverse.
+        const sx = z1 < 0 ? -scale : scale
+
+        el.style.visibility = 'visible'
+        el.style.transform =
+          `translate(-50%, -50%) translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) ` +
+          `scale(${sx.toFixed(3)}, ${scale.toFixed(3)})`
+
+        // Paint order and fade only change when a glyph crosses the seam, so
+        // they are written then rather than every frame.
+        const depth = z1 < 0 ? -1 : 1
+        if (lastDepth[i] !== depth) {
+          lastDepth[i] = depth
+          el.style.zIndex = depth === -1 ? '-1' : '1'
+          el.style.opacity = depth === -1 ? '0.45' : '1'
+        }
       }
     }
 
-    if (reduced || period === 0) {
-      draw(0)
+    if (reduced) {
+      draw(0, 0)
       return
     }
 
-    const tick = (now: number) => {
-      if (!start) start = now
-      draw(((now - start) / 1000 / period) * 360)
+    const tick = () => {
+      const seconds = (performance.now() - startedAt) / 1000
+      const spin = period === 0 ? 0 : (seconds / period) * 360
+      // Rises with the product, on the same clock and the same easing.
+      const t = Math.min(1, Math.max(0, (seconds - introDelay) / introDuration))
+      draw(spin, introFrom * Math.pow(1 - t, 3))
       raf = requestAnimationFrame(tick)
     }
 
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [glyphs, radius, tiltX, tiltZ, offsetX, offsetY, period])
-
-  const layer = (
-    which: 'back' | 'front',
-    ref: React.RefObject<HTMLDivElement>,
-    store: React.MutableRefObject<(HTMLSpanElement | null)[]>
-  ) => (
-    <div className={`ch-ring-layer is-${which}`} ref={ref} aria-hidden="true">
-      {glyphs.map((ch, i) => (
-        <span
-          key={i}
-          className="ch-ring-glyph"
-          style={{
-            fontSize,
-            transform: `translate(-50%, -50%) rotateY(${i * (360 / glyphs.length)}deg) translateZ(${radius}px)`
-          }}
-          ref={(el) => {
-            store.current[i] = el
-          }}
-        >
-          {ch}
-        </span>
-      ))}
-    </div>
-  )
+  }, [
+    glyphs,
+    total,
+    radius,
+    tiltX,
+    tiltZ,
+    offsetX,
+    offsetY,
+    period,
+    perspective,
+    introFrom,
+    introDelay,
+    introDuration
+  ])
 
   return (
     <>
-      {layer('back', backRef, backGlyphs)}
-      {layer('front', frontRef, frontGlyphs)}
+      <div className="ch-ring" aria-hidden="true">
+        {glyphs.map(({ char, slot }, i) => (
+          <span
+            key={slot}
+            className="ch-ring-glyph"
+            style={{ fontSize }}
+            ref={(el) => {
+              glyphRefs.current[i] = el
+            }}
+          >
+            {char}
+          </span>
+        ))}
+      </div>
       <span className="ch-ring-label">{label}</span>
     </>
   )

@@ -146,31 +146,21 @@
   align-items: center;
   justify-content: center;
   min-height: 0;
-  /* Perspective belongs to the shared parent of both ring layers and the
-     model, so all three sort against each other by z-index. Putting it on a
-     ring wrapper instead would box the layers into their own context and the
-     model could never sit between them. */
-  perspective: 1100px;
-  perspective-origin: 50% 50%;
+  /* The ring is projected in JS, so there is no CSS perspective here — but
+     the far arc still sits at z-index -1, and without a stacking context of
+     its own that would drop behind the page gradient rather than behind the
+     product. `isolate` makes one without any of the paint cost. */
+  isolation: isolate;
 }
 
 /* ---- the ring ---- */
 
-/* The two halves of the ring. Both hold every glyph and hide the half they
-   do not own; z-index puts the model between them. */
-.ch-ring-layer {
+/* Not a stacking context — the glyphs' own z-index has to sort against the
+   model, which is this element's sibling. */
+.ch-ring {
   position: absolute;
   inset: 0;
-  transform-style: preserve-3d;
   pointer-events: none;
-}
-
-.ch-ring-layer.is-back {
-  z-index: -1;
-}
-
-.ch-ring-layer.is-front {
-  z-index: 1;
 }
 
 .ch-ring-glyph {
