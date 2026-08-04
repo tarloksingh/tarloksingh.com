@@ -1,0 +1,267 @@
+/* Home, second pass. Two columns off the 2048x1080 frame: a fixed stone
+   sidebar carrying the identity, and a gradient stage holding the product.
+   Type sizes are literal from the spec rather than fluid — at 12px the small
+   caps stop reading if they scale. */
+
+.capsule-home {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  overflow: hidden;
+  background: #ffffff;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  color: #000000;
+}
+
+/* ---- left: title area ---- */
+
+.ch-title-area {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 30px;
+  width: 405px;
+  flex: none;
+  align-self: stretch;
+  background: #f3f3ef;
+  z-index: 2;
+}
+
+.ch-title {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 345px;
+}
+
+/* The 12px labels all share this; only the colour changes between them. */
+.ch-label {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 15px;
+  letter-spacing: 0;
+}
+
+.ch-label-muted {
+  color: #b0b0b0;
+}
+
+.ch-name {
+  font-family: 'Times New Roman', Times, serif;
+  font-weight: 400;
+  font-size: 96px;
+  line-height: 110px;
+  /* Tight enough that the two words read as one block. */
+  letter-spacing: -0.12em;
+  color: #000000;
+}
+
+.ch-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 30px;
+  width: 281px;
+}
+
+.ch-meta-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
+  width: 281px;
+}
+
+.ch-passion {
+  font-size: 12px;
+  font-style: italic;
+  font-weight: 700;
+  line-height: 15px;
+}
+
+.ch-focus {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 15px;
+}
+
+/* ---- right: content area ---- */
+
+.ch-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: 30px;
+  flex: 1 1 auto;
+  align-self: stretch;
+  min-width: 0;
+  background: linear-gradient(180deg, #ffffff 0%, #d7d6d0 100%);
+}
+
+.ch-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 9px;
+  width: 100%;
+  z-index: 2;
+}
+
+.ch-menu a {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 15px;
+  text-align: right;
+  text-decoration: none;
+  color: #000000;
+}
+
+.ch-menu a.is-dim {
+  color: #bebebe;
+}
+
+.ch-credit {
+  width: 100%;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 15px;
+  text-align: right;
+  color: rgba(0, 0, 0, 0.5);
+  z-index: 2;
+}
+
+/* The stage is its own row between menu and credit so the ring stays
+   optically centred no matter how tall those two get. */
+.ch-stage {
+  position: relative;
+  flex: 1 1 auto;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+
+/* ---- the ring ---- */
+
+.ch-ring-wrap {
+  position: relative;
+  /* Perspective has to live on an ancestor of the tilted plane, not on the
+     plane itself, or every glyph gets its own vanishing point. */
+  perspective: 1600px;
+  perspective-origin: 50% 50%;
+  transform: rotate(-15deg);
+}
+
+.ch-ring {
+  position: relative;
+  transform-style: preserve-3d;
+  /* Laid almost flat, so the circle reads as an ellipse seen from above. */
+  transform: rotateX(72deg);
+}
+
+.ch-ring-glyph {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: 0;
+  transform-origin: 0 0;
+  white-space: pre;
+  font-size: 21px;
+  font-weight: 700;
+  /* Glyphs are placed one by one, so spacing is angular — a tracking value
+     here would only shift each one off its own centre. */
+  letter-spacing: 0;
+  line-height: 1;
+  color: #000000;
+  will-change: transform, filter, opacity;
+}
+
+/* Soft contact shadow under the ring — the blurred slab from the spec. */
+.ch-ring-shadow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 600px;
+  height: 229px;
+  transform: translate(-50%, -50%) rotate(-15deg);
+  background: linear-gradient(159.42deg, #000000 18.36%, #d1d1d1 105.36%);
+  filter: blur(5.3px);
+  /* Barely there — enough to seat the ring on the gradient without reading
+     as a grey disc behind the product. */
+  opacity: 0.035;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* ---- model ---- */
+
+.ch-model {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 400px;
+  height: 400px;
+  pointer-events: none;
+}
+
+.ch-model canvas {
+  display: block;
+}
+
+/* The placeholder note only shows until a real .glb is dropped in. */
+.ch-model-note {
+  position: absolute;
+  bottom: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: rgba(0, 0, 0, 0.32);
+}
+
+/* ---- narrow screens ---- */
+
+@media (max-width: 900px) {
+  .capsule-home {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .ch-title-area {
+    width: 100%;
+    align-self: auto;
+    gap: 80px;
+  }
+
+  .ch-title,
+  .ch-meta,
+  .ch-meta-block {
+    width: 100%;
+  }
+
+  .ch-name {
+    font-size: 64px;
+    line-height: 72px;
+  }
+
+  .ch-content {
+    align-self: auto;
+    min-height: 70vh;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ch-ring-glyph {
+    transition: none;
+  }
+}
