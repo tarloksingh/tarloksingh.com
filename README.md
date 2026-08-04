@@ -35,27 +35,28 @@ Vercel. Pushing this branch does not deploy anything.
 `src/components/CapsuleHome.tsx`, built to a 2048x1080 frame: a fixed 405px
 stone sidebar carrying the identity, and a gradient stage holding the product.
 
-**On load the page is taped shut** (`TapeSeal.tsx`) — one horizontal strip
-carrying `TARLOK SINGH`, cut where you click rather than at a fixed seam. Both
-halves hold the identical run and are clipped to their side of the cut, so the
-letters land in the same places and the blade can fall mid-glyph; they then
-retract along the tape.
+**On load the page is sealed by the ring itself.** Before the cut, the ring is
+its own flat line — the same per-glyph engine, the same position, the same
+type size — reading `TARLOK SINGH`. There is no tape graphic; there is nothing
+layered over the page. It is the ring before it has closed.
 
-The strip sits at the ring's own `offsetY` and `fontSize`, passed in rather
-than duplicated, because the whole point is that it lands exactly where the
-flat line of the product name appears. What you cut open is what curls up into
-`CAPSULE C1`.
+Clicking cuts that line where you clicked: the glyphs either side of the point
+travel off in opposite directions. What comes back is the same line reading the
+product's name, and it curls into the ring. One run of type carries the whole
+opening.
 
-Nothing that animates is mounted until the tape clears, so the copy reveal, the
-ring and the product all start from the same moment rather than having run
-behind it.
+Everything else mounts on the cut, so the copy reveal and the product's
+entrance start from that moment rather than having run behind it.
+
+The move from cutting to open is a **timer**, not something the draw loop
+decides when its progress reaches 1. Frames are not guaranteed — a backgrounded
+tab stops them outright, and decoding the model can starve them — and hanging
+that state change off one leaves the line stuck mid-cut, still reading the
+seal, with no way forward.
 
 **Once it opens**, the copy reveals block by block, each clipped to its own box
-so the characters climb into view from under the cut. The label unwraps from
-that flat line into the ring — the projection is blended between the line and
-the closed cylinder, so it visibly curls rather than arriving already formed —
-while the product turns into place and hands that motion over to the idle
-float.
+so the characters climb into view from under the cut, while the product turns
+into place and hands that motion over to the idle float.
 
 `.ch-stage` spans the whole content area rather than sitting as a flex row
 between menu and credit. As a row its bottom edge fell above the credit line
@@ -158,7 +159,7 @@ video it has never seen.
 |---|---|
 | `src/components/CapsuleHome.tsx` | The product page: layout, copy reveals, both control groups |
 | `src/components/ProductRing.tsx` | The name ring — cylinder projection, unwrap, spin |
-| `src/components/TapeSeal.tsx` | The tape the page arrives sealed under |
+
 | `src/three/CapsuleStage.tsx` | Canvas, camera rig, environment, entrance, float, model load |
 | `src/components/Home.tsx` | The card page: intro, shuffle, swipe/scroll, controls |
 | `src/components/BlurText.tsx` | Per-character reveal, forward and reverse |

@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { button, Leva, useControls } from 'leva'
 import BlurText from './BlurText'
 import ProductRing from './ProductRing'
-import TapeSeal from './TapeSeal'
 import CapsuleStage from '../three/CapsuleStage'
 import {
   clearPersistedControls,
@@ -53,10 +52,9 @@ const reveal = (startDelay: number) => ({
  * The card version is untouched in `Home.tsx` — `App.tsx` picks between them.
  */
 export default function CapsuleHome() {
-  // The page arrives taped shut. Nothing that animates is mounted until the
-  // seal clears, so the copy reveal, the ring unwrapping and the product
-  // turning into place all start from the same moment rather than having run
-  // behind the tape.
+  // The page arrives sealed by the ring's own flat line. Everything else
+  // mounts on the cut, so the copy reveal and the product's entrance start
+  // from that moment rather than having run behind it.
   const [opened, setOpened] = useState(false)
 
   const ring = useControls(
@@ -108,7 +106,8 @@ export default function CapsuleHome() {
   const intro = useControls(
     'Intro',
     restoreSchema('Intro', {
-      delay: { value: 0.35, min: 0, max: 4, step: 0.05, label: 'Delay' },
+      cutTime: { value: 0.7, min: 0.15, max: 3, step: 0.05, label: 'Cut time' },
+      delay: { value: 0.15, min: 0, max: 4, step: 0.05, label: 'Delay' },
       duration: { value: 2.6, min: 0.2, max: 6, step: 0.05, label: 'Time' },
       // The label starts as one straight run of type and curls into the ring.
       ringSpacing: { value: 15, min: 2, max: 60, step: 1, label: 'Line spacing' },
@@ -145,16 +144,6 @@ export default function CapsuleHome() {
       ) : (
         <Leva hidden />
       )}
-      {/* Position and type size come from the ring, so the tape sits exactly
-          where the flat line of the product name appears when it clears. */}
-      {!opened ? (
-        <TapeSeal
-          offsetY={ring.offsetY}
-          fontSize={ring.fontSize}
-          onOpen={() => setOpened(true)}
-        />
-      ) : null}
-
       <aside className="ch-title-area">
         <div className="ch-title">
           {opened ? <BlurText text="ARTIST" className="ch-label" {...reveal(0.15)} /> : null}
@@ -205,23 +194,26 @@ export default function CapsuleHome() {
         </nav>
 
         <div className="ch-stage">
+          {/* Always mounted: before the cut it *is* the seal, a flat line of
+              type reading the name. Cutting it swaps the text and curls the
+              same line into the ring. */}
+          <ProductRing
+            {...ring}
+            introSpacing={intro.ringSpacing}
+            introWind={intro.ringWind}
+            introDelay={intro.delay}
+            introDuration={intro.duration}
+            cutDuration={intro.cutTime}
+            onCut={() => setOpened(true)}
+          />
           {opened ? (
-            <>
-              <ProductRing
-                {...ring}
-                introSpacing={intro.ringSpacing}
-                introWind={intro.ringWind}
-                introDelay={intro.delay}
-                introDuration={intro.duration}
-              />
-              <CapsuleStage
-                {...product}
-                introFrom={intro.productRise}
-                introTurn={intro.productTurn}
-                introDelay={intro.delay}
-                introDuration={intro.duration}
-              />
-            </>
+            <CapsuleStage
+              {...product}
+              introFrom={intro.productRise}
+              introTurn={intro.productTurn}
+              introDelay={intro.delay}
+              introDuration={intro.duration}
+            />
           ) : null}
         </div>
 

@@ -213,63 +213,23 @@
   display: block;
 }
 
-/* ---- tape seal ---- */
+/* ---- the seal ---- */
 
-.ch-seal {
+/* There is no tape graphic. Before the cut the ring's own flat line is the
+   seal, so all this does is catch the click and carry the prompt. */
+.ch-ring-cutter {
   position: fixed;
   inset: 0;
-  z-index: 50;
-  overflow: hidden;
+  z-index: 40;
   cursor: crosshair;
-  /* The page underneath is unfinished until this clears, so it is covered
-     rather than merely overlaid. */
-  background: #f3f3ef;
-  transition: background var(--cut) ease-out;
 }
 
-.ch-seal:focus-visible {
+.ch-ring-cutter:focus-visible {
   outline: 2px solid #000000;
   outline-offset: -4px;
 }
 
-.ch-seal-band {
-  position: absolute;
-  left: 0;
-  right: 0;
-  transform: translateY(-50%);
-}
-
-/* Both halves hold the identical run and are clipped to their side of the
-   seam, so the letters sit in the same places and the cut can land mid-glyph
-   rather than only between words. */
-.ch-seal-half {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  padding: 16px 0;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow:
-    0 1px 0 rgba(0, 0, 0, 0.07) inset,
-    0 -1px 0 rgba(0, 0, 0, 0.07) inset,
-    0 14px 34px rgba(0, 0, 0, 0.05);
-  white-space: nowrap;
-  overflow: hidden;
-  transition: transform var(--cut) cubic-bezier(0.7, 0, 0.3, 1);
-  will-change: transform;
-}
-
-.ch-seal-run {
-  display: inline-block;
-  font-weight: 700;
-  /* Tracked to roughly the ring's own per-glyph spacing, so the tape and the
-     line it hands over to read at the same density. */
-  letter-spacing: 0.2em;
-  line-height: 1;
-  color: #000000;
-}
-
-.ch-seal-cue {
+.ch-ring-cue {
   position: absolute;
   left: 50%;
   bottom: 40px;
@@ -278,32 +238,22 @@
   font-weight: 500;
   letter-spacing: 0.24em;
   color: rgba(0, 0, 0, 0.45);
-  transition: opacity 0.25s ease-out;
+  animation: ch-cue-breathe 2.6s ease-in-out infinite;
 }
 
-.ch-seal.is-cut {
-  /* Pointer events go first so a second tap cannot land mid-cut. */
-  pointer-events: none;
-  background: transparent;
-}
-
-/* The halves retract along the tape, away from where it was cut. */
-.ch-seal.is-cut .ch-seal-half.is-left {
-  transform: translateX(-102%);
-}
-
-.ch-seal.is-cut .ch-seal-half.is-right {
-  transform: translateX(102%);
-}
-
-.ch-seal.is-cut .ch-seal-cue {
-  opacity: 0;
+@keyframes ch-cue-breathe {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ch-seal-half,
-  .ch-seal-cue {
-    transition-duration: 0.01s;
+  .ch-ring-cue {
+    animation: none;
   }
 }
 
