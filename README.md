@@ -36,23 +36,65 @@ Vercel. Pushing this branch does not deploy anything.
 stone sidebar carrying the identity, and a gradient stage holding the product.
 
 **On load the page is sealed by the ring itself.** Before the cut, the ring is
-its own flat line — the same per-glyph engine, the same position, the same
-type size — reading `TARLOK SINGH`. There is no tape graphic; there is nothing
-layered over the page. It is the ring before it has closed.
+a banner: the same per-glyph engine, printed on a strip of film leader — black
+stock, sprocket notches punched top and bottom, the name set pale in the
+rebate, an ink wash across. It hangs between the two edges of the screen,
+sagging under its own weight and moving in the wind. There is no tape graphic
+and nothing is layered over the page. It is the ring before it has closed.
 
-Clicking cuts that line where you clicked: the glyphs either side of the point
-travel off in opposite directions. What comes back is the same line reading the
-product's name, and it curls into the ring. One run of type carries the whole
-opening.
+Clicking cuts it where you clicked. The cut ends swing down about their
+supports under gravity, and the same glyphs are then drawn up into the ring,
+reading the product's name. One run of type carries the whole opening.
 
-Everything else mounts on the cut, so the copy reveal and the product's
-entrance start from that moment rather than having run behind it.
+Four things hold that together, and undoing any of them breaks it back into
+two events — a banner leaving and a different line arriving:
+
+- **The slot count is fixed**, taken from whichever label is longer with the
+  shorter padded, so the glyphs are the *same DOM elements* before and after
+  and the text changes on them mid-flight. Sizing the run to the current label
+  re-mounts every glyph at the swap.
+- **Nothing leaves the screen.** The ends fall about their supports and are
+  gathered in from wherever they got to. Throwing them off and bringing them
+  back is the same problem wearing a different hat.
+- **Every position is one blend.** `banner -> ring` is a single lerp per glyph
+  with the fall folded into the banner side, so the transformation is
+  continuous by construction rather than a sequence timed to look continuous.
+- **The animation clock lives outside the draw effect.** That effect re-runs
+  whenever the glyph characters change — which is exactly what the text swap
+  does, halfway through — and a clock started inside it resets there, playing
+  the whole cut a second time.
+
+The banner hangs from the *screen's* edges, not the stage's. Glyph positions
+are measured from the stage's centre, and the stage is the content column,
+which sits right of centre by the width of the sidebar. Normalising the span
+against half the viewport without accounting for that puts one support inside
+the frame and leaves everything past it clamped flat — no sag, no wind, a dead
+stretch down one edge.
+
+Wind is not one sine. That reads as decoration, because real wind arrives in
+gusts with a finer flutter inside them: two slow waves beat against each other
+to set the strength, a second higher-frequency ripple rides inside, and the
+span lifts slightly while a gust passes. All of it pinned to zero at the
+supports, since a banner does not move where it is tied.
+
+The strip is drawn as short segments laid end to end along the same curve —
+one long box cannot follow a bend. They overlap by a fraction of their height
+rather than butting: neighbours sit at slightly different angles, so an
+exact-width segment opens a wedge at every join, invisible on a thin strip and
+a pale seam down a tall one. The sprocket pattern is offset per segment so it
+runs unbroken across them. The strip rides the banner and the fall, never the
+wrap, and fades as the type lifts off it.
 
 The move from cutting to open is a **timer**, not something the draw loop
 decides when its progress reaches 1. Frames are not guaranteed — a backgrounded
 tab stops them outright, and decoding the model can starve them — and hanging
 that state change off one leaves the line stuck mid-cut, still reading the
 seal, with no way forward.
+
+**The sidebar is absent until the cut.** It keeps its box the whole time and
+only fades: collapsing it would move the stage's centre and drag the ring
+sideways mid-transform. The page gradient lives on `.capsule-home` rather than
+the content column so there is no flat panel sitting where it will be.
 
 **Once it opens**, the copy reveals block by block, each clipped to its own box
 so the characters climb into view from under the cut, while the product turns
@@ -63,9 +105,10 @@ between menu and credit. As a row its bottom edge fell above the credit line
 and the canvas ended there, so a product entering from below was cut off in
 mid-air rather than coming in off the bottom of the screen.
 
-**The name ring** is a band of type standing up around the product, not lying
-flat on a turntable. Each glyph sits on the surface of a cylinder facing
-outward, so the front of the ring reads square to camera.
+## The name ring
+
+A band of type standing up around the product, not lying flat on a turntable.
+Each glyph faces the camera, so the front of the ring reads square on.
 
 **The cylinder is projected in JS, not handed to CSS 3D.** That is a
 performance decision. The 3D version needed every glyph duplicated across two
@@ -77,10 +120,10 @@ re-rasterised every frame, since a rotated 3D transform is not something the
 compositor can reuse. That was the jank.
 
 Projecting by hand gives one set of glyphs, plain 2D transforms and z-index
-working normally against the canvas, with spaces dropped from the DOM while
-still holding their slot: ~590 nodes down to ~190. `.ch-stage` carries
-`isolation: isolate` so the far arc's `-1` stays inside the stage instead of
-dropping behind the page gradient.
+working normally against the canvas. `.ch-stage` carries `isolation: isolate`
+so the far arc's `-1` stays inside the stage instead of dropping behind the
+page gradient. Spaces still occupy their slot but are hidden once rather than
+re-hidden every frame.
 
 Four things are easy to undo by accident:
 
@@ -98,6 +141,9 @@ Four things are easy to undo by accident:
 - **Glyphs are placed one at a time, not one word at a time.** Perspective
   scale across a word is what gives it its taper. Whole words would cut the
   node count by an order of magnitude and flatten that out.
+
+The banner's type size is reached through `scale` rather than `font-size`, so
+no frame triggers a re-layout on the way to the ring's size.
 
 There was a depth blur on the far arc. It is gone: a CSS blur re-rasterises its
 element, and ~200 of those a frame is well past what compositing absorbs. The
@@ -158,8 +204,7 @@ video it has never seen.
 | Path | What it does |
 |---|---|
 | `src/components/CapsuleHome.tsx` | The product page: layout, copy reveals, both control groups |
-| `src/components/ProductRing.tsx` | The name ring — cylinder projection, unwrap, spin |
-
+| `src/components/ProductRing.tsx` | The banner and the ring: film strip, wind, cut, unwrap, spin |
 | `src/three/CapsuleStage.tsx` | Canvas, camera rig, environment, entrance, float, model load |
 | `src/components/Home.tsx` | The card page: intro, shuffle, swipe/scroll, controls |
 | `src/components/BlurText.tsx` | Per-character reveal, forward and reverse |
@@ -219,16 +264,26 @@ On the product page:
 
 | Group | Control | What it does |
 |---|---|---|
-| Ring | Text / Separator / Gap | The label, what sits between repeats, and the spaces that set their spacing. Separator is empty by default |
+| Ring | Text | The product's name, carried round the ring once it is open |
+| | Seal text | What the banner reads before it is cut |
+| | Separator / Gap | What sits between repeats, and the spaces setting their spacing. Separator is empty by default |
 | | How many | Repeats in one full turn |
-| | Text size / Ring size | Glyph size, and the cylinder's radius in px |
+| | Text size | Glyph size once it is the ring |
+| | Banner text size | Glyph size while it is still the banner; blends to Text size as it wraps |
+| | Ring size | The cylinder's radius in px |
 | | Spin (s/turn) | Seconds per revolution; negative runs it anticlockwise |
 | | Tip / Roll | Tilt toward the viewer, and in the screen plane |
 | | Nudge X/Y | Moves the ring off the stage's centre |
-| Ring | Depth | Viewing distance. Low values magnify the near arc hard |
-| Intro | Delay / Time | When the opening starts and how long it runs |
-| | Line spacing | How spread the label is while still a flat line |
+| | Depth | Viewing distance. Low values magnify the near arc hard |
+| Intro | Cut time | Seconds the cut ends take to fall |
+| | Delay / Time | When the wrap starts after the cut, and how long it runs |
+| | Line spacing | Px between glyphs along the banner |
 | | Ring unwind | Extra degrees the ring turns through as it closes |
+| | Banner sag | How far it hangs at the centre of the screen |
+| | Wind / Wind speed | Strength of the gusts, and how fast they travel along it |
+| | Strip height | The film leader's height. 0 leaves the type bare |
+| | Strip ink | The wash across the strip |
+| | Cut drop | Degrees the cut ends swing down through |
 | | Product from / turn | How far below it starts and how far it rotates in |
 | Product | Lens (mm) | Real focal length against a full-frame back, not a raw fov |
 | | Size | Multiplies the auto-fit |
