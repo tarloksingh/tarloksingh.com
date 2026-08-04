@@ -23,6 +23,8 @@ interface ProductRingProps {
   /** Seconds for one full revolution. Negative runs it anticlockwise. */
   period?: number
   fontSize?: number
+  /** Glyph size while it is still a banner; blends to `fontSize` as it wraps. */
+  sealFontSize?: number
   /** Viewing distance for the projection. Matches CSS `perspective`. */
   perspective?: number
   /** Px between glyphs while the label is still a banner. */
@@ -37,6 +39,10 @@ interface ProductRingProps {
   wind?: number
   /** How quickly the wind travels along it. */
   windSpeed?: number
+  /** Height of the film strip the name is printed on, px. */
+  stripHeight?: number
+  /** The ink wash across it. */
+  stripInk?: string
   /** Degrees the cut ends swing down through. */
   fallAngle?: number
   /** Seconds the ends take to fall. */
@@ -83,6 +89,9 @@ interface ProductRingProps {
 /** Wavelength of the gust travelling along the banner, px. */
 const WIND_LENGTH = 320
 
+/** Slots per strip segment. */
+const SEG = 4
+
 export default function ProductRing({
   label,
   sealLabel = 'TARLOK SINGH',
@@ -96,6 +105,7 @@ export default function ProductRing({
   offsetY = -68,
   period = -126,
   fontSize = 19,
+  sealFontSize = 19,
   perspective = 2100,
   introSpacing = 15,
   introWind = 220,
@@ -104,6 +114,8 @@ export default function ProductRing({
   sag = 46,
   wind = 9,
   windSpeed = 0.9,
+  stripHeight = 38,
+  stripInk = '#b83048',
   fallAngle = 34,
   cutDuration = 0.7,
   onCut
@@ -111,6 +123,8 @@ export default function ProductRing({
   const [cut, setCut] = useState(false)
   const [swapped, setSwapped] = useState(false)
   const glyphRefs = useRef<(HTMLSpanElement | null)[]>([])
+  const segRefs = useRef<(HTMLDivElement | null)[]>([])
+  const stripRef = useRef<HTMLDivElement>(null)
   const cutSlot = useRef(0)
   const stageRef = useRef<HTMLDivElement>(null)
   // Set once, when the cut lands. The draw effect re-runs whenever `chars`
@@ -137,6 +151,13 @@ export default function ProductRing({
   }, [label, sealLabel, separator, gap, repeats, swapped])
 
   const lineHalf = ((total - 1) * introSpacing) / 2
+  // The strip is drawn as short segments laid end to end along the same
+  // curve, rather than one long element: a single box cannot follow a bend,
+  // and at this sag the facets are invisible.
+  const segments = useMemo(
+    () => Array.from({ length: Math.ceil(total / SEG) }, (_, i) => i * SEG),
+    [total]
+  )
 
   const startCut = useCallback(
     (clientX: number) => {
@@ -183,9 +204,13 @@ export default function ProductRing({
     let raf = 0
 
     /** `wrap` 0 is the hanging banner; 1 is the closed ring. */
-    const draw = (spin: number, wrap: number, fall: number, gust: number) => {
+    const draw = (spin: number, wrap: number, fall: number, gust: number, env: number) => {
       const closed = wrap >= 0.999
       const theta0 = fallAngle * fall * (Math.PI / 180)
+      // Glyphs are laid out at the banner's size; the ring's size is reached
+      // through scale, so the font-size itself never changes and no frame
+      // triggers a re-layout.
+      const sizeBlend = 1 + (fontSize / sealFontSize - 1) * wrap
 
       for (let i = 0; i < total; i += 1) {
         const el = glyphRefs.current[i]
@@ -209,16 +234,25 @@ export default function ProductRing({
         // dead flat, which is exactly the weightlessness this is fixing.
         const bx = i * introSpacing - lineHalf
         const u = Math.max(-1, Math.min(1, bx / half))
-        // A travelling wave on top of the sag, so the cloth lifts and falls
-        // along its length instead of hanging dead still. Held to zero at the
-        // supports — a banner does not flap where it is tied.
+        // Wind on top of the sag. A single sine reads as decorative
+        // waviness, because real wind is not one steady frequency — it
+        // arrives in gusts and carries a finer flutter inside them. `env`
+        // is the gust, beating slowly in and out; the second term is that
+        // flutter. Both are held to zero at the supports, since a banner
+        // does not move where it is tied.
         const ends = 1 - u * u
         const phase = bx / WIND_LENGTH + gust
-        const by = sag * ends + wind * ends * Math.sin(phase)
+        const flutter = bx / (WIND_LENGTH * 0.34) + gust * 2.7
+        const amp = wind * ends * env
+        // Wind lifts as well as ripples, so the whole span rides a little
+        // higher while a gust is passing.
+        const by = sag * ends - sag * 0.22 * env * ends + amp * (Math.sin(phase) + 0.3 * Math.sin(flutter))
         // Slope of the whole curve, so each glyph lies along the banner
         // rather than sitting bolt upright on it.
         const slope =
-          (-2 * sag * u) / half + (wind * ends * Math.cos(phase)) / WIND_LENGTH
+          (-2 * sag * u) / half +
+          (amp * Math.cos(phase)) / WIND_LENGTH +
+          (amp * 0.3 * Math.cos(flutter)) / (WIND_LENGTH * 0.34)
         const bAngle = Math.atan(slope)
 
         // The end that was cut swings down about its support; the support
@@ -250,7 +284,7 @@ export default function ProductRing({
         const ringScale = z1 < zLimit ? perspective / (perspective - z1) : 1
 
         // ---- one blend, banner to ring ----
-        const scale = 1 + (ringScale - 1) * wrap
+        const scale = (1 + (ringScale - 1) * wrap) * sizeBlend
         const x = fx * (1 - wrap) + x2 * ringScale * wrap + offsetX
         const y = fy * (1 - wrap) + y2 * ringScale * wrap + offsetY
         const spinDeg = (bAngle * (180 / Math.PI) + swing * (180 / Math.PI)) * (1 - wrap) + tiltZ * wrap
@@ -269,19 +303,64 @@ export default function ProductRing({
         el.style.zIndex = behind ? '-1' : '1'
         el.style.opacity = behind ? '0.45' : '1'
       }
+
+      // The strip rides the banner only — it never wraps. It fades out as
+      // the type lifts off it, which is why the two do not need to agree
+      // beyond the fall.
+      const showStrip = Math.max(0, 1 - wrap / 0.32)
+      if (stripRef.current) stripRef.current.style.opacity = showStrip.toFixed(3)
+      if (showStrip > 0) {
+        for (let sIdx = 0; sIdx < segRefs.current.length; sIdx += 1) {
+          const seg = segRefs.current[sIdx]
+          if (!seg) continue
+          const i = sIdx * SEG
+          const bx = i * introSpacing - lineHalf
+          const u = Math.max(-1, Math.min(1, bx / half))
+          const ends = 1 - u * u
+          const phase = bx / WIND_LENGTH + gust
+          const flutter = bx / (WIND_LENGTH * 0.34) + gust * 2.7
+          const amp = wind * ends * env
+          const by =
+            sag * ends - sag * 0.22 * env * ends + amp * (Math.sin(phase) + 0.3 * Math.sin(flutter))
+          const slope =
+            (-2 * sag * u) / half +
+            (amp * Math.cos(phase)) / WIND_LENGTH +
+            (amp * 0.3 * Math.cos(flutter)) / (WIND_LENGTH * 0.34)
+          const side = i < cutSlot.current ? -1 : 1
+          const pivotX = side * half
+          const swing = theta0 * -side
+          const cosS = Math.cos(swing)
+          const sinS = Math.sin(swing)
+          const dx = bx - pivotX
+          const fx = pivotX + dx * cosS - by * sinS
+          const fy = dx * sinS + by * cosS
+          const deg = (Math.atan(slope) + swing) * (180 / Math.PI)
+          seg.style.transform =
+            `translate(-50%, -50%) translate(${(fx + offsetX).toFixed(1)}px, ${(fy + offsetY).toFixed(1)}px) ` +
+            `rotate(${deg.toFixed(2)}deg)`
+        }
+      }
     }
 
     if (reduced) {
-      draw(0, cut ? 1 : 0, 0, 0)
+      draw(0, cut ? 1 : 0, 0, 0, 0)
       return
     }
 
     const tick = () => {
       const now = performance.now()
-      const gust = (now / 1000) * windSpeed
+      const secs = now / 1000
+      const gust = secs * windSpeed
+      // Two slow waves beating against each other: the banner is mostly
+      // near-still and occasionally pushed, which is what separates wind
+      // from a uniform ripple.
+      const env = Math.max(
+        0,
+        0.18 + 0.82 * (0.5 + 0.5 * Math.sin(secs * 0.37 * windSpeed) * Math.sin(secs * 0.19 * windSpeed + 2.1))
+      )
       if (!cut) {
         // Hanging, waiting. Only the wind is moving.
-        draw(0, 0, 0, gust)
+        draw(0, 0, 0, gust, env)
       } else {
         // Measured from the cut itself, not from when this effect last ran.
         const seconds = (now - cutAt.current) / 1000
@@ -290,7 +369,7 @@ export default function ProductRing({
         const t = Math.min(1, Math.max(0, (seconds - introDelay) / introDuration))
         const wrap = 1 - Math.pow(1 - t, 3)
         const spin = (period === 0 ? 0 : (seconds / period) * 360) + introWind * (1 - wrap)
-        draw(spin, wrap, fall, gust)
+        draw(spin, wrap, fall, gust, env)
       }
       raf = requestAnimationFrame(tick)
     }
@@ -315,6 +394,9 @@ export default function ProductRing({
     introDelay,
     introDuration,
     sag,
+    fontSize,
+    sealFontSize,
+    segments,
     wind,
     windSpeed,
     fallAngle,
@@ -323,12 +405,37 @@ export default function ProductRing({
 
   return (
     <>
-      <div className="ch-ring" ref={stageRef} aria-hidden="true">
+      {/* Film leader: a black strip with the name printed along it in the
+          rebate, sprocket notches punched top and bottom, and an ink wash
+          across. It carries the banner and is gone by the time the type has
+          curled into the ring. */}
+      <div className="ch-ring-strip" ref={stripRef} aria-hidden="true">
+        {segments.map((slot) => (
+          <div
+            key={slot}
+            className="ch-strip-seg"
+            style={{
+              width: SEG * introSpacing + 2,
+              height: stripHeight,
+              // Continuous across the joins: each segment offsets the
+              // sprocket pattern by where it sits along the run.
+              backgroundPositionX: `${-slot * introSpacing}px, ${-slot * introSpacing}px, 0px`,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              ['--ink' as any]: stripInk
+            }}
+            ref={(el) => {
+              segRefs.current[slot / SEG] = el
+            }}
+          />
+        ))}
+      </div>
+
+      <div className={`ch-ring${cut ? '' : ' is-strip'}`} ref={stageRef} aria-hidden="true">
         {chars.map((char, i) => (
           <span
             key={i}
             className="ch-ring-glyph"
-            style={{ fontSize }}
+            style={{ fontSize: sealFontSize }}
             ref={(el) => {
               glyphRefs.current[i] = el
             }}

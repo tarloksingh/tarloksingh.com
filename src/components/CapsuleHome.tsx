@@ -67,6 +67,8 @@ export default function CapsuleHome() {
       gap: { value: 2, min: 1, max: 24, step: 1, label: 'Gap (spaces)' },
       repeats: { value: 21, min: 1, max: 48, step: 1, label: 'How many' },
       fontSize: { value: 19, min: 6, max: 96, step: 1, label: 'Text size' },
+      // Size while it is still a banner; blends to Text size as it wraps.
+      sealFontSize: { value: 19, min: 6, max: 96, step: 1, label: 'Banner text size' },
       radius: { value: 695, min: 80, max: 1600, step: 5, label: 'Ring size' },
       period: { value: -126, min: -300, max: 300, step: 1, label: 'Spin (s/turn)' },
       tiltX: { value: -5, min: -80, max: 80, step: 1, label: 'Tip' },
@@ -118,6 +120,8 @@ export default function CapsuleHome() {
       sag: { value: 46, min: 0, max: 220, step: 1, label: 'Banner sag' },
       wind: { value: 9, min: 0, max: 60, step: 0.5, label: 'Wind' },
       windSpeed: { value: 0.9, min: 0, max: 5, step: 0.05, label: 'Wind speed' },
+      stripHeight: { value: 38, min: 0, max: 140, step: 1, label: 'Strip height' },
+      stripInk: { value: '#b83048', label: 'Strip ink' },
       fallAngle: { value: 34, min: 0, max: 90, step: 1, label: 'Cut drop' },
       productRise: { value: -1.5, min: -8, max: 0, step: 0.05, label: 'Product from' },
       productTurn: { value: 150, min: -360, max: 360, step: 5, label: 'Product turn' }
@@ -140,7 +144,7 @@ export default function CapsuleHome() {
   usePersistControls('Intro', intro)
 
   return (
-    <main className="capsule-home">
+    <main className={`capsule-home${opened ? ' is-open' : ''}`}>
       {/* Leva raises its own floating panel as soon as any useControls call
           runs, so the un-tuned page needs an explicit hidden one rather than
           simply not rendering ours. */}
@@ -209,6 +213,8 @@ export default function CapsuleHome() {
             introSpacing={intro.ringSpacing}
             introWind={intro.ringWind}
             sag={intro.sag}
+            stripHeight={intro.stripHeight}
+            stripInk={intro.stripInk}
             wind={intro.wind}
             windSpeed={intro.windSpeed}
             fallAngle={intro.fallAngle}

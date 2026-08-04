@@ -11,7 +11,10 @@
   justify-content: space-between;
   align-items: center;
   overflow: hidden;
-  background: #ffffff;
+  /* The gradient lives here rather than on the content column, so the
+     sidebar can be absent before the cut without leaving a flat panel where
+     it will be. */
+  background: linear-gradient(180deg, #ffffff 0%, #d7d6d0 100%);
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   color: #000000;
 }
@@ -29,6 +32,14 @@
   align-self: stretch;
   background: #f3f3ef;
   z-index: 2;
+  /* Not there until the cut. It keeps its box the whole time — collapsing it
+     would move the stage's centre and drag the ring sideways mid-transform. */
+  opacity: 0;
+  transition: opacity 0.7s ease-out;
+}
+
+.capsule-home.is-open .ch-title-area {
+  opacity: 1;
 }
 
 .ch-title {
@@ -101,7 +112,6 @@
   flex: 1 1 auto;
   align-self: stretch;
   min-width: 0;
-  background: linear-gradient(180deg, #ffffff 0%, #d7d6d0 100%);
   /* Above the sidebar's 2. The banner is far wider than this column and
      overflows it on both sides; underneath, the sidebar cut it off at the
      column edge and it stopped dead partway across the screen. Only the
@@ -202,6 +212,44 @@
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+/* ---- the film strip the banner is printed on ---- */
+
+.ch-ring-strip {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.ch-strip-seg {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  background-color: #141414;
+  /* Sprocket notches top and bottom, then the ink wash over the middle. The
+     pattern is offset per segment so it runs unbroken across the joins. */
+  background-image:
+    repeating-linear-gradient(90deg, #ece9e2 0 9px, transparent 9px 26px),
+    repeating-linear-gradient(90deg, #ece9e2 0 9px, transparent 9px 26px),
+    linear-gradient(180deg, transparent 0 22%, var(--ink) 22% 62%, transparent 62%);
+  background-size:
+    100% 5px,
+    100% 5px,
+    100% 100%;
+  background-position:
+    0 4px,
+    0 calc(100% - 4px),
+    0 0;
+  background-repeat: repeat-x, repeat-x, no-repeat;
+  will-change: transform;
+}
+
+/* Rebate type: pale, sitting on the black. Goes to ink once the strip has
+   dropped away and the letters are on the page. */
+.ch-ring.is-strip .ch-ring-glyph {
+  color: #f1eee7;
 }
 
 /* ---- model ---- */
