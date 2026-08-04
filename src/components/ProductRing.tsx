@@ -107,16 +107,16 @@ export default function ProductRing({
   fontSize = 19,
   sealFontSize = 19,
   perspective = 2100,
-  introSpacing = 15,
-  introWind = 220,
-  introDelay = 0.15,
-  introDuration = 2.6,
-  sag = 46,
-  wind = 9,
-  windSpeed = 0.9,
-  stripHeight = 38,
-  stripInk = '#b83048',
-  fallAngle = 34,
+  introSpacing = 11,
+  introWind = 720,
+  introDelay = 0.3,
+  introDuration = 2.8,
+  sag = 220,
+  wind = 60,
+  windSpeed = 4.75,
+  stripHeight = 140,
+  stripInk = '#070707',
+  fallAngle = 84,
   cutDuration = 0.7,
   onCut
 }: ProductRingProps) {
@@ -199,6 +199,14 @@ export default function ProductRing({
     const zLimit = perspective * 0.92
     // The banner's supports, just off either edge of the screen.
     const half = window.innerWidth / 2
+    // The banner hangs between the two edges of the *screen*, but `bx` is
+    // measured from the stage's centre — and the stage is the content column,
+    // which sits right of centre by however wide the sidebar is. Without this
+    // offset the supports land inside the viewport on one side, and
+    // everything past them clamps to zero: no sag, no wind, a dead flat
+    // stretch along one edge.
+    const stageBox = stageRef.current?.getBoundingClientRect()
+    const drift = (stageBox ? stageBox.left + stageBox.width / 2 : half) - half
 
     const hidden = new Uint8Array(total)
     let raf = 0
@@ -233,7 +241,7 @@ export default function ProductRing({
         // wide, and a catenary across all of it leaves the visible stretch
         // dead flat, which is exactly the weightlessness this is fixing.
         const bx = i * introSpacing - lineHalf
-        const u = Math.max(-1, Math.min(1, bx / half))
+        const u = Math.max(-1, Math.min(1, (bx + drift) / half))
         // Wind on top of the sag. A single sine reads as decorative
         // waviness, because real wind is not one steady frequency — it
         // arrives in gusts and carries a finer flutter inside them. `env`
@@ -258,7 +266,7 @@ export default function ProductRing({
         // The end that was cut swings down about its support; the support
         // itself does not move.
         const side = i < cutSlot.current ? -1 : 1
-        const pivotX = side * half
+        const pivotX = side * half - drift
         const dx = bx - pivotX
         const dy = by
         const swing = theta0 * -side
@@ -315,7 +323,7 @@ export default function ProductRing({
           if (!seg) continue
           const i = sIdx * SEG
           const bx = i * introSpacing - lineHalf
-          const u = Math.max(-1, Math.min(1, bx / half))
+          const u = Math.max(-1, Math.min(1, (bx + drift) / half))
           const ends = 1 - u * u
           const phase = bx / WIND_LENGTH + gust
           const flutter = bx / (WIND_LENGTH * 0.34) + gust * 2.7
@@ -327,7 +335,7 @@ export default function ProductRing({
             (amp * Math.cos(phase)) / WIND_LENGTH +
             (amp * 0.3 * Math.cos(flutter)) / (WIND_LENGTH * 0.34)
           const side = i < cutSlot.current ? -1 : 1
-          const pivotX = side * half
+          const pivotX = side * half - drift - drift
           const swing = theta0 * -side
           const cosS = Math.cos(swing)
           const sinS = Math.sin(swing)
@@ -415,7 +423,11 @@ export default function ProductRing({
             key={slot}
             className="ch-strip-seg"
             style={{
-              width: SEG * introSpacing + 2,
+              // Overlapped rather than butted. Neighbours sit at slightly
+              // different angles along the curve, so an exact-width segment
+              // opens a wedge at every join — visible as pale seams down a
+              // tall strip.
+              width: SEG * introSpacing + Math.max(4, stripHeight * 0.12),
               height: stripHeight,
               // Continuous across the joins: each segment offsets the
               // sprocket pattern by where it sits along the run.
