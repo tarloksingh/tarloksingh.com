@@ -15,8 +15,12 @@ export const MODEL_URL = '/models/capsule-c1.glb'
  */
 const DRACO_PATH = '/draco/'
 
-/** World units the model's longest edge is normalised to before framing. */
-const TARGET_SIZE = 2.4
+/**
+ * World units the model's longest edge is normalised to before framing.
+ * Chosen so the product sits inside the ring rather than swallowing it — at
+ * the default lens and distance this puts it around half the ring's width.
+ */
+const TARGET_SIZE = 1.1
 
 /**
  * Lens focal length in mm to three's vertical field of view, against a 35mm
@@ -36,8 +40,26 @@ function Spin({ children, rpm }: { children: React.ReactNode; rpm: number }) {
   return <group ref={ref}>{children}</group>
 }
 
-/** Keeps the camera's lens and the renderer's exposure live under the panel. */
-function CameraRig({ focalLength, exposure }: { focalLength: number; exposure: number }) {
+interface CameraRigProps {
+  focalLength: number
+  exposure: number
+  /** Degrees around the model, 0 being straight on. */
+  azimuth: number
+  /** Degrees above the model's centre line. */
+  elevation: number
+  distance: number
+}
+
+/**
+ * Places the camera on a sphere around the model and keeps it aimed at the
+ * centre.
+ *
+ * The aiming is the important part. A camera is only given a position, and it
+ * still points down its own -Z — so lifting it to look "down" on the product
+ * without re-aiming just slides the product to the bottom of frame, where
+ * turning it reads as an off-centre wobble rather than a spin in place.
+ */
+function CameraRig({ focalLength, exposure, azimuth, elevation, distance }: CameraRigProps) {
   const camera = useThree((s) => s.camera) as PerspectiveCamera
   const gl = useThree((s) => s.gl)
 
@@ -45,6 +67,18 @@ function CameraRig({ focalLength, exposure }: { focalLength: number; exposure: n
     camera.fov = fovForFocalLength(focalLength)
     camera.updateProjectionMatrix()
   }, [camera, focalLength])
+
+  useEffect(() => {
+    const a = (azimuth * Math.PI) / 180
+    const e = (elevation * Math.PI) / 180
+    camera.position.set(
+      distance * Math.cos(e) * Math.sin(a),
+      distance * Math.sin(e),
+      distance * Math.cos(e) * Math.cos(a)
+    )
+    camera.lookAt(0, 0, 0)
+    camera.updateProjectionMatrix()
+  }, [camera, azimuth, elevation, distance])
 
   useEffect(() => {
     gl.toneMappingExposure = exposure
@@ -119,6 +153,13 @@ function LoadedModel({ url, scale, fallbackColor }: LoadedModelProps) {
           fixed.metalness = 0
           fixed.roughness = 0.4
           fixed.color = new Color(fallbackColor)
+          // The logos are flat decals lying on the case, coplanar with it to
+          // within a rounding error, so the depth test cannot separate them
+          // and they strobe as the model turns. Biasing them toward the
+          // camera settles it without moving anything visibly.
+          fixed.polygonOffset = true
+          fixed.polygonOffsetFactor = -2
+          fixed.polygonOffsetUnits = -2
           mesh.material = fixed
         }
       }
@@ -149,6 +190,9 @@ export interface CapsuleStageProps {
   keyIntensity?: number
   ambientIntensity?: number
   fallbackColor?: string
+  azimuth?: number
+  elevation?: number
+  distance?: number
 }
 
 export default function CapsuleStage({
@@ -159,12 +203,18 @@ export default function CapsuleStage({
   envIntensity = 1,
   keyIntensity = 1.6,
   ambientIntensity = 0.35,
-  fallbackColor = '#000000'
+  fallbackColor = '#000000',
+  azimuth = 0,
+  elevation = 19,
+  distance = 7.4
 }: CapsuleStageProps) {
   return (
     <div className="ch-model">
       <Canvas
-        dpr={[1, 2]}
+        // The canvas now spans the whole stage rather than a 400px box, so
+        // capping the pixel ratio keeps the pixel count from roughly
+        // quadrupling on a retina screen.
+        dpr={[1, 1.5]}
         // Blender previews through a view transform (Filmic/AgX); rendering
         // raw is what makes the highlights blow out and the mid-tones go flat
         // compared to the viewport. ACES is the closest match three has.
@@ -174,10 +224,21 @@ export default function CapsuleStage({
           toneMapping: ACESFilmicToneMapping,
           outputColorSpace: SRGBColorSpace
         }}
-        camera={{ position: [0, 1.5, 4.4], fov: fovForFocalLength(focalLength) }}
+        // near/far are pulled tight around the subject on purpose. The depth
+        // buffer's precision is spread across that range, and the default
+        // 0.1–1000 leaves so little of it near the model that the logo decals
+        // and the case they sit on land in the same depth bucket and flicker.
+        // Position is owned by CameraRig; this is only the starting frame.
+        camera={{ fov: fovForFocalLength(focalLength), near: 1, far: 60 }}
         style={{ background: 'transparent' }}
       >
-        <CameraRig focalLength={focalLength} exposure={exposure} />
+        <CameraRig
+          focalLength={focalLength}
+          exposure={exposure}
+          azimuth={azimuth}
+          elevation={elevation}
+          distance={distance}
+        />
 
         {/* Blender's lights do not survive a glTF export. The environment does
             most of the work on a gloss object; these two only shape it. */}

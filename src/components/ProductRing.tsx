@@ -77,6 +77,8 @@ export default function ProductRing({
 
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     const step = 360 / count
+    // Last style bucket written per glyph, so unchanged ones are skipped.
+    const lastKey = new Int32Array(count).fill(-1)
     let raf = 0
     let start = 0
 
@@ -94,17 +96,32 @@ export default function ProductRing({
         // +1 dead ahead, -1 directly behind the product.
         const facing = Math.cos(rad)
         const behind = Math.max(0, -facing)
-        const blur = `blur(${(maxBlur * Math.pow(behind, 1.4)).toFixed(2)}px)`
-        const dim = (1 - 0.55 * behind).toFixed(3)
+
+        // Quantised, and only written when the bucket actually changes.
+        // A blur is a full re-rasterisation of the element, so pushing ~200
+        // of them every frame is what makes the ring expensive — most frames
+        // move a glyph far too little to be visible anyway.
+        const blurStep = Math.round((maxBlur * Math.pow(behind, 1.4)) / 0.25)
+        const dimStep = Math.round((1 - 0.55 * behind) / 0.02)
+
+        const isFront = facing > 0
+        // Bit 0 carries which half owns the glyph, so a glyph crossing the
+        // seam still writes even when its blur and opacity have not moved.
+        const key = (blurStep << 9) | (dimStep << 1) | (isFront ? 1 : 0)
+        if (lastKey[i] === key) continue
+        lastKey[i] = key
+
+        const blur = blurStep ? `blur(${(blurStep * 0.25).toFixed(2)}px)` : 'none'
+        const dim = (dimStep * 0.02).toFixed(2)
 
         const back = backGlyphs.current[i]
         if (back) {
-          back.style.opacity = facing <= 0 ? dim : '0'
+          back.style.opacity = isFront ? '0' : dim
           back.style.filter = blur
         }
         const front = frontGlyphs.current[i]
         if (front) {
-          front.style.opacity = facing > 0 ? dim : '0'
+          front.style.opacity = isFront ? dim : '0'
           front.style.filter = blur
         }
       }

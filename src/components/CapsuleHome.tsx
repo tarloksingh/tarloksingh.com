@@ -74,6 +74,9 @@ export default function CapsuleHome() {
     restoreSchema('Product', {
       focalLength: { value: 50, min: 14, max: 200, step: 1, label: 'Lens (mm)' },
       modelScale: { value: 1, min: 0.2, max: 3, step: 0.02, label: 'Size' },
+      distance: { value: 7.4, min: 2, max: 30, step: 0.1, label: 'Camera back' },
+      elevation: { value: 19, min: -80, max: 85, step: 1, label: 'Camera height' },
+      azimuth: { value: 0, min: -180, max: 180, step: 1, label: 'Camera around' },
       rpm: { value: 3, min: -30, max: 30, step: 0.5, label: 'Spin (rpm)' },
       exposure: { value: 1.15, min: 0.1, max: 3, step: 0.05, label: 'Exposure' },
       envIntensity: { value: 1, min: 0, max: 4, step: 0.05, label: 'Environment' },

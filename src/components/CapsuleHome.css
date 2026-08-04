@@ -185,7 +185,9 @@
   letter-spacing: 0;
   line-height: 1;
   color: #000000;
-  will-change: filter, opacity;
+  /* No will-change here on purpose. There are ~200 of these, and promoting
+     every one to its own compositor layer costs far more than the repaints
+     it saves. */
 }
 
 /* The ring is decorative once it is 200 spans; this carries the actual name
@@ -202,16 +204,15 @@
 
 /* ---- model ---- */
 
+/* Fills the stage rather than sitting in a fixed box. At any smaller size the
+   canvas edge crops the product the moment it is scaled up, and a hard
+   straight edge through the model reads as a container around it. */
 .ch-model {
   position: absolute;
-  top: 50%;
-  left: 50%;
+  inset: 0;
   /* Sits at 0 so the ring's far arc (-1) passes behind it and the near
      arc (1) in front — the orbit reads as going round the product. */
   z-index: 0;
-  transform: translate(-50%, -50%);
-  width: 400px;
-  height: 400px;
   pointer-events: none;
 }
 
