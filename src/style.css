@@ -1,1018 +1,496 @@
-/* Reset and base styles */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-/* Initial page load animation */
-.initial-name {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 10000;
-  opacity: 0;
-  transition: opacity 1s ease-in-out;
-}
-
-.initial-name.fade-in {
-  opacity: 1;
-}
-
-.initial-name h1 {
-  font-size: 3rem;
-  font-weight: 400;
-  color: #000000 !important;
-  text-align: center;
-  letter-spacing: -0.06em;
-  margin-bottom: 2rem;
-  padding-top: .5em;
-  padding-bottom: .5em;
-  white-space: nowrap;
-  line-height: 1;
-}
-
-.loading-bar-container {
-  width: 300px;
-  height: 2px;
-  background-color: #e5e7eb;
-  border-radius: 1px;
-  overflow: hidden;
-  margin: 0 auto;
-}
-
-.loading-bar {
+html, body, #app {
   height: 100%;
-  background-color: #000000;
-  border-radius: 1px;
-  transition: width 0.1s ease-out;
+  overflow: hidden;
+  /* Stops a horizontal trackpad swipe from triggering browser back-navigation
+     over the sideways scene track. */
+  overscroll-behavior: none;
+  background-color: #eff4f7;
+  font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  color: #0a0a0a;
 }
 
-@media (min-width: 768px) {
-  .initial-name h1 {
-    font-size: 3rem;
+/* ---- intro flow: welcome -> purpose -> chosen path ---- */
+.intro-shell {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #eff4f7;
+  /* Everything sizes off the design frame (2048px wide) rather than the raw
+     viewport, so an ultrawide screen centres the layout instead of stretching
+     it edge to edge. Below 2048px this is just 100vw and nothing changes. */
+  --frame-width: min(100vw, 2048px);
+}
+
+.fade-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 4;
+  background: #000000;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.back-button {
+  position: fixed;
+  top: 5vh;
+  left: calc(var(--frame-width) * 0.035);
+  z-index: 3;
+  appearance: none;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem 1.1rem;
+  border-radius: 999px;
+  background: rgba(12, 12, 22, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(12px);
+  color: #ffffff;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-weight: 700;
+  font-size: 0.9rem;
+  letter-spacing: -0.02em;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.back-button:hover {
+  opacity: 0.85;
+  transform: translateY(-1px);
+}
+
+.back-arrow {
+  display: inline-flex;
+  transform: rotate(180deg);
+}
+
+.intro-track {
+  display: flex;
+  width: 300vw;
+  height: 100vh;
+  height: 100dvh;
+  will-change: transform;
+}
+
+.intro-scene {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.purpose-panel {
+  position: absolute;
+  inset: 0;
+  max-width: var(--frame-width);
+  margin-inline: auto;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: calc(var(--frame-width) * 0.04);
+  padding: 7vh calc(var(--frame-width) * 0.035);
+}
+
+/* Sized/positioned from the reference design (250px font in a 2048x1080 frame,
+   text box ~64% of frame width, anchored bottom-left). */
+.heading-fit-box {
+  max-width: calc(var(--frame-width) * 0.64);
+  font-weight: 700;
+  letter-spacing: -0.07em;
+  line-height: 0.81;
+  color: #0a0a0a;
+}
+
+.purpose-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 2.3rem;
+  flex-shrink: 0;
+}
+
+/* The slot is the rigid body the physics sim moves, so the button keeps its own
+   transform for the hover lift. Hidden until the sim releases it from above. */
+.choice-slot {
+  display: flex;
+  visibility: hidden;
+}
+
+/* Buttons match the Figma spec: white pill (border-radius ~= half height),
+   28px/31px padding, 64px gap between label and arrow, 24px bold Helvetica
+   at -0.06em tracking. The label column is capped at ~255px so long copy
+   (the second option) wraps to two lines instead of stretching the pill. */
+.choice-card {
+  width: 100%;
+  appearance: none;
+  border: none;
+  background: #ffffff;
+  border-radius: 999px;
+  padding: clamp(1.15rem, 2vw, 1.75rem) clamp(1.3rem, 2.2vw, 1.94rem);
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-weight: 700;
+  font-size: clamp(1.05rem, 1.7vw, 1.5rem);
+  line-height: 1.17;
+  letter-spacing: -0.06em;
+  text-align: left;
+  color: #0a0a0a;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(10, 10, 10, 0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(1.5rem, 4vw, 4rem);
+}
+
+.choice-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(10, 10, 10, 0.08);
+}
+
+.choice-card:active {
+  transform: translateY(0);
+}
+
+.choice-label {
+  max-width: 255px;
+}
+
+.choice-arrow {
+  flex-shrink: 0;
+  display: inline-flex;
+  color: #0a0a0a;
+}
+
+.placeholder-scene {
+  background: #000000;
+}
+
+.work-scene {
+  position: absolute;
+  inset: 0;
+}
+
+/* ---- work scene: the option wheel, freely positioned via the controls ---- */
+.work-panel {
+  position: absolute;
+  inset: 0;
+  max-width: var(--frame-width);
+  margin-inline: auto;
+}
+
+/* The stage is the box the controls move and size. It is also exactly the
+   region that captures the scroll wheel — outside it, scrolling does nothing. */
+.work-stage {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  padding: 4vh 0;
+}
+
+.work-stage--bounds {
+  outline: 1px dashed rgba(10, 10, 10, 0.35);
+  outline-offset: -1px;
+}
+
+.work-wheel {
+  flex: 1;
+  min-height: 0;
+}
+
+.dance-scene {
+  background: #05050b;
+}
+
+/* The wheel sits over the 3D canvas, so only the labels take pointer events. */
+.dance-scene .work-panel {
+  pointer-events: none;
+}
+
+.dance-scene .work-stage {
+  pointer-events: auto;
+}
+
+/* Play / mute transport, bottom-right of the dance scene. */
+.transport {
+  position: absolute;
+  right: calc(var(--frame-width) * 0.035);
+  bottom: 5vh;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.7rem 1.1rem;
+  border-radius: 999px;
+  background: rgba(12, 12, 22, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(12px);
+}
+
+.transport-button {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: #ffffff;
+  padding: 0.25rem;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  opacity: 0.85;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.transport-button:hover {
+  opacity: 1;
+  transform: scale(1.08);
+}
+
+.transport-track {
+  font-size: 0.9rem;
+  letter-spacing: -0.01em;
+  color: rgba(255, 255, 255, 0.75);
+  white-space: nowrap;
+}
+
+.work-caption {
+  flex-shrink: 0;
+  font-size: clamp(0.95rem, 1.2vw, 1.15rem);
+  letter-spacing: -0.02em;
+  color: #6b7780;
+}
+
+@media screen and (max-width: 700px) {
+  .purpose-panel {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 5vh 7vw;
+    gap: 2.5rem;
+  }
+
+  .heading-fit-box {
+    max-width: 100%;
+  }
+
+  .purpose-choices {
+    width: 100%;
+    gap: 1.1rem;
+  }
+
+  .choice-card {
+    font-size: 1rem;
+    padding: 1rem 1.4rem;
   }
 }
 
-/* Show content when animation is complete */
-.main-content.fade-in {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.header.fade-in {
-  top: 0;
-}
-
-/* Force light mode and prevent dark mode */
-:root {
-  color-scheme: light only;
-}
-
-html, body, #app {
-  background-color: #ffffff !important;
-  color: #000000 !important;
-  font-family: 'ITC Avant Garde Gothic Std', sans-serif;
-  overflow-x: hidden;
-  overflow-y: auto;
-  height: auto;
-  min-height: 100vh;
-}
-
-/* Hide all scrollbars but keep functionality */
-html, body, * {
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* Internet Explorer 10+ */
-}
-
-html::-webkit-scrollbar,
-body::-webkit-scrollbar,
-*::-webkit-scrollbar {
-  display: none; /* WebKit browsers (Chrome, Safari, Edge) */
-  width: 0;
-  height: 0;
-}
-
-/* Custom font loading */
-@font-face {
-  font-family: 'ITC Avant Garde Gothic Std';
-  src: url('/fonts/ITC Avant Garde Gothic Std Extra Light.otf') format('opentype');
-  font-weight: 200;
-}
-
-@font-face {
-  font-family: 'ITC Avant Garde Gothic Std';
-  src: url('/fonts/ITC Avant Garde Gothic CE Book.otf') format('opentype');
-  font-weight: 300;
-}
-
-@font-face {
-  font-family: 'ITC Avant Garde Gothic Std';
-  src: url('/fonts/ITC Avant Garde Gothic Medium.otf') format('opentype');
-  font-weight: 400;
-}
-
-@font-face {
-  font-family: 'ITC Avant Garde Gothic Std';
-  src: url('/fonts/ITC Avant Garde Gothic CE Demi.otf') format('opentype');
-  font-weight: 500;
-}
-
-@font-face {
-  font-family: 'ITC Avant Garde Gothic Std';
-  src: url('/fonts/ITC Avant Garde Gothic Bold.otf') format('opentype');
-  font-weight: 600;
-}
-
-/* Header styles */
-.header {
+/* ---- home: collage landing page ---- */
+.home {
   position: fixed;
-  top: -100px;
-  left: 0;
-  right: 0;
-  z-index: 50;
-  background-color: #ffffff !important;
-  border-bottom: 1px solid #e5e7eb;
-  padding: 1rem 1.5rem;
-  opacity: 0;
-  transition: top 1.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.header.fade-in {
-  top: 0;
-  opacity: 1;
-}
-
-.header-container {
+  inset: 0;
+  overflow: hidden;
+  background: #ffffff;
+  color: #0a0a0a;
   display: flex;
-  align-items: center;
-  width: 100%;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 4vh 4vw;
+  touch-action: none;
 }
 
-.header-name {
-  flex: 1;
-  text-align: left;
-}
-
-.header-name div {
-  color: #000000 !important;
-  font-size: 0.875rem;
-  font-weight: 300;
-  line-height: 1.2;
-  font-family: 'ITC Avant Garde Gothic Std', sans-serif !important;
-}
-
-.header-divider {
-  width: 1px;
-  height: 2rem;
-  background-color: #d1d5db !important;
-  margin: 0 1rem;
-}
-
-.header-time {
-  text-align: right;
-  margin-right: 1.5rem;
-}
-
-.header-time div {
-  color: #6b7280 !important;
-  font-size: 0.875rem;
-  line-height: 1.2;
-}
-
-.header-menu {
-  background-color: #000000 !important;
-  color: #ffffff !important;
-  padding: 0.8rem 1rem;
-  border-radius: 2rem;
+.home-header {
   display: flex;
-  font-size: 0.875rem;
-  align-items: center;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.home-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.home-eyebrow {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #8a8fa3;
+}
+
+.home-name {
+  font-size: clamp(2.2rem, 6vw, 4.5rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.home-nav {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
   gap: 0.5rem;
-  border: none;
+  flex-shrink: 0;
+}
+
+.home-nav a {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8a8fa3;
+  text-decoration: none;
+}
+
+.home-nav a.is-active {
+  color: #0a0a0a;
+}
+
+.home-collage {
+  position: relative;
+  width: min(58vw, 760px);
+  aspect-ratio: 713 / 600;
+  margin: 4vh auto;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  touch-action: none;
 }
 
-.header-menu:hover {
-  background-color: #1f2937 !important;
+.home-card {
+  position: absolute;
+  border-radius: clamp(12px, 1.6vw, 22px);
+  overflow: hidden;
+  background: #d9d9d9;
+  box-shadow: 0 20px 44px rgba(10, 10, 10, 0.16);
 }
 
-.header-menu-dot {
-  width: 0.3rem;
-  height: 0.3rem;
-  background-color: #4ade80 !important;
-  border-radius: 50%;
+/* Shuffle tuning panel (`?tune`). The page sets touch-action:none for the
+   swipe gesture, so the panel has to opt back in or its sliders cannot be
+   dragged on a phone. */
+.home-tuner {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  width: 300px;
+  z-index: 100;
+  touch-action: auto;
 }
 
-
-.main-content.fade-in {
-  opacity: 1;
-  transform: translateY(0);
+@media screen and (max-width: 700px) {
+  .home-tuner {
+    top: auto;
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
+    width: auto;
+    max-height: 46vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
-/* Video Demo Section */
-.video-demo-container {
-  text-align: center;
-  margin-bottom: 1rem;
+/* Off-screen cache warmer — must stay in the layout (not display:none, which
+   would stop the browser fetching) but never visible or interactive. */
+.home-preload {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  z-index: -1;
 }
 
-.hero-video {
-  width: 100% !important;
-  height: 200px !important;
-  border-radius: 1rem;
-  object-fit: cover !important;
-  object-position: center;
+.home-card img,
+.home-card video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   display: block;
 }
 
-.video-demo-title {
-  font-size: 1.5rem;
-  font-weight: 300;
-  color: #374151 !important;
-  margin: 0;
+.home-project-title {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  max-width: 80%;
+  transform: translateX(-50%);
+  /* Above every card, so it stays legible over the collage. */
+  z-index: 8;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: clamp(1.3rem, 3vw, 2.6rem);
+  letter-spacing: -0.02em;
+  text-align: center;
+  pointer-events: none;
+}
+
+.home-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(2rem, 6vw, 6rem);
+  flex-shrink: 0;
+}
+
+.home-footer-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-width: 420px;
+}
+
+.home-footer-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #8a8fa3;
+}
+
+.home-footer-value {
+  font-size: 0.95rem;
+  font-weight: 600;
   letter-spacing: -0.01em;
+  line-height: 1.4;
+  text-transform: uppercase;
 }
 
-/* Mobile Section Title */
-.section-title {
-  font-weight: 500;
-  font-size: 1rem;
-  color: #000000 !important;
-  margin-bottom: 1rem;
-}
-
-/* ========================================
-   MOBILE STYLES (below 768px)
-   ======================================== */
-@media screen and (max-width: 767px) {
-  /* Mobile Name Above Video */
-  .main-name-title {
-    font-size: 3rem;
-    font-weight: 300;
-    line-height: 2;
-    letter-spacing: -0.02em;
-    color: #000000 !important;
-    padding-top: 0rem !important;
-    padding-bottom: 0.1rem !important;
-    text-align: center !important;
-    margin-bottom: 1rem !important;
+@media screen and (max-width: 700px) {
+  .home {
+    padding: 3vh 6vw;
   }
 
-  .designer-text {
-    font-size: 1rem;
-    font-weight: 400;
-    color: #000000;
-    text-align: center;
-    margin-top: -0.8rem;
-    margin-bottom: 0.1rem;
-    opacity: 1;
-    transform: none;
+  .home-name {
+    font-size: clamp(1.1rem, 6vw, 1.6rem);
   }
 
-  /* Mobile Section Spacing */
-  .section {
-    margin-bottom: 4rem !important;
+  .home-eyebrow {
+    font-size: 0.62rem;
   }
 
-  /* Mobile Hero Section - Original spacing */
-  .section:first-child {
-    margin-bottom: 4rem !important;
+  .home-collage {
+    width: 84vw;
+    margin: 5vh auto;
   }
 
-  .section h1 {
-    margin-bottom: 0 !important;
-  }
-
-  /* Mobile Section Title */
-  .section-title {
-    font-weight: 500;
-    font-size: 1rem;
-    color: #000000 !important;
-    margin-bottom: 1rem;
-  }
-
-  .main-content .section-text {
-    margin-bottom: 0 !important;
-  }
-
-  /* Mobile Hero Video */
-  .hero-video {
-    width: 100% !important;
-    height: 200px !important;
-    border-radius: 1rem;
-    margin-top: 2rem;
-    object-fit: cover !important;
-    object-position: center;
-    display: block;
-  }
-
-  /* Mobile Video Demo Container - Stack vertically */
-  .video-demo-container {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 4rem !important;
-    align-items: center !important;
-    justify-content: center !important;
-    text-align: center !important;
-    margin-bottom: 1rem !important;
-    width: 100% !important;
-    position: relative !important;
-    margin: 0 auto 1rem !important;
-  }
-
-  /* Mobile Intro content - Left aligned */
-  .intro-content {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: flex-start;
-    text-align: left;
-  }
-
-  .intro-content .section-title {
-    text-align: left !important;
-    margin-bottom: 1rem !important;
-    font-size: 1rem !important;
-  }
-
-  .intro-content .section-text {
-    text-align: left !important;
-    margin: 0 !important;
-    font-size: 1rem !important;
-    line-height: 1.6 !important;
-    max-width: 100% !important;
-  }
-
-  /* Mobile Main Content */
-  .main-content {
-    padding-top: 6rem;
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
-    padding-bottom: 5rem;
-    background-color: #ffffff !important;
-    opacity: 0;
-    transform: translateY(50px);
-    transition: all 1.0s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  /* Mobile Header */
-  .header {
-    padding: 1rem 1.5rem;
-  }
-
-  /* Mobile Button Grid */
-  .button-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.5rem;
-    align-items: flex-start;
-  }
-
-  /* Mobile Work Styles - Consolidated */
-  .work-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 2rem;
-  }
-
-  .work-item {
-    display: flex;
-    flex-direction: column;
-    gap: 0rem;
-  }
-
-  .work-image {
-    width: 100%;
-    height: 12rem;
-    background-color: #000000 !important;
-    border-radius: 1rem;
-    object-fit: cover;
-    object-position: center;
-    margin-bottom: 0.5rem;
-  }
-
-    /* Last section - reduce bottom margin to prevent excessive space before footer */
-    .section:last-child {
-      margin-bottom: 0rem !important;
-    }
-
-  /* Mobile Footer */
-  .footer {
-    padding: 5rem 1.5rem;
-    text-align: center;
-  }
-  
-  .footer-section-title {
-    font-size: 1rem;
-    font-weight: 500 !important;
-    color: #000000 !important;
-    margin-bottom: 0.5rem;
-    font-family: 'ITC Avant Garde Gothic Std', sans-serif !important;
-    text-align: left;
-  }
-
-  .footer-email {
-    font-size: 1rem;
-    color: #000000 !important;
-    font-weight: 400 !important;
-    margin-bottom: 0.5rem;
-    font-family: 'ITC Avant Garde Gothic Std', sans-serif !important;
-    text-align: left;
-  }
-
-  .footer-description {
-    font-size: 1rem;
-    color: #6b7280 !important;
-    line-height: 1.5;
-    font-family: 'ITC Avant Garde Gothic Std', sans-serif !important;
-    text-align: left;
-  }
-}
-
-/* ========================================
-   DESKTOP STYLES (768px and up)
-   ======================================== */
-@media screen and (min-width: 768px) {
-  /* Desktop Layout */
-  .main-content {
-    padding-left: 4rem;
-    padding-right: 4rem;
-    margin: 0 auto;
-    overflow-y: visible;
-    height: auto;
-    min-height: auto;
-  
-  }
-
-  /* Desktop Name Section */
-  .main-name-title {
-    font-size: 7rem !important;
-    font-weight: 400 !important;
-    line-height: 0.95 !important;
-    letter-spacing: -0.05em !important;
-    color: #000000 !important;
-    padding: 0 !important;
-    margin: 0rem 0 1.5rem 0 !important;
-    display: block !important;
-    text-align: center !important;
-    position: relative !important;
-    font-family: 'ITC Avant Garde Gothic Std', -apple-system, BlinkMacSystemFont, sans-serif !important;
-  }
-
-  .designer-text {
-    font-size: 1.5rem;
-    font-weight: 300;
-    color: #1a1a1a;
-    text-align: center;
-    margin-bottom: 1rem;
-    opacity: 1;
-    position: relative;
-    font-family: 'ITC Avant Garde Gothic Std', -apple-system, BlinkMacSystemFont, sans-serif !important;
-    letter-spacing: 0.01em;
-  }
-
-  /* Desktop Section Title */
-  .main-content .section-title {
-    font-size: 2rem;
-    font-weight: 400 !important;
-    font-family: 'ITC Avant Garde Gothic Std', -apple-system, BlinkMacSystemFont, sans-serif !important;
-    margin-bottom: 3rem;
-    color: #1d1d1f !important;
-    letter-spacing: -0.02em;
-    text-align: left;
-  }
-
-
-  .hero-video-container {
-    width: 100% !important;
-    max-width: 100% !important;
-    margin: 2rem auto 0 !important;
-    display: flex !important;
-    justify-content: center !important;
-    align-items: center !important;
-  }
-
-  /* Video side */
-  .video-demo-container .hero-video {
-    width: 100% !important;
-    margin: 0 !important;
-  }
-
-  /* Desktop Hero Video */
-  .hero-video {
-    width: 100% !important;
-    height: auto !important;
-    aspect-ratio: 16 / 9 !important;
-    object-fit: cover !important;
-    object-position: center !important;
-    display: block !important;
-    margin: 0 auto !important;
-    text-align: center !important;
-    border-radius: 2rem !important;
-    max-width: 100% !important;
-  }
-
-
-
-  /* Ensure work items are direct scroll targets */
-
-  /* Desktop Header */
-  .header {
-    padding: 0.5rem 4rem;
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    background-color: rgba(255, 255, 255, 0.8) !important;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-  }
-
-  /* Desktop Header Name */
-  .header-name {
-    display: flex;
-    flex-direction: row;
-    
-    gap: 0.5rem;
-  }
-
-  .header-name div {
-    font-weight: 300;
-    line-height: 1;
-    font-size: 1.25rem;
-    font-family: 'ITC Avant Garde Gothic Std', sans-serif !important;
-    color: #1d1d1f !important;
-    letter-spacing: -0.01em;
-  }
-
-  /* DESKTOP SECTION SPACING - MADE CONSISTENT */
-  .section {
-    min-height: auto;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: 8rem 0 !important;
-    position: relative !important;
-  }
-
-
-  /* Last section - reduce bottom margin to prevent excessive space before footer */
-  .section:last-child {
-    margin-bottom: 4rem !important;
-  }
-
-  
-
-  .work-grid {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 10em !important;
-    max-width: 100% !important;
-    margin: 0 auto;
-  }
-
-  .work-item {
-    min-height: auto !important;
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: flex-start !important;
-    align-items: center !important;
-    padding: 0 !important;
-    width: 100% !important;
-    position: relative !important;
-    background: transparent;
-  }
-
-  /* Desktop Typography */
-  .section-text {
-    font-size: 3.5rem !important;
-    width: 100% !important;
-    max-width: fit-content !important;
-    color: #000000 !important;
-    letter-spacing: -0.01em;
-    line-height: 1.6;
-    text-align:left;
-    font-family: 'ITC Avant Garde Gothic Std', -apple-system, BlinkMacSystemFont, sans-serif !important;
-    font-weight: 300;
-  }
-
-  /* Desktop Button Grid */
-  .button-grid {
-    display: flex !important;
-    flex-wrap: wrap !important;
-    justify-content: left !important;
-    margin: 0 auto;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem !important;
-  }
-
-  .button-grid button {
-    font-family: 'ITC Avant Garde Gothic Std', -apple-system, BlinkMacSystemFont, sans-serif !important;
-    font-weight: 300;
-    background-color: #f5f5f7 !important;
-    color: #000000 !important;
-    padding: 1.5rem 3rem !important;
-    border-radius: 10rem !important;
-    font-size: 3rem !important;
-    border: 1px solid #e5e5e7;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    letter-spacing: -0.01em;
-    white-space: nowrap;
-    width: fit-content;
-    min-width: fit-content;
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-  }
-
-
- /* Desktop Footer */
-  .footer {
-    padding: 8rem 4rem !important;
-    border-top: 1px solid #e5e7eb;
-    /* Ensure footer doesn't interfere with scroll snap */
-    scroll-snap-align: none !important;
-    scroll-snap-stop: normal !important;
-  }
-  
-
-  .footer-column {
-    display: flex;
+  .home-footer {
     flex-direction: column;
     gap: 1rem;
   }
-  
-  .footer-section-title {
-    font-weight: 500 !important;
-    color: #000000 !important;
-    font-family: 'ITC Avant Garde Gothic Std', sans-serif !important;
-  }
-  
-  .footer-email {
-    color: #000000 !important;
-    font-weight: 400 !important;
-    font-family: 'ITC Avant Garde Gothic Std', sans-serif !important;
-  }
-  
-  .footer-description {
-    color: #666666 !important;
-    line-height: 1.6;
-    font-family: 'ITC Avant Garde Gothic Std', sans-serif !important;
-  }
-  
 
-
-
-  
-
-
-  .work-image {
-    width: 100% !important;
-    height: auto !important;
-    aspect-ratio: 16 / 9 !important;
-    object-fit: cover !important;
-    border-radius: 2rem !important;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08) !important;
-    margin-bottom: 2rem !important;
-    max-width: 100% !important;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  .home-footer-label {
+    font-size: 0.62rem;
   }
 
-  .work-image:hover {
-    transform: scale(1.02);
-    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.12) !important;
+  .home-footer-value {
+    font-size: 0.8rem;
   }
-
-  /* Desktop Work Title */
-  .work-title {
-    font-size: 3rem !important;
-    font-weight: 400 !important;
-    color: #1d1d1f !important;
-    text-align: left !important;
-    margin-bottom: 0.75rem !important;
-    letter-spacing: -0.02em;
-  }
-
-  /* Desktop Work Description */
-  .work-description {
-    font-size: 1.5rem !important;
-    font-weight: 300 !important;
-    color: #8e8e93 !important;
-    text-align: left !important;
-    max-width: 100% !important;
-    line-height: 1.5;
-  }
-}
-
-/* Add spacing below the main name */
-.section h1 {
-  margin-bottom: .5em;
-  font-weight: 400;
-  letter-spacing: -0.06em;
-  font-size: 3rem;
-  padding-top: .5em;
-  padding-bottom: .5em
-}
-
-/* Section styles */
-.section {
-  margin-bottom: 4rem;
-  opacity: 0;
-  transform: translateY(20px);
-  transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.section.fade-in {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* First section (video) animates with main content */
-.main-content.fade-in .section:nth-child(1) {
-  opacity: 1;
-  transform: translateY(0);
-  transition-delay: 0.2s;
-}
-
-
-
-/* Button grid */
-.button-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: flex-start;
-}
-
-.button-grid button {
-  font-family: inherit;
-  background-color: #f3f4f6 !important;
-  color: #374151 !important;
-  padding: 0.5rem 1rem;
-  border-radius: 1em;
-  font-size: 1rem;
-  border: none;
-  transition: all 0.2s ease;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  width: fit-content;
-  min-width: fit-content;
-}
-
-/* Base Work Styles (fallback) */
-.work-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-}
-
-.work-item {
-  display: flex;
-  flex-direction: column;
-  gap: 0rem;
-}
-
-.work-title {
-  font-size: 1rem;
-  font-weight: 500;
-  color: #2c2c2c !important;
-  max-width: 100% !important;
-  width: 100% !important;
-}
-.work-description {
-  font-size: .8rem;
-  font-weight: 400;
-  color: #8f8f8f !important;
-  max-width: 100% !important;
-  width: 100% !important;
-}
-
-
-/* Footer Styles */
-.footer {
-  background-color: #ffffff !important;
-  color: #000000 !important;
-  padding: 4rem 1.5rem;
-  border-top: 1px solid #e5e7eb;
-  position: static !important;
-  z-index: auto !important;
-  transform: none !important;
-  top: auto !important;
-  bottom: auto !important;
-  left: auto !important;
-  right: auto !important;
-}
-
-.footer-container {
-  margin: 0 auto;
-  display: flex;
-  justify-content: left;
-  text-align: left;
-}
-
-.footer-column {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  text-align: left;
-}
-
-
-
-/* Mobile menu */
-.mobile-menu-overlay {
-  position: fixed;
-  inset: 0;
-  background-color: rgba(0, 0, 0, 0.6) !important;
-  z-index: 40;
-  opacity: 0;
-  transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-}
-
-.mobile-menu-overlay.show {
-  opacity: 1;
-}
-
-.mobile-menu {
-  position: fixed;
-  top: 0;
-  right: 0;
-  width: 320px;
-  height: 100vh;
-  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%) !important;
-  z-index: 50;
-  transform: translateX(100%);
-  transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.15);
-  border-left: 1px solid #e5e7eb;
-}
-
-.mobile-menu.menu-open {
-  transform: translateX(0);
-}
-
-.mobile-menu-content {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  padding: 1rem 1.5rem;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.mobile-menu.menu-open .mobile-menu-content {
-  opacity: 1;
-}
-
-.mobile-menu-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.mobile-menu-title {
-  font-size: 1.5rem;
-  font-weight: 400;
-  color: #000000 !important;
-}
-
-.mobile-menu-close {
-  background: none;
-  border: none;
-  color: #6b7280 !important;
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 8px;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.mobile-menu-close:hover {
-  background-color: #f3f4f6;
-  color: #000000 !important;
-}
-
-.mobile-menu-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-  flex: 1;
-  overflow-y: auto;
-}
-
-.nav-section {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.nav-section-title {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #6b7280 !important;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 0.5rem;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-}
-
-.nav-link {
-  color: #000000 !important;
-  text-decoration: none;
-  font-size: 1.125rem;
-  font-weight: 400;
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  transition: all 0.2s ease;
-  background: none;
-  border: none;
-  text-align: left;
-  cursor: pointer;
-  width: 100%;
-  font-family: 'ITC Avant Garde Gothic Std', -apple-system, BlinkMacSystemFont, sans-serif !important;
-}
-
-.nav-link:hover {
-  background-color: #f3f4f6;
-  color: #000000 !important;
-  transform: translateX(4px);
-}
-
-.project-link {
-  font-size: 1rem;
-  color: #2f2f2f !important;
-  padding: 0.15rem 0rem;
-}
-
-.project-link:hover {
-  color: #000000 !important;
-  background-color: #f8fafc;
-}
-
-/* Smooth scrolling - Enhanced for desktop */
-@media screen and (min-width: 768px) {
-  html {
-    scroll-behavior: auto; /* We handle all scrolling with JavaScript */
-    scroll-padding-top: 0; /* Remove padding for continuous scrolling */
-  }
-  
-  html.enhanced-scroll {
-    scroll-behavior: auto;
-  }
-  
-  /* Remove scroll snapping for continuous smooth scrolling */
-  .main-content {
-    /* scroll-snap-type: none; Remove any scroll snapping */
-  }
-  
-  .section {
-    /* scroll-snap-align: none; Remove section snapping */
-    /* scroll-snap-stop: none; Remove snap stops */
-    scroll-margin-top: 0; /* Remove scroll margins */
-  }
-}
-
-@media screen and (max-width: 767px) {
-  html {
-    scroll-behavior: auto; /* Keep mobile scrolling responsive */
-  }
-}
-
-/* Prevent layout shifts during transitions */
-.main-content {
-  min-height: 100vh;
-  width: 100%;
-  position: relative;
-  position: relative !important; /* Ensure this stays relative, not fixed */
-  /* Remove any height constraints that might cause footer to stick */
-  min-height: auto !important; /* Changed from 100vh to auto */
-}
-
-.work-detail {
-  min-height: auto;
-  width: 100%;
-  position: relative;
-}
-
-.page-container {
-  width: 100%;
-  position: relative;
-  overflow-x: hidden;
-  /* Ensure no height constraints */
-  min-height: auto !important;
-  height: auto !important;
-}
-
-/* JavaScript Enhanced Smooth Scrolling Classes */
-.smooth-scrolling {
-  pointer-events: none; /* Prevent interactions during smooth scroll */
-}
-
-.smooth-scroll-target {
-  scroll-margin-top: 100px;
 }

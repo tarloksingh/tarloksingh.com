@@ -1,5 +1,9 @@
 # Media Ordering Control Guide
 
+> **Legacy — describes the previous Vue site, not the current codebase.**
+> Kept for reference to the old project data. See `README.md` for how the
+> site works now.
+
 ## Overview
 You can now control the order of videos and images within each section using the `mediaOrder` property in the layout configuration.
 

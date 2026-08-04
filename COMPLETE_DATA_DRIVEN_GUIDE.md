@@ -1,5 +1,9 @@
 # Complete Data-Driven Portfolio Guide
 
+> **Legacy — describes the previous Vue site, not the current codebase.**
+> Kept for reference to the old project data. See `README.md` for how the
+> site works now.
+
 ## 🎯 Overview
 Your portfolio is now **100% data-driven**. Everything is controlled from the JSON - sections, media, text, and layout. No HTML changes needed!
 

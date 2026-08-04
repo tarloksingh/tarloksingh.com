@@ -1,5 +1,9 @@
 # Layout Control Guide
 
+> **Legacy — describes the previous Vue site, not the current codebase.**
+> Kept for reference to the old project data. See `README.md` for how the
+> site works now.
+
 ## 🎯 Complete Layout Control from JSON
 
 You now have **complete control** over section layout from the JSON! No HTML changes needed.
