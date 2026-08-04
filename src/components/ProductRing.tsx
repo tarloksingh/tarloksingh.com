@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-type Phase = 'sealed' | 'cutting' | 'open'
-
 interface ProductRingProps {
   /** Repeated around the ring once it is open. */
   label: string
-  /** Repeated along the flat line before it is cut. */
+  /** Repeated along the banner before it is cut. */
   sealLabel?: string
   /** Character between repeats. Empty runs the label round on its own. */
   separator?: string
@@ -27,57 +25,56 @@ interface ProductRingProps {
   fontSize?: number
   /** Viewing distance for the projection. Matches CSS `perspective`. */
   perspective?: number
-  /** Px between glyphs while the label is still a straight line. */
+  /** Px between glyphs while the label is still a banner. */
   introSpacing?: number
   /** Extra degrees the ring unwinds through as it closes. */
   introWind?: number
   introDelay?: number
   introDuration?: number
-  /** Seconds the two cut halves take to clear the screen. */
+  /** How far the banner hangs at the centre of the screen, px. */
+  sag?: number
+  /** Degrees the cut ends swing down through. */
+  fallAngle?: number
+  /** Seconds the ends take to fall. */
   cutDuration?: number
   /** Fires when the cut is through and the page should start. */
   onCut?: () => void
 }
 
 /**
- * One run of type that is the whole opening.
+ * One banner of type that is the whole opening.
  *
- * It starts as a flat line reading the seal label, laid out by the same
- * per-glyph engine that draws the ring — so it is not a tape graphic sitting
- * over the page, it is the ring before it has closed. Clicking cuts the line
- * where you clicked: the glyphs either side of that point travel off in
- * opposite directions. What comes back is the same line reading the product's
- * name, and it curls into the ring.
+ * It hangs across the screen reading the seal label, sags under its own
+ * weight, and is cut where you click. The cut ends swing down from their
+ * supports, and the same glyphs are then drawn up into the ring. There is no
+ * tape graphic and nothing is layered over the page — this is the ring before
+ * it has closed.
  *
- * The cylinder is projected by hand rather than handed to CSS 3D, which is
- * what makes it affordable. The 3D version needed the glyphs duplicated
- * across two `preserve-3d` layers — one either side of the model, each hiding
- * the half it did not own — because a 3D rendering context sorts by depth and
- * ignores z-index, and the model is a WebGL canvas that cannot join that
- * context at all. At the tuned settings that came to ~590 spans, every one
- * re-rasterised each frame, because a rotated 3D transform is not something
- * the compositor can reuse.
+ * Three decisions hold that together, and undoing any of them breaks it:
  *
- * Projecting here instead means one set of glyphs, plain 2D transforms, and
- * z-index working normally against the canvas. `.ch-stage` carries
- * `isolation: isolate` so the far arc's -1 stays inside the stage rather than
- * dropping behind the page gradient.
+ * **The slot count is fixed**, taken from whichever label is longer, with the
+ * shorter one padded. So the glyphs are the same DOM elements before and
+ * after — the text changes on them mid-flight. Sizing the run to the current
+ * label instead re-mounts every glyph at the swap, which is what made the old
+ * version read as two events: a banner leaving, then a different line
+ * arriving.
  *
- * Three things are easy to undo by accident:
+ * **Nothing leaves the screen.** The ends fall about their supports and are
+ * gathered into the ring from wherever they got to. Throwing them off and
+ * bringing them back is the same two-event problem in another form.
  *
- * Upright glyphs on a flattened 2D ellipse look right at the top and bottom
- * and fall apart at the sides, where the path runs vertical on screen the
- * horizontal gap between neighbours collapses and the letters pile up. The
- * cylinder spends that spacing as rotation, so it stays even the whole way
- * round.
+ * **Every position is one blend.** `banner -> ring` is a single lerp per
+ * glyph, with the fall folded into the banner side, so the transformation is
+ * continuous by construction rather than a sequence that has to be timed.
  *
- * The roll has to reach the glyph, not just its position, or every letter
- * stays bolt upright while the baseline runs diagonally — a staircase rather
- * than tilted type.
- *
- * Perspective scale is what gives a word its taper, so glyphs are placed one
- * at a time rather than a word at a time. Rendering whole words would cut the
- * node count by an order of magnitude and flatten that taper out.
+ * The cylinder is projected by hand rather than handed to CSS 3D. The 3D
+ * version needed the glyphs duplicated across two `preserve-3d` layers,
+ * because a 3D rendering context sorts by depth and ignores z-index — so no
+ * layer could straddle the model, and the model is a WebGL canvas that cannot
+ * join that context at all. At the tuned settings that was ~590 spans, each
+ * re-rasterised every frame. `.ch-stage` carries `isolation: isolate` so the
+ * far arc's -1 stays inside the stage rather than dropping behind the page
+ * gradient.
  */
 export default function ProductRing({
   label,
@@ -92,67 +89,68 @@ export default function ProductRing({
   offsetY = -68,
   period = -126,
   fontSize = 19,
-  // How hard the near arc is magnified against the far one: the ratio across
-  // the ring is (perspective + radius) / (perspective - radius), so the
-  // smaller this gets the more violent the taper.
   perspective = 2100,
   introSpacing = 15,
   introWind = 220,
   introDelay = 0.15,
   introDuration = 2.6,
+  sag = 46,
+  fallAngle = 34,
   cutDuration = 0.7,
   onCut
 }: ProductRingProps) {
-  const [phase, setPhase] = useState<Phase>('sealed')
+  const [cut, setCut] = useState(false)
+  const [swapped, setSwapped] = useState(false)
   const glyphRefs = useRef<(HTMLSpanElement | null)[]>([])
-  // Slot the blade fell on, so each glyph knows which way to leave.
   const cutSlot = useRef(0)
   const stageRef = useRef<HTMLDivElement>(null)
 
-  const sealed = phase === 'sealed'
-  const cutting = phase === 'cutting'
-
-  // The line carries the seal's text until the cut is through, then the
-  // product's. Same engine either way — the swap happens while both halves
-  // are off screen, so the line that comes back is the one that left.
-  const text = sealed || cutting ? sealLabel : label
-
-  // One unit is the label and the space after it. With a separator the space
-  // is split either side of it; without one it all falls between repeats.
-  //
-  // Spaces are dropped from the DOM but still consume their slot, so spacing
-  // is unchanged and roughly a third of the nodes never exist. `slot` is the
-  // position round the ring; `total` is how many slots there are.
-  const { glyphs, total } = useMemo(() => {
+  // A fixed run length, so the same elements carry both labels and the text
+  // can change on them mid-flight rather than re-mounting the whole ring.
+  const { chars, total, unitLen } = useMemo(() => {
     const pad = ' '.repeat(Math.max(1, gap))
-    const unit = separator ? `${text}${pad}${separator}${pad}` : `${text}${pad}${pad}`
-    const all = Array.from(unit.repeat(Math.max(1, repeats)))
+    const unitFor = (t: string) => (separator ? `${t}${pad}${separator}${pad}` : `${t}${pad}${pad}`)
+    const sealUnit = unitFor(sealLabel)
+    const openUnit = unitFor(label)
+    const len = Math.max(sealUnit.length, openUnit.length)
+    const active = (swapped ? openUnit : sealUnit).padEnd(len, ' ')
+    const n = Math.max(1, repeats) * len
     return {
-      total: all.length,
-      glyphs: all
-        .map((char, slot) => ({ char, slot }))
-        .filter(({ char }) => char.trim().length > 0)
+      unitLen: len,
+      total: n,
+      chars: Array.from({ length: n }, (_, i) => active[i % len])
     }
-  }, [text, separator, gap, repeats])
+  }, [label, sealLabel, separator, gap, repeats, swapped])
 
   const lineHalf = ((total - 1) * introSpacing) / 2
 
-  const cut = useCallback(
+  const startCut = useCallback(
     (clientX: number) => {
-      if (!sealed) return
+      if (cut) return
       const box = stageRef.current?.getBoundingClientRect()
       const centre = box ? box.left + box.width / 2 : window.innerWidth / 2
-      // Back out of the flat-line placement to find which slot was under the
-      // pointer, so the split lands on the letter that was clicked.
       cutSlot.current = (clientX - centre - offsetX + lineHalf) / introSpacing
-      setPhase('cutting')
+      setCut(true)
     },
-    [sealed, offsetX, lineHalf, introSpacing]
+    [cut, offsetX, lineHalf, introSpacing]
   )
 
   useEffect(() => {
-    const count = glyphs.length
-    if (!count) return
+    if (!cut) return
+    onCut?.()
+    // Timers, not the draw loop. Frames are not guaranteed — a backgrounded
+    // tab stops them and decoding the model starves them — and hanging a
+    // state change off one leaves the banner stuck mid-cut.
+    const id = window.setTimeout(
+      () => setSwapped(true),
+      (introDelay + introDuration * 0.45) * 1000
+    )
+    return () => window.clearTimeout(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cut, introDelay, introDuration])
+
+  useEffect(() => {
+    if (!total) return
 
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     const step = 360 / total
@@ -162,30 +160,62 @@ export default function ProductRing({
     const sinX = Math.sin(rx)
     const cosZ = Math.cos(rz)
     const sinZ = Math.sin(rz)
-    // Anything this close to the eye is past the viewer's shoulder; CSS clips
-    // it, and without the guard the divide below blows up.
     const zLimit = perspective * 0.92
-    // Far enough that both halves are gone whatever the screen width.
-    const cutTravel = window.innerWidth * 1.2
+    // The banner's supports, just off either edge of the screen.
+    const half = window.innerWidth / 2
 
-    const lastDepth = new Int8Array(count).fill(2)
+    const hidden = new Uint8Array(total)
     const startedAt = performance.now()
     let raf = 0
 
-    /** `wrap` 0 lays the label out flat; 1 is the closed ring. */
-    const draw = (spin: number, wrap: number, split: number) => {
+    /** `wrap` 0 is the hanging banner; 1 is the closed ring. */
+    const draw = (spin: number, wrap: number, fall: number) => {
       const closed = wrap >= 0.999
+      const theta0 = fallAngle * fall * (Math.PI / 180)
 
-      for (let i = 0; i < count; i += 1) {
+      for (let i = 0; i < total; i += 1) {
         const el = glyphRefs.current[i]
         if (!el) continue
+        // Spaces hold their slot so the spacing is right, but they have
+        // nothing to draw. Hidden once rather than every frame — a third of
+        // the run is spaces, and the write is not free.
+        if (chars[i] === ' ') {
+          if (!hidden[i]) {
+            hidden[i] = 1
+            el.style.visibility = 'hidden'
+          }
+          continue
+        }
+        hidden[i] = 0
 
-        const slot = glyphs[i].slot
-        const theta = ((slot * step + spin) * Math.PI) / 180
-        // A point on the cylinder, then tipped and rolled — the same order
-        // the CSS version applied, solved rather than delegated.
-        const x0 = radius * Math.sin(theta)
-        const z0 = radius * Math.cos(theta)
+        // ---- banner ----
+        // Hung between two supports and sagging in the middle. The curve is
+        // scaled to the screen, not to the run: the run is several screens
+        // wide, and a catenary across all of it leaves the visible stretch
+        // dead flat, which is exactly the weightlessness this is fixing.
+        const bx = i * introSpacing - lineHalf
+        const u = Math.max(-1, Math.min(1, bx / half))
+        const by = sag * (1 - u * u)
+        // Slope of that curve, so each glyph lies along the banner rather
+        // than sitting bolt upright on it.
+        const bAngle = Math.atan2(-sag * 2 * u, half)
+
+        // The end that was cut swings down about its support; the support
+        // itself does not move.
+        const side = i < cutSlot.current ? -1 : 1
+        const pivotX = side * half
+        const dx = bx - pivotX
+        const dy = by
+        const swing = theta0 * -side
+        const cosS = Math.cos(swing)
+        const sinS = Math.sin(swing)
+        const fx = pivotX + dx * cosS - dy * sinS
+        const fy = dx * sinS + dy * cosS
+
+        // ---- ring ----
+        const angle = ((i * step + spin) * Math.PI) / 180
+        const x0 = radius * Math.sin(angle)
+        const z0 = radius * Math.cos(angle)
         const y1 = -z0 * sinX
         const z1 = z0 * cosX
         const x2 = x0 * cosZ - y1 * sinZ
@@ -197,88 +227,59 @@ export default function ProductRing({
         }
 
         const ringScale = z1 < zLimit ? perspective / (perspective - z1) : 1
-        // Flat, the label is one straight run of type through the centre at
-        // its natural size; closed, it is the projected ring. Everything in
-        // between is a blend of the two, which is what makes the line appear
-        // to curl into the ring rather than slide into place.
-        const scale = 1 + (ringScale - 1) * wrap
-        const flatX = slot * introSpacing - lineHalf
-        // Each half leaves the way it is already pointing, away from the cut.
-        const leaving = split * cutTravel * (slot < cutSlot.current ? -1 : 1)
-        const x = flatX * (1 - wrap) + x2 * ringScale * wrap + offsetX + leaving
-        const y = y2 * ringScale * wrap + offsetY
 
-        // Glyphs on the far arc are seen from behind, so they mirror. The 3D
-        // version got this for free — the element genuinely faced away and
-        // the browser drew its backface. Without it the back of the ring
-        // reads as the label spelled backwards rather than as its reverse.
-        // Only once it is mostly closed, or the flat line reads inside out.
+        // ---- one blend, banner to ring ----
+        const scale = 1 + (ringScale - 1) * wrap
+        const x = fx * (1 - wrap) + x2 * ringScale * wrap + offsetX
+        const y = fy * (1 - wrap) + y2 * ringScale * wrap + offsetY
+        const spinDeg = (bAngle * (180 / Math.PI) + swing * (180 / Math.PI)) * (1 - wrap) + tiltZ * wrap
+
+        // Glyphs on the far arc are seen from behind, so they mirror — the 3D
+        // version got that free from the backface. Only once mostly closed,
+        // or the banner reads inside out.
         const behind = z1 < 0 && wrap > 0.5
         const sx = behind ? -scale : scale
 
         el.style.visibility = 'visible'
         el.style.transform =
           `translate(-50%, -50%) translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) ` +
-          `rotate(${(tiltZ * wrap).toFixed(2)}deg) ` +
+          `rotate(${spinDeg.toFixed(2)}deg) ` +
           `scale(${sx.toFixed(3)}, ${scale.toFixed(3)})`
-
-        // Paint order and fade only change when a glyph crosses the seam, so
-        // they are written then rather than every frame.
-        const depth = behind ? -1 : 1
-        if (lastDepth[i] !== depth) {
-          lastDepth[i] = depth
-          el.style.zIndex = depth === -1 ? '-1' : '1'
-          el.style.opacity = depth === -1 ? '0.45' : '1'
-        }
+        el.style.zIndex = behind ? '-1' : '1'
+        el.style.opacity = behind ? '0.45' : '1'
       }
     }
 
-    if (sealed) {
-      // Nothing is moving yet, so it is drawn once rather than looped.
+    if (!cut) {
+      // Hanging, not yet cut. Nothing is moving, so it is drawn once.
       draw(0, 0, 0)
       return
     }
 
     if (reduced) {
-      draw(0, cutting ? 0 : 1, 0)
-      if (cutting) setPhase('open')
+      draw(0, 1, 0)
       return
     }
 
     const tick = () => {
       const seconds = (performance.now() - startedAt) / 1000
-
-      if (cutting) {
-        const t = Math.min(1, seconds / cutDuration)
-        // power2.in — the halves start with the blade and accelerate away.
-        draw(0, 0, t * t)
-      } else {
-        const t = Math.min(1, Math.max(0, (seconds - introDelay) / introDuration))
-        // power3.out, matching the copy reveal and the product's entrance.
-        const wrap = 1 - Math.pow(1 - t, 3)
-        // The ring overshoots its resting angle and unwinds into it, so the
-        // label arrives already turning rather than from a standstill.
-        const spin = (period === 0 ? 0 : (seconds / period) * 360) + introWind * (1 - wrap)
-        // Picks the halves up exactly where the cut threw them and draws them
-        // back in as the ring closes. Dropping to 0 here instead snaps the
-        // line back to a flat, centred run of the *new* text — which reads as
-        // the product's name simply appearing, and is the one thing this
-        // whole sequence is meant to avoid.
-        draw(spin, wrap, 1 - wrap)
-      }
-
+      // Gravity: the ends accelerate as they drop rather than easing out.
+      const fall = Math.min(1, seconds / cutDuration) ** 2
+      const t = Math.min(1, Math.max(0, (seconds - introDelay) / introDuration))
+      const wrap = 1 - Math.pow(1 - t, 3)
+      const spin = (period === 0 ? 0 : (seconds / period) * 360) + introWind * (1 - wrap)
+      draw(spin, wrap, fall)
       raf = requestAnimationFrame(tick)
     }
 
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
   }, [
-    glyphs,
+    chars,
     total,
+    unitLen,
     lineHalf,
-    phase,
-    sealed,
-    cutting,
+    cut,
     radius,
     tiltX,
     tiltZ,
@@ -290,31 +291,17 @@ export default function ProductRing({
     introWind,
     introDelay,
     introDuration,
+    sag,
+    fallAngle,
     cutDuration
   ])
-
-  // Handing off once, as the halves start moving, so the page opens with the
-  // cut rather than after it.
-  //
-  // The move to `open` is a timer rather than something the draw loop decides
-  // when its progress reaches 1. Frames are not guaranteed — a backgrounded
-  // tab stops them outright and decoding the model can starve them — and
-  // hanging a state change off one leaves the line stuck mid-cut, still
-  // reading the seal, with no way forward. A timer still fires.
-  useEffect(() => {
-    if (!cutting) return
-    onCut?.()
-    const id = window.setTimeout(() => setPhase('open'), cutDuration * 1000)
-    return () => window.clearTimeout(id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cutting, cutDuration])
 
   return (
     <>
       <div className="ch-ring" ref={stageRef} aria-hidden="true">
-        {glyphs.map(({ char, slot }, i) => (
+        {chars.map((char, i) => (
           <span
-            key={`${text}-${slot}`}
+            key={i}
             className="ch-ring-glyph"
             style={{ fontSize }}
             ref={(el) => {
@@ -326,17 +313,17 @@ export default function ProductRing({
         ))}
       </div>
 
-      {sealed ? (
+      {!cut ? (
         <div
           className="ch-ring-cutter"
           role="button"
           tabIndex={0}
           aria-label={`${sealLabel} — cut to open`}
-          onPointerDown={(e) => cut(e.clientX)}
+          onPointerDown={(e) => startCut(e.clientX)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault()
-              cut(window.innerWidth / 2)
+              startCut(window.innerWidth / 2)
             }
           }}
         >

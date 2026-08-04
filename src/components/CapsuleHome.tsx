@@ -114,6 +114,9 @@ export default function CapsuleHome() {
       // The label starts as one straight run of type and curls into the ring.
       ringSpacing: { value: 15, min: 2, max: 60, step: 1, label: 'Line spacing' },
       ringWind: { value: 220, min: -720, max: 720, step: 5, label: 'Ring unwind' },
+      // How the banner hangs, and how far its cut ends drop.
+      sag: { value: 46, min: 0, max: 220, step: 1, label: 'Banner sag' },
+      fallAngle: { value: 34, min: 0, max: 90, step: 1, label: 'Cut drop' },
       productRise: { value: -1.5, min: -8, max: 0, step: 0.05, label: 'Product from' },
       productTurn: { value: 150, min: -360, max: 360, step: 5, label: 'Product turn' }
     })
@@ -203,6 +206,8 @@ export default function CapsuleHome() {
             {...ring}
             introSpacing={intro.ringSpacing}
             introWind={intro.ringWind}
+            sag={intro.sag}
+            fallAngle={intro.fallAngle}
             introDelay={intro.delay}
             introDuration={intro.duration}
             cutDuration={intro.cutTime}
