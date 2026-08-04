@@ -23,8 +23,10 @@ interface ProductRingProps {
   fontSize?: number
   /** Viewing distance for the projection. Matches CSS `perspective`. */
   perspective?: number
-  /** Pixels below its resting place the ring rises in from. */
-  introFrom?: number
+  /** Px between glyphs while the label is still a straight line. */
+  introSpacing?: number
+  /** Extra degrees the ring unwinds through as it closes. */
+  introWind?: number
   introDelay?: number
   introDuration?: number
 }
@@ -77,9 +79,10 @@ export default function ProductRing({
   // smaller this gets the more violent the taper. 1100 matched the CSS
   // version's own `perspective` but reads far heavier at a 695 radius.
   perspective = 2100,
-  introFrom = 730,
-  introDelay = 0.5,
-  introDuration = 2.4
+  introSpacing = 15,
+  introWind = 220,
+  introDelay = 0.35,
+  introDuration = 2.6
 }: ProductRingProps) {
   const glyphRefs = useRef<(HTMLSpanElement | null)[]>([])
 
@@ -121,12 +124,19 @@ export default function ProductRing({
     const startedAt = performance.now()
     let raf = 0
 
-    const draw = (spin: number, rise: number) => {
+    // Half the line's width, so it opens out from the stage's centre.
+    const lineHalf = ((total - 1) * introSpacing) / 2
+
+    /** `wrap` 0 lays the label out flat; 1 is the closed ring. */
+    const draw = (spin: number, wrap: number) => {
+      const closed = wrap >= 0.999
+
       for (let i = 0; i < count; i += 1) {
         const el = glyphRefs.current[i]
         if (!el) continue
 
-        const theta = ((glyphs[i].slot * step + spin) * Math.PI) / 180
+        const slot = glyphs[i].slot
+        const theta = ((slot * step + spin) * Math.PI) / 180
         // A point on the cylinder, then tipped and rolled — the same order
         // the CSS version applied, solved rather than delegated.
         const x0 = radius * Math.sin(theta)
@@ -136,29 +146,42 @@ export default function ProductRing({
         const x2 = x0 * cosZ - y1 * sinZ
         const y2 = x0 * sinZ + y1 * cosZ
 
-        if (z1 >= zLimit) {
+        if (z1 >= zLimit && closed) {
           el.style.visibility = 'hidden'
           continue
         }
 
-        const scale = perspective / (perspective - z1)
-        const x = x2 * scale + offsetX
-        const y = y2 * scale + offsetY + rise
+        const ringScale = z1 < zLimit ? perspective / (perspective - z1) : 1
+        // Flat, the label is one straight run of type through the centre at
+        // its natural size; closed, it is the projected ring. Everything in
+        // between is a blend of the two, which is what makes the line appear
+        // to curl into the ring rather than slide into place.
+        const scale = 1 + (ringScale - 1) * wrap
+        const x = (slot * introSpacing - lineHalf) * (1 - wrap) + x2 * ringScale * wrap + offsetX
+        const y = y2 * ringScale * wrap + offsetY
 
         // Glyphs on the far arc are seen from behind, so they mirror. The 3D
         // version got this for free — the element genuinely faced away and
         // the browser drew its backface. Without it the back of the ring
         // reads as the label spelled backwards rather than as its reverse.
-        const sx = z1 < 0 ? -scale : scale
+        // Only once it is mostly closed, or the flat line reads inside out.
+        const behind = z1 < 0 && wrap > 0.5
+        const sx = behind ? -scale : scale
 
         el.style.visibility = 'visible'
+        // The roll has to reach the glyph, not just its position. Rotating
+        // only the placement leaves every letter bolt upright while the
+        // baseline runs diagonally, which reads as a staircase rather than
+        // as tilted type — the 3D version rotated the layer, so the glyphs
+        // came with it.
         el.style.transform =
           `translate(-50%, -50%) translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) ` +
+          `rotate(${(tiltZ * wrap).toFixed(2)}deg) ` +
           `scale(${sx.toFixed(3)}, ${scale.toFixed(3)})`
 
         // Paint order and fade only change when a glyph crosses the seam, so
         // they are written then rather than every frame.
-        const depth = z1 < 0 ? -1 : 1
+        const depth = behind ? -1 : 1
         if (lastDepth[i] !== depth) {
           lastDepth[i] = depth
           el.style.zIndex = depth === -1 ? '-1' : '1'
@@ -168,16 +191,19 @@ export default function ProductRing({
     }
 
     if (reduced) {
-      draw(0, 0)
+      draw(0, 1)
       return
     }
 
     const tick = () => {
       const seconds = (performance.now() - startedAt) / 1000
-      const spin = period === 0 ? 0 : (seconds / period) * 360
-      // Rises with the product, on the same clock and the same easing.
       const t = Math.min(1, Math.max(0, (seconds - introDelay) / introDuration))
-      draw(spin, introFrom * Math.pow(1 - t, 3))
+      // power3.out, matching the copy reveal and the product's own entrance.
+      const wrap = 1 - Math.pow(1 - t, 3)
+      // The ring overshoots its resting angle and unwinds into it, so the
+      // label arrives already turning rather than starting from a standstill.
+      const spin = (period === 0 ? 0 : (seconds / period) * 360) + introWind * (1 - wrap)
+      draw(spin, wrap)
       raf = requestAnimationFrame(tick)
     }
 
@@ -193,7 +219,8 @@ export default function ProductRing({
     offsetY,
     period,
     perspective,
-    introFrom,
+    introSpacing,
+    introWind,
     introDelay,
     introDuration
   ])

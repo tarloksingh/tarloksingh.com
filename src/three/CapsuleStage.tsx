@@ -36,6 +36,8 @@ interface EntranceProps {
   children: React.ReactNode
   /** World units below its resting place that the product starts from. */
   from: number
+  /** Degrees of turn it unwinds through on the way in. */
+  turn: number
   delay: number
   duration: number
 }
@@ -51,7 +53,7 @@ interface EntranceProps {
  * Position only, deliberately: scaling it up would read as the product
  * approaching the camera, and the page holds a fixed lens on a fixed subject.
  */
-function Entrance({ children, from, delay, duration }: EntranceProps) {
+function Entrance({ children, from, turn, delay, duration }: EntranceProps) {
   const ref = useRef<Group>(null)
   const startedAt = useRef(0)
   const settled = useRef(false)
@@ -59,8 +61,11 @@ function Entrance({ children, from, delay, duration }: EntranceProps) {
   useEffect(() => {
     startedAt.current = performance.now()
     settled.current = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (ref.current) ref.current.position.y = settled.current ? 0 : from
-  }, [from, delay, duration])
+    if (ref.current) {
+      ref.current.position.y = settled.current ? 0 : from
+      ref.current.rotation.y = settled.current ? 0 : (turn * Math.PI) / 180
+    }
+  }, [from, turn, delay, duration])
 
   // Progress is read from the wall clock rather than summed frame deltas.
   // The two only agree while frames are arriving steadily, and the first
@@ -75,9 +80,15 @@ function Entrance({ children, from, delay, duration }: EntranceProps) {
     const seconds = (performance.now() - startedAt.current) / 1000
     const t = Math.min(1, Math.max(0, (seconds - delay) / duration))
     // power3.out, to match the easing the copy reveals on.
-    group.position.y = from * Math.pow(1 - t, 3)
+    const remaining = Math.pow(1 - t, 3)
+    group.position.y = from * remaining
+    // Unwinding a turn as it arrives is what stops the entrance reading as a
+    // slide: the product is already rotating when it lands, and hands that
+    // motion straight over to the idle float.
+    group.rotation.y = ((turn * Math.PI) / 180) * remaining
     if (t >= 1) {
       group.position.y = 0
+      group.rotation.y = 0
       settled.current = true
     }
   })
@@ -253,6 +264,8 @@ export interface CapsuleStageProps {
   floatSpeed?: number
   /** World units below its resting place the product rises in from. */
   introFrom?: number
+  /** Degrees of turn it unwinds through on the way in. */
+  introTurn?: number
   introDelay?: number
   introDuration?: number
 }
@@ -272,9 +285,10 @@ export default function CapsuleStage({
   floatIntensity = 0.9,
   floatRotation = 0.8,
   floatSpeed = 2.5,
-  introFrom = -4,
-  introDelay = 0.5,
-  introDuration = 2.4
+  introFrom = -1.5,
+  introTurn = 150,
+  introDelay = 0.35,
+  introDuration = 2.6
 }: CapsuleStageProps) {
   return (
     <div className="ch-model">
@@ -321,7 +335,12 @@ export default function CapsuleStage({
           {/* Float sits outside Spin so the drift is added on top of the
               turn rather than being turned with it — the two are meant to be
               usable independently, either one at 0. */}
-          <Entrance from={introFrom} delay={introDelay} duration={introDuration}>
+          <Entrance
+            from={introFrom}
+            turn={introTurn}
+            delay={introDelay}
+            duration={introDuration}
+          >
             <Float
               speed={floatSpeed}
               floatIntensity={floatIntensity}

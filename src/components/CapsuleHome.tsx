@@ -100,10 +100,13 @@ export default function CapsuleHome() {
   const intro = useControls(
     'Intro',
     restoreSchema('Intro', {
-      delay: { value: 0.5, min: 0, max: 4, step: 0.05, label: 'Delay' },
-      duration: { value: 2.4, min: 0.2, max: 6, step: 0.05, label: 'Time' },
+      delay: { value: 0.35, min: 0, max: 4, step: 0.05, label: 'Delay' },
+      duration: { value: 2.6, min: 0.2, max: 6, step: 0.05, label: 'Time' },
+      // The label starts as one straight run of type and curls into the ring.
+      ringSpacing: { value: 15, min: 2, max: 60, step: 1, label: 'Line spacing' },
+      ringWind: { value: 220, min: -720, max: 720, step: 5, label: 'Ring unwind' },
       productRise: { value: -1.5, min: -8, max: 0, step: 0.05, label: 'Product from' },
-      ringRise: { value: 730, min: 0, max: 2000, step: 10, label: 'Ring from' }
+      productTurn: { value: 150, min: -360, max: 360, step: 5, label: 'Product turn' }
     })
   )
 
@@ -180,13 +183,15 @@ export default function CapsuleHome() {
         <div className="ch-stage">
           <ProductRing
             {...ring}
-            introFrom={intro.ringRise}
+            introSpacing={intro.ringSpacing}
+            introWind={intro.ringWind}
             introDelay={intro.delay}
             introDuration={intro.duration}
           />
           <CapsuleStage
             {...product}
             introFrom={intro.productRise}
+            introTurn={intro.productTurn}
             introDelay={intro.delay}
             introDuration={intro.duration}
           />
