@@ -146,24 +146,31 @@
   align-items: center;
   justify-content: center;
   min-height: 0;
+  /* Perspective belongs to the shared parent of both ring layers and the
+     model, so all three sort against each other by z-index. Putting it on a
+     ring wrapper instead would box the layers into their own context and the
+     model could never sit between them. */
+  perspective: 1100px;
+  perspective-origin: 50% 50%;
 }
 
 /* ---- the ring ---- */
 
-.ch-ring-wrap {
-  position: relative;
-  /* Perspective has to live on an ancestor of the tilted plane, not on the
-     plane itself, or every glyph gets its own vanishing point. */
-  perspective: 1600px;
-  perspective-origin: 50% 50%;
-  transform: rotate(-15deg);
+/* The two halves of the ring. Both hold every glyph and hide the half they
+   do not own; z-index puts the model between them. */
+.ch-ring-layer {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  pointer-events: none;
 }
 
-.ch-ring {
-  position: relative;
-  transform-style: preserve-3d;
-  /* Laid almost flat, so the circle reads as an ellipse seen from above. */
-  transform: rotateX(72deg);
+.ch-ring-layer.is-back {
+  z-index: -1;
+}
+
+.ch-ring-layer.is-front {
+  z-index: 1;
 }
 
 .ch-ring-glyph {
@@ -171,16 +178,26 @@
   top: 50%;
   left: 50%;
   margin: 0;
-  transform-origin: 0 0;
   white-space: pre;
-  font-size: 21px;
   font-weight: 700;
   /* Glyphs are placed one by one, so spacing is angular — a tracking value
      here would only shift each one off its own centre. */
   letter-spacing: 0;
   line-height: 1;
   color: #000000;
-  will-change: transform, filter, opacity;
+  will-change: filter, opacity;
+}
+
+/* The ring is decorative once it is 200 spans; this carries the actual name
+   for screen readers and nothing else. */
+.ch-ring-label,
+.ch-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 /* Soft contact shadow under the ring — the blurred slab from the spec. */
@@ -188,6 +205,7 @@
   position: absolute;
   top: 50%;
   left: 50%;
+  z-index: -2;
   width: 600px;
   height: 229px;
   transform: translate(-50%, -50%) rotate(-15deg);
@@ -206,6 +224,9 @@
   position: absolute;
   top: 50%;
   left: 50%;
+  /* Sits at 0 so the ring's far arc (-1) passes behind it and the near
+     arc (1) in front — the orbit reads as going round the product. */
+  z-index: 0;
   transform: translate(-50%, -50%);
   width: 400px;
   height: 400px;

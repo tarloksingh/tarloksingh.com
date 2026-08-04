@@ -1,47 +1,61 @@
 import { useEffect, useMemo, useRef } from 'react'
 
 interface ProductRingProps {
-  /** Repeated around the circle, separated by `separator`. */
+  /** Repeated around the ring, separated by `separator`. */
   label: string
   separator?: string
   /** How many times the label appears in one full turn. */
   repeats?: number
-  /** Circle radius in px, before the plane is tilted. */
+  /** Radius of the cylinder in px. */
   radius?: number
+  /** How far the ring is tipped toward the viewer, degrees. */
+  tiltX?: number
+  /** Screen-plane tilt of the whole ring, degrees. */
+  tiltZ?: number
   /** Seconds for one full revolution. Negative runs it anticlockwise. */
   period?: number
-  /** Blur applied to the glyph nearest the camera. */
+  /** Blur on the glyph furthest from the camera. */
   maxBlur?: number
   fontSize?: number
 }
 
 /**
- * Type printed flat on a disc that is lying almost horizontal, so the circle
- * reads as an ellipse and the far arc runs upside-down.
+ * The product name standing up around the product — a band of type on a
+ * turntable, not type printed flat on one. Each glyph sits on the surface of
+ * a cylinder facing outward, so the front of the ring reads square to camera.
  *
- * Each glyph is its own absolutely-positioned element rather than an SVG
- * `textPath`, because the look depends on treating them individually: the arc
- * swinging toward the camera is blurred and faded, which is what sells the
- * disc as a physical object rather than a flat ellipse of text.
+ * Two things to know before changing this:
  *
- * Positions are written straight to the DOM from a rAF loop. Driving this
- * through React state would re-render every glyph 60 times a second for
- * transforms that never touch the component tree.
+ * A flattened 2D ellipse with upright glyphs looks right at the top and
+ * bottom and falls apart at the sides: where the path runs vertical on screen
+ * the horizontal gap between neighbours collapses and the letters pile up.
+ * Placing them on a real cylinder spends the spacing as rotation instead, so
+ * it stays even the whole way round.
+ *
+ * The glyphs are duplicated across two layers, one behind the model and one
+ * in front, each hiding the half it does not own. `preserve-3d` puts every
+ * glyph in a single 3D rendering context that sorts by depth and ignores
+ * z-index, so one layer could never straddle the model — and the model is a
+ * WebGL canvas, which cannot join that context at all.
  */
 export default function ProductRing({
   label,
   separator = '|',
   repeats = 6,
   radius = 300,
+  tiltX = -12,
+  tiltZ = -15,
   period = 24,
-  maxBlur = 6,
+  maxBlur = 3.5,
   fontSize = 26
 }: ProductRingProps) {
-  const ringRef = useRef<HTMLDivElement>(null)
-  const glyphRefs = useRef<(HTMLSpanElement | null)[]>([])
+  const backRef = useRef<HTMLDivElement>(null)
+  const frontRef = useRef<HTMLDivElement>(null)
+  const backGlyphs = useRef<(HTMLSpanElement | null)[]>([])
+  const frontGlyphs = useRef<(HTMLSpanElement | null)[]>([])
 
   // One unit is the label plus its separator, padded so the two never collide
-  // once they are spread round the circle.
+  // once they are spread round the ring.
   const glyphs = useMemo(() => {
     const unit = `${label}   ${separator}   `
     return Array.from(unit.repeat(repeats))
@@ -57,26 +71,30 @@ export default function ProductRing({
     let start = 0
 
     const draw = (spin: number) => {
+      // One write per layer turns the whole ring; the glyphs inside are
+      // static and just come along for the ride.
+      const frame = `rotateZ(${tiltZ}deg) rotateX(${tiltX}deg) rotateY(${spin}deg)`
+      if (backRef.current) backRef.current.style.transform = frame
+      if (frontRef.current) frontRef.current.style.transform = frame
+
       for (let i = 0; i < count; i += 1) {
-        const el = glyphRefs.current[i]
-        if (!el) continue
+        const rad = ((i * step + spin) * Math.PI) / 180
+        // +1 dead ahead, -1 directly behind the product.
+        const facing = Math.cos(rad)
+        const behind = Math.max(0, -facing)
+        const blur = `blur(${(maxBlur * Math.pow(behind, 1.4)).toFixed(2)}px)`
+        const dim = (1 - 0.55 * behind).toFixed(3)
 
-        const angle = i * step + spin
-        const rad = (angle * Math.PI) / 180
-
-        // CSS +Y runs down the screen, so a glyph below the centre is the one
-        // the tilt brings toward the camera. Clamping at zero leaves the whole
-        // far arc crisp — spreading the blur across both halves washes the
-        // label out and there is nothing left to read.
-        const nearness = Math.max(0, Math.sin(rad))
-
-        // Rotate into place, push out to the rim, then turn a further quarter
-        // turn so the glyph sits tangent to the circle instead of pointing at
-        // the middle of it.
-        el.style.transform =
-          `rotate(${angle}deg) translateX(${radius}px) rotate(90deg) translate(-50%, -50%)`
-        el.style.filter = `blur(${(maxBlur * Math.pow(nearness, 1.4)).toFixed(2)}px)`
-        el.style.opacity = (1 - 0.55 * nearness).toFixed(3)
+        const back = backGlyphs.current[i]
+        if (back) {
+          back.style.opacity = facing <= 0 ? dim : '0'
+          back.style.filter = blur
+        }
+        const front = frontGlyphs.current[i]
+        if (front) {
+          front.style.opacity = facing > 0 ? dim : '0'
+          front.style.filter = blur
+        }
       }
     }
 
@@ -87,33 +105,44 @@ export default function ProductRing({
 
     const tick = (now: number) => {
       if (!start) start = now
-      const turns = ((now - start) / 1000 / period) * 360
-      draw(turns)
+      draw(((now - start) / 1000 / period) * 360)
       raf = requestAnimationFrame(tick)
     }
 
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [glyphs, radius, period, maxBlur])
+  }, [glyphs, radius, tiltX, tiltZ, period, maxBlur])
+
+  const layer = (
+    which: 'back' | 'front',
+    ref: React.RefObject<HTMLDivElement>,
+    store: React.MutableRefObject<(HTMLSpanElement | null)[]>
+  ) => (
+    <div className={`ch-ring-layer is-${which}`} ref={ref} aria-hidden="true">
+      {glyphs.map((ch, i) => (
+        <span
+          key={i}
+          className="ch-ring-glyph"
+          style={{
+            fontSize,
+            transform: `translate(-50%, -50%) rotateY(${i * (360 / glyphs.length)}deg) translateZ(${radius}px)`
+          }}
+          ref={(el) => {
+            store.current[i] = el
+          }}
+        >
+          {ch}
+        </span>
+      ))}
+    </div>
+  )
 
   return (
-    <div className="ch-ring-wrap" aria-label={label}>
+    <>
       <div className="ch-ring-shadow" aria-hidden="true" />
-      <div className="ch-ring" ref={ringRef}>
-        {glyphs.map((ch, i) => (
-          <span
-            key={i}
-            aria-hidden="true"
-            className="ch-ring-glyph"
-            style={{ fontSize }}
-            ref={(el) => {
-              glyphRefs.current[i] = el
-            }}
-          >
-            {ch}
-          </span>
-        ))}
-      </div>
-    </div>
+      {layer('back', backRef, backGlyphs)}
+      {layer('front', frontRef, frontGlyphs)}
+      <span className="ch-ring-label">{label}</span>
+    </>
   )
 }
