@@ -20,8 +20,6 @@ interface ProductRingProps {
   offsetY?: number
   /** Seconds for one full revolution. Negative runs it anticlockwise. */
   period?: number
-  /** Blur on the glyph furthest from the camera. */
-  maxBlur?: number
   fontSize?: number
 }
 
@@ -48,15 +46,14 @@ export default function ProductRing({
   label,
   separator = '',
   gap = 4,
-  repeats = 6,
-  radius = 300,
-  tiltX = -12,
-  tiltZ = -15,
-  offsetX = 0,
-  offsetY = 0,
-  period = 24,
-  maxBlur = 3.5,
-  fontSize = 26
+  repeats = 14,
+  radius = 700,
+  tiltX = 8,
+  tiltZ = 7,
+  offsetX = 8,
+  offsetY = 41,
+  period = -90,
+  fontSize = 14
 }: ProductRingProps) {
   const backRef = useRef<HTMLDivElement>(null)
   const frontRef = useRef<HTMLDivElement>(null)
@@ -97,33 +94,24 @@ export default function ProductRing({
         const facing = Math.cos(rad)
         const behind = Math.max(0, -facing)
 
-        // Quantised, and only written when the bucket actually changes.
-        // A blur is a full re-rasterisation of the element, so pushing ~200
-        // of them every frame is what makes the ring expensive — most frames
-        // move a glyph far too little to be visible anyway.
-        const blurStep = Math.round((maxBlur * Math.pow(behind, 1.4)) / 0.25)
+        // Opacity only. There was a depth blur here, and it was the whole
+        // performance problem: a blur filter re-rasterises the element, and
+        // ~200 of those a frame is far beyond what compositing absorbs.
+        // Fading the far arc gives the same read for nothing.
         const dimStep = Math.round((1 - 0.55 * behind) / 0.02)
-
         const isFront = facing > 0
-        // Bit 0 carries which half owns the glyph, so a glyph crossing the
-        // seam still writes even when its blur and opacity have not moved.
-        const key = (blurStep << 9) | (dimStep << 1) | (isFront ? 1 : 0)
+
+        // Bit 0 carries which half owns the glyph, so one crossing the seam
+        // still writes even when its opacity has not moved.
+        const key = (dimStep << 1) | (isFront ? 1 : 0)
         if (lastKey[i] === key) continue
         lastKey[i] = key
 
-        const blur = blurStep ? `blur(${(blurStep * 0.25).toFixed(2)}px)` : 'none'
         const dim = (dimStep * 0.02).toFixed(2)
-
         const back = backGlyphs.current[i]
-        if (back) {
-          back.style.opacity = isFront ? '0' : dim
-          back.style.filter = blur
-        }
+        if (back) back.style.opacity = isFront ? '0' : dim
         const front = frontGlyphs.current[i]
-        if (front) {
-          front.style.opacity = isFront ? dim : '0'
-          front.style.filter = blur
-        }
+        if (front) front.style.opacity = isFront ? dim : '0'
       }
     }
 
@@ -140,7 +128,7 @@ export default function ProductRing({
 
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [glyphs, radius, tiltX, tiltZ, offsetX, offsetY, period, maxBlur])
+  }, [glyphs, radius, tiltX, tiltZ, offsetX, offsetY, period])
 
   const layer = (
     which: 'back' | 'front',

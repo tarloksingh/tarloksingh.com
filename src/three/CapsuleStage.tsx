@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useMemo, useRef } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { Center, useGLTF } from '@react-three/drei'
+import { Center, Float, useGLTF } from '@react-three/drei'
 import { ACESFilmicToneMapping, Box3, Color, PMREMGenerator, SRGBColorSpace, Vector3 } from 'three'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import type { Group, Mesh, MeshStandardMaterial, PerspectiveCamera } from 'three'
@@ -193,20 +193,28 @@ export interface CapsuleStageProps {
   azimuth?: number
   elevation?: number
   distance?: number
+  /** How far the product drifts up and down. 0 holds it still. */
+  floatIntensity?: number
+  /** How much it lolls on its axes as it drifts. */
+  floatRotation?: number
+  floatSpeed?: number
 }
 
 export default function CapsuleStage({
-  focalLength = 50,
-  modelScale = 1,
-  rpm = 3,
-  exposure = 1.15,
-  envIntensity = 1,
-  keyIntensity = 1.6,
-  ambientIntensity = 0.35,
+  focalLength = 85,
+  modelScale = 1.22,
+  rpm = 1,
+  exposure = 0.7,
+  envIntensity = 0.4,
+  keyIntensity = 1.5,
+  ambientIntensity = 0.2,
   fallbackColor = '#000000',
-  azimuth = 0,
+  azimuth = -171,
   elevation = 19,
-  distance = 7.4
+  distance = 9.4,
+  floatIntensity = 1,
+  floatRotation = 0.25,
+  floatSpeed = 1.6
 }: CapsuleStageProps) {
   return (
     <div className="ch-model">
@@ -250,9 +258,18 @@ export default function CapsuleStage({
         {/* Nothing stands in while the model streams — a placeholder mesh here
             reads as a second, wrong product flashing up before the real one. */}
         <Suspense fallback={null}>
-          <Spin rpm={rpm}>
-            <LoadedModel url={MODEL_URL} scale={modelScale} fallbackColor={fallbackColor} />
-          </Spin>
+          {/* Float sits outside Spin so the drift is added on top of the
+              turn rather than being turned with it — the two are meant to be
+              usable independently, either one at 0. */}
+          <Float
+            speed={floatSpeed}
+            floatIntensity={floatIntensity}
+            rotationIntensity={floatRotation}
+          >
+            <Spin rpm={rpm}>
+              <LoadedModel url={MODEL_URL} scale={modelScale} fallbackColor={fallbackColor} />
+            </Spin>
+          </Float>
         </Suspense>
       </Canvas>
     </div>
