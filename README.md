@@ -17,9 +17,56 @@ The dev server binds to `0.0.0.0` and `vite.config.ts` allow-lists `.ts.net`, so
 the site is reachable over the tailnet while `npm run dev` is running —
 `http://tarloks-mac-mini.tail795683.ts.net:5173`.
 
-## The page
+## Two home pages
 
-One screen (`src/components/Home.tsx`): name and nav up top, a cluster of
+There are two, and `src/App.tsx` picks between them:
+
+| URL | Page | |
+|---|---|---|
+| `/` | `CapsuleHome.tsx` | The product on a stage, its name turning around it |
+| `/?v=cards` | `Home.tsx` | The original shuffling card cluster, untouched |
+
+Neither is live yet — `main` still holds the old Vue site, and the domain is
+served from a **different repo** (`tarloksingh/my-portfolio`, private) via
+Vercel. Pushing this branch does not deploy anything.
+
+## The product page
+
+`src/components/CapsuleHome.tsx`, built to a 2048x1080 frame: a fixed 405px
+stone sidebar carrying the identity, and a gradient stage holding the product.
+
+**On load** the copy reveals first — each block clipped to its own box so the
+characters climb into view from under the cut, cascading one block after the
+next. The product rises into frame from below while that is still running, on
+position alone: scaling it up would read as the product moving toward the
+camera, and the page holds a fixed lens on a fixed subject.
+
+**The name ring** is a band of type standing up around the product, not lying
+flat on a turntable. Each glyph sits on the surface of a cylinder facing
+outward, so the front of the ring reads square to camera.
+
+Two things about it are easy to undo by accident:
+
+- **It is a cylinder, not a flattened ellipse.** Upright glyphs on a 2D ellipse
+  look right at the top and bottom and fall apart at the sides, where the path
+  runs vertical on screen, the horizontal gap between neighbours collapses and
+  the letters pile into an unreadable clump. Rotation spends that spacing
+  evenly the whole way round.
+- **The glyphs are duplicated across two layers**, one either side of the model,
+  each hiding the half it does not own. `preserve-3d` puts every glyph into one
+  3D rendering context that sorts by depth and *ignores z-index*, so a single
+  layer could never straddle the model — and the model is a WebGL canvas, which
+  cannot join that context at all. Perspective therefore lives on `.ch-stage`,
+  the shared parent of both layers and the canvas.
+
+There was a depth blur on the far arc. It is gone: a CSS blur re-rasterises its
+element, and ~200 of those a frame is well past what compositing absorbs. The
+far arc fades instead, and the loop skips any glyph whose opacity bucket has
+not changed.
+
+## The card page
+
+`src/components/Home.tsx`: name and nav up top, a cluster of
 overlapping project cards in the middle with the project title over them, and
 passion/focus copy along the bottom.
 
@@ -70,7 +117,10 @@ video it has never seen.
 
 | Path | What it does |
 |---|---|
-| `src/components/Home.tsx` | The whole page: intro, shuffle, swipe/scroll, controls |
+| `src/components/CapsuleHome.tsx` | The product page: layout, copy reveals, both control groups |
+| `src/components/ProductRing.tsx` | The name ring — cylinder placement, two layers, spin |
+| `src/three/CapsuleStage.tsx` | Canvas, camera rig, environment, entrance, float, model load |
+| `src/components/Home.tsx` | The card page: intro, shuffle, swipe/scroll, controls |
 | `src/components/BlurText.tsx` | Per-character reveal, forward and reverse |
 | `src/data/projectMedia.ts` | Resolves each project's assets, plus per-project overrides |
 | `src/data/work.ts` | Project list (id, title, description) |
@@ -78,7 +128,43 @@ video it has never seen.
 
 Everything from the previous build — the three-scene track, the dance floor, the
 gravity drop, the crawl-off, the option wheel — is still on disk and untouched,
-just no longer mounted. `src/App.tsx` renders `Home` and nothing else.
+just no longer mounted.
+
+## The model
+
+`public/models/capsule-c1.glb`, exported from Blender and already
+Draco-compressed (64KB). The decoder is served from `public/draco/` rather than
+Google's CDN, so the page makes no third-party request.
+
+Three things about glTF that the page has to work around, all of which look
+like rendering bugs and are not:
+
+- **Nothing about lighting survives the export.** No lights, no world, no HDRI,
+  no view transform. That matters most for a gloss-white object, which shows
+  *reflection* rather than diffuse colour and renders as a flat silhouette with
+  nothing to reflect. `StudioEnvironment` builds one procedurally with
+  `RoomEnvironment`, and the canvas tone-maps through ACES to approximate
+  Blender's view transform.
+- **A material exported without a `pbrMetallicRoughness` block takes the spec
+  default** — white, but *fully metallic and fully rough*, which has no diffuse
+  colour and no sharp reflection and lands on near black. Blender draws the same
+  material as light grey. Both logos in this export come through that way, so
+  `LoadedModel` restores a dielectric; the test is the exact 1.0/1.0/white
+  triple only the glTF default produces, so real materials fall through
+  untouched.
+- **Flat decals z-fight.** The logos are coplanar with the case to within a
+  rounding error. `near`/`far` are pulled tight around the subject (the default
+  0.1–1000 leaves almost no depth precision near the model) and the decal
+  materials carry a polygon offset.
+
+Framing is derived from the model's own bounding box, normalised to
+`TARGET_SIZE`, so the next export lands correctly whatever scale its scene
+happened to use — this one arrives 0.3 units on its longest edge.
+
+An earlier export was 9.9MB with **89% of its triangles carrying no material at
+all** and the whole Blender staging scene included — a backdrop plane and two
+2-unit sheets that dominated every bounding-box measurement. If a future export
+suddenly renders black, or shrinks to a speck, check for those two things first.
 
 ## Tuning panel
 
@@ -87,6 +173,27 @@ the flag, and works on a phone over the tailnet — it docks to the bottom edge 
 small screens, opts back into touch (the page sets `touch-action: none` for the
 swipe gesture), and stops its own touch and wheel events reaching the swipe
 handlers so dragging a slider does not change project.
+
+On the product page:
+
+| Group | Control | What it does |
+|---|---|---|
+| Ring | Text / Separator / Gap | The label, what sits between repeats, and the spaces that set their spacing. Separator is empty by default |
+| | How many | Repeats in one full turn |
+| | Text size / Ring size | Glyph size, and the cylinder's radius in px |
+| | Spin (s/turn) | Seconds per revolution; negative runs it anticlockwise |
+| | Tip / Roll | Tilt toward the viewer, and in the screen plane |
+| | Nudge X/Y | Moves the ring off the stage's centre |
+| Product | Lens (mm) | Real focal length against a full-frame back, not a raw fov |
+| | Size | Multiplies the auto-fit |
+| | Camera back / height / around | Distance, elevation and orbit. The camera always aims at the model |
+| | Spin (rpm) | Turntable rotation |
+| | Float rise / loll / speed | Idle drift, usable *instead* of the spin — set one to 0 |
+| | Rise from / delay / time | The entrance: how far below frame it starts, and when |
+| | Exposure / Environment / Key light / Ambient | Tone-mapping exposure and the three light sources |
+| | Untyped material | Colour for materials that arrived without a PBR block |
+
+On the card page:
 
 | Group | Control | What it does |
 |---|---|---|
@@ -110,13 +217,22 @@ which it is over plain http on the tailnet, so on a phone read it from the
 console rather than expecting the clipboard to fill.
 
 To promote tuned values into the code, copy them out and edit the matching
-`value:` fields in `src/components/Home.tsx`.
+`value:` fields — `src/components/CapsuleHome.tsx` for the product page,
+`src/components/Home.tsx` for the cards. Saved values in `localStorage` take
+priority over the coded defaults, so **Reset all settings** is how you check
+what a first-time visitor actually sees.
 
 ## Outstanding
 
-- **Asset weight.** ~126MB under `src/assets`, uncompressed — `mr-takahashi`
-  23MB, `openup` 21MB, `capsule-c1` 17MB. Preloading neighbours hides the
-  latency but the bytes are still real on a phone. Compressing these is the
-  durable fix.
-- **Clicking a card** logs the project id; there is no project detail view yet.
+- **Only one product.** The stage is wired for `capsule-c1` alone; nothing
+  cycles between projects yet.
+- **The remaining exports.** Only the Capsule has a model. The other nine
+  projects still have nothing to stand on this stage.
+- **Deployment.** The domain is served from `tarloksingh/my-portfolio`, a
+  different repo. This one deploys nowhere.
+- **Clicking a card** (card page) logs the project id; there is no detail view.
 - **Nav links** — "Home" is inert, "Contact" is a `mailto:`.
+
+Card video was ~112MB and is now ~61MB — re-encoded to a 1280px long edge, H.264
+CRF 26, audio dropped (every card plays muted). SSIM against the originals is
+0.989–1.000, so it is visually a wash. `src/assets` totals ~74MB.

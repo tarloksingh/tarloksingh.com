@@ -56,35 +56,39 @@ export default function CapsuleHome() {
     restoreSchema('Ring', {
       label: { value: 'CAPSULE C1', label: 'Text' },
       separator: { value: '', label: 'Separator' },
-      gap: { value: 4, min: 1, max: 24, step: 1, label: 'Gap (spaces)' },
-      repeats: { value: 14, min: 1, max: 48, step: 1, label: 'How many' },
-      fontSize: { value: 14, min: 6, max: 96, step: 1, label: 'Text size' },
-      radius: { value: 700, min: 80, max: 1600, step: 5, label: 'Ring size' },
-      period: { value: -90, min: -300, max: 300, step: 1, label: 'Spin (s/turn)' },
-      tiltX: { value: 8, min: -80, max: 80, step: 1, label: 'Tip' },
-      tiltZ: { value: 7, min: -80, max: 80, step: 1, label: 'Roll' },
-      offsetX: { value: 8, min: -800, max: 800, step: 1, label: 'Nudge X' },
-      offsetY: { value: 41, min: -800, max: 800, step: 1, label: 'Nudge Y' }
+      gap: { value: 2, min: 1, max: 24, step: 1, label: 'Gap (spaces)' },
+      repeats: { value: 21, min: 1, max: 48, step: 1, label: 'How many' },
+      fontSize: { value: 19, min: 6, max: 96, step: 1, label: 'Text size' },
+      radius: { value: 695, min: 80, max: 1600, step: 5, label: 'Ring size' },
+      period: { value: -126, min: -300, max: 300, step: 1, label: 'Spin (s/turn)' },
+      tiltX: { value: -5, min: -80, max: 80, step: 1, label: 'Tip' },
+      tiltZ: { value: 18, min: -80, max: 80, step: 1, label: 'Roll' },
+      offsetX: { value: -16, min: -800, max: 800, step: 1, label: 'Nudge X' },
+      offsetY: { value: -68, min: -800, max: 800, step: 1, label: 'Nudge Y' }
     })
   )
 
   const product = useControls(
     'Product',
     restoreSchema('Product', {
-      focalLength: { value: 85, min: 14, max: 300, step: 1, label: 'Lens (mm)' },
-      modelScale: { value: 1.22, min: 0.2, max: 4, step: 0.02, label: 'Size' },
-      distance: { value: 9.4, min: 2, max: 40, step: 0.1, label: 'Camera back' },
-      elevation: { value: 19, min: -80, max: 85, step: 1, label: 'Camera height' },
-      azimuth: { value: -171, min: -180, max: 180, step: 1, label: 'Camera around' },
-      rpm: { value: 1, min: -30, max: 30, step: 0.5, label: 'Spin (rpm)' },
+      focalLength: { value: 103, min: 14, max: 300, step: 1, label: 'Lens (mm)' },
+      modelScale: { value: 1.1, min: 0.2, max: 4, step: 0.02, label: 'Size' },
+      distance: { value: 9, min: 2, max: 40, step: 0.1, label: 'Camera back' },
+      elevation: { value: 27, min: -80, max: 85, step: 1, label: 'Camera height' },
+      azimuth: { value: 53, min: -180, max: 180, step: 1, label: 'Camera around' },
+      rpm: { value: 0, min: -30, max: 30, step: 0.5, label: 'Spin (rpm)' },
       // Drift, usable instead of the spin — set one to 0 and drive the other.
-      floatIntensity: { value: 1, min: 0, max: 6, step: 0.05, label: 'Float rise' },
-      floatRotation: { value: 0.25, min: 0, max: 3, step: 0.05, label: 'Float loll' },
-      floatSpeed: { value: 1.6, min: 0, max: 8, step: 0.1, label: 'Float speed' },
-      exposure: { value: 0.7, min: 0.1, max: 3, step: 0.05, label: 'Exposure' },
-      envIntensity: { value: 0.4, min: 0, max: 4, step: 0.05, label: 'Environment' },
-      keyIntensity: { value: 1.5, min: 0, max: 8, step: 0.1, label: 'Key light' },
-      ambientIntensity: { value: 0.2, min: 0, max: 3, step: 0.05, label: 'Ambient' },
+      floatIntensity: { value: 0.9, min: 0, max: 6, step: 0.05, label: 'Float rise' },
+      floatRotation: { value: 0.8, min: 0, max: 3, step: 0.05, label: 'Float loll' },
+      floatSpeed: { value: 2.5, min: 0, max: 8, step: 0.1, label: 'Float speed' },
+      // Entrance: rises into frame while the copy is still revealing.
+      introFrom: { value: -4, min: -12, max: 0, step: 0.1, label: 'Rise from' },
+      introDelay: { value: 0.5, min: 0, max: 4, step: 0.05, label: 'Rise delay' },
+      introDuration: { value: 2.4, min: 0.2, max: 6, step: 0.05, label: 'Rise time' },
+      exposure: { value: 0.1, min: 0.1, max: 3, step: 0.05, label: 'Exposure' },
+      envIntensity: { value: 4, min: 0, max: 8, step: 0.05, label: 'Environment' },
+      keyIntensity: { value: 4.4, min: 0, max: 12, step: 0.1, label: 'Key light' },
+      ambientIntensity: { value: 0, min: 0, max: 3, step: 0.05, label: 'Ambient' },
       // Both logos reach glTF without a material block and would otherwise
       // take the spec default, which renders as bright chrome.
       fallbackColor: { value: '#000000', label: 'Untyped material' }

@@ -32,6 +32,59 @@ export function fovForFocalLength(mm: number) {
   return (2 * Math.atan(24 / (2 * mm)) * 180) / Math.PI
 }
 
+interface EntranceProps {
+  children: React.ReactNode
+  /** World units below its resting place that the product starts from. */
+  from: number
+  delay: number
+  duration: number
+}
+
+/**
+ * Rises the product into place from below the frame while the copy is still
+ * revealing.
+ *
+ * It wraps Float rather than sitting inside it, so the drift is already
+ * running as the product arrives and the two never fight over position.y —
+ * the entrance moves the parent, Float moves the child.
+ *
+ * Position only, deliberately: scaling it up would read as the product
+ * approaching the camera, and the page holds a fixed lens on a fixed subject.
+ */
+function Entrance({ children, from, delay, duration }: EntranceProps) {
+  const ref = useRef<Group>(null)
+  const startedAt = useRef(0)
+  const settled = useRef(false)
+
+  useEffect(() => {
+    startedAt.current = performance.now()
+    settled.current = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (ref.current) ref.current.position.y = settled.current ? 0 : from
+  }, [from, delay, duration])
+
+  // Progress is read from the wall clock rather than summed frame deltas.
+  // The two only agree while frames are arriving steadily, and the first
+  // second of this page is exactly when they are not — decoding the model
+  // can starve the loop outright. Summing deltas there strands the product
+  // below the frame and it never climbs back; against the clock, whatever
+  // frame lands next is already in the right place.
+  useFrame(() => {
+    const group = ref.current
+    if (!group || settled.current) return
+
+    const seconds = (performance.now() - startedAt.current) / 1000
+    const t = Math.min(1, Math.max(0, (seconds - delay) / duration))
+    // power3.out, to match the easing the copy reveals on.
+    group.position.y = from * Math.pow(1 - t, 3)
+    if (t >= 1) {
+      group.position.y = 0
+      settled.current = true
+    }
+  })
+
+  return <group ref={ref}>{children}</group>
+}
+
 function Spin({ children, rpm }: { children: React.ReactNode; rpm: number }) {
   const ref = useRef<Group>(null)
   useFrame((_, delta) => {
@@ -198,23 +251,30 @@ export interface CapsuleStageProps {
   /** How much it lolls on its axes as it drifts. */
   floatRotation?: number
   floatSpeed?: number
+  /** World units below its resting place the product rises in from. */
+  introFrom?: number
+  introDelay?: number
+  introDuration?: number
 }
 
 export default function CapsuleStage({
-  focalLength = 85,
-  modelScale = 1.22,
-  rpm = 1,
-  exposure = 0.7,
-  envIntensity = 0.4,
-  keyIntensity = 1.5,
-  ambientIntensity = 0.2,
+  focalLength = 103,
+  modelScale = 1.1,
+  rpm = 0,
+  exposure = 0.1,
+  envIntensity = 4,
+  keyIntensity = 4.4,
+  ambientIntensity = 0,
   fallbackColor = '#000000',
-  azimuth = -171,
-  elevation = 19,
-  distance = 9.4,
-  floatIntensity = 1,
-  floatRotation = 0.25,
-  floatSpeed = 1.6
+  azimuth = 53,
+  elevation = 27,
+  distance = 9,
+  floatIntensity = 0.9,
+  floatRotation = 0.8,
+  floatSpeed = 2.5,
+  introFrom = -4,
+  introDelay = 0.5,
+  introDuration = 2.4
 }: CapsuleStageProps) {
   return (
     <div className="ch-model">
@@ -261,15 +321,17 @@ export default function CapsuleStage({
           {/* Float sits outside Spin so the drift is added on top of the
               turn rather than being turned with it — the two are meant to be
               usable independently, either one at 0. */}
-          <Float
-            speed={floatSpeed}
-            floatIntensity={floatIntensity}
-            rotationIntensity={floatRotation}
-          >
-            <Spin rpm={rpm}>
-              <LoadedModel url={MODEL_URL} scale={modelScale} fallbackColor={fallbackColor} />
-            </Spin>
-          </Float>
+          <Entrance from={introFrom} delay={introDelay} duration={introDuration}>
+            <Float
+              speed={floatSpeed}
+              floatIntensity={floatIntensity}
+              rotationIntensity={floatRotation}
+            >
+              <Spin rpm={rpm}>
+                <LoadedModel url={MODEL_URL} scale={modelScale} fallbackColor={fallbackColor} />
+              </Spin>
+            </Float>
+          </Entrance>
         </Suspense>
       </Canvas>
     </div>

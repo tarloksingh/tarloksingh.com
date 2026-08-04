@@ -45,15 +45,15 @@ interface ProductRingProps {
 export default function ProductRing({
   label,
   separator = '',
-  gap = 4,
-  repeats = 14,
-  radius = 700,
-  tiltX = 8,
-  tiltZ = 7,
-  offsetX = 8,
-  offsetY = 41,
-  period = -90,
-  fontSize = 14
+  gap = 2,
+  repeats = 21,
+  radius = 695,
+  tiltX = -5,
+  tiltZ = 18,
+  offsetX = -16,
+  offsetY = -68,
+  period = -126,
+  fontSize = 19
 }: ProductRingProps) {
   const backRef = useRef<HTMLDivElement>(null)
   const frontRef = useRef<HTMLDivElement>(null)
