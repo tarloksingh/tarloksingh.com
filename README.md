@@ -360,49 +360,7 @@ Personal hotspot also works in airplane mode if you want the real thing in a
 real browser: `npm run dev -- --host`, then open the printed LAN address on the
 phone. That is a local network, no internet involved.
 
-### Adjusting the mobile layout by hand
-
-There is a visual tuner for moving and resizing things on the phone layout
-without writing CSS. It appears automatically whenever the dev server is open
-at 700px or narrower — inside the `dev-preview.html` phone frame, in a narrowed
-browser window, or on an actual phone over hotspot. `?tune=1` forces it on at
-any width, which is only useful for looking at it.
-
-How it goes:
-
-1. **Pick element** — press it, then tap the thing you want to change. A tap
-   lands on whatever is topmost, which is often a wrapper rather than the thing
-   you meant; **↑ parent** steps outward until the green outline is around the
-   right element.
-2. **Move it** — drag the outlined element, or use the left/right and up/down
-   sliders, or the arrow keys (shift for 10px at a time).
-3. **Resize it** — `size` scales the whole element, including images and
-   canvases. `text size`, `width`, `padding`, `gap`, `space above` and
-   `line height` do the more specific jobs. `hide` drops the element from the
-   phone layout entirely.
-4. **Save to CSS** — writes everything to `src/mobile-tweaks.css`. Until you
-   press it, changes are live in the page but not on disk.
-
-The `×` next to a slider clears that one value back to whatever the stylesheet
-says. **Reset this** clears the selected element, **Reset all** clears
-everything, **Undo** steps back through the last 40 changes.
-
-Two things worth knowing. The panel shows a warning when the name it picked
-matches more than one element — those all move together, which is sometimes
-what you want and sometimes a surprise. And movement is written as `translate`
-and `scale` rather than `transform`, because GSAP animates `transform` through
-inline styles that no stylesheet can outrank; the separate properties compose
-with the animations instead of fighting them.
-
-The tuner is dev-only. `main.tsx` loads it behind `import.meta.env.DEV` and the
-Vite plugin that writes the file is `apply: 'serve'`, so none of it exists in a
-production build — only the generated CSS ships.
-
 ### Keeping the wider layout untouched
-
-Anything the tuner writes is safe by construction — `src/mobile-tweaks.css` is
-one big `max-width: 700px` query and nothing else can be added to it. The rest
-of this applies to CSS edited by hand.
 
 Mobile work is safe when it lives inside a `max-width` block rather than
 changing a shared rule. The existing breakpoints are `700px` in `src/style.css`
