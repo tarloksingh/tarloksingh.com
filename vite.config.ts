@@ -12,5 +12,10 @@ export default defineConfig({
     // opening the tailnet hostname on a phone returns "Blocked request".
     // A leading dot matches the domain and any subdomain of it.
     allowedHosts: ['.ts.net']
+  },
+  preview: {
+    host: '0.0.0.0',
+    port: 5173,
+    allowedHosts: ['.ts.net']
   }
 })

@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { button, Leva, useControls } from 'leva'
 import BlurText from './BlurText'
 import ProductRing from './ProductRing'
-import CapsuleStage from '../three/CapsuleStage'
+import CapsuleStage, { MODEL_URL } from '../three/CapsuleStage'
+import { workProjects } from '../data/work'
 import {
   clearPersistedControls,
   exportPersistedControls,
@@ -38,6 +39,21 @@ const PHONE_QUERY = '(max-width: 700px)'
 // leave the ring orbiting empty space above the product.
 const PHONE_RING = { radius: 157, repeats: 8, fontSize: 12, sealFontSize: 12, offsetX: 0, offsetY: 0 }
 const PHONE_PRODUCT = { modelScale: 0.52 }
+// The banner's geometry never got a phone pass the way the ring and product
+// did: a 252px-tall strip meant for a screen wide enough to hold a flat
+// stretch of it just piles up into a fan on a 390px frame, since there's no
+// room for the sag/wind curve to read as gentle before it hits the edges.
+const PHONE_INTRO = { sag: 0, wind: 12, stripHeight: 64, fallAngle: 80 }
+
+// The scroll carousel below cycles through every project, but only Capsule
+// C1 has a real glTF yet — the rest borrow its model as a placeholder so the
+// navigation itself (speed, crossfade, name change) can be judged before any
+// more assets exist. Swap `modelUrl` in per project as real ones are made.
+const CAROUSEL_PROJECTS = workProjects.map((project) => ({
+  id: project.id,
+  title: project.title,
+  modelUrl: MODEL_URL
+}))
 
 function useIsPhone() {
   const [isPhone, setIsPhone] = useState(
@@ -166,9 +182,24 @@ export default function CapsuleHome() {
     })
   )
 
+  // Scroll (or a finger, or a trackpad swipe) drives the project carousel.
+  // These four are what turn raw input into speed and pacing — how far a
+  // swipe has to travel before the next project takes over, how fast the
+  // spin can get, how directly velocity maps to it, and how long the spin
+  // takes to catch up to a new speed rather than snapping to it.
+  const carousel = useControls(
+    'Carousel',
+    restoreSchema('Carousel', {
+      progressPerPx: { value: 900, min: 200, max: 3000, step: 10, label: 'Scroll per project (px)' },
+      maxRpm: { value: 45, min: 5, max: 120, step: 1, label: 'Max spin (rpm)' },
+      velocityToRpm: { value: 4.5, min: 0.5, max: 20, step: 0.1, label: 'Speed sensitivity' },
+      spinSmoothing: { value: 0.15, min: 0.02, max: 0.6, step: 0.01, label: 'Spin smoothing (s)' }
+    })
+  )
+
   useControls('Export', {
     'Copy all settings': button(() => {
-      const json = exportPersistedControls(['Ring', 'Product', 'Intro'])
+      const json = exportPersistedControls(['Ring', 'Product', 'Intro', 'Carousel'])
       navigator.clipboard?.writeText(json).catch(() => console.log(json))
     }),
     'Reset all settings': button(() => {
@@ -189,6 +220,7 @@ export default function CapsuleHome() {
   usePersistControls('Ring', ring)
   usePersistControls('Product', product)
   usePersistControls('Intro', intro)
+  usePersistControls('Carousel', carousel)
 
   const isPhone = useIsPhone()
   // On desktop these are the tuned objects themselves — same reference, same
@@ -198,6 +230,118 @@ export default function CapsuleHome() {
   // The banner's letter spacing has to come down with its type, or the seal
   // reads as gapped-out capitals on the phone.
   const introSpacing = isPhone ? 12 : intro.ringSpacing
+
+  // ---- project carousel: scroll/drag cycles through the work, speeding the
+  // ring and product up as it goes. ----
+  //
+  // `progress` is the one continuous number everything else derives from:
+  // each full unit is one project, the fractional part is how far into the
+  // crossfade to the next one you are. It is a ref rather than state because
+  // it moves every wheel tick and, during a fling, every frame — routing
+  // that through React would mean a render per pixel scrolled. State only
+  // gets touched at the two moments that actually need to re-render: which
+  // project is current, and whether the carousel has been touched yet at
+  // all (so the "next" stage isn't mounted, and racking up an entrance
+  // animation no one will see, before anyone has scrolled).
+  const [carouselIndex, setCarouselIndex] = useState(0)
+  const [carouselStarted, setCarouselStarted] = useState(false)
+  const progressRef = useRef(0)
+  const lastProgressRef = useRef(0)
+  const lastTickRef = useRef(0)
+  const lastIndexRef = useRef(0)
+  // Shared by both stages so they spin at the same rate through a crossfade
+  // rather than reading as two independently-wound products.
+  const spinRpmRef = useRef(0)
+  const ringSpinDegRef = useRef(0)
+  const currentStageRef = useRef<HTMLDivElement>(null)
+  const nextStageRef = useRef<HTMLDivElement>(null)
+  // Leva values read live inside the animation loop below, which only
+  // depends on `opened` — without this, dragging a slider mid-scroll would
+  // have no effect until the next time the effect happened to re-run.
+  const carouselRef = useRef(carousel)
+  carouselRef.current = carousel
+
+  useEffect(() => {
+    if (!opened) return
+    const count = CAROUSEL_PROJECTS.length
+
+    const bump = (deltaY: number) => {
+      progressRef.current += deltaY / carouselRef.current.progressPerPx
+      setCarouselStarted(true)
+    }
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      bump(e.deltaY)
+    }
+
+    let touchY: number | null = null
+    const onTouchStart = (e: TouchEvent) => {
+      touchY = e.touches[0]?.clientY ?? null
+    }
+    const onTouchMove = (e: TouchEvent) => {
+      if (touchY === null) return
+      const y = e.touches[0]?.clientY ?? touchY
+      bump(touchY - y)
+      touchY = y
+      e.preventDefault()
+    }
+    const onTouchEnd = () => {
+      touchY = null
+    }
+
+    window.addEventListener('wheel', onWheel, { passive: false })
+    window.addEventListener('touchstart', onTouchStart, { passive: true })
+    window.addEventListener('touchmove', onTouchMove, { passive: false })
+    window.addEventListener('touchend', onTouchEnd)
+
+    lastTickRef.current = performance.now()
+
+    let raf = 0
+    const tick = () => {
+      const now = performance.now()
+      const dt = Math.max(0, (now - lastTickRef.current) / 1000)
+      lastTickRef.current = now
+
+      const { maxRpm, velocityToRpm, spinSmoothing } = carouselRef.current
+      const progress = progressRef.current
+      const rawVelocity = dt > 0 ? (progress - lastProgressRef.current) / dt : 0
+      lastProgressRef.current = progress
+
+      // Eased toward the target rather than snapped to it, so the spin
+      // winds up and coasts down instead of following the finger exactly —
+      // a raw velocity reads as jittery long before it reads as fast.
+      const targetRpm = Math.min(maxRpm, Math.abs(rawVelocity) * velocityToRpm)
+      const ease = 1 - Math.exp(-dt / Math.max(0.001, spinSmoothing))
+      spinRpmRef.current += (targetRpm - spinRpmRef.current) * ease
+      ringSpinDegRef.current += (spinRpmRef.current / 60) * 360 * dt
+
+      const wrapped = ((progress % count) + count) % count
+      const index = Math.floor(wrapped)
+      const frac = wrapped - index
+
+      if (index !== lastIndexRef.current) {
+        lastIndexRef.current = index
+        setCarouselIndex(index)
+      }
+
+      if (currentStageRef.current) currentStageRef.current.style.opacity = (1 - frac).toFixed(3)
+      if (nextStageRef.current) nextStageRef.current.style.opacity = frac.toFixed(3)
+
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('wheel', onWheel)
+      window.removeEventListener('touchstart', onTouchStart)
+      window.removeEventListener('touchmove', onTouchMove)
+      window.removeEventListener('touchend', onTouchEnd)
+    }
+  }, [opened])
+
+  const nextCarouselIndex = (carouselIndex + 1) % CAROUSEL_PROJECTS.length
 
   return (
     <main className={`capsule-home${opened ? ' is-open' : ''}${settled ? ' is-settled' : ''}`}>
@@ -266,14 +410,16 @@ export default function CapsuleHome() {
               same line into the ring. */}
           <ProductRing
             {...ringProps}
+            label={CAROUSEL_PROJECTS[carouselIndex].title.toUpperCase()}
+            extraSpinRef={ringSpinDegRef}
             introSpacing={introSpacing}
             introWind={intro.ringWind}
-            sag={intro.sag}
-            stripHeight={intro.stripHeight}
+            sag={isPhone ? PHONE_INTRO.sag : intro.sag}
+            stripHeight={isPhone ? PHONE_INTRO.stripHeight : intro.stripHeight}
             stripInk={intro.stripInk}
-            wind={intro.wind}
+            wind={isPhone ? PHONE_INTRO.wind : intro.wind}
             windSpeed={intro.windSpeed}
-            fallAngle={intro.fallAngle}
+            fallAngle={isPhone ? PHONE_INTRO.fallAngle : intro.fallAngle}
             introDelay={intro.delay}
             introDuration={intro.duration}
             cutDuration={intro.cutTime}
@@ -282,11 +428,33 @@ export default function CapsuleHome() {
           />
           {opened ? (
             <CapsuleStage
+              ref={currentStageRef}
+              modelUrl={CAROUSEL_PROJECTS[carouselIndex].modelUrl}
+              spinRef={spinRpmRef}
               {...productProps}
               introFrom={intro.productRise}
               introTurn={intro.productTurn}
               introDelay={intro.delay}
               introDuration={intro.duration}
+            />
+          ) : null}
+          {/* Mounted only once scrolling starts, so its entrance — the same
+              rise-from-below every product uses on arrival — is still
+              playing when the crossfade reveals it, rather than having
+              long since settled off-screen at opacity 0. Keyed on the
+              project so each new "next" gets a fresh rise rather than
+              reusing the last one's, now-finished, animation state. */}
+          {opened && carouselStarted ? (
+            <CapsuleStage
+              key={CAROUSEL_PROJECTS[nextCarouselIndex].id}
+              ref={nextStageRef}
+              modelUrl={CAROUSEL_PROJECTS[nextCarouselIndex].modelUrl}
+              spinRef={spinRpmRef}
+              {...productProps}
+              introFrom={intro.productRise}
+              introTurn={intro.productTurn}
+              introDelay={0}
+              introDuration={1}
             />
           ) : null}
         </div>

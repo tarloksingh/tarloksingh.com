@@ -1,9 +1,10 @@
-import { Suspense, useEffect, useMemo, useRef } from 'react'
+import { Suspense, forwardRef, useEffect, useMemo, useRef } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Center, Float, useGLTF } from '@react-three/drei'
 import { ACESFilmicToneMapping, Box3, Color, PMREMGenerator, SRGBColorSpace, Vector3 } from 'three'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import type { Group, Mesh, MeshStandardMaterial, PerspectiveCamera } from 'three'
+import type { MutableRefObject } from 'react'
 
 export const MODEL_URL = '/models/capsule-c1.glb'
 
@@ -96,10 +97,20 @@ function Entrance({ children, from, turn, delay, duration }: EntranceProps) {
   return <group ref={ref}>{children}</group>
 }
 
-function Spin({ children, rpm }: { children: React.ReactNode; rpm: number }) {
+interface SpinProps {
+  children: React.ReactNode
+  rpm: number
+  /** Extra rpm read live each frame — how scroll drives the spin without a
+   *  React re-render on every tick. */
+  spinRef?: MutableRefObject<number>
+}
+
+function Spin({ children, rpm, spinRef }: SpinProps) {
   const ref = useRef<Group>(null)
   useFrame((_, delta) => {
-    if (ref.current) ref.current.rotation.y += (rpm / 60) * Math.PI * 2 * delta
+    if (!ref.current) return
+    const total = rpm + (spinRef?.current ?? 0)
+    ref.current.rotation.y += (total / 60) * Math.PI * 2 * delta
   })
   return <group ref={ref}>{children}</group>
 }
@@ -246,6 +257,11 @@ function LoadedModel({ url, scale, fallbackColor }: LoadedModelProps) {
 }
 
 export interface CapsuleStageProps {
+  /** Which glTF to show — lets one stage carry different projects. */
+  modelUrl?: string
+  /** Extra rpm read live each frame, on top of `rpm` — how a caller drives
+   *  the spin from outside React's render cycle (e.g. scroll velocity). */
+  spinRef?: MutableRefObject<number>
   focalLength?: number
   modelScale?: number
   rpm?: number
@@ -270,7 +286,9 @@ export interface CapsuleStageProps {
   introDuration?: number
 }
 
-export default function CapsuleStage({
+const CapsuleStage = forwardRef<HTMLDivElement, CapsuleStageProps>(function CapsuleStage({
+  modelUrl = MODEL_URL,
+  spinRef,
   focalLength = 103,
   modelScale = 1.1,
   rpm = 0,
@@ -289,9 +307,9 @@ export default function CapsuleStage({
   introTurn = 150,
   introDelay = 0.35,
   introDuration = 2.6
-}: CapsuleStageProps) {
+}: CapsuleStageProps, ref) {
   return (
-    <div className="ch-model">
+    <div className="ch-model" ref={ref}>
       <Canvas
         // The canvas now spans the whole stage rather than a 400px box, so
         // capping the pixel ratio keeps the pixel count from roughly
@@ -346,8 +364,8 @@ export default function CapsuleStage({
               floatIntensity={floatIntensity}
               rotationIntensity={floatRotation}
             >
-              <Spin rpm={rpm}>
-                <LoadedModel url={MODEL_URL} scale={modelScale} fallbackColor={fallbackColor} />
+              <Spin rpm={rpm} spinRef={spinRef}>
+                <LoadedModel url={modelUrl} scale={modelScale} fallbackColor={fallbackColor} />
               </Spin>
             </Float>
           </Entrance>
@@ -355,4 +373,6 @@ export default function CapsuleStage({
       </Canvas>
     </div>
   )
-}
+})
+
+export default CapsuleStage

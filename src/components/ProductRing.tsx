@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { MutableRefObject } from 'react'
 
 interface ProductRingProps {
   /** Repeated around the ring once it is open. */
@@ -51,6 +52,11 @@ interface ProductRingProps {
   startOpen?: boolean
   /** Fires when the cut is through and the page should start. */
   onCut?: () => void
+  /** Extra degrees added to the ring's spin every frame, read live rather
+   *  than through a prop — how scroll speed drives it without pushing a
+   *  React render through ~200 glyphs on every tick. Only applies once the
+   *  ring is closed; the hanging banner ignores it. */
+  extraSpinRef?: MutableRefObject<number>
 }
 
 /** Wavelength of the gust travelling along the banner, px. */
@@ -127,7 +133,8 @@ export default function ProductRing({
   fallAngle = 84,
   cutDuration = 0.7,
   startOpen = false,
-  onCut
+  onCut,
+  extraSpinRef
 }: ProductRingProps) {
   const [cut, setCut] = useState(startOpen)
   const [swapped, setSwapped] = useState(startOpen)
@@ -393,7 +400,10 @@ export default function ProductRing({
         const fall = Math.min(1, seconds / cutDuration) ** 2
         const t = Math.min(1, Math.max(0, (seconds - introDelay) / introDuration))
         const wrap = 1 - Math.pow(1 - t, 3)
-        const spin = (period === 0 ? 0 : (seconds / period) * 360) + introWind * (1 - wrap)
+        const spin =
+          (period === 0 ? 0 : (seconds / period) * 360) +
+          introWind * (1 - wrap) +
+          (extraSpinRef?.current ?? 0)
         draw(spin, wrap, fall, gust, env)
       }
       raf = requestAnimationFrame(tick)
