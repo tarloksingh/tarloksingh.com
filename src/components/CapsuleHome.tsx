@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { button, Leva, useControls } from 'leva'
 import BlurText from './BlurText'
 import ProductRing from './ProductRing'
@@ -59,6 +59,10 @@ export default function CapsuleHome() {
   // mounts on the cut, so the copy reveal and the product's entrance start
   // from that moment rather than having run behind it.
   const [opened, setOpened] = useState(startOpen)
+  // The banner is allowed to cross the whole screen; the closed ring is not.
+  // Held until the wrap has finished rather than flipped at the cut, or the
+  // falling ends would be clipped at the column edge mid-flight.
+  const [settled, setSettled] = useState(startOpen)
 
   const ring = useControls(
     'Ring',
@@ -87,8 +91,8 @@ export default function CapsuleHome() {
   const product = useControls(
     'Product',
     restoreSchema('Product', {
-      focalLength: { value: 103, min: 14, max: 300, step: 1, label: 'Lens (mm)' },
-      modelScale: { value: 1.1, min: 0.2, max: 4, step: 0.02, label: 'Size' },
+      focalLength: { value: 82, min: 14, max: 300, step: 1, label: 'Lens (mm)' },
+      modelScale: { value: 1.04, min: 0.2, max: 4, step: 0.02, label: 'Size' },
       distance: { value: 9, min: 2, max: 40, step: 0.1, label: 'Camera back' },
       elevation: { value: 27, min: -80, max: 85, step: 1, label: 'Camera height' },
       azimuth: { value: 53, min: -180, max: 180, step: 1, label: 'Camera around' },
@@ -100,7 +104,7 @@ export default function CapsuleHome() {
       exposure: { value: 0.1, min: 0.1, max: 3, step: 0.05, label: 'Exposure' },
       envIntensity: { value: 4, min: 0, max: 8, step: 0.05, label: 'Environment' },
       keyIntensity: { value: 4.4, min: 0, max: 12, step: 0.1, label: 'Key light' },
-      ambientIntensity: { value: 0, min: 0, max: 3, step: 0.05, label: 'Ambient' },
+      ambientIntensity: { value: 0.15, min: 0, max: 3, step: 0.05, label: 'Ambient' },
       // Both logos reach glTF without a material block and would otherwise
       // take the spec default, which renders as bright chrome.
       fallbackColor: { value: '#000000', label: 'Untyped material' }
@@ -117,15 +121,15 @@ export default function CapsuleHome() {
       delay: { value: 0.3, min: 0, max: 4, step: 0.05, label: 'Delay' },
       duration: { value: 2.8, min: 0.2, max: 8, step: 0.05, label: 'Time' },
       // The label starts as one straight run of type and curls into the ring.
-      ringSpacing: { value: 11, min: 2, max: 140, step: 1, label: 'Line spacing' },
-      ringWind: { value: 720, min: -2160, max: 2160, step: 5, label: 'Ring unwind' },
+      ringSpacing: { value: 19, min: 2, max: 140, step: 1, label: 'Line spacing' },
+      ringWind: { value: 620, min: -2160, max: 2160, step: 5, label: 'Ring unwind' },
       // How the banner hangs, and how far its cut ends drop.
-      sag: { value: 220, min: 0, max: 900, step: 1, label: 'Banner sag' },
-      wind: { value: 60, min: 0, max: 300, step: 0.5, label: 'Wind' },
-      windSpeed: { value: 4.75, min: 0, max: 12, step: 0.05, label: 'Wind speed' },
-      stripHeight: { value: 140, min: 0, max: 600, step: 1, label: 'Strip height' },
-      stripInk: { value: '#070707', label: 'Strip ink' },
-      fallAngle: { value: 84, min: 0, max: 180, step: 1, label: 'Cut drop' },
+      sag: { value: 0, min: 0, max: 900, step: 1, label: 'Banner sag' },
+      wind: { value: 23, min: 0, max: 300, step: 0.5, label: 'Wind' },
+      windSpeed: { value: 7.75, min: 0, max: 12, step: 0.05, label: 'Wind speed' },
+      stripHeight: { value: 252, min: 0, max: 600, step: 1, label: 'Strip height' },
+      stripInk: { value: '#141414', label: 'Strip ink' },
+      fallAngle: { value: 80, min: 0, max: 180, step: 1, label: 'Cut drop' },
       productRise: { value: -6.8, min: -20, max: 0, step: 0.05, label: 'Product from' },
       productTurn: { value: -345, min: -720, max: 720, step: 5, label: 'Product turn' }
     })
@@ -142,12 +146,21 @@ export default function CapsuleHome() {
     })
   })
 
+  useEffect(() => {
+    if (!opened || settled) return
+    const id = window.setTimeout(
+      () => setSettled(true),
+      (intro.delay + intro.duration) * 1000
+    )
+    return () => window.clearTimeout(id)
+  }, [opened, settled, intro.delay, intro.duration])
+
   usePersistControls('Ring', ring)
   usePersistControls('Product', product)
   usePersistControls('Intro', intro)
 
   return (
-    <main className={`capsule-home${opened ? ' is-open' : ''}`}>
+    <main className={`capsule-home${opened ? ' is-open' : ''}${settled ? ' is-settled' : ''}`}>
       {/* Leva raises its own floating panel as soon as any useControls call
           runs, so the un-tuned page needs an explicit hidden one rather than
           simply not rendering ours. */}

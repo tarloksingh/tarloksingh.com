@@ -112,11 +112,19 @@
   flex: 1 1 auto;
   align-self: stretch;
   min-width: 0;
-  /* Above the sidebar's 2. The banner is far wider than this column and
-     overflows it on both sides; underneath, the sidebar cut it off at the
-     column edge and it stopped dead partway across the screen. Only the
-     overflow crosses over — this box does not overlap the sidebar. */
+  /* Above the sidebar's 2 while the banner is up: it is far wider than this
+     column and has to cross the whole screen. Underneath, the sidebar cut it
+     off at the column edge. Only the overflow crosses — this box does not
+     overlap the sidebar. */
   z-index: 3;
+}
+
+/* Once the opening has finished, the column drops back under the sidebar so
+   the ring is confined to its own section. On a narrow window the ring is
+   wider than the column, and left above the sidebar it runs straight across
+   the name. */
+.capsule-home.is-settled .ch-content {
+  z-index: auto;
 }
 
 .ch-menu {

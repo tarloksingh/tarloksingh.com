@@ -91,6 +91,13 @@ tab stops them outright, and decoding the model can starve them — and hanging
 that state change off one leaves the line stuck mid-cut, still reading the
 seal, with no way forward.
 
+The content column sits above the sidebar while the banner is up, since the
+banner has to cross the whole screen. It drops back under once the opening has
+finished, so the closed ring stays in its own section — on a narrow window the
+ring is wider than the column, and left above the sidebar it runs straight
+across the name. The drop waits for the wrap to finish rather than happening
+at the cut, or the falling ends would be clipped at the column edge mid-flight.
+
 **The sidebar is absent until the cut.** It keeps its box the whole time and
 only fades: collapsing it would move the stage's centre and drag the ring
 sideways mid-transform. The page gradient lives on `.capsule-home` rather than
