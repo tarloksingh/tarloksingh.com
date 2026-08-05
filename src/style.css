@@ -11,7 +11,7 @@ html, body, #app {
      over the sideways scene track. */
   overscroll-behavior: none;
   background-color: #eff4f7;
-  font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-family: 'Inter Variable', 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   color: #0a0a0a;
 }
 

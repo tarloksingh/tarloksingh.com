@@ -336,6 +336,44 @@ To promote tuned values into the code, copy them out and edit the matching
 priority over the coded defaults, so **Reset all settings** is how you check
 what a first-time visitor actually sees.
 
+## Working offline
+
+`npm run dev` needs no network. Everything the page loads is local: Inter is
+self-hosted through `@fontsource-variable/inter` (imported in `src/main.tsx`, so
+type metrics are identical on a plane and in production), and the Draco decoder
+is served from `public/draco/` rather than the gstatic CDN. Keep it that way —
+a `https://` in a new `<link>` or asset URL is the one thing that will quietly
+degrade the layout when there is no connection.
+
+What does *not* work offline: `npm install`. Install before you leave; if a
+package is missing mid-flight there is no recovering it.
+
+### Seeing both widths at once
+
+`http://localhost:5173/dev-preview.html` puts a phone and a desktop frame side
+by side against the same dev server, both live-reloading. The frames are laid
+out at true device pixel sizes and only visually scaled, so the app inside reads
+the real viewport width and the media queries fire exactly as they would on the
+device. It is a dev-only file at the repo root, so `vite build` never emits it.
+
+Personal hotspot also works in airplane mode if you want the real thing in a
+real browser: `npm run dev -- --host`, then open the printed LAN address on the
+phone. That is a local network, no internet involved.
+
+### Keeping the wider layout untouched
+
+Mobile work is safe when it lives inside a `max-width` block rather than
+changing a shared rule. The existing breakpoints are `700px` in `src/style.css`
+and `src/components/CapsuleHome.css`, plus a single `900px` block in
+`CapsuleHome.css`; adding to those is desktop-proof by construction. The risky
+edits are the ones outside a media query, and the JS branches on
+`window.innerWidth` in `src/hooks/useGravityDrop.ts`, `ProductRing.tsx` and
+`src/animations/crawlOut.ts` — those run at every width, so gate any change on a
+width test instead of retuning the constant.
+
+`git diff` before each commit is the check: anything touching a rule outside a
+media query, or a shared constant, wants a look at the desktop frame too.
+
 ## Outstanding
 
 - **Only one product.** The stage is wired for `capsule-c1` alone; nothing
