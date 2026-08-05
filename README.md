@@ -161,6 +161,55 @@ element, and ~200 of those a frame is well past what compositing absorbs. The
 far arc fades instead, and the loop skips any glyph whose bucket has not
 changed.
 
+## Project carousel
+
+Scroll or drag cycles the stage through every project in `work.ts`. The ring
+and the model spin faster the harder you scroll and coast back down when you
+stop, the ring's name swaps at each project boundary, and the incoming model
+rises and crossfades in over the outgoing one.
+
+**One continuous number drives all of it.** `progressRef` in
+`CapsuleHome.tsx` accumulates wheel/touch delta directly — one unit is one
+full project. `Math.floor` of it (wrapped to the project count) is the
+current project; the fractional part is how far into the crossfade to the
+next one. Nothing here is React state: it moves on every wheel tick and,
+mid-fling, every frame, and routing that through a render would mean a
+render per pixel scrolled. State only changes at the two moments that
+actually need a re-render — which project is current, and whether the
+carousel has been touched at all yet.
+
+**Spin is a ref, not a prop that changes every frame**, for the same reason.
+`ProductRing` takes `extraSpinRef` and adds it straight into its own spin
+calculation each tick — CapsuleHome integrates the angle itself and hands
+over a plain number to read, so scrolling never pushes a render through the
+ring's ~200 glyphs. `CapsuleStage` takes the parallel `spinRef` and adds it
+to `rpm` inside `Spin`'s own `useFrame`, so the model side needs no
+integration at all — R3F's `delta` does it.
+
+**The crossfade is two whole stages, not two materials.** `CapsuleStage` is
+`forwardRef` so `CapsuleHome` can write `.style.opacity` on the two mounted
+instances directly, every frame, the same ref-and-DOM-write pattern the ring
+already uses rather than a second React state channel. Blending the actual
+glTF materials was ruled out — making a gloss PBR material transparent mid-
+render is its own fight, and two full canvases is simple by comparison.
+
+**The "next" stage only mounts once you've scrolled once.** Its entrance is
+the same rise-from-below every model uses on arrival, timed from its own
+mount — mounted at page load like the others, it would have long since
+settled by the time a slow scroller actually reaches it. Keyed on the
+project id, so each new "next" gets a fresh rise instead of replaying the
+last one's already-finished state.
+
+**Every project currently shows `capsule-c1.glb.`** `CAROUSEL_PROJECTS` in
+`CapsuleHome.tsx` maps `work.ts` to the one real model as a placeholder, so
+the mechanics — speed, timing, crossfade, name change — can be judged before
+the other nine exist. Give a project its own `modelUrl` there once it does;
+nothing else needs to change.
+
+Tunable behind `?tune`, group **Carousel**: how many px of scroll make up one
+project, the spin's ceiling, how directly velocity maps to it, and how long
+the spin takes to catch up to a new speed rather than snapping to it.
+
 ## The card page
 
 `src/components/Home.tsx`: name and nav up top, a cluster of
@@ -214,9 +263,9 @@ video it has never seen.
 
 | Path | What it does |
 |---|---|
-| `src/components/CapsuleHome.tsx` | The product page: layout, copy reveals, both control groups |
-| `src/components/ProductRing.tsx` | The banner and the ring: film strip, wind, cut, unwrap, spin |
-| `src/three/CapsuleStage.tsx` | Canvas, camera rig, environment, entrance, float, model load |
+| `src/components/CapsuleHome.tsx` | The product page: layout, copy reveals, both control groups, the scroll carousel |
+| `src/components/ProductRing.tsx` | The banner and the ring: film strip, wind, cut, unwrap, spin, scroll-driven extra spin |
+| `src/three/CapsuleStage.tsx` | Canvas, camera rig, environment, entrance, float, model load — `forwardRef` so the carousel can crossfade two instances by opacity |
 | `src/components/Home.tsx` | The card page: intro, shuffle, swipe/scroll, controls |
 | `src/components/BlurText.tsx` | Per-character reveal, forward and reverse |
 | `src/data/projectMedia.ts` | Resolves each project's assets, plus per-project overrides |
@@ -306,6 +355,10 @@ On the product page:
 | | Float rise / loll / speed | Idle drift, usable *instead* of the spin — set one to 0 |
 | | Exposure / Environment / Key light / Ambient | Tone-mapping exposure and the three light sources |
 | | Untyped material | Colour for materials that arrived without a PBR block |
+| Carousel | Scroll per project (px) | How much cumulative wheel/touch delta advances one project |
+| | Max spin (rpm) | Ceiling on how fast scrolling can spin the ring and model |
+| | Speed sensitivity | How directly scroll velocity maps to spin speed |
+| | Spin smoothing (s) | How long the spin takes to catch up to a new speed rather than snapping |
 
 On the card page:
 
@@ -348,6 +401,24 @@ degrade the layout when there is no connection.
 What does *not* work offline: `npm install`. Install before you leave; if a
 package is missing mid-flight there is no recovering it.
 
+**A production build (`npm run build` + `npm run preview`), not `npm run
+dev`, is what you want over a real tailnet connection** — a plane's wifi
+routinely runs at 800ms+ round-trip latency, and Vite's dev server ships the
+app as dozens of unbundled module files, each one costing a full round trip
+regardless of bandwidth. A production build collapses that to a couple of
+bundled files.
+
+Two more things trim what has to arrive before the page is usable on a link
+like that: `Home.tsx` (the card page) is lazy-loaded behind `?v=cards` in
+`App.tsx` rather than a static import, so its code is not in the bundle
+everyone downloads by default; and `index.html` preloads the glTF model and
+its Draco decoder so they fetch in parallel with the JS bundle instead of
+only being discovered — and requested — after it has parsed, which on a
+high-latency link is several serial round trips stacked before the product
+can render. If either regresses, check `App.tsx`'s import of `Home` is still
+a `lazy()` and that the `<link rel="preload">`s in `index.html` still point
+at real files.
+
 ### Seeing both widths at once
 
 `http://localhost:5173/dev-preview.html` puts a phone and a desktop frame side
@@ -374,12 +445,26 @@ width test instead of retuning the constant.
 `git diff` before each commit is the check: anything touching a rule outside a
 media query, or a shared constant, wants a look at the desktop frame too.
 
+**The ring, the product and the banner each need their own phone numbers —
+nothing here scales down with CSS.** All three are laid out in real px by
+JS (`CapsuleHome.tsx`'s `PHONE_RING` / `PHONE_PRODUCT` / `PHONE_INTRO`,
+applied when `useIsPhone()` is true), so a value tuned for a ~1600px desktop
+stage has to be restated, not scaled, for a 390px frame — the ring's radius
+and the product's scale already were; the banner's `stripHeight`/`wind`
+found this the hard way, piling into a fan on first phone load because nothing
+had told it the screen was narrower. If a new geometry prop shows up in
+`ProductRing` or `CapsuleStage`, assume it needs a phone entry too rather
+than finding out from a screenshot.
+
 ## Outstanding
 
-- **Only one product.** The stage is wired for `capsule-c1` alone; nothing
-  cycles between projects yet.
-- **The remaining exports.** Only the Capsule has a model. The other nine
-  projects still have nothing to stand on this stage.
+- **The remaining exports.** The scroll carousel cycles through all ten
+  projects, but only Capsule C1 has a real model — the rest borrow it as a
+  placeholder (`CAROUSEL_PROJECTS` in `CapsuleHome.tsx`). Judge the carousel's
+  mechanics now; give the other nine projects their own `modelUrl` once they
+  have one.
+- **Two canvases during a crossfade** is genuinely heavier than one — worth
+  revisiting if it turns out to be too much for a phone GPU mid-scroll.
 - **Deployment.** The domain is served from `tarloksingh/my-portfolio`, a
   different repo. This one deploys nowhere.
 - **Clicking a card** (card page) logs the project id; there is no detail view.
