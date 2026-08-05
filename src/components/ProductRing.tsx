@@ -47,9 +47,17 @@ interface ProductRingProps {
   fallAngle?: number
   /** Seconds the ends take to fall. */
   cutDuration?: number
+  /** Starts already cut, skipping the banner. */
+  startOpen?: boolean
   /** Fires when the cut is through and the page should start. */
   onCut?: () => void
 }
+
+/** Wavelength of the gust travelling along the banner, px. */
+const WIND_LENGTH = 320
+
+/** Slots per strip segment. */
+const SEG = 4
 
 /**
  * One banner of type that is the whole opening.
@@ -60,7 +68,7 @@ interface ProductRingProps {
  * tape graphic and nothing is layered over the page — this is the ring before
  * it has closed.
  *
- * Three decisions hold that together, and undoing any of them breaks it:
+ * Four decisions hold that together, and undoing any of them breaks it:
  *
  * **The slot count is fixed**, taken from whichever label is longer, with the
  * shorter one padded. So the glyphs are the same DOM elements before and
@@ -77,6 +85,12 @@ interface ProductRingProps {
  * glyph, with the fall folded into the banner side, so the transformation is
  * continuous by construction rather than a sequence that has to be timed.
  *
+ * **Glyphs foreshorten with the wall they sit on.** They are drawn flat, so
+ * nothing rotates them out of plane — their width is scaled by how squarely
+ * they face the camera instead. Left at full width they pile up where the
+ * ring turns away, since screen position barely moves between neighbours
+ * there.
+ *
  * The cylinder is projected by hand rather than handed to CSS 3D. The 3D
  * version needed the glyphs duplicated across two `preserve-3d` layers,
  * because a 3D rendering context sorts by depth and ignores z-index — so no
@@ -86,12 +100,6 @@ interface ProductRingProps {
  * far arc's -1 stays inside the stage rather than dropping behind the page
  * gradient.
  */
-/** Wavelength of the gust travelling along the banner, px. */
-const WIND_LENGTH = 320
-
-/** Slots per strip segment. */
-const SEG = 4
-
 export default function ProductRing({
   label,
   sealLabel = 'TARLOK SINGH',
@@ -118,10 +126,11 @@ export default function ProductRing({
   stripInk = '#070707',
   fallAngle = 84,
   cutDuration = 0.7,
+  startOpen = false,
   onCut
 }: ProductRingProps) {
-  const [cut, setCut] = useState(false)
-  const [swapped, setSwapped] = useState(false)
+  const [cut, setCut] = useState(startOpen)
+  const [swapped, setSwapped] = useState(startOpen)
   const glyphRefs = useRef<(HTMLSpanElement | null)[]>([])
   const segRefs = useRef<(HTMLDivElement | null)[]>([])
   const stripRef = useRef<HTMLDivElement>(null)
@@ -297,11 +306,19 @@ export default function ProductRing({
         const y = fy * (1 - wrap) + y2 * ringScale * wrap + offsetY
         const spinDeg = (bAngle * (180 / Math.PI) + swing * (180 / Math.PI)) * (1 - wrap) + tiltZ * wrap
 
-        // Glyphs on the far arc are seen from behind, so they mirror — the 3D
-        // version got that free from the backface. Only once mostly closed,
-        // or the banner reads inside out.
-        const behind = z1 < 0 && wrap > 0.5
-        const sx = behind ? -scale : scale
+        // How squarely this glyph faces the camera: 1 dead ahead, 0 at the
+        // sides where the wall turns away, -1 directly behind.
+        const facing = Math.cos(angle)
+        const behind = facing < 0 && wrap > 0.5
+
+        // Glyphs lie on the cylinder wall facing outward, so their width
+        // foreshortens with it — full at the front, nothing at the sides,
+        // mirrored at the back. Holding them at full width instead is what
+        // piles them up where the ring turns: screen position barely moves
+        // between neighbours there (dx/dtheta goes to zero), so letters that
+        // never narrow land on top of one another. It also gives the backface
+        // mirroring for free, rather than flipping the sign by hand.
+        const sx = scale * (1 - wrap + facing * wrap)
 
         el.style.visibility = 'visible'
         el.style.transform =

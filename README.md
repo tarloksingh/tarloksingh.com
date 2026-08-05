@@ -135,9 +135,13 @@ Four things are easy to undo by accident:
 - **The roll has to reach the glyph, not just its position.** Rotating only the
   placement leaves every letter bolt upright while the baseline runs
   diagonally, which reads as a staircase rather than as tilted type.
-- **Far-arc glyphs mirror.** In 3D they genuinely faced away and the browser
-  drew their backface. Without it the back of the ring reads as the label
-  spelled backwards rather than as its reverse.
+- **Glyphs foreshorten with the wall they sit on.** They are drawn flat, so
+  nothing rotates them out of plane — instead their width is scaled by how
+  squarely they face the camera: full at the front, nothing at the sides,
+  mirrored at the back. Left at full width they pile into a blob where the
+  ring turns, because screen position barely moves between neighbours there
+  (`dx/dθ` goes to zero) and letters that never narrow land on top of one
+  another. It also gives the backface mirroring for free.
 - **Glyphs are placed one at a time, not one word at a time.** Perspective
   scale across a word is what gives it its taper. Whole words would cut the
   node count by an order of magnitude and flatten that out.
@@ -253,6 +257,9 @@ all** and the whole Blender staging scene included — a backdrop plane and two
 suddenly renders black, or shrinks to a speck, check for those two things first.
 
 ## Tuning panel
+
+**`?open`** starts on the closed ring, skipping the banner — cutting it open on
+every reload gets old fast when the thing being tuned is the ring itself.
 
 Open the page with **`?tune`** on the end for a Leva panel. It is absent without
 the flag, and works on a phone over the tailnet — it docks to the bottom edge on

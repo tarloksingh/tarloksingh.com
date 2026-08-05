@@ -15,8 +15,11 @@ const CONTACT_EMAIL = 'tarloksinghfilms@gmail.com'
 
 // Open the page with `?tune` on the end to get the sliders. Absent without it,
 // so they never show up for anyone else.
-const showTuner =
-  typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('tune')
+const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
+const showTuner = params?.has('tune') ?? false
+// `?open` skips the banner and starts on the closed ring — cutting it open on
+// every reload gets old fast when the thing being tuned is the ring itself.
+const startOpen = params?.has('open') ?? false
 
 const FOCUS = [
   'PRODUCT DESIGN',
@@ -55,7 +58,7 @@ export default function CapsuleHome() {
   // The page arrives sealed by the ring's own flat line. Everything else
   // mounts on the cut, so the copy reveal and the product's entrance start
   // from that moment rather than having run behind it.
-  const [opened, setOpened] = useState(false)
+  const [opened, setOpened] = useState(startOpen)
 
   const ring = useControls(
     'Ring',
@@ -221,6 +224,7 @@ export default function CapsuleHome() {
             introDelay={intro.delay}
             introDuration={intro.duration}
             cutDuration={intro.cutTime}
+            startOpen={startOpen}
             onCut={() => setOpened(true)}
           />
           {opened ? (
