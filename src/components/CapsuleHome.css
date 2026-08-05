@@ -377,6 +377,105 @@
   }
 }
 
+/* ---- phone: the 402x874 frame ----
+
+   Must stay below the 900px block: several rules here override it, and at
+   equal specificity the later one wins.
+
+   The design collapses the two columns into one frame. The stone panel stops
+   being a sidebar and becomes the whole page, with the name and menu on the
+   top row, the product in the middle, and the focus copy and credit at the
+   bottom. The DOM keeps its desktop shape — the menu and credit still live in
+   the content column — so on the phone they are lifted out of that flow and
+   pinned to the corners of the frame they belong to in the design. */
+
+@media screen and (max-width: 700px) {
+  .capsule-home {
+    flex-direction: column;
+    /* The gradient stage does not appear on the phone at all: the title area
+       covers the frame, so its colour becomes the page's. */
+    background: #f3f3ef;
+    /* One frame, one screen — the design has nothing below the fold. */
+    overflow: hidden;
+  }
+
+  .ch-title-area {
+    width: 100%;
+    flex: 1 1 auto;
+    padding: 30px;
+    /* space-between carries the vertical rhythm; the 900px gap would fight it. */
+    gap: 0;
+    /* The credit is pinned to the bottom of the frame and the focus copy has
+       to clear it: 30px frame padding + the 12px line + the 39px the design
+       puts between them. */
+    padding-bottom: 81px;
+    /* The page carries the stone now, or this panel would paint over the
+       product sitting behind it. */
+    background: transparent;
+  }
+
+  .ch-title {
+    width: 100%;
+  }
+
+  /* The design's top row is the name and the menu, nothing else — so the
+     ARTIST label steps out and the name starts at the frame's padding. */
+  .ch-title .ch-label {
+    display: none;
+  }
+
+  .ch-name {
+    font-size: 48px;
+    line-height: 57px;
+  }
+
+  .ch-meta {
+    width: 100%;
+    gap: 30px;
+  }
+
+  .ch-meta-block {
+    width: 100%;
+    max-width: 281px;
+  }
+
+  .ch-content {
+    position: absolute;
+    inset: 0;
+    padding: 30px;
+    align-self: auto;
+    min-height: 0;
+    /* It covers the whole frame to hold the stage, so it must not swallow
+       taps meant for the panel underneath. The three things that are actually
+       interactive take their events back below. */
+    pointer-events: none;
+  }
+
+  .ch-menu,
+  .ch-credit,
+  .ch-ring-cutter {
+    pointer-events: auto;
+  }
+
+  .ch-menu {
+    position: absolute;
+    top: 30px;
+    right: 30px;
+    width: 57px;
+  }
+
+  .ch-credit {
+    position: absolute;
+    left: 30px;
+    right: 30px;
+    bottom: 30px;
+    width: auto;
+    font-size: 10px;
+    line-height: 12px;
+    text-align: left;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ch-ring-glyph {
     transition: none;

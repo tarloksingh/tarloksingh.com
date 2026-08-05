@@ -21,6 +21,37 @@ const showTuner = params?.has('tune') ?? false
 // every reload gets old fast when the thing being tuned is the ring itself.
 const startOpen = params?.has('open') ?? false
 
+/* The phone is a different frame rather than a squeeze of the desktop one.
+   The ring at its tuned radius measures 1412px across — three and a half
+   times a 402px screen — and it cannot simply be scaled down with CSS, since
+   that takes the type to 4px with it. So the phone gets its own radius, with
+   fewer repeats to keep the glyphs from packing solid around the smaller
+   circumference, and its own type size. The design's 314x120 ring block is
+   what the radius is set from.
+
+   Everything below is behind this flag. Above 700px the props handed down are
+   the tuned objects themselves, unchanged. */
+const PHONE_QUERY = '(max-width: 700px)'
+
+// The nudges are zeroed rather than inherited: they place the ring against the
+// desktop stage, whose centre is not the phone frame's, and carried over they
+// leave the ring orbiting empty space above the product.
+const PHONE_RING = { radius: 157, repeats: 8, fontSize: 12, sealFontSize: 12, offsetX: 0, offsetY: 0 }
+const PHONE_PRODUCT = { modelScale: 0.52 }
+
+function useIsPhone() {
+  const [isPhone, setIsPhone] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia(PHONE_QUERY).matches
+  )
+  useEffect(() => {
+    const query = window.matchMedia(PHONE_QUERY)
+    const onChange = (event: MediaQueryListEvent) => setIsPhone(event.matches)
+    query.addEventListener('change', onChange)
+    return () => query.removeEventListener('change', onChange)
+  }, [])
+  return isPhone
+}
+
 const FOCUS = [
   'PRODUCT DESIGN',
   'ENGINEERING',
@@ -159,6 +190,15 @@ export default function CapsuleHome() {
   usePersistControls('Product', product)
   usePersistControls('Intro', intro)
 
+  const isPhone = useIsPhone()
+  // On desktop these are the tuned objects themselves — same reference, same
+  // values — so the wider layout runs exactly the code it ran before.
+  const ringProps = isPhone ? { ...ring, ...PHONE_RING } : ring
+  const productProps = isPhone ? { ...product, ...PHONE_PRODUCT } : product
+  // The banner's letter spacing has to come down with its type, or the seal
+  // reads as gapped-out capitals on the phone.
+  const introSpacing = isPhone ? 12 : intro.ringSpacing
+
   return (
     <main className={`capsule-home${opened ? ' is-open' : ''}${settled ? ' is-settled' : ''}`}>
       {/* Leva raises its own floating panel as soon as any useControls call
@@ -225,8 +265,8 @@ export default function CapsuleHome() {
               type reading the name. Cutting it swaps the text and curls the
               same line into the ring. */}
           <ProductRing
-            {...ring}
-            introSpacing={intro.ringSpacing}
+            {...ringProps}
+            introSpacing={introSpacing}
             introWind={intro.ringWind}
             sag={intro.sag}
             stripHeight={intro.stripHeight}
@@ -242,7 +282,7 @@ export default function CapsuleHome() {
           />
           {opened ? (
             <CapsuleStage
-              {...product}
+              {...productProps}
               introFrom={intro.productRise}
               introTurn={intro.productTurn}
               introDelay={intro.delay}
