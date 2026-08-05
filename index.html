@@ -5,6 +5,15 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tarlok Singh</title>
+    <!-- The product model and its Draco decoder are otherwise only
+         discovered once the JS bundle has parsed and mounted the scene —
+         on a high-latency connection that's several round trips stacked in
+         series before the model can even start rendering, which is what
+         reads as the entrance animation arriving broken. Preloading lets
+         the browser fetch them in parallel with the JS instead. -->
+    <link rel="preload" href="/models/capsule-c1.glb" as="fetch" crossorigin />
+    <link rel="preload" href="/draco/draco_decoder.wasm" as="fetch" crossorigin />
+    <link rel="preload" href="/draco/draco_decoder.js" as="fetch" crossorigin />
   </head>
   <body>
     <div id="app"></div>
