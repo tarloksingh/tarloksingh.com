@@ -450,11 +450,24 @@ nothing here scales down with CSS.** All three are laid out in real px by
 JS (`CapsuleHome.tsx`'s `PHONE_RING` / `PHONE_PRODUCT` / `PHONE_INTRO`,
 applied when `useIsPhone()` is true), so a value tuned for a ~1600px desktop
 stage has to be restated, not scaled, for a 390px frame — the ring's radius
-and the product's scale already were; the banner's `stripHeight`/`wind`
-found this the hard way, piling into a fan on first phone load because nothing
-had told it the screen was narrower. If a new geometry prop shows up in
-`ProductRing` or `CapsuleStage`, assume it needs a phone entry too rather
-than finding out from a screenshot.
+already was; the banner's `stripHeight`/`wind` found this the hard way,
+piling into a fan on first phone load because nothing had told it the screen
+was narrower. If a new geometry prop shows up in `ProductRing` or
+`CapsuleStage`, assume it needs a phone entry too rather than finding out
+from a screenshot.
+
+**`PHONE_PRODUCT` pins every Product field, not just `modelScale`, for a
+second reason on top of that one.** The Product group is
+`localStorage`-backed (see Tuning panel, below) and storage is per-browser —
+a phone is always a separate browser from whatever desktop session tuned the
+lighting, so leaving a field unpinned does not mean "inherits the tuned
+value," it means "silently falls back to whatever that specific device's
+storage holds," which for a phone that was never opened with `?tune` is just
+the coded schema default. That can quietly drift from what the desktop
+actually shows with no code change and no visible cause. Confirm what a
+given browser is really running with **Reset all settings** (clears its
+storage back to the coded defaults) before assuming a difference means
+something was tuned.
 
 ## Outstanding
 
