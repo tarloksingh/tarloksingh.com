@@ -38,7 +38,29 @@ const PHONE_QUERY = '(max-width: 700px)'
 // desktop stage, whose centre is not the phone frame's, and carried over they
 // leave the ring orbiting empty space above the product.
 const PHONE_RING = { radius: 157, repeats: 8, fontSize: 12, sealFontSize: 12, offsetX: 0, offsetY: 0 }
-const PHONE_PRODUCT = { modelScale: 0.52 }
+// Only `modelScale` used to be pinned here — everything else fell through to
+// `product`, which is `localStorage`-backed and per-browser. A phone is
+// always a separate browser from whatever tuned the desktop, so it silently
+// got its own (usually just the coded schema defaults) rather than the
+// looked-at-and-approved desktop numbers. Pinning the lot, copied from a
+// desktop session confirmed to hold nothing but those approved values, makes
+// the phone immune to whatever any given device's storage happens to hold.
+const PHONE_PRODUCT = {
+  focalLength: 82,
+  modelScale: 0.52,
+  distance: 9,
+  elevation: 27,
+  azimuth: 53,
+  rpm: 0,
+  floatIntensity: 0.9,
+  floatRotation: 0.8,
+  floatSpeed: 2.5,
+  exposure: 0.1,
+  envIntensity: 4,
+  keyIntensity: 4.4,
+  ambientIntensity: 0.15,
+  fallbackColor: '#000000'
+}
 // The banner's geometry never got a phone pass the way the ring and product
 // did: a 252px-tall strip meant for a screen wide enough to hold a flat
 // stretch of it just piles up into a fan on a 390px frame, since there's no
