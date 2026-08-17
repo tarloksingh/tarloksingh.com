@@ -225,10 +225,11 @@
   pointer-events: none;
 }
 
-/* The year, sitting on the point of the rule it belongs to. `left` is written
-   as a percentage of the footer every frame; the translate centres the label
-   on it, and is a percentage of the *label*, which is why the two can be
-   composed without either needing to know the other's width. */
+/* The year, sitting wherever the cursor is on the rule it belongs to. `left`
+   is written as a percentage of the footer by `scrubTrack`, in Home.tsx; the
+   translate centres the label on that point, and is a percentage of the
+   *label*, which is why the two can be composed without either needing to
+   know the other's width. */
 .hm-foot-year {
   position: relative;
   left: 0;
@@ -239,26 +240,67 @@
   line-height: 1;
   white-space: nowrap;
   color: var(--ink);
-  /* No date until the work has arrived — before that the footer is just the
-     rule. */
+  /* Hidden until hovered, and never itself the hit target — the tracks
+     under it are. */
   opacity: 0;
-  transition: opacity var(--t-mid) var(--ease-out);
+  transition: opacity var(--t-fast) var(--ease-out);
 }
 
-.hm-foot[data-in-work='true'] .hm-foot-year {
-  opacity: 1;
+.hm-foot-tracks {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* The footer itself takes no input — see `.hm-foot` — but the two rules
+     are a hover scrubber and need it back. */
+  pointer-events: auto;
+}
+
+/* The work line takes whatever room the side line doesn't. */
+.hm-foot-track--work {
+  flex: 1 1 auto;
+}
+
+/* Deliberately smaller — this is the *other* line, for the work that isn't
+   client work, not a second line of equal weight. */
+.hm-foot-track--side {
+  flex: none;
+  width: clamp(56px, 9vw, 110px);
+}
+
+.hm-foot-dot {
+  flex: none;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--ink-faint);
 }
 
 .hm-foot-track {
   position: relative;
   height: 1px;
+  /* The rule a visitor can actually see is 1px; the box a cursor can
+     actually land on is not — the padding stretches the hit area well past
+     the hairline without widening the line itself, which stays clipped to
+     the unpadded content box. The negative margin takes the padding back
+     out of the surrounding layout, so the row's height is still set by the
+     line, not by this.
+
+     `content-box` explicitly, against the site-wide `border-box`: under
+     border-box, 18px of padding is taken out of a 1px height rather than
+     added to it, so the content box — the only part `content-box` clip
+     paints — floors at zero and the rule disappears entirely. */
+  box-sizing: content-box;
+  padding: 9px 0;
+  margin: -9px 0;
   background: var(--rule-soft);
-  overflow: hidden;
+  background-clip: content-box;
+  cursor: pointer;
 }
 
 .hm-foot-track-fill {
   position: absolute;
-  inset: 0;
+  inset: 9px 0 auto 0;
+  height: 1px;
   background: var(--ink-faint);
   transform: scaleX(0);
   transform-origin: left center;

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { CSSProperties } from 'react'
+import type { CSSProperties, MouseEvent as ReactMouseEvent } from 'react'
 import BlurText, { reveal } from '../components/BlurText'
 import Helix, { buildHelixCards } from './Helix'
 import Gallery from './Gallery'
-import { projects } from '../data/projects'
+import { workProjects, sideProjects } from '../data/projects'
 import { useScrollEngine, clamp, ease, range } from './useScrollEngine'
 import './Home.css'
 
@@ -112,10 +112,16 @@ export default function Home({ onOpen, locked, onIndex, arriveAt }: HomeProps) {
   const wallRef = useRef<HTMLDivElement>(null)
   const markRef = useRef<HTMLDivElement>(null)
   const cueRef = useRef<HTMLDivElement>(null)
+  const footRef = useRef<HTMLElement>(null)
   const trackRef = useRef<HTMLSpanElement>(null)
   const yearRef = useRef<HTMLSpanElement>(null)
-  const [focus, setFocus] = useState(0)
+  // Only the setter is used — see `scrubTrack` for why the footer no longer
+  // reads which project is focused.
+  const [, setFocus] = useState(0)
   const [inWork, setInWork] = useState(false)
+  // Read by the hover-scrub below, which runs outside the scroll loop and so
+  // cannot close over `inWork` without going stale.
+  const inWorkRef = useRef(false)
 
   const cards = useMemo(
     () =>
@@ -146,7 +152,7 @@ export default function Home({ onOpen, locked, onIndex, arriveAt }: HomeProps) {
   // going back should put you where you left, not make you scroll there again.
   useEffect(() => {
     if (!arriveAt) return
-    const index = projects.findIndex((p) => p.id === arriveAt)
+    const index = workProjects.findIndex((p) => p.id === arriveAt)
     if (index < 0) return
     engine.goTo(1 + index)
     // No ease from zero — that would fly the whole entrance backwards on the
@@ -199,20 +205,16 @@ export default function Home({ onOpen, locked, onIndex, arriveAt }: HomeProps) {
         cue.style.opacity = on.toFixed(3)
       }
 
-      // The rule fills as you travel through the work, and the year rides the
-      // end of the fill. Both from the same number, so the mark can never
-      // drift off the length it is marking.
+      // The rule fills as you travel through the work. The year no longer
+      // rides it — see `scrubTrack` below, which is what puts a date on the
+      // footer now.
       const through =
-        projects.length > 1 ? clamp((p - 1) / (projects.length - 1), 0, 1) : p >= 1 ? 1 : 0
+        workProjects.length > 1 ? clamp((p - 1) / (workProjects.length - 1), 0, 1) : p >= 1 ? 1 : 0
       const track = trackRef.current
       if (track) track.style.transform = `scaleX(${through.toFixed(4)})`
-      const year = yearRef.current
-      // Percent of the track's own width, and the label centres itself on
-      // that point — so it stays on the mark at any window size without the
-      // track ever being measured.
-      if (year) year.style.left = `${(through * 100).toFixed(2)}%`
 
       const nowInWork = p > IN_WORK_AT
+      inWorkRef.current = nowInWork
       if (nowInWork !== lastInWork) {
         lastInWork = nowInWork
         setInWork(nowInWork)
@@ -220,9 +222,36 @@ export default function Home({ onOpen, locked, onIndex, arriveAt }: HomeProps) {
     })
   }, [engine])
 
+  /* The footer's two rules are a hover scrubber, not a readout of where the
+     scroll is: move along either one and the year at that point stands in
+     for the whole design's one date label, `.hm-foot-year`, wherever the
+     cursor is — not tied to `focus`, so scrubbing the side line doesn't fight
+     the work line's own scroll-driven fill above. */
+  const scrubTrack = useCallback((e: ReactMouseEvent<HTMLDivElement>, list: typeof workProjects) => {
+    if (!inWorkRef.current || list.length === 0) return
+    const foot = footRef.current
+    const year = yearRef.current
+    if (!foot || !year) return
+
+    const trackRect = e.currentTarget.getBoundingClientRect()
+    const t = clamp((e.clientX - trackRect.left) / trackRect.width, 0, 1)
+    const project = list[Math.round(t * (list.length - 1))]
+    if (!project) return
+
+    const footRect = foot.getBoundingClientRect()
+    year.style.left = `${(((e.clientX - footRect.left) / footRect.width) * 100).toFixed(2)}%`
+    year.textContent = project.timeline
+    year.style.opacity = '1'
+  }, [])
+
+  const hideScrub = useCallback(() => {
+    const year = yearRef.current
+    if (year) year.style.opacity = '0'
+  }, [])
+
   const goToProject = useCallback(
     (projectId: string) => {
-      const index = projects.findIndex((p) => p.id === projectId)
+      const index = workProjects.findIndex((p) => p.id === projectId)
       if (index >= 0) engine.goTo(1 + index)
     },
     [engine]
@@ -314,17 +343,31 @@ export default function Home({ onOpen, locked, onIndex, arriveAt }: HomeProps) {
         <span className="hm-cue-rule" />
       </div>
 
-      {/* A rule across the room with the year you are standing in marked on
-          it. It is the same progress bar it always was, read as a date line
-          rather than as a loading state — a gallery tells you what period
-          you are in, not what percentage of it you have seen. The year rides
-          the fill, so the mark and the length always agree. */}
-      <footer className="hm-foot" data-in-work={inWork}>
-        <span className="hm-foot-year" ref={yearRef}>
-          {projects[focus]?.timeline}
-        </span>
-        <div className="hm-foot-track">
-          <span className="hm-foot-track-fill" ref={trackRef} />
+      {/* A rule across the room, read as a date line rather than as a
+          loading state — a gallery tells you what period you are in, not
+          what percentage of it you have seen. The main line still fills as
+          you travel through the work; the year on it is a hover scrubber
+          now, not a readout of the scroll (see `scrubTrack`).
+
+          The dot and the shorter line after it are the side projects — the
+          same rule, at a smaller scale, for the work that isn't client
+          work. */}
+      <footer className="hm-foot" data-in-work={inWork} ref={footRef}>
+        <span className="hm-foot-year" ref={yearRef} />
+        <div className="hm-foot-tracks">
+          <div
+            className="hm-foot-track hm-foot-track--work"
+            onMouseMove={(e) => scrubTrack(e, workProjects)}
+            onMouseLeave={hideScrub}
+          >
+            <span className="hm-foot-track-fill" ref={trackRef} />
+          </div>
+          <span className="hm-foot-dot" aria-hidden="true" />
+          <div
+            className="hm-foot-track hm-foot-track--side"
+            onMouseMove={(e) => scrubTrack(e, sideProjects)}
+            onMouseLeave={hideScrub}
+          />
         </div>
       </footer>
     </main>

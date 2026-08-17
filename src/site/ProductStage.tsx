@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import type { MutableRefObject } from 'react'
 import Gallery3D from '../three/Gallery3D'
 import type { RoomLayout, RoomTuning } from '../three/Gallery3D'
-import { projects } from '../data/projects'
+import { workProjects } from '../data/projects'
 import { exhibitFor } from './products'
 
 /* The only door to the 3D stack.
@@ -61,7 +61,7 @@ export default function ProductStage({
   const pieces = useMemo(
     () =>
       slots.flatMap((index) => {
-        const project = projects[index]
+        const project = workProjects[index]
         if (!project) return []
         // A project with no modelled piece still gets its case — an empty
         // vitrine is a truthful thing for a museum to have, and a gap in the

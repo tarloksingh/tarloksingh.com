@@ -39,6 +39,11 @@ export interface Project {
   sections: Section[]
   /** Set when an NDA or an unfinished write-up limits what can be shown. */
   restricted?: string
+  /** `'work'` (the default) rides the main vitrine row and the home page's
+   *  work timeline; `'side'` skips the row entirely and appears only on the
+   *  smaller side-projects timeline beside it. Still a full case study
+   *  either way — this only decides whether it gets a case in the gallery. */
+  category?: 'work' | 'side'
   /** Every clip and still in the project, hero first, deduped — what the home
    *  page draws its cards from. */
   media: MediaItem[]
@@ -55,6 +60,7 @@ interface Draft {
   accent: string
   hero?: Ref
   restricted?: string
+  category?: 'work' | 'side'
   sections: Array<{
     id: string
     title: string
@@ -66,10 +72,14 @@ interface Draft {
 }
 
 const drafts: Draft[] = [
-  /* ---- Placeholders. Both are real work with no write-up yet; they carry a
-     `restricted` note instead of sections, and the case study renders that
-     rather than an empty page. Fill in `sections` and `hero` to promote either
-     one to a full study — nothing else needs changing. ---- */
+  /* ---- Placeholders. All three are real work with no write-up yet; they
+     carry a `restricted` note instead of sections, and the case study
+     renders that rather than an empty page. Fill in `sections` and `hero` to
+     promote any one of them to a full study — nothing else needs changing.
+
+     The last two are also `category: 'side'` — personal projects rather than
+     client work, so they skip the vitrine row and sit on the smaller
+     side-projects line on the home page timeline instead. ---- */
   {
     id: '3d-printing',
     title: '3D Printing',
@@ -78,10 +88,37 @@ const drafts: Draft[] = [
     company: 'Independent',
     timeline: '2024 — Present',
     accent: '#5c6570',
+    category: 'side',
     restricted:
       'A write-up is on the way. In the meantime: everything here is modelled in Blender and printed at home — the same pipeline that produced the Capsule C1 enclosure.',
     intro:
       'Modelled in Blender, sliced, printed, sanded, and fitted at home. The enclosure work behind Capsule C1 came out of this bench, and it has kept running since.',
+    sections: []
+  },
+  {
+    id: 'a-game',
+    title: "A Game I'm Making",
+    tagline: 'Personal Project',
+    role: 'Designer & Developer',
+    company: 'Independent',
+    timeline: '2015 — Present',
+    accent: '#4a4a52',
+    category: 'side',
+    restricted: "No write-up yet — this one's been on and off since 2015, and it's still mine to finish.",
+    intro: "A game I've been building on my own time, on and off, since 2015.",
+    sections: []
+  },
+  {
+    id: 'mr-grocery',
+    title: 'Mr Grocery',
+    tagline: 'Personal Project',
+    role: 'Designer & Developer',
+    company: 'Independent',
+    timeline: '2015 — Present',
+    accent: '#4f6a52',
+    category: 'side',
+    restricted: 'No write-up yet — more soon.',
+    intro: 'A personal project, ongoing since 2015.',
     sections: []
   },
   {
@@ -680,6 +717,7 @@ const build = (draft: Draft): Project => {
     intro: draft.intro,
     accent: draft.accent,
     restricted: draft.restricted,
+    category: draft.category ?? 'work',
     hero,
     sections,
     media
@@ -687,6 +725,12 @@ const build = (draft: Draft): Project => {
 }
 
 export const projects: Project[] = drafts.map(build)
+
+/** The vitrine row and the home page's main timeline both walk this one,
+ *  not `projects` — a side project has a case study but no case. */
+export const workProjects: Project[] = projects.filter((p) => p.category !== 'side')
+/** The home page's smaller, second timeline. */
+export const sideProjects: Project[] = projects.filter((p) => p.category === 'side')
 
 export const projectById = (id: string) => projects.find((p) => p.id === id)
 

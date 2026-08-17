@@ -8,7 +8,7 @@ import {
   useRef,
   useState
 } from 'react'
-import { projects } from '../data/projects'
+import { workProjects } from '../data/projects'
 import { NARROW, NARROW_AT, STAGE_SHIFT, WIDE } from './room'
 import type { RoomLayout, RoomTuning } from './room'
 import { clamp, ease } from './useScrollEngine'
@@ -82,7 +82,7 @@ export default function Gallery({ engine, onOpen, onFocus }: GalleryProps) {
   // context and its glTFs while the visitor is still looking at the name
   // competes with the entrance for exactly the frames it needs.
   const [awake, setAwake] = useState(false)
-  const count = projects.length
+  const count = workProjects.length
   /* What the tuning panel has set. It lives inside the 3D chunk (leva is that
      chunk's dependency, not the initial bundle's) and reports back up here,
      because the room's proportions are this side's to own — the labels have
@@ -226,7 +226,7 @@ export default function Gallery({ engine, onOpen, onFocus }: GalleryProps) {
       {mounted.map((index) => (
         <ProjectCopy
           key={index}
-          project={projects[index]}
+          project={workProjects[index]}
           onOpen={onOpen}
           ref={(el) => {
             if (el) panelRefs.current.set(index, el)
@@ -247,7 +247,7 @@ export default function Gallery({ engine, onOpen, onFocus }: GalleryProps) {
    case turns the exhibit into a slide. */
 
 interface CopyProps {
-  project: (typeof projects)[number]
+  project: (typeof workProjects)[number]
   onOpen: (projectId: string) => void
 }
 
