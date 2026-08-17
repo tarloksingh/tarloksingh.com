@@ -8,6 +8,14 @@
   background:
     radial-gradient(120% 90% at 50% 0%, var(--paper-raised) 0%, transparent 58%),
     linear-gradient(180deg, var(--paper) 0%, var(--paper-deep) 100%);
+  /* The mark, the menu and the footer rule are each pinned to a screen edge
+     with `left`/`right: var(--gutter)`, which is right up until the window
+     is wider than a page of text ever gets read at — past that they just
+     keep sliding apart, which is the edge-to-edge look on a wide monitor
+     this corrects. Past 1200px plus its gutters, this holds them at the
+     edges of a centred 1200px rail instead; short of that it is exactly
+     `var(--gutter)`, unchanged. */
+  --rail-inset: max(var(--gutter), calc((100vw - 1200px) / 2));
 }
 
 /* ---- the wall of disciplines ----
@@ -114,7 +122,7 @@
 
 .hm-mark {
   top: var(--gutter);
-  left: var(--gutter);
+  left: var(--rail-inset);
   opacity: 0;
   pointer-events: none;
 }
@@ -128,7 +136,7 @@
 
 .hm-menu {
   top: var(--gutter);
-  right: var(--gutter);
+  right: var(--rail-inset);
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -208,8 +216,8 @@
 }
 
 .hm-foot {
-  left: var(--gutter);
-  right: var(--gutter);
+  left: var(--rail-inset);
+  right: var(--rail-inset);
   bottom: var(--gutter);
   display: flex;
   flex-direction: column;

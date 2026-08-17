@@ -39,8 +39,8 @@ const ProductStage = lazy(() => import('./ProductStage'))
    except the ones anybody ever sees.
 
    So: a filmstrip. `progress` is the project you are standing in front of,
-   the row translates by `-progress` steps, and the piece in the case you have
-   arrived at rises and fades up while the one you left sinks away. */
+   and the row translates by `-progress` steps — every piece simply standing
+   in its case, the way it would in a museum, with no arrival of its own. */
 
 /* How the room is proportioned: `WIDE`, `NARROW`, `NARROW_AT` and
    `STAGE_SHIFT` in room.ts, in fractions of the window.

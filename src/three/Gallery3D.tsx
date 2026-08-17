@@ -301,8 +301,9 @@ interface Gallery3DProps {
   /** Live scroll position — read every frame, never through a render. Slot
    *  `n` is centred when this reads `n`. */
   progressRef: MutableRefObject<number>
-  /** Which slot is being looked at. The piece in it rises into its case; the
-   *  others sink back out. */
+  /** Which slot is being looked at — see `onFocus` in Gallery.tsx, which is
+   *  where this actually matters; the row itself no longer treats the
+   *  focused piece any differently from its neighbours. */
   focus: number
   /** How many projects the row loops through. */
   count: number
@@ -311,21 +312,6 @@ interface Gallery3DProps {
    *  the room's proportions and applies them to the labels as well. */
   onTune?: (tuning: RoomTuning) => void
 }
-
-/** How far below its place a piece rises from, in its own units. */
-const RISE = 0.55
-/** How much of the arrival the fade takes. The rest of it is pure movement.
- *
- *  Deliberately small: a piece that is still translucent once it has reached
- *  the middle of the frame reads as *not loaded*, not as arriving. Front-load
- *  the opacity and the only thing you actually perceive is the piece rising
- *  into its case, which is the effect. */
-const FADE_OVER = 0.3
-/** Seconds-ish for the rise. Slower than the fall, so the case you are
- *  arriving at is still filling as the one you left has already emptied —
- *  two pieces at half strength in adjacent cases reads as a fault. */
-const RISE_TAU = 0.34
-const FALL_TAU = 0.15
 
 /** 1 world unit = the height of the window. Where the camera *stands* is
  *  written every frame in `Row`, because it walks with the scroll. */
@@ -365,7 +351,6 @@ interface RowExtra {
 function Row({
   pieces,
   progressRef,
-  focus,
   count,
   layout,
   step,
@@ -459,18 +444,16 @@ function Row({
                   else turns.current.delete(piece.id)
                 }}
               >
-                {/* Outside Float, so the drift is already running as the
-                    piece arrives and the two never fight over position.y —
-                    the arrival moves the parent, Float moves the child. */}
-                <Arrive shown={piece.slot === focus}>
-                  <Float
-                    speed={piece.floatSpeed}
-                    floatIntensity={piece.floatIntensity}
-                    rotationIntensity={piece.floatRotation}
-                  >
-                    <Suspense fallback={null}>{piece.node}</Suspense>
-                  </Float>
-                </Arrive>
+                {/* No arrival animation — a piece in a case does not rise
+                    and fade as you walk up to it, it is simply there. All
+                    of its apparent motion is the orbit, in the loop above. */}
+                <Float
+                  speed={piece.floatSpeed}
+                  floatIntensity={piece.floatIntensity}
+                  rotationIntensity={piece.floatRotation}
+                >
+                  <Suspense fallback={null}>{piece.node}</Suspense>
+                </Float>
               </group>
             </Lift>
           </Vitrine>
@@ -478,61 +461,6 @@ function Row({
       ))}
     </group>
   )
-}
-
-/**
- * The piece rises into its case and fades up as you arrive at it, and sinks
- * back out as you leave.
- *
- * Driven by an exponential ease toward 0 or 1 rather than by a clock started
- * on a change. That is what makes it survive being interrupted: scrolling
- * briskly through the work reverses this a dozen times, and a timed tween
- * restarted from zero each time either snaps or plays a full entrance for
- * something that was already halfway there.
- *
- * The fade costs a traversal, so `transparent` — which recompiles the shader
- * — is toggled exactly twice per arrival, at the ends, and never left on:
- * these pieces are single objects with a screen inside a body, and a
- * permanently transparent body sorts its own screen behind it.
- */
-function Arrive({ shown, children }: { shown: boolean; children: ReactNode }) {
-  const ref = useRef<Group>(null)
-  // Starts settled when it mounts already in focus — arriving at the work
-  // should not replay an entrance for the project you were already on.
-  const t = useRef(shown ? 1 : 0)
-  const fading = useRef<boolean | null>(null)
-
-  useFrame((_, delta) => {
-    const group = ref.current
-    if (!group) return
-    const dt = Math.min(0.05, delta)
-    const target = shown ? 1 : 0
-    t.current += (target - t.current) * (1 - Math.exp(-dt / (shown ? RISE_TAU : FALL_TAU)))
-    if (Math.abs(target - t.current) < 0.002) t.current = target
-
-    group.position.y = -RISE * (1 - t.current)
-
-    // Opaque well before the rise has finished — see FADE_OVER.
-    const alpha = t.current >= 1 ? 1 : Math.min(1, t.current / FADE_OVER)
-    const nowFading = alpha < 0.999
-    if (nowFading !== fading.current) {
-      fading.current = nowFading
-      group.traverse((o) => {
-        const material = (o as Mesh).material as MeshStandardMaterial | undefined
-        if (!material) return
-        if (material.userData.opaque === undefined) material.userData.opaque = !material.transparent
-        material.transparent = nowFading || !material.userData.opaque
-        material.needsUpdate = true
-      })
-    }
-    if (!nowFading) return
-    group.traverse((o) => {
-      const material = (o as Mesh).material as MeshStandardMaterial | undefined
-      if (material) material.opacity = alpha
-    })
-  })
-
-  return <group ref={ref}>{children}</group>
 }
 
 /**

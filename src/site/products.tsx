@@ -100,13 +100,15 @@ const DEFAULTS = {
   turn: 0,
   offsetX: 0,
   offsetY: 0,
-  floatIntensity: 0.85,
+  /* Still, like a piece in a case — see `mr-takahashi` below for the one
+     exception. */
+  floatIntensity: 0,
   /* No idle rotation of any kind — not a turntable, and not `Float`'s own
      rotational wobble.
      A piece that turns on its own is a thing being demonstrated to you. The
      only rotation here comes from the scroll (see `SWEEP` in Gallery3D), so
      turning the object is something *you* do, and at rest it holds the face it
-     was set to. The drift stays: a piece hanging in a case should breathe. */
+     was set to. */
   floatRotation: 0,
   floatSpeed: 2.3
 }
@@ -123,7 +125,9 @@ const SPECS: Record<string, ProductSpec> = {
       <LoadedModel url="/models/mr-takahashi.glb" scale={scale} fallbackColor="#000000" />
     ),
     scale: 1.52,
-    turn: 24
+    turn: 24,
+    // The one piece that still breathes — see the note on DEFAULTS.
+    floatIntensity: 0.85
   },
   'slider-engine': {
     node: (scale) => <SpriteFlipbook frames={FISH_MAN_FRAMES} fps={12} scale={scale} />,
