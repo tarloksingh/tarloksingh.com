@@ -1,11 +1,12 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { gsap } from 'gsap'
 import Home from './Home'
+import Intro from './Intro'
 import Loader from './Loader'
 import MusicPlayer from './MusicPlayer'
 import ProjectIndex from './Index'
 import { buildHelixCards, helixPosters } from './Helix'
-import { projectById } from '../data/projects'
+import { projectById, workProjects } from '../data/projects'
 import { currentRoute, onPopState, push, sameRoute } from './router'
 import type { Route } from './router'
 import './tokens.css'
@@ -26,7 +27,12 @@ const REVEAL = 0.72
 
 export default function Site() {
   const [route, setRoute] = useState<Route>(() => currentRoute())
-  const [loading, setLoading] = useState(true)
+  /* Arriving at the stage gets the entrance; arriving straight at a case
+     study — a shared link, a reload — gets the loading screen, because an
+     entrance to a page you did not come for is just a delay. The two never
+     both run: `Intro` counts the same stills in and is its own wait. */
+  const [intro, setIntro] = useState(() => currentRoute().name === 'home')
+  const [loading, setLoading] = useState(() => currentRoute().name !== 'home')
   const [indexOpen, setIndexOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   // Set when returning to the stage from a case study, so the drum is already
@@ -129,13 +135,20 @@ export default function Site() {
   // would tear that effect down and start the whole count again.
   const loaderDone = useCallback(() => setLoading(false), [])
 
+  /* The entrance's two moments. `enterWork` fires on the click, while the
+     butterflies are still on screen: the stage has to already be turned to
+     the first project by the time the dark comes off it, or the reveal shows
+     the page getting into position. `introDone` is only the unmount. */
+  const enterWork = useCallback(() => setArriveAt(workProjects[0]?.id ?? null), [])
+  const introDone = useCallback(() => setIntro(false), [])
+
   return (
     <>
       {route.name === 'home' ? (
         <Home
           onOpen={openProject}
           onIndex={() => setIndexOpen(true)}
-          locked={busy || indexOpen}
+          locked={busy || indexOpen || intro}
           arriveAt={arriveAt}
         />
       ) : (
@@ -165,6 +178,8 @@ export default function Site() {
           {pendingLabel}
         </span>
       </div>
+
+      {intro ? <Intro preload={posters} onCommit={enterWork} onDone={introDone} /> : null}
 
       {loading ? <Loader preload={posters} onDone={loaderDone} /> : null}
 

@@ -1,0 +1,164 @@
+/* The opening. See Intro.tsx for the sequence and for why it runs at 24fps.
+
+   Almost nothing here animates: every value that moves is written as an inline
+   style by the one loop in the component, because a CSS transition would
+   interpolate on the display's clock and this screen deliberately has a
+   slower one of its own. What is left is layout, colour, and the two or three
+   properties that only ever hold still. */
+
+.in {
+  position: fixed;
+  inset: 0;
+  z-index: 98;
+  overflow: hidden;
+  color: #fff;
+  --flicker: 1;
+}
+
+/* The ground the whole sequence is lit against, and — to the value — the
+   colour the wings are tinted. They must agree, or the flock shows its own
+   edges before it moves. No background on `.in` itself: the veil is the only
+   thing hiding the page, so the reveal has exactly one thing to take away.
+
+   The flock sits over the veil, so a butterfly that has crossed onto a torn
+   patch is seen against the page rather than against the dark. */
+.in-veil,
+.in-flock {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* ---- the type ---- */
+
+.in-stack {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  text-align: center;
+  /* The gate weave and the lamp, both written per film frame. */
+  --weave: 0px, 0px;
+  transform: translate3d(var(--weave), 0);
+  filter: brightness(var(--flicker));
+}
+
+.in-artist {
+  font-family: var(--font-display);
+  font-size: clamp(0.8rem, 0.92vw, 1.05rem);
+  letter-spacing: 0.01em;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.92);
+  opacity: 0;
+  margin-bottom: 0.7rem;
+}
+
+.in-name {
+  /* The signature is geometry, not type — sized by how wide it should sit on
+     the screen, which is the only measurement that matters for a mark. */
+  width: clamp(15rem, 19vw, 26rem);
+  /* The halo in the design is a blurred copy of the letterforms, so it has to
+     be taken off the drawn result rather than laid behind it: a drop-shadow
+     of the masked path glows only where the pen has already been, which means
+     the light writes itself in along with the ink. */
+  filter: drop-shadow(0 0 11px rgba(255, 255, 255, 0.4));
+  will-change: opacity, transform;
+}
+
+.in-name svg {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.in-enter {
+  margin-top: 0.62rem;
+  padding: 0.42em 1.15em 0.36em;
+  font-family: var(--font-display);
+  font-size: clamp(0.82rem, 0.92vw, 1.02rem);
+  line-height: 1.15;
+  letter-spacing: 0.005em;
+  color: #1a1a1a;
+  background: #fff;
+  border-radius: 0;
+  opacity: 0;
+  transition: background 0.24s linear, color 0.24s linear;
+}
+
+.in-enter:hover:not(:disabled),
+.in-enter:focus-visible:not(:disabled) {
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.in-enter:focus-visible {
+  outline: 1px solid rgba(255, 255, 255, 0.7);
+  outline-offset: 4px;
+}
+
+/* ---- the print ---- */
+
+/* One tile of turbulence, oversized so the per-frame throw can never drag an
+   edge into view, and moved with a transform so a frame of grain costs a
+   composite rather than a repaint. */
+.in-grain {
+  position: absolute;
+  top: -120px;
+  left: -120px;
+  width: calc(100% + 240px);
+  height: calc(100% + 240px);
+  pointer-events: none;
+  opacity: 0.14;
+  background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 220px 220px;
+  will-change: transform;
+}
+
+.in-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset 0 0 200px 44px #000;
+}
+
+.in-marks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* A hair in the gate. */
+.in-scratch {
+  position: absolute;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.55);
+  opacity: 0;
+}
+
+/* One frame of dust, never the same twice. */
+.in-dust {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.6);
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The sequence still runs — the loop checks the same query and jumps the
+     writing and the fades straight to their finished state — but the grain,
+     the weave and the flicker are the parts that actually make someone ill,
+     and they are all that is switched off here. */
+  .in-grain,
+  .in-marks {
+    display: none;
+  }
+
+  .in-stack {
+    transform: none;
+    filter: none;
+  }
+}
