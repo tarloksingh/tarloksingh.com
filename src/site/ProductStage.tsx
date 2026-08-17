@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import type { MutableRefObject } from 'react'
 import Gallery3D from '../three/Gallery3D'
-import type { RoomLayout } from '../three/Gallery3D'
+import type { RoomLayout, RoomTuning } from '../three/Gallery3D'
 import { projects } from '../data/projects'
 import { exhibitFor } from './products'
 
@@ -19,8 +19,11 @@ import { exhibitFor } from './products'
 
 const EMPTY_CASE = {
   node: null,
+  scale: 1,
   turn: 0,
   lift: 1,
+  offsetX: 0,
+  offsetY: 0,
   floatIntensity: 0,
   floatRotation: 0,
   floatSpeed: 1
@@ -38,9 +41,20 @@ interface ProductStageProps {
   /** Room proportions, in fractions of the window — owned by Gallery.tsx so
    *  the cases and the copy beside them cannot disagree. */
   layout: RoomLayout
+  /** The debug panel lives down here, because leva is the 3D chunk's problem
+   *  and not the initial bundle's — so what it changes about the *room* has
+   *  to be handed back up to the side that owns those numbers. */
+  onTune?: (tuning: RoomTuning) => void
 }
 
-export default function ProductStage({ slots, count, focus, progressRef, layout }: ProductStageProps) {
+export default function ProductStage({
+  slots,
+  count,
+  focus,
+  progressRef,
+  layout,
+  onTune
+}: ProductStageProps) {
   // Rebuilt only when the mounted set changes, not per frame: `node` calls
   // each product's builder, and for the video-backed ones that is where the
   // texture is created.
@@ -58,5 +72,14 @@ export default function ProductStage({ slots, count, focus, progressRef, layout 
     [slots]
   )
 
-  return <Gallery3D pieces={pieces} focus={focus} count={count} progressRef={progressRef} layout={layout} />
+  return (
+    <Gallery3D
+      pieces={pieces}
+      focus={focus}
+      count={count}
+      progressRef={progressRef}
+      layout={layout}
+      onTune={onTune}
+    />
+  )
 }

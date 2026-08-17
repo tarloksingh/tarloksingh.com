@@ -75,6 +75,36 @@ const DETENT_REST = 0.18
  *  takes the rest. */
 const DETENT_RELEASE = 0.1
 
+/* ---- telling a second flick apart from the first one still coasting ----
+
+   Quiet alone is not enough to end a gesture on a trackpad. A hard flick
+   coasts for the better part of two seconds, and DETENT_REST is a fifth of
+   one — so a second swipe that lands anywhere in that tail used to be
+   swallowed whole, because the latch that stops one gesture stepping four
+   projects had never been released. That is the "scrolling doesn't always
+   work" bug, and it is worst exactly when the page feels most responsive to
+   use: swiping briskly through the work.
+
+   Momentum has two properties a finger does not. It never reverses, and it
+   only ever fades. Both are read below. */
+
+/** How far below its peak the tail has to have fallen before a *rise* in
+ *  input can mean a finger. Without this the opening ramp of a single flick —
+ *  where each event is legitimately bigger than the last — reads as a second
+ *  gesture and steps two projects on one swipe. */
+const MOMENTUM_FADED = 0.45
+/** ...and how far above the faded tail that rise has to land. */
+const REACCEL = 1.7
+/** Units per event below which input is treated as the tail guttering out
+ *  rather than as anything anybody did. The last ticks of a flick are a pixel
+ *  or two, and a one-pixel jitter is a 2x "surge" without this. */
+const LIVE_INPUT = 0.004
+/** Seconds a latched gesture may run before real input releases it anyway. A
+ *  slow steady drag never reverses and never surges, so nothing above would
+ *  ever let go of it — and a drag that has been going this long with events
+ *  still above LIVE_INPUT is a finger that never left, not a tail. */
+const DETENT_HOLD_MAX = 1.2
+
 export interface ScrollEngine {
   state: ScrollState
   subscribe: (fn: Subscriber) => () => void
@@ -139,11 +169,30 @@ export function useScrollEngine({
     }
 
     /* Gesture bookkeeping for the detented half of the track. A gesture is
-       "how much has arrived since the last quiet moment", not an event —
-       see DETENT_REST. */
+       "how much has arrived since the last quiet moment or the last thing
+       that looked like a finger", not an event — see DETENT_REST and the
+       momentum notes above it. */
     let travel = 0
     let open = true
     let lastInputAt = 0
+    let latchedAt = 0
+    /** The shape of the tail: the largest event this gesture has delivered,
+     *  and the smallest one since. Together they say whether momentum has
+     *  faded, which is what makes a rise trustworthy. */
+    let peak = 0
+    let trough = Infinity
+    let direction = 0
+
+    /** Release the latch and forget the tail. Called on quiet, on anything
+     *  that reads as a finger, and on `touchstart` — which, unlike a wheel
+     *  event, is an unambiguous beginning and needs no inferring at all. */
+    const openGesture = () => {
+      travel = 0
+      open = true
+      peak = 0
+      trough = Infinity
+      direction = 0
+    }
 
     const push = (units: number) => {
       if (lockedRef.current) return
@@ -157,11 +206,29 @@ export function useScrollEngine({
       }
 
       const now = performance.now()
+      const magnitude = Math.abs(units)
+      const sign = units > 0 ? 1 : units < 0 ? -1 : 0
+
       if (now - lastInputAt > DETENT_REST * 1000) {
-        travel = 0
-        open = true
+        // Quiet for longer than any tail runs on for: whatever this is, it
+        // started here.
+        openGesture()
+      } else if (!open) {
+        const reversed = sign !== 0 && direction !== 0 && sign !== direction
+        const faded = trough < peak * MOMENTUM_FADED
+        const surged = faded && magnitude > trough * REACCEL
+        const held = now - latchedAt > DETENT_HOLD_MAX * 1000
+        if (reversed || ((surged || held) && magnitude > LIVE_INPUT)) openGesture()
       }
+
       lastInputAt = now
+      if (sign !== 0) direction = sign
+      if (magnitude > peak) {
+        peak = magnitude
+        trough = magnitude
+      } else if (magnitude < trough) {
+        trough = magnitude
+      }
 
       if (state.target < from - 1e-3) {
         // Free scrub below the first detent — and it *stops* there rather
@@ -172,6 +239,7 @@ export function useScrollEngine({
           state.target = from
           travel = 0
           open = false
+          latchedAt = now
         } else {
           state.target = Math.max(lo, next)
         }
@@ -186,6 +254,7 @@ export function useScrollEngine({
       const step = Math.round(state.target) + (travel > 0 ? 1 : -1)
       travel = 0
       open = false
+      latchedAt = now
       state.target =
         step < from
           ? Math.max(lo, from - DETENT_RELEASE)
@@ -195,6 +264,11 @@ export function useScrollEngine({
     }
 
     const onWheel = (e: WheelEvent) => {
+      // While locked (a modal like the index is open over the stage) the
+      // engine ignores input entirely — leave the event alone so whatever is
+      // on top, e.g. the index list, scrolls natively instead of being stuck
+      // under a preventDefault() meant for the zero-height document.
+      if (lockedRef.current) return
       // The page owns the gesture entirely; without this the browser also
       // scrolls the (zero-height) document and, on a trackpad, fires the
       // back-navigation gesture on horizontal drift.
@@ -214,6 +288,11 @@ export function useScrollEngine({
 
     const onTouchStart = (e: TouchEvent) => {
       cancelAnimationFrame(flingRaf)
+      // A finger landing *is* the start of a gesture, so the latch can be
+      // released outright here rather than inferred from the shape of the
+      // input as it has to be for a wheel. Without this, a second swipe
+      // during the fling the first one threw is read as part of it.
+      openGesture()
       touchY = e.touches[0]?.clientY ?? null
       samples = touchY === null ? [] : [{ t: performance.now(), y: touchY }]
     }

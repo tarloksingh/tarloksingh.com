@@ -77,6 +77,18 @@ export interface ProductSpec {
   lift?: number
   /** Degrees the piece is turned inside its case. */
   turn?: number
+  /** Nudges the piece off the dead centre of its slot, in fractions of the
+   *  window — `offsetX` across the screen, `offsetY` up it. Screen-space, not
+   *  world-space: the camera orbits, and a piece placed on a world axis would
+   *  swing away from wherever it was set as you scroll.
+   *
+   *  These exist because "centred in its slot" and "sitting right" are not
+   *  the same thing once the pieces are different shapes — a tall kiosk and a
+   *  flat card centred by their bounding boxes do not read as level with each
+   *  other. Tune them live in the gallery's Leva panel (Objects → the
+   *  project), then paste the numbers here to keep them. */
+  offsetX?: number
+  offsetY?: number
   floatIntensity?: number
   floatRotation?: number
   floatSpeed?: number
@@ -86,6 +98,8 @@ const DEFAULTS = {
   scale: 1.55,
   lift: 1,
   turn: 0,
+  offsetX: 0,
+  offsetY: 0,
   floatIntensity: 0.85,
   /* No idle rotation of any kind — not a turntable, and not `Float`'s own
      rotational wobble.
@@ -99,11 +113,15 @@ const DEFAULTS = {
 
 const SPECS: Record<string, ProductSpec> = {
   'capsule-c1': {
-    node: (scale) => <LoadedModel url="/models/capsule-c1.glb" scale={scale} fallbackColor="#000000" />,
+    node: (scale) => (
+      <LoadedModel url="/models/capsule-c1.glb" scale={scale} fallbackColor="#000000" />
+    ),
     turn: 42
   },
   'mr-takahashi': {
-    node: (scale) => <LoadedModel url="/models/mr-takahashi.glb" scale={scale} fallbackColor="#000000" />,
+    node: (scale) => (
+      <LoadedModel url="/models/mr-takahashi.glb" scale={scale} fallbackColor="#000000" />
+    ),
     scale: 1.52,
     turn: 24
   },
@@ -185,8 +203,15 @@ export function exhibitFor(projectId: string) {
   const merged = { ...DEFAULTS, ...spec }
   return {
     node: spec.node(merged.scale),
+    // Already baked into `node` above, and passed on anyway: the gallery's
+    // tuning panel shows sizes as a multiplier on whatever a piece is set to
+    // here, and cannot write a number worth pasting back without knowing what
+    // it is multiplying.
+    scale: merged.scale,
     turn: merged.turn,
     lift: merged.lift,
+    offsetX: merged.offsetX,
+    offsetY: merged.offsetY,
     floatIntensity: merged.floatIntensity,
     floatRotation: merged.floatRotation,
     floatSpeed: merged.floatSpeed
@@ -194,3 +219,14 @@ export function exhibitFor(projectId: string) {
 }
 
 export const hasProduct = (projectId: string) => projectId in SPECS
+
+/** The tunable numbers for one project, without building its piece.
+ *
+ *  What the gallery's debug panel seeds its sliders from. It cannot use
+ *  `exhibitFor` for that: reading four numbers off it would call `node` for
+ *  every project on the site, and `node` is where a glTF gets requested and a
+ *  video element gets made. */
+export function specDefaults(projectId: string) {
+  const { scale, turn, offsetX, offsetY } = { ...DEFAULTS, ...SPECS[projectId] }
+  return { scale, turn, offsetX, offsetY }
+}

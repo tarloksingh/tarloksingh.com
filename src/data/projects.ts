@@ -66,6 +66,187 @@ interface Draft {
 }
 
 const drafts: Draft[] = [
+  /* ---- Placeholders. Both are real work with no write-up yet; they carry a
+     `restricted` note instead of sections, and the case study renders that
+     rather than an empty page. Fill in `sections` and `hero` to promote either
+     one to a full study — nothing else needs changing. ---- */
+  {
+    id: '3d-printing',
+    title: '3D Printing',
+    tagline: 'Parts, Enclosures, Prototypes',
+    role: 'Designer & Maker',
+    company: 'Independent',
+    timeline: '2024 — Present',
+    accent: '#5c6570',
+    restricted:
+      'A write-up is on the way. In the meantime: everything here is modelled in Blender and printed at home — the same pipeline that produced the Capsule C1 enclosure.',
+    intro:
+      'Modelled in Blender, sliced, printed, sanded, and fitted at home. The enclosure work behind Capsule C1 came out of this bench, and it has kept running since.',
+    sections: []
+  },
+  {
+    id: 'visa',
+    title: 'Visa',
+    tagline: 'In-House Design Platform',
+    role: 'Staff Designer',
+    company: 'Visa',
+    timeline: 'Jan — Jul 2026',
+    accent: '#1a1f71',
+    restricted:
+      'Covered by a non-disclosure agreement. What can be said: I replaced Visa’s external agency pipeline with a 114,000-line in-house platform, cut roughly €120K of agency spend, and taught three organisations to run it without me.',
+    intro:
+      'Visa’s marketing production ran through an external agency. I built the platform that brought it in-house — and then handed it over.',
+    sections: []
+  },
+  {
+    id: 'slider-engine',
+    title: 'Slider Engine',
+    tagline: 'Zero Code Game Engine',
+    role: 'Founder & Product Designer',
+    company: 'Openup Technologies Inc.',
+    timeline: '2025',
+    accent: '#2f7d52',
+    intro:
+      'Slider Engine was our attempt to reimagine how games could be built without code. The project began when my cofounder and I considered making a game for fun, but after our experiences with Unity and other engines, we saw a bigger opportunity to design a new engine that was simpler, more intuitive, and AI-assisted.\n\nOur vision was to allow anyone to create games using logical building blocks instead of scripts, enabling millions of people to become game developers. The business opportunity and mission seemed grand, so we began in March 2025.',
+    hero: { v: 'hero.mp4', label: 'Demo — created by Tarlok Singh' },
+    sections: [
+      {
+        id: 'roles',
+        title: 'Roles',
+        tags: [
+          'Product Design',
+          'UX/UI Design',
+          'Game Design',
+          'Branding',
+          'User Research',
+          'Prototyping',
+          'Marketing'
+        ]
+      },
+      {
+        id: 'design',
+        title: 'Design',
+        text: 'My cofounder and I spent a month mapping game logic into a UI-first system, breaking programming into four visual mechanics: triggers, conditions, actions, and properties. By connecting these building blocks, users could create behaviors like jumping or collisions without writing code. Designing even basic actions (like a character jump) revealed how much complexity programmers manage under the hood to me, and pushed me to create clear, visual flows that beginners could understand.\n\nAs a musician, I’ve always valued the immediacy of knobs and dials, you twist something and hear instant feedback. I wanted that same responsiveness in game design. Most existing tools force constant back-and-forth, make a change, hit play, then wait to see results. Our goal was to remove that friction, giving creators instant feedback as they built their games.',
+        media: [
+          { v: 'Design_1.mp4', label: 'Adjusting the speed of a character' },
+          { v: 'Design_5.mp4', label: 'Creating a new game' },
+          { v: 'Design_3.mp4', label: 'Adding game objects' },
+          { v: 'Design_4.mp4', label: 'Reversing & object trails' }
+        ]
+      },
+      {
+        id: 'tools',
+        title: 'Tools',
+        tags: ['Figma', 'Adobe After Effects', 'Adobe Premiere Pro', 'LLM Models', 'Framer', 'Unity']
+      },
+      {
+        id: 'branding',
+        title: 'Process & Branding',
+        text: 'The design for Slider Engine was inspired by what Figma did for designers, making professional creation tools easy to understand and to use. We wanted to do the same for game development. The visual identity leaned on a black, green, and grey palette to convey focus and sophistication, while still feeling creative.\n\nThe modular design language echoed the engine’s “building block” philosophy, reinforcing the idea that complex games could be built piece by piece. Our goal was for new creators to feel empowered the moment they opened the engine, not intimidated.',
+        media: [
+          { v: 'Game_0.mp4', label: 'Engine test build' },
+          { v: 'Game_1.mp4', label: 'Dodge game test' },
+          { v: 'Game_2.mp4', label: 'Frogman vs the Giant Toad' },
+          { v: 'marketing2.mp4', label: 'Unfinished marketing video' }
+        ]
+      },
+      {
+        id: 'challenges',
+        title: 'Challenges',
+        text: 'The main challenge was designing an engine that could do everything a normal game engine could do (focusing on indie game developers). We underestimated how long it would take to develop a working engine, even a simplified one too.\n\nAfter months, we still had a prototype riddled with bugs, and something that was still too difficult to understand, and our limited resources forced us to pause. Despite this, the project was a breakthrough for me as a designer. I learned how to translate complex, abstract systems into usable tools by non technical humans.',
+        links: [
+          { kind: 'demo', label: 'Try Slider Engine', url: 'https://sliderengine.com/' },
+          { kind: 'download', label: 'Download the pitch deck', url: '/downloads/Slider_Engine_ Pitch_Deck.pdf' }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'wyte-card',
+    title: 'Wyte Card',
+    tagline: 'Digital Business Card',
+    role: 'Product Designer',
+    company: 'Openup Technologies Inc.',
+    timeline: '2025',
+    accent: '#4d4d4d',
+    intro:
+      'Wyte Card was our attempt to build a premium digital business card, designed for speed of contact sharing, elegance, and data insights. The idea stemmed directly from an earlier experiment, Gala-Reel, where we used NFC cards and app clips at weddings to share the reception gallery. Participants could also take photos and videos and upload them instantly.\n\nWhile Gala-Reel taught us how seamless NFC interactions could feel, we struggled to find customers in general. We did a three day project called “By The People” as well that used the same technology to share photos and videos but for college campuses to test out the technology. From all that experience, we pivoted the core technology into a more practical, everyday product, digital business cards.',
+    hero: { v: 'hero.mp4', label: 'Promotional video' },
+    sections: [
+      {
+        id: 'roles',
+        title: 'Roles',
+        tags: [
+          'Product Design',
+          'UX/UI Design',
+          'Branding',
+          'User Research',
+          'Product Research',
+          'Marketing & Sales'
+        ]
+      },
+      {
+        id: 'design',
+        title: 'Design',
+        text: 'The physical card was intentionally minimalist, plain white to reduce costs. On the digital side, the experience was simple, tap the card, an app clip opens and contact information opened instantly, no apps required. People who were “tapped” could also purchase their own card right from the app clip. The design philosophy was elegance and speed as we saw the market shows how a great card builds trust.',
+        media: [
+          { i: 'Wyte_1.png', label: 'Main view when opened' },
+          { i: 'Wyte_2.png', label: 'Social media links' },
+          { i: 'Wyte_3.png', label: 'Updated view' }
+        ]
+      },
+      {
+        id: 'branding',
+        title: 'Branding',
+        text: 'The brand identity leaned into professionalism and minimalism. We named it Wyte to reflect the clean, all-white design of the card. Visuals were sleek, neutral, and premium to signal trust and sophistication for professionals like real estate agents.\n\nMarketing emphasized speed, and long-term cost savings compared to printing traditional cards. Where Gala-Reel was festive and celebratory, Wyte Card was designed to feel sharp, focused, and professional.',
+        media: [
+          { i: 'Gala_Reel.jpg', label: 'Gala Reel gallery view' },
+          { i: 'Bythepeople.jpg', label: 'By The People campus test' },
+          { v: 'Video1.mp4', label: 'NFC card & app clip' },
+          { v: 'Demo_3.mp4', label: 'By The People app clip test' }
+        ]
+      },
+      {
+        id: 'challenges',
+        title: 'Challenges',
+        text: 'The biggest challenge wasn’t technical as it took us only days to build the product, but timing. Just as Wyte Card was approved for TikTok Shop and we began testing with real estate agents, my mother required triple bypass surgery. I stepped away from startup life to focus on family.'
+      }
+    ]
+  },
+  {
+    id: 'block-builder',
+    title: 'Block Builder',
+    tagline: 'LEGO Style iPad Game',
+    role: 'Product Designer',
+    company: 'Openup Technologies Inc.',
+    timeline: '2025',
+    accent: '#d1502f',
+    intro:
+      'Block Builder was a simple iPad game we created for my son, inspired by the idea of bringing a LEGO-style building experience into a digital form. At the time, we noticed there wasn’t a block-building game designed for young children on tablets, so we built one in under a week. The goal was something fun for my son and as a quick experiment in game development for us in Unity.',
+    hero: { v: 'hero.mp4', label: 'Modular system demonstration' },
+    sections: [
+      {
+        id: 'roles',
+        title: 'Roles',
+        tags: ['Product Design', 'UX/UI Design', '3D Design', 'User Research & Testing']
+      },
+      {
+        id: 'design',
+        title: 'Design',
+        text: 'The design process was guided almost entirely by observing how my four-year-old interacted with the prototype and other games. We tested basic mechanics together, and I adjusted the interface based on where he struggled.\n\nCamera controls proved confusing for him, and he wanted pre-made structures as starting points instead of building from scratch, an insight that highlighted the importance of scaffolding for engagement at his age. Initial user testing was done by me and my cofounder to validate core flows before handing it off to him.',
+        media: [
+          { v: '1.mp4', label: 'Starting a build' },
+          { v: '2.mp4', label: 'Building a car' },
+          { v: '3.mp4', label: 'Building a duckbug' }
+        ]
+      },
+      {
+        id: 'branding',
+        title: 'Branding & Insights',
+        text: 'Block Builder didn’t have a formal brand system, but its identity came from its colorful blocks, playful interactions, and a child-friendly tone. It was less about creating a polished product and more about creating a sandbox that felt inviting and easy to explore.\n\nBlock Builder showed us how quickly we could develop and ship a working game, it’s much easier than I thought it would be for a designer and an engineer.'
+      }
+    ]
+  },
   {
     id: 'capsule-c1',
     title: 'Capsule C1',
@@ -208,117 +389,46 @@ const drafts: Draft[] = [
     ]
   },
   {
-    id: 'slider-engine',
-    title: 'Slider Engine',
-    tagline: 'Zero Code Game Engine',
+    id: 'stitchfam',
+    title: 'Stitchfam',
+    tagline: 'Build a Family Tree Together',
     role: 'Founder & Product Designer',
     company: 'Openup Technologies Inc.',
-    timeline: '2025',
-    accent: '#2f7d52',
+    timeline: '2024',
+    accent: '#b07a4e',
     intro:
-      'Slider Engine was our attempt to reimagine how games could be built without code. The project began when my cofounder and I considered making a game for fun, but after our experiences with Unity and other engines, we saw a bigger opportunity to design a new engine that was simpler, more intuitive, and AI-assisted.\n\nOur vision was to allow anyone to create games using logical building blocks instead of scripts, enabling millions of people to become game developers. The business opportunity and mission seemed grand, so we began in March 2025.',
-    hero: { v: 'hero.mp4', label: 'Demo — created by Tarlok Singh' },
+      'StitchFam is a collaborative family tree designed to grow organically through shared contributions. The idea came from how I wanted to map out my family history but I didn’t know everyone’s name, didn’t have photos and had no idea how to reach my extended members in India and their extended members.\n\nSo I searched for a way to simply “stitch” it together digitally, where each family member could add their piece, their members and pass it on. It didn’t seem to exist, so that is how StitchFam was born.',
+    hero: { v: 'Desktop_1.mp4', label: 'Traveling through the family tree' },
     sections: [
       {
         id: 'roles',
         title: 'Roles',
-        tags: [
-          'Product Design',
-          'UX/UI Design',
-          'Game Design',
-          'Branding',
-          'User Research',
-          'Prototyping',
-          'Marketing'
-        ]
+        tags: ['Product Design', 'UX/UI Design', 'Branding', 'Research']
       },
       {
         id: 'design',
         title: 'Design',
-        text: 'My cofounder and I spent a month mapping game logic into a UI-first system, breaking programming into four visual mechanics: triggers, conditions, actions, and properties. By connecting these building blocks, users could create behaviors like jumping or collisions without writing code. Designing even basic actions (like a character jump) revealed how much complexity programmers manage under the hood to me, and pushed me to create clear, visual flows that beginners could understand.\n\nAs a musician, I’ve always valued the immediacy of knobs and dials, you twist something and hear instant feedback. I wanted that same responsiveness in game design. Most existing tools force constant back-and-forth, make a change, hit play, then wait to see results. Our goal was to remove that friction, giving creators instant feedback as they built their games.',
+        text: 'I built invitation flows where a single link could be passed from one family member to the next, hoping to create a natural chain of participation.\n\nVisualization layouts were designed to emphasize relationships as living connections, not just data points. The challenge was making the input process quick and engaging so relatives wouldn’t lose interest after a few steps.',
         media: [
-          { v: 'Design_1.mp4', label: 'Adjusting the speed of a character' },
-          { v: 'Design_5.mp4', label: 'Creating a new game' },
-          { v: 'Design_3.mp4', label: 'Adding game objects' },
-          { v: 'Design_4.mp4', label: 'Reversing & object trails' }
+          { v: 'Design_3.mp4', label: 'Mobile view of the family tree' },
+          { v: 'Design_1.mp4', label: 'Adding a family member' },
+          { v: 'Design_2.mp4', label: 'Inviting a family member' }
         ]
-      },
-      {
-        id: 'tools',
-        title: 'Tools',
-        tags: ['Figma', 'Adobe After Effects', 'Adobe Premiere Pro', 'LLM Models', 'Framer', 'Unity']
-      },
-      {
-        id: 'branding',
-        title: 'Process & Branding',
-        text: 'The design for Slider Engine was inspired by what Figma did for designers, making professional creation tools easy to understand and to use. We wanted to do the same for game development. The visual identity leaned on a black, green, and grey palette to convey focus and sophistication, while still feeling creative.\n\nThe modular design language echoed the engine’s “building block” philosophy, reinforcing the idea that complex games could be built piece by piece. Our goal was for new creators to feel empowered the moment they opened the engine, not intimidated.',
-        media: [
-          { v: 'Game_0.mp4', label: 'Engine test build' },
-          { v: 'Game_1.mp4', label: 'Dodge game test' },
-          { v: 'Game_2.mp4', label: 'Frogman vs the Giant Toad' },
-          { v: 'marketing2.mp4', label: 'Unfinished marketing video' }
-        ]
-      },
-      {
-        id: 'challenges',
-        title: 'Challenges',
-        text: 'The main challenge was designing an engine that could do everything a normal game engine could do (focusing on indie game developers). We underestimated how long it would take to develop a working engine, even a simplified one too.\n\nAfter months, we still had a prototype riddled with bugs, and something that was still too difficult to understand, and our limited resources forced us to pause. Despite this, the project was a breakthrough for me as a designer. I learned how to translate complex, abstract systems into usable tools by non technical humans.',
-        links: [
-          { kind: 'demo', label: 'Try Slider Engine', url: 'https://sliderengine.com/' },
-          { kind: 'download', label: 'Download the pitch deck', url: '/downloads/Slider_Engine_ Pitch_Deck.pdf' }
-        ]
-      }
-    ]
-  },
-  {
-    id: 'openup',
-    title: 'OpenUp',
-    tagline: 'Make New Friends',
-    role: 'Founder & Product Designer',
-    company: 'Openup Technologies Inc.',
-    timeline: '2020 — 2023',
-    accent: '#6f57a3',
-    intro:
-      'OpenUp began with a problem I had while living in New York City. Making great friends in a city with 8 million people is extremely hard (I thought at the time, not anymore). I asked myself in 2015 while working at Rockstar Games in New York: Why isn’t there a product for making friends the way there are for making relationships?\n\nI wanted to design a product that solved that loneliness. In 2017, I started teaching myself how I could bring the idea to life. Over the years, OpenUp went through four major redesigns as I searched for the right way to help people build real friendships online.',
-    hero: { v: 'hero.mp4', label: 'Demo — created by Tarlok Singh' },
-    sections: [
-      {
-        id: 'roles',
-        title: 'Roles',
-        tags: ['Founder', 'Product Design', 'Marketing', 'User Testing & Research', 'Recruiting My Co-Founder']
-      },
-      {
-        id: 'design',
-        title: 'Design',
-        text: 'The design evolved through multiple iterations, from the first concept to later versions that explored voice-first interaction and lightweight posting. Through user conversations, personal testing, and experience I discovered that friendships don’t form from casual encounters alone, they emerge from shared suffering (whether self inflicted or by others like school, sports, or companies).\n\nThis insight reshaped the design direction, though it proved difficult to replicate that dynamic online. I continuously prototyped in Figma, simplifying flows and experimenting with ways to create authentic bonds rather than surface-level connections.',
-        media: [
-          { v: 'One.mp4', label: 'Home page' },
-          { v: 'Two.mp4', label: 'Messages page' }
-        ]
-      },
-      {
-        id: 'tools',
-        title: 'Tools',
-        tags: ['Figma', 'Adobe Creative Suite', 'HTML & CSS']
       },
       {
         id: 'branding',
         title: 'Branding',
-        text: 'OpenUp needed to feel trustworthy at all times. I leaned into a softer visual language and copy that emphasized vulnerability and openness.\n\nOpenUp’s branding aimed to create emotional permission, to let people feel safe putting themselves out there to meet others. The branding changed a lot over the years, but the core message was always the same. Eventually focused on a more creative and playful design while maintaining trust.',
+        text: 'The brand was built around warmth and desire to be distinct from the sterile or transactional feel of existing genealogy tools. Where Ancestry and others lean formality, StitchFam’s identity centers on family connection.\n\nThe name itself reinforced the metaphor, stitching pieces of a family together into something whole. The visual design favored softer tones and friendly typography to make the experience feel less like software and more like a family project on a quilt.',
         media: [
-          { v: 'Three.mp4', label: 'OpenUp: version 3' },
-          { v: 'Four.mp4', label: 'OpenUp: version 2' },
-          { v: 'Five.mp4', label: 'OpenUp: version 2 demo' }
+          { v: 'Desktop_2.mp4', label: 'Desktop — adding a member' },
+          { i: 'Test_1.jpg', label: 'Design exploration' },
+          { i: 'Invited.jpg', label: 'Invite in iMessage' }
         ]
       },
       {
         id: 'challenges',
         title: 'Challenges',
-        text: 'The biggest challenge was finding true product-market fit. On one hand, we proved we could generate traction. I once threw a fraternity party where over 1,000 people signed up on the spot to get in. But those signups didn’t stick: the app offered too little for them to actually do, and profiles remained half-finished.\n\nOver time, I also realized the deeper design challenge: creating authentic “common suffering” online was far harder than replicating it in real life. Despite pivots and experiments, I couldn’t solve that core issue. Still, the project taught me critical lessons in distribution strategy, community psychology, and the gap between acquisition and retention.',
-        media: [
-          { v: 'Six.mp4', label: 'OpenUp custom animations' },
-          { v: 'Seven.mp4', label: 'OpenUp: version 1' }
-        ]
+        text: 'The biggest challenge was distribution. Many relatives didn’t pass the link along, which stalled growth. I realized the invitation flow should have leaned on family group chats, as they proved far more effective than one-to-one invitations oddly for this project.\n\nAdoption remained low, and we eventually moved on to other projects but have a neat family tree to show for it.'
       }
     ]
   },
@@ -387,46 +497,54 @@ const drafts: Draft[] = [
     ]
   },
   {
-    id: 'stitchfam',
-    title: 'Stitchfam',
-    tagline: 'Build a Family Tree Together',
+    id: 'openup',
+    title: 'OpenUp',
+    tagline: 'Make New Friends',
     role: 'Founder & Product Designer',
     company: 'Openup Technologies Inc.',
-    timeline: '2024',
-    accent: '#b07a4e',
+    timeline: '2020 — 2023',
+    accent: '#6f57a3',
     intro:
-      'StitchFam is a collaborative family tree designed to grow organically through shared contributions. The idea came from how I wanted to map out my family history but I didn’t know everyone’s name, didn’t have photos and had no idea how to reach my extended members in India and their extended members.\n\nSo I searched for a way to simply “stitch” it together digitally, where each family member could add their piece, their members and pass it on. It didn’t seem to exist, so that is how StitchFam was born.',
-    hero: { v: 'Desktop_1.mp4', label: 'Traveling through the family tree' },
+      'OpenUp began with a problem I had while living in New York City. Making great friends in a city with 8 million people is extremely hard (I thought at the time, not anymore). I asked myself in 2015 while working at Rockstar Games in New York: Why isn’t there a product for making friends the way there are for making relationships?\n\nI wanted to design a product that solved that loneliness. In 2017, I started teaching myself how I could bring the idea to life. Over the years, OpenUp went through four major redesigns as I searched for the right way to help people build real friendships online.',
+    hero: { v: 'hero.mp4', label: 'Demo — created by Tarlok Singh' },
     sections: [
       {
         id: 'roles',
         title: 'Roles',
-        tags: ['Product Design', 'UX/UI Design', 'Branding', 'Research']
+        tags: ['Founder', 'Product Design', 'Marketing', 'User Testing & Research', 'Recruiting My Co-Founder']
       },
       {
         id: 'design',
         title: 'Design',
-        text: 'I built invitation flows where a single link could be passed from one family member to the next, hoping to create a natural chain of participation.\n\nVisualization layouts were designed to emphasize relationships as living connections, not just data points. The challenge was making the input process quick and engaging so relatives wouldn’t lose interest after a few steps.',
+        text: 'The design evolved through multiple iterations, from the first concept to later versions that explored voice-first interaction and lightweight posting. Through user conversations, personal testing, and experience I discovered that friendships don’t form from casual encounters alone, they emerge from shared suffering (whether self inflicted or by others like school, sports, or companies).\n\nThis insight reshaped the design direction, though it proved difficult to replicate that dynamic online. I continuously prototyped in Figma, simplifying flows and experimenting with ways to create authentic bonds rather than surface-level connections.',
         media: [
-          { v: 'Design_3.mp4', label: 'Mobile view of the family tree' },
-          { v: 'Design_1.mp4', label: 'Adding a family member' },
-          { v: 'Design_2.mp4', label: 'Inviting a family member' }
+          { v: 'One.mp4', label: 'Home page' },
+          { v: 'Two.mp4', label: 'Messages page' }
         ]
+      },
+      {
+        id: 'tools',
+        title: 'Tools',
+        tags: ['Figma', 'Adobe Creative Suite', 'HTML & CSS']
       },
       {
         id: 'branding',
         title: 'Branding',
-        text: 'The brand was built around warmth and desire to be distinct from the sterile or transactional feel of existing genealogy tools. Where Ancestry and others lean formality, StitchFam’s identity centers on family connection.\n\nThe name itself reinforced the metaphor, stitching pieces of a family together into something whole. The visual design favored softer tones and friendly typography to make the experience feel less like software and more like a family project on a quilt.',
+        text: 'OpenUp needed to feel trustworthy at all times. I leaned into a softer visual language and copy that emphasized vulnerability and openness.\n\nOpenUp’s branding aimed to create emotional permission, to let people feel safe putting themselves out there to meet others. The branding changed a lot over the years, but the core message was always the same. Eventually focused on a more creative and playful design while maintaining trust.',
         media: [
-          { v: 'Desktop_2.mp4', label: 'Desktop — adding a member' },
-          { i: 'Test_1.jpg', label: 'Design exploration' },
-          { i: 'Invited.jpg', label: 'Invite in iMessage' }
+          { v: 'Three.mp4', label: 'OpenUp: version 3' },
+          { v: 'Four.mp4', label: 'OpenUp: version 2' },
+          { v: 'Five.mp4', label: 'OpenUp: version 2 demo' }
         ]
       },
       {
         id: 'challenges',
         title: 'Challenges',
-        text: 'The biggest challenge was distribution. Many relatives didn’t pass the link along, which stalled growth. I realized the invitation flow should have leaned on family group chats, as they proved far more effective than one-to-one invitations oddly for this project.\n\nAdoption remained low, and we eventually moved on to other projects but have a neat family tree to show for it.'
+        text: 'The biggest challenge was finding true product-market fit. On one hand, we proved we could generate traction. I once threw a fraternity party where over 1,000 people signed up on the spot to get in. But those signups didn’t stick: the app offered too little for them to actually do, and profiles remained half-finished.\n\nOver time, I also realized the deeper design challenge: creating authentic “common suffering” online was far harder than replicating it in real life. Despite pivots and experiments, I couldn’t solve that core issue. Still, the project taught me critical lessons in distribution strategy, community psychology, and the gap between acquisition and retention.',
+        media: [
+          { v: 'Six.mp4', label: 'OpenUp custom animations' },
+          { v: 'Seven.mp4', label: 'OpenUp: version 1' }
+        ]
       }
     ]
   },
@@ -482,58 +600,6 @@ const drafts: Draft[] = [
     ]
   },
   {
-    id: 'wyte-card',
-    title: 'Wyte Card',
-    tagline: 'Digital Business Card',
-    role: 'Product Designer',
-    company: 'Openup Technologies Inc.',
-    timeline: '2025',
-    accent: '#4d4d4d',
-    intro:
-      'Wyte Card was our attempt to build a premium digital business card, designed for speed of contact sharing, elegance, and data insights. The idea stemmed directly from an earlier experiment, Gala-Reel, where we used NFC cards and app clips at weddings to share the reception gallery. Participants could also take photos and videos and upload them instantly.\n\nWhile Gala-Reel taught us how seamless NFC interactions could feel, we struggled to find customers in general. We did a three day project called “By The People” as well that used the same technology to share photos and videos but for college campuses to test out the technology. From all that experience, we pivoted the core technology into a more practical, everyday product, digital business cards.',
-    hero: { v: 'hero.mp4', label: 'Promotional video' },
-    sections: [
-      {
-        id: 'roles',
-        title: 'Roles',
-        tags: [
-          'Product Design',
-          'UX/UI Design',
-          'Branding',
-          'User Research',
-          'Product Research',
-          'Marketing & Sales'
-        ]
-      },
-      {
-        id: 'design',
-        title: 'Design',
-        text: 'The physical card was intentionally minimalist, plain white to reduce costs. On the digital side, the experience was simple, tap the card, an app clip opens and contact information opened instantly, no apps required. People who were “tapped” could also purchase their own card right from the app clip. The design philosophy was elegance and speed as we saw the market shows how a great card builds trust.',
-        media: [
-          { i: 'Wyte_1.png', label: 'Main view when opened' },
-          { i: 'Wyte_2.png', label: 'Social media links' },
-          { i: 'Wyte_3.png', label: 'Updated view' }
-        ]
-      },
-      {
-        id: 'branding',
-        title: 'Branding',
-        text: 'The brand identity leaned into professionalism and minimalism. We named it Wyte to reflect the clean, all-white design of the card. Visuals were sleek, neutral, and premium to signal trust and sophistication for professionals like real estate agents.\n\nMarketing emphasized speed, and long-term cost savings compared to printing traditional cards. Where Gala-Reel was festive and celebratory, Wyte Card was designed to feel sharp, focused, and professional.',
-        media: [
-          { i: 'Gala_Reel.jpg', label: 'Gala Reel gallery view' },
-          { i: 'Bythepeople.jpg', label: 'By The People campus test' },
-          { v: 'Video1.mp4', label: 'NFC card & app clip' },
-          { v: 'Demo_3.mp4', label: 'By The People app clip test' }
-        ]
-      },
-      {
-        id: 'challenges',
-        title: 'Challenges',
-        text: 'The biggest challenge wasn’t technical as it took us only days to build the product, but timing. Just as Wyte Card was approved for TikTok Shop and we began testing with real estate agents, my mother required triple bypass surgery. I stepped away from startup life to focus on family.'
-      }
-    ]
-  },
-  {
     id: 'grand-theft-auto-v',
     title: 'Grand Theft Auto V',
     tagline: 'Action-Adventure Game',
@@ -573,72 +639,6 @@ const drafts: Draft[] = [
       }
     ]
   },
-  {
-    id: 'block-builder',
-    title: 'Block Builder',
-    tagline: 'LEGO Style iPad Game',
-    role: 'Product Designer',
-    company: 'Openup Technologies Inc.',
-    timeline: '2025',
-    accent: '#d1502f',
-    intro:
-      'Block Builder was a simple iPad game we created for my son, inspired by the idea of bringing a LEGO-style building experience into a digital form. At the time, we noticed there wasn’t a block-building game designed for young children on tablets, so we built one in under a week. The goal was something fun for my son and as a quick experiment in game development for us in Unity.',
-    hero: { v: 'hero.mp4', label: 'Modular system demonstration' },
-    sections: [
-      {
-        id: 'roles',
-        title: 'Roles',
-        tags: ['Product Design', 'UX/UI Design', '3D Design', 'User Research & Testing']
-      },
-      {
-        id: 'design',
-        title: 'Design',
-        text: 'The design process was guided almost entirely by observing how my four-year-old interacted with the prototype and other games. We tested basic mechanics together, and I adjusted the interface based on where he struggled.\n\nCamera controls proved confusing for him, and he wanted pre-made structures as starting points instead of building from scratch, an insight that highlighted the importance of scaffolding for engagement at his age. Initial user testing was done by me and my cofounder to validate core flows before handing it off to him.',
-        media: [
-          { v: '1.mp4', label: 'Starting a build' },
-          { v: '2.mp4', label: 'Building a car' },
-          { v: '3.mp4', label: 'Building a duckbug' }
-        ]
-      },
-      {
-        id: 'branding',
-        title: 'Branding & Insights',
-        text: 'Block Builder didn’t have a formal brand system, but its identity came from its colorful blocks, playful interactions, and a child-friendly tone. It was less about creating a polished product and more about creating a sandbox that felt inviting and easy to explore.\n\nBlock Builder showed us how quickly we could develop and ship a working game, it’s much easier than I thought it would be for a designer and an engineer.'
-      }
-    ]
-  },
-  /* ---- Placeholders. Both are real work with no write-up yet; they carry a
-     `restricted` note instead of sections, and the case study renders that
-     rather than an empty page. Fill in `sections` and `hero` to promote either
-     one to a full study — nothing else needs changing. ---- */
-  {
-    id: 'visa',
-    title: 'Visa',
-    tagline: 'In-House Design Platform',
-    role: 'Staff Designer',
-    company: 'Visa',
-    timeline: 'Jan — Jul 2026',
-    accent: '#1a1f71',
-    restricted:
-      'Covered by a non-disclosure agreement. What can be said: I replaced Visa’s external agency pipeline with a 114,000-line in-house platform, cut roughly €120K of agency spend, and taught three organisations to run it without me.',
-    intro:
-      'Visa’s marketing production ran through an external agency. I built the platform that brought it in-house — and then handed it over.',
-    sections: []
-  },
-  {
-    id: '3d-printing',
-    title: '3D Printing',
-    tagline: 'Parts, Enclosures, Prototypes',
-    role: 'Designer & Maker',
-    company: 'Independent',
-    timeline: '2024 — Present',
-    accent: '#5c6570',
-    restricted:
-      'A write-up is on the way. In the meantime: everything here is modelled in Blender and printed at home — the same pipeline that produced the Capsule C1 enclosure.',
-    intro:
-      'Modelled in Blender, sliced, printed, sanded, and fitted at home. The enclosure work behind Capsule C1 came out of this bench, and it has kept running since.',
-    sections: []
-  }
 ]
 
 /* ---- resolution ---- */

@@ -7,11 +7,26 @@
   opacity: 0;
   pointer-events: none;
   overflow: hidden;
+  /* How far right the exhibit sits. The case is at the 3D scene's own centre
+     (world x = 0, screen 50%) and the label stands to its left, so the pair —
+     which is what you actually look at — sits left of the window's centre.
+
+     This is the label's half of the correction only. The row's half happens
+     inside the scene, in world units, and *must*: this element clips to the
+     window, so translating the canvas instead would cut the far edge off it
+     and pieces would vanish a fraction early on their way out of frame.
+
+     Gallery.tsx writes this inline from `layout.shiftW` — the value here is
+     the resting pose before the first write, and the two are the same number
+     (STAGE_SHIFT in room.ts). */
+  --stage-shift: 7%;
 }
 
 /* The room: one canvas, the full window, holding every case in the row. It
    sits behind the copy so a piece can pass behind a wall label rather than
-   over it — a case is furniture in the room, the label is on the glass. */
+   over it — a case is furniture in the room, the label is on the glass.
+
+   Full-bleed and never transformed. See --stage-shift above. */
 .gl-room {
   position: absolute;
   inset: 0;
@@ -36,7 +51,7 @@
 .gl-panel {
   position: absolute;
   z-index: 1;
-  left: 25.5%;
+  left: calc(25.5% + var(--stage-shift));
   top: 50%;
   /* Placed by JS every frame; this is only the resting pose before the
      first. `-50%` in the Y slot is baked into the written transform too. */
@@ -123,20 +138,34 @@
    The copy cannot sit beside the case on a phone — there is no beside. It
    goes under it, and the case takes the top of the screen. */
 
-@media (max-width: 900px) {
-  .gl-panel {
-    left: 50%;
-    top: auto;
-    bottom: calc(var(--gutter) + 64px);
-    width: min(38ch, calc(100vw - var(--gutter) * 2));
-    align-items: center;
-    text-align: center;
-    /* No `transform` here — Gallery.tsx writes it every frame and knows about
-       this breakpoint, because a rule here would only survive until the next
-       one. */
-  }
+/* Keyed off an attribute rather than a media query, because the breakpoint is
+   a live setting: room.ts's `NARROW_AT`, adjustable from the tuning panel so
+   that where a two-column layout actually gives out can be found by dragging
+   a window edge rather than guessed at.
 
-  .gl-lead {
-    -webkit-line-clamp: 3;
-  }
+   Gallery.tsx has to make that decision in JS regardless — it writes the
+   label's transform every frame, and a stacked label rests differently from
+   one standing beside the case. A media query here would hold a *second*
+   opinion about the same breakpoint, and at any width between the two the
+   label would be laid out one way and placed the other. So there is one
+   opinion, and this follows it. It is set on the first render from the
+   window's width, so there is no unstyled frame to flash. */
+.gl[data-narrow='true'] {
+  --stage-shift: 0%;
+}
+
+.gl[data-narrow='true'] .gl-panel {
+  left: 50%;
+  top: auto;
+  bottom: calc(var(--gutter) + 64px);
+  width: min(38ch, calc(100vw - var(--gutter) * 2));
+  align-items: center;
+  text-align: center;
+  /* No `transform` here — Gallery.tsx writes it every frame and knows about
+     this breakpoint, because a rule here would only survive until the next
+     one. */
+}
+
+.gl[data-narrow='true'] .gl-lead {
+  -webkit-line-clamp: 3;
 }

@@ -52,8 +52,9 @@ src/
 | `Home.tsx` | The stage: the name, the wall of disciplines, the chrome, composes the field and the gallery |
 | `Helix.tsx` | The vortex of media, in CSS 3D |
 | `Gallery.tsx` | The row of vitrines, and each project's wall label |
+| `room.ts` | The gallery's proportions — the one copy both sides of the chunk boundary read |
 | `ProductStage.tsx` | The only door to three.js — a lazy chunk boundary |
-| `products.tsx` | Which piece stands for which project, and how it is lit |
+| `products.tsx` | Which piece stands for which project, how it is lit, and where it sits |
 | `ProjectPage.tsx` | A case study |
 | `MediaFigure.tsx` | One clip or still, and when it is worth decoding |
 | `Loader.tsx` | The wait, measuring the stills the field paints with |
@@ -105,6 +106,37 @@ events for most of a second after the finger has left it, so anything that
 counted events would step four projects on one flick. Arriving at 1 is itself a
 detent, so a long flick out of the field stops at the first project instead of
 overshooting into the middle of the work.
+
+Quiet alone is not enough, though, and assuming it was is what made the page
+feel broken to use. A hard flick coasts for the better part of two seconds and
+`DETENT_REST` is a fifth of one, so a **second swipe landing anywhere in that
+tail used to be swallowed whole** — the latch that stops one gesture stepping
+four projects had simply never been released. It failed worst exactly when the
+page should have felt best: swiping briskly through the work. So the tail is
+read as well as the silence, using the two things momentum does that a finger
+does not — it never reverses, and it only ever fades:
+
+- **Reversing** is unambiguous, and releases the latch outright.
+- **A rise** only counts once the tail has fallen well below its own peak
+  (`MOMENTUM_FADED`). Without that condition the opening ramp of a single
+  flick, where each event is legitimately bigger than the last, reads as a
+  second gesture and steps two projects on one swipe.
+- **A long hold** with real input still arriving (`DETENT_HOLD_MAX`) releases
+  it too, because a slow steady drag neither reverses nor surges and nothing
+  else would ever let go of it.
+
+Touch needs none of this: `touchstart` *is* the beginning of a gesture, so the
+latch is released there outright rather than inferred.
+
+**When it is locked, it takes its hands off.** The engine calls
+`preventDefault()` on every wheel event, because the home page is `position:
+fixed` and the browser would otherwise scroll a zero-height document and fire
+the trackpad's back-navigation gesture on any horizontal drift. But a global
+listener doing that also kills native scrolling inside anything laid *over* the
+stage — which is why the index overlay's list would not scroll, and why the
+answer was not in `Index.css`. Locked, the engine now returns before
+`preventDefault()` rather than after it: it is ignoring the input anyway, so
+whatever is on top should get it.
 
 **The menu marks a position on it, not a link.** Home and Work are the two
 halves of this one scroll — either side of `IN_WORK_AT` — so the item you are
@@ -221,9 +253,17 @@ width, and scales — two layout flushes, on mount and on resize only.
 ## The gallery
 
 `Gallery.tsx` and `three/Gallery3D.tsx`. A row of museum vitrines you walk
-along: a glass case on a plinth with the project's object floating inside it,
-and the wall label — client, year, title, role, one paragraph, one button —
-standing to its left. One project at a time, the next one just off the frame.
+along: the project's object standing where the case would put it, and the wall
+label — client, year, title, role, one paragraph, one button — beside it. One
+project at a time, the next one just off the frame.
+
+**The glass is currently off.** `SHOW_CASE` in `Gallery3D.tsx` is `false`, and
+the pieces stand in the open at a little over half again the size the case
+allowed (`PIECE_FIT`). The vitrine is not deleted, and the flag is not a
+shortcut for deleting it: `Vitrine` still places the piece at exactly the
+height its `HANG` puts it at inside the case, so turning the glass back on
+moves nothing. See below for what the case is for and why it took three
+attempts to make one read as acrylic.
 
 **It was a drum before**, and both reasons it stopped being one are worth
 keeping written down, because a cylinder is a tempting shape to come back to.
@@ -379,16 +419,73 @@ simply there when you get to it.
 
 ### The room's proportions
 
-`WIDE` and `NARROW` in `Gallery.tsx`, in fractions of the window, handed down
-to the 3D row as a prop. They live on the DOM side and travel *downward*
-because the label and its case must step by the same distance, and a constant
-written out in both places is a constant that will be changed in one. It cannot
-go the other way: `Gallery3D` is behind the lazy chunk boundary, and importing
-anything from `../three/*` into `Gallery.tsx` would pull the entire 3D stack
-into the initial bundle.
+`WIDE`, `NARROW`, `NARROW_AT` and `STAGE_SHIFT` in `site/room.ts`, in fractions
+of the window. It is a leaf module that imports nothing at all, and has to stay
+one: both sides of the lazy chunk boundary need these numbers — `Gallery.tsx`
+to place the labels, `Gallery3D` to place the cases — and a constant written
+out in both places is a constant that will be changed in one. They could not
+simply live in `Gallery3D` and be imported, because importing anything from
+`../three/*` into `Gallery.tsx` pulls the entire 3D stack into the initial
+bundle.
+
+`Gallery.tsx` resolves them into one finished `RoomLayout` and hands that down.
+Tuning is folded in *there*, once, rather than applied on each side — one side
+working from a base number while the other works from a corrected one is
+exactly how the label ends up a hand's width off its piece.
 
 Narrow windows have no *beside*, so a project takes the whole window, the case
-shrinks and rises into the top half, and the label goes underneath it.
+shrinks and rises into the top half, and the label goes underneath it. **That
+switch is made in JS, not in a media query.** `Gallery.tsx` has to decide it
+regardless — it writes the label's transform every frame and a stacked label
+rests differently from one standing beside a case — so a media query would hold
+a second opinion about the same breakpoint, and at any width between the two
+the label would be laid out one way and placed the other. It writes
+`data-narrow` instead, from the window's width on the very first render, and
+the stylesheet follows that.
+
+**The stage shift** (`shiftW`) moves the whole exhibit right. The case is at the
+scene's own centre — world x = 0, screen 50% — and the label stands to its left,
+so the pair, which is what you actually look at, sits left of the window's
+centre. Both halves move by the same fraction of the window: the row in world
+units inside the scene, the label through a `--stage-shift` custom property.
+
+It must **not** be done by transforming the canvas, which is the obvious way and
+is wrong: `.gl` clips to the window, so a translated canvas has its far edge cut
+off and pieces visibly disappear a fraction early on their way out of frame. It
+is zero on a narrow window, where the label is under the case and the pair is
+already centred.
+
+### Tuning it
+
+Twelve pieces, all different shapes, in one room. "Centred in its slot" and
+"sitting right" stop being the same thing the moment the objects stop being the
+same object: a tall kiosk and a flat card, each centred on its own bounding
+box, do not read as level with each other. So there is a leva panel — **dev
+builds only**, `hidden` otherwise — with a folder per project carrying its own
+**Turn °**, **Scale ×**, **X** and **Y**.
+
+Per project, deliberately. One set of sliders moving all twelve at once can only
+ever find the compromise that suits none of them. X and Y are both in viewport
+heights so that a step of one moves a piece as far as a step of the other, and
+both are applied in *screen* space — X multiplied into the camera's live right
+vector, like everything else in the row, because a piece nudged along a world
+axis would swing away from wherever it was set as soon as the orbit started.
+
+A **Layout** folder holds what has no per-project meaning: case spacing, the
+stage shift, and the width at which the layout goes to phone — that last one
+because where a two-column layout actually gives out is something you find by
+dragging a window edge, not by reasoning. All three are reported *up* to
+`Gallery.tsx`, which owns the proportions, rather than applied where they are
+set; that is what makes spacing move the labels and not just the cases.
+
+Values survive a reload in `localStorage`, which is a scratchpad and not a
+source of truth — a visitor's browser has an empty one and therefore sees
+exactly what the source says. **Copy for source** writes the panel out in the
+shape `products.tsx` and `room.ts` keep their numbers in, converting turn and
+scale back on the way (the panel shows the angle actually on screen and a
+multiplier on the piece's own size; the source stores the pre-`REST_TURN` angle
+and the size itself). A tuning session is only worth having if it can be made
+permanent, and transcribing forty-eight sliders by hand is how one gets lost.
 
 ### One exposure for the whole room
 
@@ -411,6 +508,12 @@ The screens on the video-backed products are `meshBasicMaterial` with
 `toneMapped={false}`, so they were never affected by exposure and did not need
 converting.
 
+A spec also carries **`offsetX`** and **`offsetY`** — where the piece sits
+relative to the dead centre of its slot, in viewport heights. They are the
+permanent home for what the tuning panel's X and Y sliders find, and they exist
+because a bounding box is not an eye: twelve objects each centred on their own
+do not read as level with one another.
+
 ---
 
 ## Projects
@@ -423,12 +526,20 @@ list.
 Copy is carried forward verbatim from the previous Vue site (`WorkDetail.vue` at
 commit `ded65a6`), so nothing written about the work was lost in the rewrite.
 
+**The array's order is the timeline**, newest first, and it has to stay strictly
+monotonic. Nothing sorts it at read time — the gallery walks it by index and the
+field lays it out in the same order — so a project slipped into the wrong place
+shows up as the years counting down, jumping back a decade, and counting down
+again. There is no error and nothing looks broken; it simply reads as though the
+work were in no order at all.
+
 To add a project:
 
 1. Drop its media in `src/assets/<project-id>/`.
 2. `bash scripts/posters.sh`, `bash scripts/field-clips.sh`, then
    `node scripts/media-manifest.mjs`.
-3. Add a `Draft` to `projects.ts`, quoting filenames.
+3. Add a `Draft` to `projects.ts`, quoting filenames — in the right place in the
+   array, see above.
 4. `node scripts/check-media.mjs` — every reference must resolve.
 5. Optionally give it a piece in `src/site/products.tsx`. Without one it still
    gets a case in the row; the case is simply empty, which is a truthful thing
@@ -583,8 +694,8 @@ degrade the layout when there is no connection.
 
 | Chunk | gzip | When |
 |---|---|---|
-| `index` | ~105 KB | First paint: shell, field, gallery, loader |
-| `ProductStage` | ~419 KB | First time the gallery wakes — three, R3F, drei |
+| `index` | ~106 KB | First paint: shell, field, gallery, loader |
+| `ProductStage` | ~494 KB | First time the gallery wakes — three, R3F, drei, leva |
 | `ProjectPage` | ~3 KB | First time a case study opens |
 
 The 3D stack is more than a megabyte and none of it is needed to paint the name,
@@ -592,6 +703,14 @@ the field, or a case study, so it sits behind `ProductStage.tsx` on its own
 chunk. **An import of `../three/*` or `./products` from anywhere outside that
 file pulls the whole stack back into the initial bundle**, and nothing about the
 page will look different when it happens.
+
+The gallery's tuning panel is on the far side of that line for the same reason,
+which is why the room's proportions live in `site/room.ts` and its values are
+reported *up* rather than read *down*: leva is the 3D chunk's dependency and not
+first paint's. `site/room.ts` imports nothing, and has to go on importing
+nothing, or the same trap reopens by the back door. Type-only imports across the
+boundary are fine — `verbatimModuleSyntax` guarantees they are erased — but they
+must keep the `type` keyword to stay that way.
 
 ## The models
 

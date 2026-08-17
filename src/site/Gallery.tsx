@@ -1,5 +1,16 @@
-import { Suspense, forwardRef, lazy, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  Suspense,
+  forwardRef,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from 'react'
 import { projects } from '../data/projects'
+import { NARROW, NARROW_AT, STAGE_SHIFT, WIDE } from './room'
+import type { RoomLayout, RoomTuning } from './room'
 import { clamp, ease } from './useScrollEngine'
 import type { ScrollEngine } from './useScrollEngine'
 import './Gallery.css'
@@ -31,23 +42,16 @@ const ProductStage = lazy(() => import('./ProductStage'))
    the row translates by `-progress` steps, and the piece in the case you have
    arrived at rises and fades up while the one you left sinks away. */
 
-/* How the room is proportioned, in fractions of the window.
+/* How the room is proportioned: `WIDE`, `NARROW`, `NARROW_AT` and
+   `STAGE_SHIFT` in room.ts, in fractions of the window.
 
-   Declared here, on the DOM side, and handed to the 3D row as a prop — the
-   copy and the case have to travel the same distance, and a constant written
-   out in both places is a constant that will be changed in one. It cannot go
-   the other way: `Gallery3D` is behind the lazy chunk boundary, and importing
-   anything from `../three/*` here pulls the whole 3D stack into the initial
-   bundle (see ProductStage.tsx).
+   They are resolved here, on the DOM side, and the finished `RoomLayout` is
+   handed to the 3D row as a prop — the copy and the case have to travel the
+   same distance, and one of them working from a base number while the other
+   works from a corrected one is exactly how the label ends up a hand's width
+   off its piece. So the tuning panel's spacing and shift are folded in *once*,
+   below, and both sides read the result. */
 
-   Wide: the case is centred with the label beside it, and the next project is
-   just off-frame at two thirds of a window away. Narrow: there is no beside,
-   so a project takes the whole window, the case shrinks and rises into the
-   top half, and the label goes underneath it. */
-const WIDE = { stepW: 0.66, caseH: 0.46, caseY: 0 }
-const NARROW = { stepW: 1, caseH: 0.3, caseY: 0.15 }
-/** Below this the label cannot stand beside the case. */
-const NARROW_AT = 900
 /** Scroll position at which the gallery has fully arrived. */
 const ARRIVE_AT = 1
 /** ...and where it starts arriving, overlapping the field's departure. */
@@ -79,14 +83,40 @@ export default function Gallery({ engine, onOpen, onFocus }: GalleryProps) {
   // competes with the entrance for exactly the frames it needs.
   const [awake, setAwake] = useState(false)
   const count = projects.length
+  /* What the tuning panel has set. It lives inside the 3D chunk (leva is that
+     chunk's dependency, not the initial bundle's) and reports back up here,
+     because the room's proportions are this side's to own — the labels have
+     to move with the cases, and only this side can move them. */
+  const [tuning, setTuning] = useState<RoomTuning>({
+    spacing: 1,
+    shift: STAGE_SHIFT,
+    narrowAt: NARROW_AT
+  })
+  const onTune = useCallback((next: RoomTuning) => setTuning(next), [])
+
   const [narrow, setNarrow] = useState(
     () => typeof window !== 'undefined' && window.innerWidth <= NARROW_AT
   )
-  const layout = narrow ? NARROW : WIDE
+
+  const layout = useMemo<RoomLayout>(() => {
+    const base = narrow ? NARROW : WIDE
+    return {
+      stepW: base.stepW * tuning.spacing,
+      caseH: base.caseH,
+      caseY: base.caseY,
+      // Zero when the label is stacked under the case: there is nothing
+      // standing beside the piece then, so the pair is already centred and
+      // shifting it would only push it off.
+      shiftW: narrow ? 0 : tuning.shift / 100
+    }
+  }, [narrow, tuning.spacing, tuning.shift])
+
   // Read inside the scroll loop, which must not be torn down and rebuilt
   // every time the window crosses the breakpoint.
   const layoutRef = useRef(layout)
   layoutRef.current = layout
+  const narrowRef = useRef(narrow)
+  narrowRef.current = narrow
   const onFocusRef = useRef(onFocus)
   onFocusRef.current = onFocus
 
@@ -98,11 +128,25 @@ export default function Gallery({ engine, onOpen, onFocus }: GalleryProps) {
     return [...new Set(out)]
   }, [focus, count])
 
+  // Re-run on `narrowAt` as well as on resize, and check immediately: moving
+  // the breakpoint has to take effect at the window's current width, not at
+  // whatever width it is next dragged to.
   useEffect(() => {
-    const onResize = () => setNarrow(window.innerWidth <= NARROW_AT)
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
-  }, [])
+    const check = () => setNarrow(window.innerWidth <= tuning.narrowAt)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [tuning.narrowAt])
+
+  /* The stage shift reaches the wall label through a custom property, because
+     the label is placed by `left` in the stylesheet and by `transform` from
+     the scroll loop below, and neither of those can be given a second value
+     to add. Written inline, so it beats the stylesheet's own default and its
+     narrow-window override — which is why `shiftW` is already zeroed for
+     narrow above rather than being left to the media query. */
+  useEffect(() => {
+    rootRef.current?.style.setProperty('--stage-shift', `${(layout.shiftW * 100).toFixed(2)}%`)
+  }, [layout.shiftW])
 
   useEffect(() => {
     let lastFocus = -1
@@ -134,12 +178,15 @@ export default function Gallery({ engine, onOpen, onFocus }: GalleryProps) {
 
       // Each mounted panel is placed along the row and faded by how far off
       // the front it is — written straight to the node, never through React.
+      // `stepW` already carries the tuning panel's spacing, so the labels
+      // spread and close with the cases rather than staying put while the row
+      // moves out from under them.
       const step = window.innerWidth * layoutRef.current.stepW
       // The label stacks under the case on a phone instead of standing beside
       // it, which is a different resting transform. Read here rather than
       // left to the stylesheet: this writes `transform` every frame and would
       // overwrite whatever a media query had put there.
-      const stacked = window.innerWidth <= NARROW_AT
+      const stacked = narrowRef.current
       panelRefs.current.forEach((el, panelIndex) => {
         // Shortest signed distance, so passing the last project walks onward
         // into the first instead of unwinding all the way back.
@@ -157,7 +204,7 @@ export default function Gallery({ engine, onOpen, onFocus }: GalleryProps) {
   }, [engine, count])
 
   return (
-    <div className="gl" ref={rootRef}>
+    <div className="gl" ref={rootRef} data-narrow={narrow}>
       {/* One canvas, holding the whole row of cases. It is *not* inside the
           track: the row slides in world units inside the scene, so the canvas
           itself never moves and the WebGL context is built exactly once. */}
@@ -170,6 +217,7 @@ export default function Gallery({ engine, onOpen, onFocus }: GalleryProps) {
               focus={focus}
               progressRef={progressRef}
               layout={layout}
+              onTune={onTune}
             />
           </Suspense>
         ) : null}

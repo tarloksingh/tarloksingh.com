@@ -1,11 +1,24 @@
-import { Suspense, useEffect, useMemo, useRef } from 'react'
+import { Suspense, useEffect, useRef } from 'react'
 import type { MutableRefObject, ReactNode } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Float } from '@react-three/drei'
+import { Leva, button, folder, useControls } from 'leva'
 import { ACESFilmicToneMapping, MathUtils, SRGBColorSpace } from 'three'
 import type { Group, Mesh, MeshStandardMaterial, OrthographicCamera } from 'three'
+import { projects } from '../data/projects'
+import { hasProduct, specDefaults } from '../site/products'
+import { NARROW, NARROW_AT, STAGE_SHIFT, WIDE } from '../site/room'
+import type { RoomLayout, RoomTuning } from '../site/room'
 import { StudioEnvironment } from './CapsuleStage'
 import Vitrine, { VITRINE_TOTAL } from './Vitrine'
+
+export type { RoomLayout, RoomTuning } from '../site/room'
+
+/** Draw the acrylic case and plinth around each piece. Off for now — the
+ *  pieces stand in the open at the case's usual spot, just scaled up (see
+ *  `PIECE_FIT`) — without deleting `Vitrine`, so flipping this back on
+ *  restores the exhibit look exactly as it was. */
+const SHOW_CASE = false
 
 /* The room: one row of vitrines, one canvas, one camera.
  *
@@ -34,20 +47,6 @@ import Vitrine, { VITRINE_TOTAL } from './Vitrine'
  * fraction of the window and there is not a pixel anywhere in the scene.
  */
 
-export interface RoomLayout {
-  /** Distance between two vitrines, in viewport *widths*. The same number the
-   *  copy panels step by — it is handed down from Gallery.tsx rather than
-   *  declared here, so the two can never drift apart. */
-  stepW: number
-  /** Height of a case, in viewport heights. The whole assembly — case, plinth,
-   *  and the depth the near bottom corner adds once it is seen from above —
-   *  comes to a little over half again this, so this is what keeps the room
-   *  off the top and bottom of the window. */
-  caseH: number
-  /** How far the row is lifted, in viewport heights. Non-zero on a narrow
-   *  window, where the label goes under the case rather than beside it. */
-  caseY: number
-}
 /** Where the camera stands at a detent. 45 is corner-on: two faces and the
  *  lid, which is how you meet a case in a room. */
 const AZIMUTH = 45
@@ -90,8 +89,190 @@ const CAM_RADIUS = 10
  * scale, so the drift `Float` adds is scaled by it too. Left unscaled, a
  * drift tuned for a 1.7-unit object throws a 0.2-unit one clean through the
  * glass.
+ *
+ * With the case off (`SHOW_CASE`), nothing constrains a piece's size anymore,
+ * so this is bumped up from the case-era 0.105 — and each piece now has its
+ * own live size multiplier on top of it, see `OBJECT_SCHEMA` below.
  */
-const PIECE_FIT = 0.105
+const PIECE_FIT = 0.16
+
+/* ---- the tuning panel ----
+
+   Twelve pieces, all different shapes, standing in one room. "Centred in its
+   slot" and "sitting right" stop being the same thing the moment the objects
+   stop being the same object: a tall kiosk and a flat card, each centred on
+   its own bounding box, do not read as level with each other. So each piece
+   gets its own angle, size and position, live, and the numbers are written
+   back into products.tsx when they are right.
+
+   Everything below is per *project*, deliberately. An earlier version had one
+   set of sliders moving all twelve at once, which can only ever find the
+   compromise that suits none of them. */
+
+/** Namespaced Leva keys for one project's controls — flat, because
+ *  `useControls` merges every folder's fields into one flat result object,
+ *  so two projects both naming a field `turn` would fight over the same
+ *  value if the keys were not made unique per project. */
+const turnKey = (id: string) => `turn__${id}`
+const scaleKey = (id: string) => `scale__${id}`
+const xKey = (id: string) => `x__${id}`
+const yKey = (id: string) => `y__${id}`
+
+/** Where the panel's numbers survive a reload.
+ *
+ *  Tuning twelve pieces on four axes each is an afternoon, and losing it to a
+ *  stray refresh is what makes a tool stop getting used. This is a scratchpad
+ *  and not a source of truth — nothing in it ever reaches a visitor, whose
+ *  browser has an empty one and therefore sees exactly what products.tsx
+ *  says. `Copy for source` is how a number stops being temporary. */
+const STORE_KEY = 'gallery.tuning.v2'
+
+const readStore = (): Record<string, number> => {
+  try {
+    const parsed: unknown = JSON.parse(window.localStorage.getItem(STORE_KEY) ?? 'null')
+    return parsed && typeof parsed === 'object' ? (parsed as Record<string, number>) : {}
+  } catch {
+    // Private mode, a full quota, a half-written value from an interrupted
+    // save — none of it is worth taking the gallery down for.
+    return {}
+  }
+}
+
+const saved = typeof window === 'undefined' ? {} : readStore()
+
+/** Every control's current value, kept up to date by `Gallery3D`. The copy
+ *  button is built with the schema at module scope and has no other way to
+ *  see what the panel now says. */
+const live: Record<string, number> = { ...saved }
+
+/** One collapsed folder per project — built once at module scope, not per
+ *  render, so retyping a value does not fight a schema object that is a new
+ *  reference every time.
+ *
+ *  Each slider starts where products.tsx already has that piece, so the panel
+ *  opens showing what is actually on screen rather than a row of zeroes you
+ *  have to find your way back from. Turn is shown post-`REST_TURN`, i.e. the
+ *  angle you can see; scale is a multiplier on the piece's own. */
+const OBJECT_SCHEMA = Object.fromEntries(
+  projects.map((project) => {
+    const spec = specDefaults(project.id)
+    const seed = (key: string, fallback: number) => saved[key] ?? fallback
+    const id = project.id
+    return [
+      project.title,
+      folder(
+        {
+          [turnKey(id)]: {
+            value: seed(turnKey(id), Math.round(spec.turn * REST_TURN)),
+            min: -180,
+            max: 180,
+            step: 1,
+            label: 'Turn °'
+          },
+          [scaleKey(id)]: {
+            value: seed(scaleKey(id), 1),
+            min: 0.4,
+            max: 2.5,
+            step: 0.02,
+            label: 'Scale ×'
+          },
+          // Both in viewport heights, so a step of X and a step of Y move the
+          // piece the same distance on screen — which is the whole point of
+          // having two sliders rather than a pair of unrelated numbers.
+          [xKey(id)]: {
+            value: seed(xKey(id), spec.offsetX),
+            min: -0.6,
+            max: 0.6,
+            step: 0.005,
+            label: 'X'
+          },
+          [yKey(id)]: {
+            value: seed(yKey(id), spec.offsetY),
+            min: -0.6,
+            max: 0.6,
+            step: 0.005,
+            label: 'Y'
+          }
+        },
+        { collapsed: true }
+      )
+    ]
+  })
+)
+
+const round = (n: number, places: number) => Number(n.toFixed(places))
+
+/**
+ * The panel's numbers, written out in the shape the source keeps them in.
+ *
+ * A tuning session is only worth having if it can be made permanent, and
+ * transcribing forty-eight sliders by hand is how a session gets lost. Turn
+ * and scale are converted back on the way out: the panel shows the angle
+ * actually on screen and a multiplier on the piece's own size, while
+ * products.tsx stores the pre-`REST_TURN` angle and the size itself.
+ */
+function tuningSource() {
+  const specs = projects
+    .filter((project) => hasProduct(project.id))
+    .map((project) => {
+      const spec = specDefaults(project.id)
+      const turn = live[turnKey(project.id)] ?? spec.turn * REST_TURN
+      const fields = [
+        `scale: ${round(spec.scale * (live[scaleKey(project.id)] ?? 1), 3)}`,
+        `turn: ${round(turn / REST_TURN, 1)}`,
+        `offsetX: ${round(live[xKey(project.id)] ?? spec.offsetX, 3)}`,
+        `offsetY: ${round(live[yKey(project.id)] ?? spec.offsetY, 3)}`
+      ]
+      return `  '${project.id}': { ${fields.join(', ')} },`
+    })
+
+  const spacing = live.spacing ?? 1
+  return [
+    '// src/site/products.tsx — merge into each SPECS entry',
+    ...specs,
+    '',
+    '// src/site/room.ts',
+    `WIDE.stepW    ${round(WIDE.stepW * spacing, 3)}   // was ${WIDE.stepW}`,
+    `NARROW.stepW  ${round(NARROW.stepW * spacing, 3)}   // was ${NARROW.stepW}`,
+    `STAGE_SHIFT   ${live.shift ?? STAGE_SHIFT}`,
+    `NARROW_AT     ${live.narrowAt ?? NARROW_AT}`
+  ].join('\n')
+}
+
+/** How the room itself is set, as opposed to what is standing in it. All of
+ *  it applies to every case at once — spacing and the breakpoint have no
+ *  per-project meaning, and a stage shift that differed per project would
+ *  make the row wander as you scrolled. */
+const LAYOUT_SCHEMA = {
+  spacing: {
+    value: saved.spacing ?? 1,
+    min: 0.5,
+    max: 2.2,
+    step: 0.02,
+    label: 'Case spacing ×'
+  },
+  shift: {
+    value: saved.shift ?? STAGE_SHIFT,
+    min: -20,
+    max: 20,
+    step: 0.5,
+    label: 'Stage shift %'
+  },
+  narrowAt: {
+    value: saved.narrowAt ?? NARROW_AT,
+    min: 480,
+    max: 1400,
+    step: 10,
+    label: 'Mobile below px'
+  },
+  'Copy for source': button(() => {
+    const source = tuningSource()
+    // Logged as well as copied, always: a clipboard write can be refused and
+    // there is no useful way to tell the panel about it.
+    console.log(source)
+    void navigator.clipboard?.writeText(source).catch(() => {})
+  })
+}
 
 interface Piece {
   id: string
@@ -104,6 +285,11 @@ interface Piece {
    *  on `lift` in products.tsx: one exposure now lights the whole room, so a
    *  product that used to carry its own carries a lift instead. */
   lift: number
+  /** Where the piece sits relative to the dead centre of its slot, in
+   *  viewport heights: `offsetX` across the screen, `offsetY` up it. See the
+   *  note on them in products.tsx. */
+  offsetX: number
+  offsetY: number
   floatIntensity: number
   /** `Float`'s rotational wobble. Zero everywhere — see products.tsx. */
   floatRotation: number
@@ -121,6 +307,9 @@ interface Gallery3DProps {
   /** How many projects the row loops through. */
   count: number
   layout: RoomLayout
+  /** Hands the tuning panel's room settings back to `Gallery.tsx`, which owns
+   *  the room's proportions and applies them to the labels as well. */
+  onTune?: (tuning: RoomTuning) => void
 }
 
 /** How far below its place a piece rises from, in its own units. */
@@ -162,7 +351,27 @@ function RoomLens() {
  * away rather than one, so it is nowhere near the screen at the moment you
  * are supposed to be arriving at it.
  */
-function Row({ pieces, progressRef, focus, count, layout, step }: Gallery3DProps & { step: number }) {
+interface RowExtra {
+  /** Distance between two slots, in world units. */
+  step: number
+  /** How far right the whole row stands, in world units — `layout.shiftW`
+   *  converted by the same aspect ratio the step is. */
+  shift: number
+  /** Every per-object control's live value, by namespaced key
+   *  (`OBJECT_SCHEMA`), read once per frame rather than through a render. */
+  objectControls: Record<string, number>
+}
+
+function Row({
+  pieces,
+  progressRef,
+  focus,
+  count,
+  layout,
+  step,
+  shift,
+  objectControls
+}: Gallery3DProps & RowExtra) {
   const slots = useRef(new Map<string, Group>())
   const turns = useRef(new Map<string, Group>())
   const camera = useThree((s) => s.camera)
@@ -216,11 +425,19 @@ function Row({ pieces, progressRef, focus, count, layout, step }: Gallery3DProps
          apart. */
       const turn = turns.current.get(piece.id)
       if (turn) {
-        turn.rotation.y = azimuth + MathUtils.degToRad(piece.turn * REST_TURN + delta * ORBIT)
+        const rest = objectControls[turnKey(piece.id)] ?? piece.turn * REST_TURN
+        turn.rotation.y = azimuth + MathUtils.degToRad(rest + delta * ORBIT)
       }
 
-      const along = delta * step
-      group.position.set(along * rightX, layout.caseY, along * rightZ)
+      /* Three things move a piece horizontally and they are all one number:
+         how far along the row it is, how far right the whole stage is set
+         (`shift` — see `shiftW` in room.ts), and its own X nudge. All three
+         are distances *across the screen*, so all three are multiplied into
+         the camera's right vector together. Vertical needs no such treatment:
+         world Y is up on screen at any azimuth. */
+      const along = delta * step + shift + (objectControls[xKey(piece.id)] ?? piece.offsetX)
+      const up = layout.caseY + (objectControls[yKey(piece.id)] ?? piece.offsetY)
+      group.position.set(along * rightX, up, along * rightZ)
     }
   })
   return (
@@ -233,10 +450,10 @@ function Row({ pieces, progressRef, focus, count, layout, step }: Gallery3DProps
             else slots.current.delete(piece.id)
           }}
         >
-          <Vitrine height={layout.caseH}>
+          <Vitrine height={layout.caseH} showCase={SHOW_CASE}>
             <Lift intensity={piece.lift}>
               <group
-                scale={PIECE_FIT}
+                scale={PIECE_FIT * (objectControls[scaleKey(piece.id)] ?? 1)}
                 ref={(el) => {
                   if (el) turns.current.set(piece.id, el)
                   else turns.current.delete(piece.id)
@@ -351,29 +568,56 @@ function Lift({ intensity, children }: { intensity: number; children: ReactNode 
 }
 
 export default function Gallery3D(props: Gallery3DProps) {
-  return (
-    <Canvas
-      className="gl-canvas"
-      orthographic
-      shadows
-      dpr={[1, 1.5]}
-      // Everything is within a unit of the origin and the camera is ten units
-      // out, so the depth range is pulled tight around the row — the same
-      // reason the perspective stage did it: flat decals on these products sit
-      // coplanar with the surfaces under them and strobe otherwise.
-      camera={{ position: [0, 0, 10], zoom: 1, near: 1, far: 40 }}
-      gl={{
-        alpha: true,
-        antialias: true,
-        toneMapping: ACESFilmicToneMapping,
-        outputColorSpace: SRGBColorSpace
-      }}
-      style={{ background: 'transparent' }}
-    >
-      <RoomLens />
-      <Exposure value={0.1} />
+  const { onTune } = props
+  // One folder per project (see `OBJECT_SCHEMA`) — angle, size and position,
+  // each piece on its own.
+  const objectControls = useControls('Objects', OBJECT_SCHEMA) as unknown as Record<string, number>
+  const { spacing, shift, narrowAt } = useControls('Layout', LAYOUT_SCHEMA) as unknown as RoomTuning
 
-      {/* Blender's lights do not survive a glTF export, so the environment
+  useEffect(() => {
+    Object.assign(live, objectControls, { spacing, shift, narrowAt })
+    try {
+      window.localStorage.setItem(STORE_KEY, JSON.stringify(live))
+    } catch {
+      // See readStore: an unavailable store means the panel does not persist,
+      // which is not a reason for the gallery to stop working.
+    }
+  }, [objectControls, spacing, shift, narrowAt])
+
+  // Up to Gallery.tsx, which owns the room's proportions and has to move the
+  // wall labels by the same amounts.
+  useEffect(() => {
+    onTune?.({ spacing, shift, narrowAt })
+  }, [onTune, spacing, shift, narrowAt])
+
+  return (
+    <>
+      {/* Development only. Everything it sets has a permanent home in
+          products.tsx and room.ts, and a visitor arriving at a portfolio
+          behind a debug panel is not the impression to make. */}
+      <Leva collapsed hidden={!import.meta.env.DEV} titleBar={{ title: 'Exhibit tuning' }} />
+      <Canvas
+        className="gl-canvas"
+        orthographic
+        shadows
+        dpr={[1, 1.5]}
+        // Everything is within a unit of the origin and the camera is ten units
+        // out, so the depth range is pulled tight around the row — the same
+        // reason the perspective stage did it: flat decals on these products sit
+        // coplanar with the surfaces under them and strobe otherwise.
+        camera={{ position: [0, 0, 10], zoom: 1, near: 1, far: 40 }}
+        gl={{
+          alpha: true,
+          antialias: true,
+          toneMapping: ACESFilmicToneMapping,
+          outputColorSpace: SRGBColorSpace
+        }}
+        style={{ background: 'transparent' }}
+      >
+        <RoomLens />
+        <Exposure value={0.1} />
+
+        {/* Blender's lights do not survive a glTF export, so the environment
           does most of the work on a gloss object — but an environment alone
           casts nothing, and a room with no shadow in it is a page with
           objects printed on it. The key is a real gallery light: high, in
@@ -383,11 +627,11 @@ export default function Gallery3D(props: Gallery3DProps) {
           spans a hundred units and this whole room is about two units tall, so
           left at the default the entire scene falls inside a couple of texels
           and every shadow arrives as a grey smear. */}
-      <StudioEnvironment intensity={4} />
-      <ambientLight intensity={0.85} />
-      <directionalLight
-        castShadow
-        /* High, like a gallery downlight — and fixed, while the camera walks.
+        <StudioEnvironment intensity={4} />
+        <ambientLight intensity={0.85} />
+        <directionalLight
+          castShadow
+          /* High, like a gallery downlight — and fixed, while the camera walks.
            The elevation is doing real work at that combination: at 90 degrees
            of orbit per project the key ends up behind the case every other
            detent, and only a light this close to overhead keeps the faces
@@ -405,36 +649,38 @@ export default function Gallery3D(props: Gallery3DProps) {
            The plinth's *top* still takes the beam square-on, which is where
            the contrast belongs — and is what the reference photograph
            does. */
-        position={[0.72, 6.5, 0.9]}
-        intensity={5.6}
-        shadow-mapSize={[2048, 2048]}
-        shadow-camera-near={0.5}
-        shadow-camera-far={12}
-        shadow-camera-left={-2.4}
-        shadow-camera-right={2.4}
-        shadow-camera-top={2.4}
-        shadow-camera-bottom={-2.4}
-        shadow-bias={-0.0008}
-        shadow-normalBias={0.012}
-      />
-      {/* Fill, from the other side and cool, so the turned-away faces of the
+          position={[0.72, 6.5, 0.9]}
+          intensity={5.6}
+          shadow-mapSize={[2048, 2048]}
+          shadow-camera-near={0.5}
+          shadow-camera-far={12}
+          shadow-camera-left={-2.4}
+          shadow-camera-right={2.4}
+          shadow-camera-top={2.4}
+          shadow-camera-bottom={-2.4}
+          shadow-bias={-0.0008}
+          shadow-normalBias={0.012}
+        />
+        {/* Fill, from the other side and cool, so the turned-away faces of the
           plinths are not dead. No shadow: a second caster gives every object
           two shadows, which reads as a rendering error rather than as light. */}
-      <directionalLight position={[-3.2, 2.2, -2.6]} intensity={1.7} color="#cdd6e0" />
+        <directionalLight position={[-3.2, 2.2, -2.6]} intensity={1.7} color="#cdd6e0" />
 
-      {/* Exactly under the plinths, from the vitrine's own proportions — a
+        {/* Exactly under the plinths, from the vitrine's own proportions — a
           floor guessed at with a magic number is a floor the cases hover
           above, which is precisely what a shadow starting half a pedestal
           away from its object looks like. */}
-      <Floor y={props.layout.caseY - (props.layout.caseH * VITRINE_TOTAL) / 2} />
-      <RowWithStep {...props} />
-    </Canvas>
+        <Floor y={props.layout.caseY - (props.layout.caseH * VITRINE_TOTAL) / 2} />
+        <RowWithStep {...props} objectControls={objectControls} />
+      </Canvas>
+    </>
   )
 }
 
 /**
- * The step in world units — viewport widths, and one world unit is one
- * viewport *height*, so the aspect ratio is what converts between them.
+ * The step and the stage shift in world units. Both arrive as viewport
+ * *widths*, and one world unit is one viewport *height*, so the aspect ratio
+ * is what converts between them.
  *
  * Derived from the canvas size rather than read off `viewport`, which is a
  * value the store caches and recomputes on its own resize and camera events.
@@ -445,11 +691,11 @@ export default function Gallery3D(props: Gallery3DProps) {
  * hundred world units off-screen, which looks exactly like a scene that
  * failed to mount.
  */
-function RowWithStep(props: Gallery3DProps) {
+function RowWithStep(props: Gallery3DProps & Omit<RowExtra, 'step' | 'shift'>) {
   const size = useThree((s) => s.size)
-  const stepW = props.layout.stepW
-  const step = useMemo(() => (stepW * size.width) / size.height, [stepW, size.width, size.height])
-  return <Row {...props} step={step} />
+  const aspect = size.width / size.height
+  const { stepW, shiftW } = props.layout
+  return <Row {...props} step={stepW * aspect} shift={shiftW * aspect} />
 }
 
 /**

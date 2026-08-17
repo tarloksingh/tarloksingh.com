@@ -65,10 +65,15 @@ export const VITRINE_TOTAL = 1 + PLINTH
 interface VitrineProps {
   /** Height of the glass case, in world units. */
   height: number
+  /** Whether the acrylic case and plinth are drawn at all. Off leaves the
+   *  piece floating where the case's `HANG` would have placed it inside the
+   *  case — so toggling this back on later does not move anything. Default
+   *  on; `Gallery3D`'s `SHOW_CASE` is what flips it off for the whole row. */
+  showCase?: boolean
   children?: ReactNode
 }
 
-export default function Vitrine({ height, children }: VitrineProps) {
+export default function Vitrine({ height, showCase = true, children }: VitrineProps) {
   const side = height * SIDE
   const pane = height * PANE
   const plinthH = height * PLINTH
@@ -99,31 +104,52 @@ export default function Vitrine({ height, children }: VitrineProps) {
 
   return (
     <group>
-      {/* The plinth. Matte, and the only part of this with real value contrast
-          — glass reads as glass because the thing underneath it does not. */}
-      <mesh geometry={geo.plinth} position={[0, floorY + plinthH / 2, 0]} castShadow receiveShadow>
-        <meshStandardMaterial color="#f4f1ea" roughness={0.95} metalness={0} envMapIntensity={2.1} />
-      </mesh>
-
-      {/* The piece, standing on the plinth inside the case. It drops its own
-          shadow onto the top of the plinth below it. */}
-      <group position={[0, floorY + plinthH + height * HANG, 0]}>{children}</group>
-
-      <group position={[0, caseY, 0]}>
-        {walls.map((wall, i) => (
-          <mesh key={i} geometry={geo.wall} position={wall.position} rotation={wall.rotation} castShadow>
-            <PaneMaterials />
+      {showCase && (
+        <>
+          {/* The plinth. Matte, and the only part of this with real value
+              contrast — glass reads as glass because the thing underneath it
+              does not. */}
+          <mesh
+            geometry={geo.plinth}
+            position={[0, floorY + plinthH / 2, 0]}
+            castShadow
+            receiveShadow
+          >
+            <meshStandardMaterial
+              color="#f4f1ea"
+              roughness={0.95}
+              metalness={0}
+              envMapIntensity={2.1}
+            />
           </mesh>
-        ))}
-        {/* No `castShadow` on the lid. Shadow maps know nothing about
-            transparency, so a horizontal slab lays down a solid square at the
-            same weight as the plinth's — a lid made of stone. The four upright
-            walls do cast, and a thin upright slab casts the hairline a real
-            case lays on the floor. */}
-        <mesh geometry={geo.lid} position={[0, height / 2 - pane / 2, 0]}>
-          <LidMaterials />
-        </mesh>
-      </group>
+
+          <group position={[0, caseY, 0]}>
+            {walls.map((wall, i) => (
+              <mesh
+                key={i}
+                geometry={geo.wall}
+                position={wall.position}
+                rotation={wall.rotation}
+                castShadow
+              >
+                <PaneMaterials />
+              </mesh>
+            ))}
+            {/* No `castShadow` on the lid. Shadow maps know nothing about
+                transparency, so a horizontal slab lays down a solid square at
+                the same weight as the plinth's — a lid made of stone. The
+                four upright walls do cast, and a thin upright slab casts the
+                hairline a real case lays on the floor. */}
+            <mesh geometry={geo.lid} position={[0, height / 2 - pane / 2, 0]}>
+              <LidMaterials />
+            </mesh>
+          </group>
+        </>
+      )}
+
+      {/* The piece. Standing on the plinth inside the case when the case is
+          drawn; floating at the same spot when it is not. */}
+      <group position={[0, floorY + plinthH + height * HANG, 0]}>{children}</group>
     </group>
   )
 }
