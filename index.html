@@ -3,14 +3,38 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tarlok Singh</title>
-    <!-- The product model and its Draco decoder are otherwise only
-         discovered once the JS bundle has parsed and mounted the scene —
-         on a high-latency connection that's several round trips stacked in
-         series before the model can even start rendering, which is what
-         reads as the entrance animation arriving broken. Preloading lets
-         the browser fetch them in parallel with the JS instead. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Tarlok Singh — Artist &amp; Engineer</title>
+    <meta
+      name="description"
+      content="Product design, 3D, motion, film, music and AI engineering. Selected work by Tarlok Singh."
+    />
+    <meta name="theme-color" content="#f4f2ec" />
+
+    <!-- The loading screen sets the name in the display serif and is the very
+         first thing painted, so the font is fetched alongside the JS rather
+         than being discovered once the stylesheet has parsed. Only the two
+         latin subsets: latin-ext carries accents that no chrome uses. -->
+    <link
+      rel="preload"
+      href="/fonts/instrument-serif/instrument-serif-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/instrument-serif/instrument-serif-italic-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+
+    <!-- The first product model and its Draco decoder are otherwise only
+         discovered once the JS bundle has parsed and mounted the stage — on a
+         high-latency connection that is several round trips stacked in series
+         before the model can even start rendering, which is what reads as the
+         entrance arriving broken. -->
     <link rel="preload" href="/models/capsule-c1.glb" as="fetch" crossorigin />
     <link rel="preload" href="/draco/draco_decoder.wasm" as="fetch" crossorigin />
     <link rel="preload" href="/draco/draco_decoder.js" as="fetch" crossorigin />

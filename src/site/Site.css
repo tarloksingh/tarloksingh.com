@@ -1,0 +1,38 @@
+/* Shell-level furniture: the page-turn curtain and the holding frame. */
+
+.st-curtain {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-loader);
+  display: grid;
+  place-items: center;
+  background: var(--ink);
+  visibility: hidden;
+  will-change: transform;
+  /* No `transform` here on purpose. GSAP owns this element's transform, and
+     it animates `yPercent` — a channel it keeps *separate* from the `y` px
+     channel it parses an existing declaration into. A `translateY(100%)` in
+     this rule is read as `y: 778px` and stays in the matrix underneath the
+     tween, so the sheet animates to "yPercent 0" while still sitting a whole
+     viewport below the fold: the page swap then happens in full view with no
+     curtain over it at all. The resting pose is set in JS instead. */
+}
+
+.st-curtain-label {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 6vw, 4.5rem);
+  line-height: 1;
+  letter-spacing: -0.035em;
+  text-align: center;
+  color: var(--paper);
+  opacity: 0;
+  padding-inline: var(--gutter);
+}
+
+/* Shown for the frame or two a case study's chunk takes to arrive. Deliberately
+   blank: it is only ever seen behind the curtain, and anything visible here
+   would be a flash of a thing that isn't the page. */
+.st-holding {
+  min-height: 100dvh;
+  background: var(--paper);
+}

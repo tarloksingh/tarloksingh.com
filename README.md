@@ -1,488 +1,636 @@
 # tarloksingh.com
 
-Portfolio site. React + TypeScript + Vite, with GSAP for choreography.
-
-> The previous site was Vue. `COMPLETE_DATA_DRIVEN_GUIDE.md`,
-> `LAYOUT_CONTROL_GUIDE.md`, `LINKS_FEATURE_GUIDE.md`, `MEDIA_ORDERING_GUIDE.md`
-> and `PROJECT_STRUCTURE_GUIDE.md` all describe **that** site and do not apply to
-> the current codebase. They are kept for reference to the old project data.
+Portfolio site. React + TypeScript + Vite, GSAP for the page transition,
+three.js for the products.
 
 ```bash
 npm install
 npm run dev      # vite dev server
 npm run build    # tsc -b && vite build
+node scripts/check-media.mjs   # every file the project data quotes exists
 ```
 
-The dev server binds to `0.0.0.0` and `vite.config.ts` allow-lists `.ts.net`, so
-the site is reachable over the tailnet while `npm run dev` is running —
-`http://tarloks-mac-mini.tail795683.ts.net:5173`.
+Adding media is three scripts, in this order: `bash scripts/posters.sh`,
+`bash scripts/field-clips.sh`, `node scripts/media-manifest.mjs`.
 
-## Two home pages
+The dev server binds to `0.0.0.0` and `vite.config.ts` allow-lists `.ts.net`,
+so the site is reachable over the tailnet while `npm run dev` is running —
+`http://tarloks-mac-mini.tail795683.ts.net:5173`. That is how to check the
+phone layout on an actual phone.
 
-There are two, and `src/App.tsx` picks between them:
+> Not live yet. `main` still holds the old Vue site, and the domain is served
+> from a **different repo** (`tarloksingh/my-portfolio`, private) via Vercel.
+> Pushing this branch does not deploy anything.
 
-| URL | Page | |
-|---|---|---|
-| `/` | `CapsuleHome.tsx` | The product on a stage, its name turning around it |
-| `/?v=cards` | `Home.tsx` | The original shuffling card cluster, untouched |
+---
 
-Neither is live yet — `main` still holds the old Vue site, and the domain is
-served from a **different repo** (`tarloksingh/my-portfolio`, private) via
-Vercel. Pushing this branch does not deploy anything.
+## The shape of it
 
-## The product page
+Two routes, and one continuous scroll.
 
-`src/components/CapsuleHome.tsx`, built to a 2048x1080 frame: a fixed 405px
-stone sidebar carrying the identity, and a gradient stage holding the product.
-
-**On load the page is sealed by the ring itself.** Before the cut, the ring is
-a banner: the same per-glyph engine, printed on a strip of film leader — black
-stock, sprocket notches punched top and bottom, the name set pale in the
-rebate, an ink wash across. It hangs between the two edges of the screen,
-sagging under its own weight and moving in the wind. There is no tape graphic
-and nothing is layered over the page. It is the ring before it has closed.
-
-Clicking cuts it where you clicked. The cut ends swing down about their
-supports under gravity, and the same glyphs are then drawn up into the ring,
-reading the product's name. One run of type carries the whole opening.
-
-Four things hold that together, and undoing any of them breaks it back into
-two events — a banner leaving and a different line arriving:
-
-- **The slot count is fixed**, taken from whichever label is longer with the
-  shorter padded, so the glyphs are the *same DOM elements* before and after
-  and the text changes on them mid-flight. Sizing the run to the current label
-  re-mounts every glyph at the swap.
-- **Nothing leaves the screen.** The ends fall about their supports and are
-  gathered in from wherever they got to. Throwing them off and bringing them
-  back is the same problem wearing a different hat.
-- **Every position is one blend.** `banner -> ring` is a single lerp per glyph
-  with the fall folded into the banner side, so the transformation is
-  continuous by construction rather than a sequence timed to look continuous.
-- **The animation clock lives outside the draw effect.** That effect re-runs
-  whenever the glyph characters change — which is exactly what the text swap
-  does, halfway through — and a clock started inside it resets there, playing
-  the whole cut a second time.
-
-The banner hangs from the *screen's* edges, not the stage's. Glyph positions
-are measured from the stage's centre, and the stage is the content column,
-which sits right of centre by the width of the sidebar. Normalising the span
-against half the viewport without accounting for that puts one support inside
-the frame and leaves everything past it clamped flat — no sag, no wind, a dead
-stretch down one edge.
-
-Wind is not one sine. That reads as decoration, because real wind arrives in
-gusts with a finer flutter inside them: two slow waves beat against each other
-to set the strength, a second higher-frequency ripple rides inside, and the
-span lifts slightly while a gust passes. All of it pinned to zero at the
-supports, since a banner does not move where it is tied.
-
-The strip is drawn as short segments laid end to end along the same curve —
-one long box cannot follow a bend. They overlap by a fraction of their height
-rather than butting: neighbours sit at slightly different angles, so an
-exact-width segment opens a wedge at every join, invisible on a thin strip and
-a pale seam down a tall one. The sprocket pattern is offset per segment so it
-runs unbroken across them. The strip rides the banner and the fall, never the
-wrap, and fades as the type lifts off it.
-
-The move from cutting to open is a **timer**, not something the draw loop
-decides when its progress reaches 1. Frames are not guaranteed — a backgrounded
-tab stops them outright, and decoding the model can starve them — and hanging
-that state change off one leaves the line stuck mid-cut, still reading the
-seal, with no way forward.
-
-The content column sits above the sidebar while the banner is up, since the
-banner has to cross the whole screen. It drops back under once the opening has
-finished, so the closed ring stays in its own section — on a narrow window the
-ring is wider than the column, and left above the sidebar it runs straight
-across the name. The drop waits for the wrap to finish rather than happening
-at the cut, or the falling ends would be clipped at the column edge mid-flight.
-
-**The sidebar is absent until the cut.** It keeps its box the whole time and
-only fades: collapsing it would move the stage's centre and drag the ring
-sideways mid-transform. The page gradient lives on `.capsule-home` rather than
-the content column so there is no flat panel sitting where it will be.
-
-**Once it opens**, the copy reveals block by block, each clipped to its own box
-so the characters climb into view from under the cut, while the product turns
-into place and hands that motion over to the idle float.
-
-`.ch-stage` spans the whole content area rather than sitting as a flex row
-between menu and credit. As a row its bottom edge fell above the credit line
-and the canvas ended there, so a product entering from below was cut off in
-mid-air rather than coming in off the bottom of the screen.
-
-## The name ring
-
-A band of type standing up around the product, not lying flat on a turntable.
-Each glyph faces the camera, so the front of the ring reads square on.
-
-**The cylinder is projected in JS, not handed to CSS 3D.** That is a
-performance decision. The 3D version needed every glyph duplicated across two
-`preserve-3d` layers, one either side of the model, because a 3D rendering
-context sorts by depth and *ignores z-index* — so no single layer could
-straddle the model, and the model is a WebGL canvas that cannot join that
-context at all. At the tuned settings that came to ~590 spans, each
-re-rasterised every frame, since a rotated 3D transform is not something the
-compositor can reuse. That was the jank.
-
-Projecting by hand gives one set of glyphs, plain 2D transforms and z-index
-working normally against the canvas. `.ch-stage` carries `isolation: isolate`
-so the far arc's `-1` stays inside the stage instead of dropping behind the
-page gradient. Spaces still occupy their slot but are hidden once rather than
-re-hidden every frame.
-
-Four things are easy to undo by accident:
-
-- **It is a cylinder, not a flattened ellipse.** Upright glyphs on a 2D ellipse
-  look right at the top and bottom and fall apart at the sides, where the path
-  runs vertical on screen, the horizontal gap between neighbours collapses and
-  the letters pile into an unreadable clump. Rotation spends that spacing
-  evenly the whole way round.
-- **The roll has to reach the glyph, not just its position.** Rotating only the
-  placement leaves every letter bolt upright while the baseline runs
-  diagonally, which reads as a staircase rather than as tilted type.
-- **Glyphs foreshorten with the wall they sit on.** They are drawn flat, so
-  nothing rotates them out of plane — instead their width is scaled by how
-  squarely they face the camera: full at the front, nothing at the sides,
-  mirrored at the back. Left at full width they pile into a blob where the
-  ring turns, because screen position barely moves between neighbours there
-  (`dx/dθ` goes to zero) and letters that never narrow land on top of one
-  another. It also gives the backface mirroring for free.
-- **Glyphs are placed one at a time, not one word at a time.** Perspective
-  scale across a word is what gives it its taper. Whole words would cut the
-  node count by an order of magnitude and flatten that out.
-
-The banner's type size is reached through `scale` rather than `font-size`, so
-no frame triggers a re-layout on the way to the ring's size.
-
-There was a depth blur on the far arc. It is gone: a CSS blur re-rasterises its
-element, and ~200 of those a frame is well past what compositing absorbs. The
-far arc fades instead, and the loop skips any glyph whose bucket has not
-changed.
-
-## Project carousel
-
-Scroll or drag cycles the stage through every project in `work.ts`. The ring
-and the model spin faster the harder you scroll and coast back down when you
-stop, the ring's name swaps at each project boundary, and the incoming model
-rises and crossfades in over the outgoing one.
-
-**One continuous number drives all of it.** `progressRef` in
-`CapsuleHome.tsx` accumulates wheel/touch delta directly — one unit is one
-full project. `Math.floor` of it (wrapped to the project count) is the
-current project; the fractional part is how far into the crossfade to the
-next one. Nothing here is React state: it moves on every wheel tick and,
-mid-fling, every frame, and routing that through a render would mean a
-render per pixel scrolled. State only changes at the two moments that
-actually need a re-render — which project is current, and whether the
-carousel has been touched at all yet.
-
-**Spin is a ref, not a prop that changes every frame**, for the same reason.
-`ProductRing` takes `extraSpinRef` and adds it straight into its own spin
-calculation each tick — CapsuleHome integrates the angle itself and hands
-over a plain number to read, so scrolling never pushes a render through the
-ring's ~200 glyphs. `CapsuleStage` takes the parallel `spinRef` and adds it
-to `rpm` inside `Spin`'s own `useFrame`, so the model side needs no
-integration at all — R3F's `delta` does it.
-
-**The crossfade is two whole stages, not two materials.** `CapsuleStage` is
-`forwardRef` so `CapsuleHome` can write `.style.opacity` on the two mounted
-instances directly, every frame, the same ref-and-DOM-write pattern the ring
-already uses rather than a second React state channel. Blending the actual
-glTF materials was ruled out — making a gloss PBR material transparent mid-
-render is its own fight, and two full canvases is simple by comparison.
-
-**The "next" stage only mounts once you've scrolled once.** Its entrance is
-the same rise-from-below every model uses on arrival, timed from its own
-mount — mounted at page load like the others, it would have long since
-settled by the time a slow scroller actually reaches it. Keyed on the
-project id, so each new "next" gets a fresh rise instead of replaying the
-last one's already-finished state.
-
-**Every project currently shows `capsule-c1.glb.`** `CAROUSEL_PROJECTS` in
-`CapsuleHome.tsx` maps `work.ts` to the one real model as a placeholder, so
-the mechanics — speed, timing, crossfade, name change — can be judged before
-the other nine exist. Give a project its own `modelUrl` there once it does;
-nothing else needs to change.
-
-Tunable behind `?tune`, group **Carousel**: how many px of scroll make up one
-project, the spin's ceiling, how directly velocity maps to it, and how long
-the spin takes to catch up to a new speed rather than snapping to it.
-
-## The card page
-
-`src/components/Home.tsx`: name and nav up top, a cluster of
-overlapping project cards in the middle with the project title over them, and
-passion/focus copy along the bottom.
-
-**On load**, the text reveals first — name, eyebrow, nav, then the footer blocks,
-each cascading after the last. Only once that has had time to read do the cards
-bubble in one at a time, and the project title arrives last. This intro runs once.
-
-**On scroll or swipe**, the cluster shuffles: every card slides along a bowed arc
-onto the spot its neighbour was using, like a hand pushing cards round a circle
-on a table. Nothing fades and nothing resizes — the media inside each card is
-swapped part-way through the sweep, so it reads as the *contents* changing rather
-than one set of cards leaving and another arriving. The title hands off at the
-same time: the outgoing word leaves while the incoming one is already arriving,
-both travelling the same direction.
-
-A swipe registers after 12px of finger travel rather than on release, so easing
-into a drag starts the motion straight away.
-
-## Cards and media
-
-Card media is resolved per project straight from `src/assets/<project-id>/`
-(`src/data/projectMedia.ts`) — images first, then videos, no hand-maintained
-import list. `MEDIA_OVERRIDES` in that file narrows a project to specific files;
-`capsule-c1` uses it to show only its four `Branding_*.mp4` clips.
-
-Two invariants keep the shuffle stable, both easy to break:
-
-- **The card count must not change between projects.** A card that mounts or
-  unmounts partway through a sweep pops in from nothing. If a project has fewer
-  distinct assets than the current card count, `padToCount` repeats its media
-  rather than letting it render fewer cards.
-- **Something must always sit under the title.** With no text shadow, white type
-  needs artwork behind it or it vanishes into the page. `CARD_SIZES` and
-  `POSITIONS` are chosen so that at every rotation, and at every card count from
-  2 to 7, at least one card covers the title anchor and no card is ever fully
-  buried inside another. Changing either array means re-checking that.
-
-Sizes are per-slot rather than a repeating run, because a repeating run put a
-large card and a small one on neighbouring spots and the small one disappeared
-inside it. `z` runs smallest-on-top for the same reason.
-
-The projects either side of the current one are rendered into a hidden
-`.home-preload` container so their media is already fetched and decoded before
-you get there — without it the swap stalls mid-sweep while the browser fetches a
-video it has never seen.
-
-## Key modules
-
-| Path | What it does |
+| URL | What it is |
 |---|---|
-| `src/components/CapsuleHome.tsx` | The product page: layout, copy reveals, both control groups, the scroll carousel |
-| `src/components/ProductRing.tsx` | The banner and the ring: film strip, wind, cut, unwrap, spin, scroll-driven extra spin |
-| `src/three/CapsuleStage.tsx` | Canvas, camera rig, environment, entrance, float, model load — `forwardRef` so the carousel can crossfade two instances by opacity |
-| `src/components/Home.tsx` | The card page: intro, shuffle, swipe/scroll, controls |
-| `src/components/BlurText.tsx` | Per-character reveal, forward and reverse |
-| `src/data/projectMedia.ts` | Resolves each project's assets, plus per-project overrides |
-| `src/data/work.ts` | Project list (id, title, description) |
-| `src/hooks/persistControls.ts` | localStorage persistence + JSON export for Leva |
+| `/` | The stage: the name inside a field of work, which opens out into a gallery of projects |
+| `/work/<project-id>` | That project's case study |
 
-Everything from the previous build — the three-scene track, the dance floor, the
-gravity drop, the crawl-off, the option wheel — is still on disk and untouched,
-just no longer mounted.
+```
+src/
+  site/          the site — everything below is in here
+  data/          projects, media resolution, generated dimensions, tracks
+  three/         the products: glTF loaders and hand-built objects
+  components/    BlurText, the per-character reveal everything arrives on
+  archive/       previous versions, unmounted but intact — see its README
+  assets/        per-project media, generated posters and field clips, audio
+```
 
-## The model
+### `src/site/`
 
-`public/models/capsule-c1.glb`, exported from Blender and already
-Draco-compressed (64KB). The decoder is served from `public/draco/` rather than
-Google's CDN, so the page makes no third-party request.
+| File | What it does |
+|---|---|
+| `Site.tsx` | The shell: route, page transition, index overlay, music, grain |
+| `useScrollEngine.ts` | The one clock — wheel/touch/keyboard into a single damped number |
+| `Home.tsx` | The stage: the name, the wall of disciplines, the chrome, composes the field and the gallery |
+| `Helix.tsx` | The vortex of media, in CSS 3D |
+| `Gallery.tsx` | The row of vitrines, and each project's wall label |
+| `ProductStage.tsx` | The only door to three.js — a lazy chunk boundary |
+| `products.tsx` | Which piece stands for which project, and how it is lit |
+| `ProjectPage.tsx` | A case study |
+| `MediaFigure.tsx` | One clip or still, and when it is worth decoding |
+| `Loader.tsx` | The wait, measuring the stills the field paints with |
+| `Index.tsx` | The contents page |
+| `MusicPlayer.tsx` | The record player |
+| `Reveal.tsx` | Reveal-on-scroll, one shared observer |
+| `router.ts` | Two routes, forty lines |
+| `tokens.css` | Every colour, size and easing on the site |
 
-Three things about glTF that the page has to work around, all of which look
-like rendering bugs and are not:
+---
 
-- **Nothing about lighting survives the export.** No lights, no world, no HDRI,
+## One number
+
+`engine.value` in `useScrollEngine` is the entire navigation state of the home
+page:
+
+```
+0        the name, the field turning slowly around it
+0 → 1    the field opens outward and streams past; the gallery arrives
+1        the first project, square-on
+n        the nth project
+```
+
+Everything visible is a pure function of it — the field's speed and radius, the
+name's depth and opacity, the row's position, which project is named. That is why
+the two halves never disagree about where the page is: there is no phase flag to
+get out of step, and scrolling back up genuinely reverses rather than playing an
+exit animation.
+
+**Two values, not one.** `target` is where input has pushed things; `value`
+chases it with an exponential ease. That gap is the whole reason the page feels
+heavy rather than twitchy — a flick sends `target` a long way at once and
+`value` takes most of a second to arrive, gliding the entire time.
+
+**None of it is React state.** It moves on every wheel tick and, mid-fling, every
+frame. Subscribers read the mutable object directly inside one shared `rAF`.
+State is touched only at the two moments that need a render: which project is
+current, and whether the gallery has woken.
+
+**Past 1 it is a list, not a scrubber.** `detentFrom` makes every whole unit at
+and above 1 a **detent**: one gesture moves exactly one project, and the track
+never comes to rest between two of them. Below 1 it stays a free scrub, because
+that stretch is one continuous move through the field where every position is a
+real picture — while the work is a list of separate things, and every position
+between two of them is two projects' labels drawn across each other.
+
+A gesture is ended by **quiet, not by an event**: a trackpad keeps firing wheel
+events for most of a second after the finger has left it, so anything that
+counted events would step four projects on one flick. Arriving at 1 is itself a
+detent, so a long flick out of the field stops at the first project instead of
+overshooting into the middle of the work.
+
+**The menu marks a position on it, not a link.** Home and Work are the two
+halves of this one scroll — either side of `IN_WORK_AT` — so the item you are
+standing in is at full ink and carries the rule, and the other is held back.
+Contact is never marked: it leaves the page rather than being a third place on
+it. Work does double duty, because at three items the index overlay would
+otherwise have no way in from this page: from the name it turns the row to the
+first project, and once you are already in the work it opens the contents.
+
+---
+
+## The field
+
+`Helix.tsx`. Every project's work turning around the name in a vortex — a
+funnel of cards on two intertwined strands, seen from inside it.
+
+**It is CSS 3D and not WebGL**, for one reason that decides everything else: the
+name has to sit *inside* the same space, with near cards passing in front of it
+and far cards behind. A `preserve-3d` context sorts its children by depth and
+gives that for free. A WebGL canvas is one flat element that text can only ever
+be entirely above or entirely below.
+
+**Cards lie on the funnel wall; they do not face the camera.** That one fact is
+what makes this read as a vortex rather than as pictures drifting on a plane. A
+card's normal points away from the axis, so it turns edge-on as it comes round
+the side and shows you its mirrored reverse — veiled dark — once it has gone
+behind. The mirroring is free: it is the browser drawing the element's own
+backface, not a sign flipped by hand. Billboarding the cards at the viewer
+instead (an earlier version tilted them a token 17°) flattens the whole thing,
+because then nothing about a card ever changes as it travels and scale is the
+only depth cue left.
+
+Three smaller things follow from that:
+
+- **The wall leans.** Radius tapers from `FUNNEL_BOTTOM` to `FUNNEL_TOP` along
+  the loop, so a card spirals inward as it climbs. A cylinder and a vortex
+  differ by exactly this taper.
+- **The dark side is an opacity, not a filter.** A `filter: brightness()` on a
+  turned-away card re-rasterises its whole subtree — video included — every
+  frame it changes. A veil element inside the card, written the same
+  compositor-only `opacity` as everything else, costs nothing.
+- **No drop shadow, and square corners.** A shadow is drawn in the card's own
+  plane, so it keeps pointing the wrong way as the card turns; it was a lie the
+  moment the cards started lying on a wall. The hairline stays, as an `outline`.
+
+Cost is kept where CSS 3D is cheap:
+
+- Cards only ever get `transform` and `opacity` written to them. Both are
+  compositor properties, so no frame does layout or paint.
+- Sizes are written once per resize, never in the loop — width and height are
+  layout properties and setting them per frame would reflow two dozen elements.
+- **No blur anywhere near this.** A CSS blur re-rasterises its element every
+  frame; that is what made an earlier version of this site janky. Depth reads
+  through scale, fade and overlap instead.
+- Nothing is measured in the loop.
+
+**Cards are laid out from a generated manifest**, not measured. `scripts/media-manifest.mjs`
+writes `src/data/dimensions.ts` with the pixel size of all 96 assets, so a card
+is laid out at its true shape before anything has been fetched and never resizes
+as its image decodes. Re-run it after adding media.
+
+**Every clip plays.** The field is a field of *footage*, and a card holding a
+frozen frame reads as a picture of the work rather than the work. That is
+affordable only because what plays here is not the case-study master but the
+400px silent proxy from `scripts/field-clips.sh` — two dozen of those cost less
+than the four masters this used to ration. Each card's clip is fetched as the
+card itself arrives, so the entrance's stagger spreads the requests over a
+second and a half instead of putting them all in front of the stills the loader
+is still waiting on. The clip fades in over the poster once it can play, rather
+than replacing it — swapping the elements blinks a hole in the card.
+
+A phone still rations, to six, and not for bandwidth: iOS caps how many hardware
+decoders a page may hold, and past it videos simply refuse to play. The
+scoring-and-hysteresis machinery that picks which six is unchanged; on a desktop
+it is skipped entirely rather than run to a foregone conclusion.
+
+**The keep-clear around the name** is weighted by depth. A card genuinely near
+the camera is *allowed* to cross the name — that overlap is the single strongest
+thing selling the depth, and removing it flattens the field to a ring of
+pictures. What gets veiled is a card at the name's own depth sitting on the
+words, which reads as clutter rather than foreground.
+
+Hovering a card eases the whole field to about a tenth speed and dims the rest.
+Clicking one walks the gallery to that project. Only cards facing the camera take
+the pointer — an edge-on sliver must not swallow a click meant for what is
+behind it.
+
+---
+
+## The wall
+
+`DISCIPLINES` in `Home.tsx`. Seven words — 3D design, product design,
+engineering, cinematography, musician, motion, AI — set enormous in Times,
+tracked wide, stacked up the whole page and pulled back almost to the paper.
+
+They used to be one line under the name reading "Product · 3D · Motion · Film ·
+Music · AI", which is a caption: it tells you the list and asks you to read it.
+At this size the same words stop being a list and become the ground the name
+stands on — taken in without ever deciding to read them.
+
+**Each line is specified by the fraction of the window it should span, and the
+size is measured, not calculated.** A wall this size is only right when its
+ragged edges are composed, and one line running off both sides while the next
+stops short is the difference between a set page and an accident. No `vw` size
+can hold a line to a given width, because how wide a word sets depends on which
+letters are in it — MUSICIAN and MOTION are eight characters and six, and at the
+same size the six-character one is nearly as wide. A per-character metric is no
+better: it would be a property of whichever serif the machine actually resolved
+`--font-times` to. So `fitWall` sets every line to a probe size, reads its true
+width, and scales — two layout flushes, on mount and on resize only.
+
+---
+
+## The gallery
+
+`Gallery.tsx` and `three/Gallery3D.tsx`. A row of museum vitrines you walk
+along: a glass case on a plinth with the project's object floating inside it,
+and the wall label — client, year, title, role, one paragraph, one button —
+standing to its left. One project at a time, the next one just off the frame.
+
+**It was a drum before**, and both reasons it stopped being one are worth
+keeping written down, because a cylinder is a tempting shape to come back to.
+
+*A turning wall and a flat canvas cannot both be right.* The products are WebGL
+and the labels are DOM, and a canvas standing in for a cell on a turning wall
+stops matching that cell the instant it turns. The drum's answer was to fade
+the canvas out for the length of every turn, which meant **the piece vanished
+every single time you moved**. A row that only slides has no such moment:
+nothing rotates, so nothing ever stops matching.
+
+*A drum has no rest.* You could stop it anywhere, and anywhere but square-on is
+two projects' titles drawn across each other. Detents fix that — and once the
+track has detents, the perspective a drum buys is being paid for at every
+position except the ones anybody ever sees.
+
+### The case
+
+`three/Vitrine.tsx`. An acrylic box standing on a plain plinth, with the piece
+inside it. That is the whole difference between a product shot and an exhibit:
+an object floating on a lit background is a render of a thing, and the same
+object behind glass on a pedestal is a piece someone chose to put there.
+
+The first version of it was one hollow box at 5% opacity with a wireframe laid
+over the edges, and it read as a *drawing* of a case. Three things fixed that,
+and they are the three things that make the real object legible in a
+photograph:
+
+**Thickness.** What you actually see of a vitrine is its edges, and an edge is
+visible because you are looking through ten millimetres of acrylic end-on. A
+pane with no thickness has no edge to see, so one has to be drawn in — and a
+drawn line is a constant width that does not foreshorten, does not catch light,
+and does not double where two panes meet. So the case is five real slabs.
+
+**The edge is brighter than the face**, and this is the one that matters most.
+A sheet of acrylic is nearly invisible face-on and glows along every cut edge,
+because light entering the sheet is trapped by total internal reflection and
+can only leave where the sheet was cut. One opacity across the whole pane gives
+frosted glass; almost-clear faces with bright cut edges gives acrylic. Both
+come off the same box, as a six-material array in `BoxGeometry`'s group order —
+and which pair is a face differs between the walls and the lid, because they
+are built on different axes. Get that wrong and the case has a slab of frosted
+grey for a roof.
+
+**Shadows.** The plinth, the walls and the piece all cast, onto a
+`shadowMaterial` floor that draws nothing but the shadow, so the page's own
+paper still shows through. The floor is placed from `VITRINE_TOTAL` rather than
+guessed at — a shadow that starts half a pedestal away from its object is
+exactly what "the case looks like it is floating" means. The lid alone does not
+cast: shadow maps know nothing about transparency, so a horizontal slab lays
+down a solid square at the same weight as the plinth's, which reads as a lid
+made of stone.
+
+It is deliberately **not** `transmission`, which is the physically right answer
+and does not work here. Three renders the scene into a buffer for the
+transmissive pass and clears it with the renderer's clear colour, which on a
+transparent canvas premultiplies down to black — so every pane comes out a
+sheet of dark grey. Feeding it a background means either an opaque canvas,
+which would paint over the field it fades in on top of, or drei's own sampler
+at one scene render per material, and there are fifteen panes in the row.
+Thickness and a clearcoat get the same read for nothing.
+
+### One scene, one camera
+
+There is exactly one `<Canvas>` on the page and it holds **every case in the
+row**, sliding inside the scene. The canvas itself never moves, so the WebGL
+context is built once. (A browser keeps about sixteen contexts alive and drops
+the oldest; a canvas per project fills that quota in one brisk scroll and the
+older ones start coming back black with `Context Lost`.)
+
+**The camera is orthographic**, and two things depend on it:
+
+- It is what makes the row read as a row. Under perspective the case two steps
+  away is seen from its side while the near one is seen head-on, so a filmstrip
+  of identical cases arrives as a fan.
+- World and screen become one linear scale. `RoomLens` sets the ortho zoom so
+  the frustum is exactly **one viewport height tall**, which means every number
+  in the scene is a fraction of the window and the DOM labels and the 3D cases
+  can be laid out from the same fractions. Under perspective they agree at
+  exactly one aspect ratio.
+
+Two traps came out of that, both fixed and both easy to reintroduce:
+
+- **Do not size the row from `viewport`.** R3F caches that value and recomputes
+  it on its own resize and camera events; setting the zoom by mutating the
+  camera in an effect is not one of them, so `viewport.width` still reports the
+  pixel-scale frustum from before. Derive the step from `size` instead.
+- **The row runs along the camera's right vector, not along world X.** The
+  camera looks down the diagonal, so a case moved a unit in X moves partly
+  *toward* the lens and only cos(45°) of a unit across the frame — the row
+  comes out 1/root-2 too tight and drifts out of step with the labels beside it.
+
+### Arriving
+
+Three things happen when you reach a project, and all three are the arrival
+rather than three separate animations:
+
+**The piece rises into its case** and fades up, and sinks back out as you
+leave. It is driven by an exponential ease toward 0 or 1 rather than by a clock
+started on a change, which is what makes it survive interruption: scrolling
+briskly reverses it a dozen times, and a timed tween restarted from zero either
+snaps or plays a full entrance for something already most of the way there. The
+fade is front-loaded into the first third (`FADE_OVER`) so that what you
+actually perceive is the movement — a piece still translucent once it has
+reached the middle of the frame reads as *not loaded*, not as arriving. The
+fade costs a material traversal, so `transparent` — which recompiles the shader
+— is toggled exactly twice per arrival and never left on; these pieces are
+single objects with a screen inside a body, and a permanently transparent body
+sorts its own screen behind it.
+
+**The camera walks around the room.** A quarter turn of orbit per project
+(`ORBIT`), which has to be a quarter turn: the cases are square, so at 90° every
+detent shows an identical case — same silhouette, same place, and only what is
+standing inside it has changed. At any other angle the furniture changes shape
+from project to project, which reads as the room being unstable rather than as
+you moving through it.
+
+**The key light does not come with it**, and that is the whole point. As you
+scroll, the key sweeps across the case's faces, the plinth's lit and shaded
+sides trade places, and the shadow swings. The piece itself is bolted to the
+world and never turns — every bit of its apparent rotation is you walking around
+it, and it lands just off face-on at its own detent (`REST_TURN`). Nothing spins
+on its own: no turntable, and `Float`'s rotational wobble is off. A piece that
+turns by itself is a thing being demonstrated to you. The positional drift
+stays, because a piece hanging in a case should breathe.
+
+Two things fall out of a camera that moves, and both were got wrong first:
+
+- **The row has to be laid along the camera's live right vector.** Baked in as
+  a constant it is correct at exactly one scroll position, and the whole row
+  swings off the screen the moment the orbit starts.
+- **The key has to be nearly overhead.** A vertical face takes the key at
+  cos(incidence), so at eighty degrees of elevation it picks up about a sixth
+  of the beam whichever way it is turned, and the difference between a face
+  toward the light and one away is small next to what the environment is
+  already giving it. Drop the light toward the horizon and the same orbit
+  swings the plinth from white to mid-grey every other project. The plinth's
+  *top* still takes the beam square-on, which is where the contrast belongs —
+  and is what a photograph of a real vitrine does.
+
+The piece's world angle is written each frame as "where the camera is now, plus
+the angle this piece rests at, plus how far away from it you are". Those terms
+cancel to a value that does not change as you scroll — so it genuinely never
+turns — and expressing it that way rather than as a fixed world angle is what
+keeps it right across the wrap at the end of the row, where a slot index and
+the scroll position are a whole lap apart.
+
+The **label does not animate**. It used to play the site's per-character reveal
+on every arrival, and it read as busy rather than as arriving — the piece is
+already rising and turning a foot to the right, and a second thing moving at
+the same moment splits the arrival in two. A wall label is printed; it is
+simply there when you get to it.
+
+### The room's proportions
+
+`WIDE` and `NARROW` in `Gallery.tsx`, in fractions of the window, handed down
+to the 3D row as a prop. They live on the DOM side and travel *downward*
+because the label and its case must step by the same distance, and a constant
+written out in both places is a constant that will be changed in one. It cannot
+go the other way: `Gallery3D` is behind the lazy chunk boundary, and importing
+anything from `../three/*` into `Gallery.tsx` would pull the entire 3D stack
+into the initial bundle.
+
+Narrow windows have no *beside*, so a project takes the whole window, the case
+shrinks and rises into the top half, and the label goes underneath it.
+
+### One exposure for the whole room
+
+A shared scene has one exposure and one environment, and the products were
+tuned back when each had its own canvas and could ask for whatever suited it.
+Two things moved as a result, both documented in `products.tsx`:
+
+- `exposure` × `envIntensity` became **`lift`** — the piece's own
+  `envMapIntensity`, which is the one brightness control that belongs to a
+  material rather than to the renderer. Each value is the old pair's product
+  measured against the baseline the room is lit at, so they are the same
+  numbers rewritten rather than new guesses.
+- `azimuth` became **`turn`** — the angle a piece rests at inside its case. The
+  camera can no longer orbit per project: it would orbit the whole gallery, and
+  a room where every case is seen from a different angle is not a room. What
+  the azimuth was choosing was which face of the piece you meet, so that choice
+  is kept and `REST_TURN` pulls the amount in to something just off face-on.
+
+The screens on the video-backed products are `meshBasicMaterial` with
+`toneMapped={false}`, so they were never affected by exposure and did not need
+converting.
+
+---
+
+## Projects
+
+`src/data/projects.ts` is the single source of truth. The field, the gallery and
+the case studies all read from that one array — **add an entry and it appears in
+all three; delete one and it leaves all three.** Nothing else holds a project
+list.
+
+Copy is carried forward verbatim from the previous Vue site (`WorkDetail.vue` at
+commit `ded65a6`), so nothing written about the work was lost in the rewrite.
+
+To add a project:
+
+1. Drop its media in `src/assets/<project-id>/`.
+2. `bash scripts/posters.sh`, `bash scripts/field-clips.sh`, then
+   `node scripts/media-manifest.mjs`.
+3. Add a `Draft` to `projects.ts`, quoting filenames.
+4. `node scripts/check-media.mjs` — every reference must resolve.
+5. Optionally give it a piece in `src/site/products.tsx`. Without one it still
+   gets a case in the row; the case is simply empty, which is a truthful thing
+   for a museum to do.
+
+`visa` and `3d-printing` are placeholders carrying a `restricted` note instead
+of sections; the case study renders that rather than an empty page. Fill in
+`sections` and `hero` to promote either to a full study.
+
+### Posters
+
+`scripts/posters.sh` pulls one still from every clip into
+`src/assets/posters/<project>/`. These are what the field paints with, what a
+case-study figure shows before its video is worth decoding, and what a clip with
+sound shows before anyone presses play — so a poster on a black frame is not
+cosmetic, it is a card that looks broken.
+
+A lot of this footage opens on a fade from black, so the frame is *chosen*, not
+taken: seek partway in, let ffmpeg's `thumbnail` filter pick the most
+representative frame of the following batch, then measure its average luma and
+try progressively later offsets if it is still nearly black. Three clips are
+genuinely dark throughout (one is called `Darkness.mp4`) and keep their last
+attempt.
+
+`--force` re-does existing posters.
+
+### Field clips
+
+`scripts/field-clips.sh` writes a 400px silent proxy of every clip into
+`src/assets/clips/<project>/`, which is what the field plays — 15–100 KB against
+the master's 1–8 MB, and indistinguishable on a card a couple of hundred pixels
+wide. Encoded to `main` profile / yuv420p rather than passing through whatever
+the master happened to be: a 10-bit or high-profile stream is exactly what a
+phone refuses to decode, and a card that will not play is worse than one that is
+slightly soft. `--force` re-encodes.
+
+A clip with no proxy yet falls back to its master, so adding footage and
+forgetting the script costs bandwidth rather than a blank card.
+
+---
+
+## The case study
+
+An ordinary long document, deliberately. The stage is the place for spectacle,
+and a page you are meant to *read* should not fight you for the scrollbar.
+
+What carries the aesthetic through is the setting: the same paper, the same ink,
+the same two typefaces, the same reveal on everything as it arrives, and a
+masthead built like the opening spread of a printed article.
+
+- Sections are a two-column field — a sticky number and title in the margin, the
+  body in the measure. The lead paragraph uses the same grid with the head
+  column empty, so it lands on exactly the same left edge as every paragraph
+  below it. Centring it only happens to line up at one window width.
+- Media sits on a twelve-column field with `grid-auto-flow: dense`, so a narrow
+  figure backfills a gap a wide one left. Spans come from each item's real
+  aspect ratio.
+- On narrow screens everything takes the full measure **except portraits**,
+  which keep pairing up: a phone capture given the whole width becomes taller
+  than the screen.
+- A figure creates its `<video>` only once it is within a screen of the fold,
+  plays it only while visible, and drops the `src` on the way out — pausing
+  alone leaves the decoder allocated for the rest of the visit.
+- Clips carrying real audio get controls and wait to be asked. They also need
+  their own `poster` attribute: a `controls` video is opaque from the moment it
+  mounts, so the still underneath is never seen.
+
+---
+
+## Chrome that survives a navigation
+
+The shell owns the two things that must not restart when the route changes.
+
+**The page transition** is a sheet of ink drawn up over the page, carrying the
+destination's name, which commits the route swap at the moment it covers
+everything and then draws off the top.
+
+Its resting pose is set in JS, not CSS, and that is load-bearing. GSAP animates
+`yPercent` — a channel it keeps separate from the `y` px channel it parses an
+existing declaration into. A `transform: translateY(100%)` in the stylesheet is
+read as `y: 778px` and stays in the matrix underneath the tween, so the sheet
+animates to "yPercent 0" while still sitting a whole viewport below the fold and
+the page swap happens in full view with no curtain over it at all.
+
+**The music** is in `src/assets/audio/` — drop files in and they are found,
+ordered by filename and titled from it. Nothing to keep in sync. With the folder
+empty the player returns `null`, so the site is complete before any music
+exists. It never plays uninvited.
+
+---
+
+## The loading screen
+
+It measures something real: the stills the field paints with, and the fonts the
+page is set in. A fake timer bar would be easier and would also clear *before*
+the images it was pretending to count, so the first thing anyone saw would be a
+field of empty rectangles.
+
+The name is printed twice on top of itself — a faint impression under, full ink
+over, clipped to the progress. The type is not fading in, it is being *inked*.
+
+**Finishing is driven by timers and load events; frames only smooth the number.**
+A background tab gets no `requestAnimationFrame` at all, so a loader whose exit
+condition lives in the draw loop never exits — open the site in a background
+tab, come back a minute later, and you are staring at a half-drawn name. There is
+also a floor (a warm cache would otherwise flash the loader for two frames, which
+reads as a glitch) and a ceiling (one asset stalled behind a dead connection must
+never hold the site hostage).
+
+---
+
+## Type, colour, motion
+
+All of it is in `src/site/tokens.css`. Retuning the look is editing that file.
+
+**Ink on parchment.** Warm off-white, black ink, and one chromatic note — a
+rubric red, the colour a scribe used for the parts that mattered. Each project
+overrides `--accent` with its own. Every large flat area carries a single tile of
+value noise multiplied over it, which is what stops `--paper` reading as a blank
+div; it is fixed and non-repainting, so it costs one rasterisation total.
+
+**Three faces.** Instrument Serif for anything that is a name, self-hosted from
+`public/fonts/` under the OFL. Inter for everything you read as information.
+And Times itself — `--font-times` — for the home page's chrome: the ARTIST
+rubric over the name, the wall behind it, the menu. Instrument Serif is a
+high-contrast display face and reads as *the name*, so setting the small type in
+it too would make the whole page one voice; Times is the plain, unglamorous
+serif underneath, and the contrast is the point. No webfont for it: it is on
+every machine that will load this, and one that is missing it falls through to
+its own system serif rather than to Arial.
+
+Two of the three menu items are `<button>`s, and a form control does not inherit
+`text-transform` or `letter-spacing` from its nav — `button { font: inherit }`
+carries neither. Both are set on the items themselves, or the two buttons come
+out mixed-case and untracked beside an uppercase link.
+
+**Two easings.** One expo-out for anything arriving, one symmetric curve for
+anything travelling between two places. Everything on the site uses these two,
+which is why nothing ever reads as belonging to a different site.
+
+### Working offline
+
+`npm run dev` needs no network. Everything the page loads is local: Inter through
+`@fontsource-variable/inter`, Instrument Serif from `public/fonts/`, the Draco
+decoder from `public/draco/` rather than the gstatic CDN. Keep it that way — a
+`https://` in a new `<link>` or asset URL is the one thing that will quietly
+degrade the layout when there is no connection.
+
+---
+
+## What is in the bundle
+
+| Chunk | gzip | When |
+|---|---|---|
+| `index` | ~105 KB | First paint: shell, field, gallery, loader |
+| `ProductStage` | ~419 KB | First time the gallery wakes — three, R3F, drei |
+| `ProjectPage` | ~3 KB | First time a case study opens |
+
+The 3D stack is more than a megabyte and none of it is needed to paint the name,
+the field, or a case study, so it sits behind `ProductStage.tsx` on its own
+chunk. **An import of `../three/*` or `./products` from anywhere outside that
+file pulls the whole stack back into the initial bundle**, and nothing about the
+page will look different when it happens.
+
+## The models
+
+`public/models/*.glb`, exported from Blender and Draco-compressed. Four projects
+have a real modelled asset; the rest are hand-built from primitives in
+`src/three/`, because showing every project as the same borrowed capsule says
+nothing about any of them.
+
+Three things about glTF that look like rendering bugs and are not:
+
+- **Nothing about lighting survives the export** — no lights, no world, no HDRI,
   no view transform. That matters most for a gloss-white object, which shows
   *reflection* rather than diffuse colour and renders as a flat silhouette with
   nothing to reflect. `StudioEnvironment` builds one procedurally with
   `RoomEnvironment`, and the canvas tone-maps through ACES to approximate
   Blender's view transform.
 - **A material exported without a `pbrMetallicRoughness` block takes the spec
-  default** — white, but *fully metallic and fully rough*, which has no diffuse
-  colour and no sharp reflection and lands on near black. Blender draws the same
-  material as light grey. Both logos in this export come through that way, so
-  `LoadedModel` restores a dielectric; the test is the exact 1.0/1.0/white
-  triple only the glTF default produces, so real materials fall through
-  untouched.
-- **Flat decals z-fight.** The logos are coplanar with the case to within a
-  rounding error. `near`/`far` are pulled tight around the subject (the default
-  0.1–1000 leaves almost no depth precision near the model) and the decal
-  materials carry a polygon offset.
+  default** — white, but fully metallic and fully rough, which has no diffuse
+  colour and no sharp reflection and lands on near black. `LoadedModel` restores
+  a dielectric; the test is the exact 1.0/1.0/white triple only the glTF default
+  produces, so real materials fall through untouched.
+- **Flat decals z-fight.** `near`/`far` are pulled tight around the subject and
+  the decal materials carry a polygon offset.
 
-Framing is derived from the model's own bounding box, normalised to
-`TARGET_SIZE`, so the next export lands correctly whatever scale its scene
-happened to use — this one arrives 0.3 units on its longest edge.
+Framing is derived from the model's own bounding box, so the next export lands
+correctly whatever scale its scene happened to use. Staging geometry named
+`Plane` is stripped — along with the animation tracks addressed to it, or the
+mixer walks the hierarchy looking for a node that is no longer there and warns
+once per track.
 
-An earlier export was 9.9MB with **89% of its triangles carrying no material at
-all** and the whole Blender staging scene included — a backdrop plane and two
-2-unit sheets that dominated every bounding-box measurement. If a future export
-suddenly renders black, or shrinks to a speck, check for those two things first.
+## The archive
 
-## Tuning panel
+`src/archive/` holds the previous versions of this site — including the **ribbon**,
+the film-leader banner that hung across the screen, sagged under its own weight,
+moved in the wind, and was cut open to unwrap into a ring of type. Nothing in
+there is mounted, all of it still typechecks, and every relative import was
+rewritten when it moved. See `src/archive/README.md`.
 
-**`?open`** starts on the closed ring, skipping the banner — cutting it open on
-every reload gets old fast when the thing being tuned is the ring itself.
-
-Open the page with **`?tune`** on the end for a Leva panel. It is absent without
-the flag, and works on a phone over the tailnet — it docks to the bottom edge on
-small screens, opts back into touch (the page sets `touch-action: none` for the
-swipe gesture), and stops its own touch and wheel events reaching the swipe
-handlers so dragging a slider does not change project.
-
-On the product page:
-
-| Group | Control | What it does |
-|---|---|---|
-| Ring | Text | The product's name, carried round the ring once it is open |
-| | Seal text | What the banner reads before it is cut |
-| | Separator / Gap | What sits between repeats, and the spaces setting their spacing. Separator is empty by default |
-| | How many | Repeats in one full turn |
-| | Text size | Glyph size once it is the ring |
-| | Banner text size | Glyph size while it is still the banner; blends to Text size as it wraps |
-| | Ring size | The cylinder's radius in px |
-| | Spin (s/turn) | Seconds per revolution; negative runs it anticlockwise |
-| | Tip / Roll | Tilt toward the viewer, and in the screen plane |
-| | Nudge X/Y | Moves the ring off the stage's centre |
-| | Depth | Viewing distance. Low values magnify the near arc hard |
-| Intro | Cut time | Seconds the cut ends take to fall |
-| | Delay / Time | When the wrap starts after the cut, and how long it runs |
-| | Line spacing | Px between glyphs along the banner |
-| | Ring unwind | Extra degrees the ring turns through as it closes |
-| | Banner sag | How far it hangs at the centre of the screen |
-| | Wind / Wind speed | Strength of the gusts, and how fast they travel along it |
-| | Strip height | The film leader's height. 0 leaves the type bare |
-| | Strip ink | The wash across the strip |
-| | Cut drop | Degrees the cut ends swing down through |
-| | Product from / turn | How far below it starts and how far it rotates in |
-| Product | Lens (mm) | Real focal length against a full-frame back, not a raw fov |
-| | Size | Multiplies the auto-fit |
-| | Camera back / height / around | Distance, elevation and orbit. The camera always aims at the model |
-| | Spin (rpm) | Turntable rotation |
-| | Float rise / loll / speed | Idle drift, usable *instead* of the spin — set one to 0 |
-| | Exposure / Environment / Key light / Ambient | Tone-mapping exposure and the three light sources |
-| | Untyped material | Colour for materials that arrived without a PBR block |
-| Carousel | Scroll per project (px) | How much cumulative wheel/touch delta advances one project |
-| | Max spin (rpm) | Ceiling on how fast scrolling can spin the ring and model |
-| | Speed sensitivity | How directly scroll velocity maps to spin speed |
-| | Spin smoothing (s) | How long the spin takes to catch up to a new speed rather than snapping |
-
-On the card page:
-
-| Group | Control | What it does |
-|---|---|---|
-| Shuffle | Sweep time | Seconds for one full shuffle |
-| | Travel (spots) | How many resting spots the cluster moves past — turn up to send them further round |
-| | Arc bow | How far the path bows out; 0 slides straight across |
-| | Swap point | How far into the sweep the media and title change |
-| | Press-in scale | Dip in scale as the cards travel |
-| Cards | How many | 2–7 cards |
-| | Size | Scales every card about its own centre. Above ~1.2 the cluster spills outside the frame |
-| | Float | Multiplies the idle drift; 0 stops it |
-| Export | Copy all settings | Every saved group as one JSON blob |
-| | Reset all settings | Clears storage and reloads |
-
-Values persist to `localStorage` under `intro-effects-controls`. Saved values are
-patched into each schema as its *default*, so ranges and labels stay intact and
-untouched keys keep the coded default.
-
-Copy falls back to `console.log` when `navigator.clipboard` is unavailable —
-which it is over plain http on the tailnet, so on a phone read it from the
-console rather than expecting the clipboard to fill.
-
-To promote tuned values into the code, copy them out and edit the matching
-`value:` fields — `src/components/CapsuleHome.tsx` for the product page,
-`src/components/Home.tsx` for the cards. Saved values in `localStorage` take
-priority over the coded defaults, so **Reset all settings** is how you check
-what a first-time visitor actually sees.
-
-## Working offline
-
-`npm run dev` needs no network. Everything the page loads is local: Inter is
-self-hosted through `@fontsource-variable/inter` (imported in `src/main.tsx`, so
-type metrics are identical on a plane and in production), and the Draco decoder
-is served from `public/draco/` rather than the gstatic CDN. Keep it that way —
-a `https://` in a new `<link>` or asset URL is the one thing that will quietly
-degrade the layout when there is no connection.
-
-What does *not* work offline: `npm install`. Install before you leave; if a
-package is missing mid-flight there is no recovering it.
-
-**A production build (`npm run build` + `npm run preview`), not `npm run
-dev`, is what you want over a real tailnet connection** — a plane's wifi
-routinely runs at 800ms+ round-trip latency, and Vite's dev server ships the
-app as dozens of unbundled module files, each one costing a full round trip
-regardless of bandwidth. A production build collapses that to a couple of
-bundled files.
-
-Two more things trim what has to arrive before the page is usable on a link
-like that: `Home.tsx` (the card page) is lazy-loaded behind `?v=cards` in
-`App.tsx` rather than a static import, so its code is not in the bundle
-everyone downloads by default; and `index.html` preloads the glTF model and
-its Draco decoder so they fetch in parallel with the JS bundle instead of
-only being discovered — and requested — after it has parsed, which on a
-high-latency link is several serial round trips stacked before the product
-can render. If either regresses, check `App.tsx`'s import of `Home` is still
-a `lazy()` and that the `<link rel="preload">`s in `index.html` still point
-at real files.
-
-### Seeing both widths at once
-
-`http://localhost:5173/dev-preview.html` puts a phone and a desktop frame side
-by side against the same dev server, both live-reloading. The frames are laid
-out at true device pixel sizes and only visually scaled, so the app inside reads
-the real viewport width and the media queries fire exactly as they would on the
-device. It is a dev-only file at the repo root, so `vite build` never emits it.
-
-Personal hotspot also works in airplane mode if you want the real thing in a
-real browser: `npm run dev -- --host`, then open the printed LAN address on the
-phone. That is a local network, no internet involved.
-
-### Keeping the wider layout untouched
-
-Mobile work is safe when it lives inside a `max-width` block rather than
-changing a shared rule. The existing breakpoints are `700px` in `src/style.css`
-and `src/components/CapsuleHome.css`, plus a single `900px` block in
-`CapsuleHome.css`; adding to those is desktop-proof by construction. The risky
-edits are the ones outside a media query, and the JS branches on
-`window.innerWidth` in `src/hooks/useGravityDrop.ts`, `ProductRing.tsx` and
-`src/animations/crawlOut.ts` — those run at every width, so gate any change on a
-width test instead of retuning the constant.
-
-`git diff` before each commit is the check: anything touching a rule outside a
-media query, or a shared constant, wants a look at the desktop frame too.
-
-**The ring, the product and the banner each need their own phone numbers —
-nothing here scales down with CSS.** All three are laid out in real px by
-JS (`CapsuleHome.tsx`'s `PHONE_RING` / `PHONE_PRODUCT` / `PHONE_INTRO`,
-applied when `useIsPhone()` is true), so a value tuned for a ~1600px desktop
-stage has to be restated, not scaled, for a 390px frame — the ring's radius
-already was; the banner's `stripHeight`/`wind` found this the hard way,
-piling into a fan on first phone load because nothing had told it the screen
-was narrower. If a new geometry prop shows up in `ProductRing` or
-`CapsuleStage`, assume it needs a phone entry too rather than finding out
-from a screenshot.
-
-**`PHONE_PRODUCT` pins every Product field, not just `modelScale`, for a
-second reason on top of that one.** The Product group is
-`localStorage`-backed (see Tuning panel, below) and storage is per-browser —
-a phone is always a separate browser from whatever desktop session tuned the
-lighting, so leaving a field unpinned does not mean "inherits the tuned
-value," it means "silently falls back to whatever that specific device's
-storage holds," which for a phone that was never opened with `?tune` is just
-the coded schema default. That can quietly drift from what the desktop
-actually shows with no code change and no visible cause. Confirm what a
-given browser is really running with **Reset all settings** (clears its
-storage back to the coded defaults) before assuming a difference means
-something was tuned.
-
-## Outstanding
-
-- **The remaining exports.** The scroll carousel cycles through all ten
-  projects, but only Capsule C1 has a real model — the rest borrow it as a
-  placeholder (`CAROUSEL_PROJECTS` in `CapsuleHome.tsx`). Judge the carousel's
-  mechanics now; give the other nine projects their own `modelUrl` once they
-  have one.
-- **Two canvases during a crossfade** is genuinely heavier than one — worth
-  revisiting if it turns out to be too much for a phone GPU mid-scroll.
-- **Deployment.** The domain is served from `tarloksingh/my-portfolio`, a
-  different repo. This one deploys nowhere.
-- **Clicking a card** (card page) logs the project id; there is no detail view.
-- **Nav links** — "Home" is inert, "Contact" is a `mailto:`.
-
-Card video was ~112MB and is now ~61MB — re-encoded to a 1280px long edge, H.264
-CRF 26, audio dropped (every card plays muted). SSIM against the originals is
-0.989–1.000, so it is visually a wash. `src/assets` totals ~74MB.
+The legacy Vue guides (`COMPLETE_DATA_DRIVEN_GUIDE.md`, `LAYOUT_CONTROL_GUIDE.md`,
+`LINKS_FEATURE_GUIDE.md`, `MEDIA_ORDERING_GUIDE.md`, `PROJECT_STRUCTURE_GUIDE.md`)
+describe the site *before* the React rewrite and do not apply. They are kept only
+as a reference to the old project data.

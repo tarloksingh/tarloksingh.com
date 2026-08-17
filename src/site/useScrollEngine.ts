@@ -1,0 +1,333 @@
+import { useEffect, useMemo, useRef } from 'react'
+
+/* The one clock the stage runs on.
+
+   The home page is `position: fixed` — there is no document to scroll — so
+   wheel, touch and keyboard are accumulated into a single number instead.
+   That number is the whole navigation model: 0 is the name on screen, 1 is
+   the first project square-on, 2 the second, and so on. Everything visible
+   (helix speed, name opacity, rotunda angle, which project is named) is a
+   pure function of it.
+
+   Two values, not one. `target` is where input has pushed things; `value`
+   chases it with an exponential ease. That gap is the entire reason the page
+   feels heavy rather than twitchy: a flick sends `target` a long way at once
+   and `value` takes most of a second to arrive, gliding the whole time. It is
+   also what makes the detents below feel like a heavy mechanism rather than a
+   jump cut — a step moves `target` a whole unit at once, and the ease is the
+   drum taking a second to turn there.
+
+   Nothing here is React state. It moves every wheel tick and, mid-fling,
+   every frame, and a render per pixel scrolled would make the page unusable.
+   Subscribers read the mutable object directly inside one shared rAF. */
+
+export interface ScrollState {
+  /** Where input has pushed it. */
+  target: number
+  /** Damped position — what everything actually draws from. */
+  value: number
+  /** Units per second, signed. Drives spin and motion blur-ish cues. */
+  velocity: number
+  /** Absolute velocity, smoothed — steadier to drive visuals with. */
+  speed: number
+}
+
+export type Subscriber = (state: ScrollState, dt: number) => void
+
+interface Options {
+  /** Wheel pixels that make up one whole unit. */
+  pixelsPerUnit?: number
+  /** Seconds for `value` to cover most of the distance to `target`. */
+  smoothing?: number
+  min?: number
+  /** Omit for an open-ended track. */
+  max?: number
+  /** Touch travel is scaled against this instead of `pixelsPerUnit` — a
+   *  finger crossing the screen should mean more than a wheel notch. */
+  touchPixelsPerUnit?: number
+  /** Whole units at and above this are **detents**: one gesture moves exactly
+   *  one, and the track never comes to rest between two of them. Below it the
+   *  track is a free scrub. Omit for a free track throughout.
+   *
+   *  This is the difference between a list and a scrubber. The stretch from
+   *  the name to the first project is one continuous move and wants scrubbing
+   *  — you are flying through the field, and every position in between is a
+   *  real picture. The work is a list of separate things, and every position
+   *  between two of them is a half-turned wall with two projects' titles
+   *  drawn across each other: a place the page can be, but not a place anyone
+   *  meant to be. */
+  detentFrom?: number
+}
+
+/** Units of travel within one gesture that commit a step. Low enough that a
+ *  single mouse-wheel notch (about 100px, so ~0.08 units) is a step on its
+ *  own — a wheel that needed three notches per project would read as broken. */
+const DETENT_TRIGGER = 0.05
+/** Seconds of quiet that end a gesture. A trackpad keeps firing wheel events
+ *  for most of a second after the finger has left it, so a gesture cannot be
+ *  ended by an event — only by the absence of one. Below about 0.12s a single
+ *  flick steps several projects; far above it a deliberate second flick is
+ *  swallowed. */
+const DETENT_REST = 0.18
+/** How far a step *below* the first detent releases the track. It cannot land
+ *  on the detent it is leaving, and jumping the whole entrance in one gesture
+ *  is too much for one notch — so it lets go just under, and the free scrub
+ *  takes the rest. */
+const DETENT_RELEASE = 0.1
+
+export interface ScrollEngine {
+  state: ScrollState
+  subscribe: (fn: Subscriber) => () => void
+  /** Jump the target; `value` still eases there. */
+  goTo: (unit: number) => void
+  nudge: (units: number) => void
+  /** Ignore input (used while a page transition is covering the stage). */
+  setLocked: (locked: boolean) => void
+  /** True once the visitor has scrolled at all — the entrance cue hides on it. */
+  hasMoved: () => boolean
+}
+
+export function useScrollEngine({
+  pixelsPerUnit = 1100,
+  smoothing = 0.42,
+  min = 0,
+  max,
+  touchPixelsPerUnit = 620,
+  detentFrom
+}: Options = {}): ScrollEngine {
+  const stateRef = useRef<ScrollState>({ target: 0, value: 0, velocity: 0, speed: 0 })
+  const subsRef = useRef(new Set<Subscriber>())
+  const lockedRef = useRef(false)
+  const movedRef = useRef(false)
+  // Read live in the loop and in the handlers, so retuning any of them takes
+  // effect without tearing down the listeners mid-scroll.
+  const optsRef = useRef({ pixelsPerUnit, smoothing, min, max, touchPixelsPerUnit, detentFrom })
+  optsRef.current = { pixelsPerUnit, smoothing, min, max, touchPixelsPerUnit, detentFrom }
+
+  const engine = useMemo<ScrollEngine>(
+    () => ({
+      state: stateRef.current,
+      subscribe: (fn) => {
+        subsRef.current.add(fn)
+        return () => {
+          subsRef.current.delete(fn)
+        }
+      },
+      goTo: (unit) => {
+        stateRef.current.target = unit
+        movedRef.current = true
+      },
+      nudge: (units) => {
+        stateRef.current.target += units
+        movedRef.current = true
+      },
+      setLocked: (locked) => {
+        lockedRef.current = locked
+      },
+      hasMoved: () => movedRef.current
+    }),
+    []
+  )
+
+  useEffect(() => {
+    const state = stateRef.current
+
+    const clamp = () => {
+      const { min: lo, max: hi } = optsRef.current
+      if (state.target < lo) state.target = lo
+      if (hi !== undefined && state.target > hi) state.target = hi
+    }
+
+    /* Gesture bookkeeping for the detented half of the track. A gesture is
+       "how much has arrived since the last quiet moment", not an event —
+       see DETENT_REST. */
+    let travel = 0
+    let open = true
+    let lastInputAt = 0
+
+    const push = (units: number) => {
+      if (lockedRef.current) return
+      movedRef.current = true
+
+      const { detentFrom: from, min: lo, max: hi } = optsRef.current
+      if (from === undefined) {
+        state.target += units
+        clamp()
+        return
+      }
+
+      const now = performance.now()
+      if (now - lastInputAt > DETENT_REST * 1000) {
+        travel = 0
+        open = true
+      }
+      lastInputAt = now
+
+      if (state.target < from - 1e-3) {
+        // Free scrub below the first detent — and it *stops* there rather
+        // than sliding on through, so arriving in the work is itself a
+        // detent rather than something a long flick overshoots.
+        const next = state.target + units
+        if (next >= from) {
+          state.target = from
+          travel = 0
+          open = false
+        } else {
+          state.target = Math.max(lo, next)
+        }
+        return
+      }
+
+      travel += units
+      if (!open || Math.abs(travel) < DETENT_TRIGGER) return
+      // Measured from the *rounded* position, not the live one: mid-flight
+      // between two detents the raw value is fractional, and stepping from it
+      // would land somewhere that is not a detent at all.
+      const step = Math.round(state.target) + (travel > 0 ? 1 : -1)
+      travel = 0
+      open = false
+      state.target =
+        step < from
+          ? Math.max(lo, from - DETENT_RELEASE)
+          : hi === undefined
+            ? step
+            : Math.min(hi, step)
+    }
+
+    const onWheel = (e: WheelEvent) => {
+      // The page owns the gesture entirely; without this the browser also
+      // scrolls the (zero-height) document and, on a trackpad, fires the
+      // back-navigation gesture on horizontal drift.
+      e.preventDefault()
+      // Some mice report in lines or pages rather than pixels.
+      const scale = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? window.innerHeight : 1
+      push((e.deltaY * scale) / optsRef.current.pixelsPerUnit)
+    }
+
+    /* Touch is a drag, not a wheel: the finger moves the world under it, and
+       letting go throws it. Velocity is measured over the last few moves
+       rather than the last one — a single sample at the moment a finger
+       lifts is usually near zero, which kills every fling. */
+    let touchY: number | null = null
+    let samples: Array<{ t: number; y: number }> = []
+    let flingRaf = 0
+
+    const onTouchStart = (e: TouchEvent) => {
+      cancelAnimationFrame(flingRaf)
+      touchY = e.touches[0]?.clientY ?? null
+      samples = touchY === null ? [] : [{ t: performance.now(), y: touchY }]
+    }
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (touchY === null || lockedRef.current) return
+      const y = e.touches[0]?.clientY ?? touchY
+      push((touchY - y) / optsRef.current.touchPixelsPerUnit)
+      touchY = y
+      samples.push({ t: performance.now(), y })
+      if (samples.length > 6) samples.shift()
+      e.preventDefault()
+    }
+
+    const onTouchEnd = () => {
+      touchY = null
+      const first = samples[0]
+      const last = samples[samples.length - 1]
+      samples = []
+      if (!first || !last) return
+      const dt = (last.t - first.t) / 1000
+      if (dt <= 0) return
+      // px/s at release, converted to units/s, then decayed.
+      let fling = ((first.y - last.y) / dt / optsRef.current.touchPixelsPerUnit) * 0.34
+      if (Math.abs(fling) < 0.05) return
+
+      let previous = performance.now()
+      const decay = () => {
+        const now = performance.now()
+        const step = Math.min(0.05, (now - previous) / 1000)
+        previous = now
+        fling *= Math.exp(-step / 0.38)
+        push(fling * step)
+        if (Math.abs(fling) > 0.02) flingRaf = requestAnimationFrame(decay)
+      }
+      flingRaf = requestAnimationFrame(decay)
+    }
+
+    const onKey = (e: KeyboardEvent) => {
+      // Never steal a key from something the visitor is typing into.
+      const el = document.activeElement
+      if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) return
+      const map: Record<string, number> = {
+        ArrowDown: 1,
+        ArrowRight: 1,
+        PageDown: 1,
+        ArrowUp: -1,
+        ArrowLeft: -1,
+        PageUp: -1,
+        ' ': e.shiftKey ? -1 : 1
+      }
+      const step = map[e.key]
+      if (step === undefined) return
+      e.preventDefault()
+      push(step)
+    }
+
+    window.addEventListener('wheel', onWheel, { passive: false })
+    window.addEventListener('touchstart', onTouchStart, { passive: true })
+    window.addEventListener('touchmove', onTouchMove, { passive: false })
+    window.addEventListener('touchend', onTouchEnd)
+    window.addEventListener('touchcancel', onTouchEnd)
+    window.addEventListener('keydown', onKey)
+
+    let raf = 0
+    let last = performance.now()
+    const tick = () => {
+      const now = performance.now()
+      // Capped: a backgrounded tab resumes with a multi-second delta, which
+      // would otherwise teleport the page and spike every velocity-driven
+      // visual on the first frame back.
+      const dt = Math.min(0.05, (now - last) / 1000)
+      last = now
+
+      const previousValue = state.value
+      const ease = 1 - Math.exp(-dt / Math.max(0.001, optsRef.current.smoothing))
+      state.value += (state.target - state.value) * ease
+      state.velocity = dt > 0 ? (state.value - previousValue) / dt : 0
+      // Smoothed magnitude, so anything driven by "how fast are we going"
+      // winds up and coasts down instead of chattering frame to frame.
+      state.speed += (Math.abs(state.velocity) - state.speed) * (1 - Math.exp(-dt / 0.14))
+
+      subsRef.current.forEach((fn) => fn(state, dt))
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+
+    return () => {
+      cancelAnimationFrame(raf)
+      cancelAnimationFrame(flingRaf)
+      window.removeEventListener('wheel', onWheel)
+      window.removeEventListener('touchstart', onTouchStart)
+      window.removeEventListener('touchmove', onTouchMove)
+      window.removeEventListener('touchend', onTouchEnd)
+      window.removeEventListener('touchcancel', onTouchEnd)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [])
+
+  return engine
+}
+
+/* ---- small maths the screens share ---- */
+
+export const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v)
+
+/** 0 below `from`, 1 above `to`, linear between. */
+export const range = (v: number, from: number, to: number) =>
+  from === to ? (v >= to ? 1 : 0) : clamp((v - from) / (to - from), 0, 1)
+
+export const lerp = (a: number, b: number, t: number) => a + (b - a) * t
+
+/** Smoothstep — a range() with the corners taken off. */
+export const ease = (v: number, from: number, to: number) => {
+  const t = range(v, from, to)
+  return t * t * (3 - 2 * t)
+}

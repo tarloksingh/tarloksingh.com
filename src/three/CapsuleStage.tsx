@@ -1,9 +1,11 @@
 import { Suspense, forwardRef, useEffect, useMemo, useRef } from 'react'
+import type { ReactNode } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { Center, Float, useGLTF } from '@react-three/drei'
+import { Billboard, Center, Float, useAnimations, useGLTF, useTexture } from '@react-three/drei'
 import { ACESFilmicToneMapping, Box3, Color, PMREMGenerator, SRGBColorSpace, Vector3 } from 'three'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
-import type { Group, Mesh, MeshStandardMaterial, PerspectiveCamera } from 'three'
+import PosStation from './PosStation'
+import type { Group, Mesh, MeshBasicMaterial, MeshStandardMaterial, PerspectiveCamera } from 'three'
 import type { MutableRefObject } from 'react'
 
 export const MODEL_URL = '/models/capsule-c1.glb'
@@ -21,7 +23,7 @@ const DRACO_PATH = '/draco/'
  * Chosen so the product sits inside the ring rather than swallowing it — at
  * the default lens and distance this puts it around half the ring's width.
  */
-const TARGET_SIZE = 1.1
+export const TARGET_SIZE = 1.1
 
 /**
  * Lens focal length in mm to three's vertical field of view, against a 35mm
@@ -169,7 +171,7 @@ function CameraRig({ focalLength, exposure, azimuth, elevation, distance }: Came
  * builds that environment procedurally inside three, so the page still makes
  * no request for an HDRI.
  */
-function StudioEnvironment({ intensity }: { intensity: number }) {
+export function StudioEnvironment({ intensity }: { intensity: number }) {
   const gl = useThree((s) => s.gl)
   const scene = useThree((s) => s.scene)
 
@@ -198,14 +200,24 @@ interface LoadedModelProps {
   fallbackColor: string
 }
 
-function LoadedModel({ url, scale, fallbackColor }: LoadedModelProps) {
-  const { scene } = useGLTF(url, DRACO_PATH)
+/** Blender staging geometry that is in the export but is not the product. */
+const STAGING_NODES = ['Plane']
+
+export function LoadedModel({ url, scale, fallbackColor }: LoadedModelProps) {
+  const { scene, animations } = useGLTF(url, DRACO_PATH)
 
   // Framing is derived from the model rather than hard-coded, because a
   // Blender export lands at whatever scale its scene happened to use — this
   // one arrives 0.3 units on its longest edge.
   const fitted = useMemo(() => {
     const root = scene.clone(true)
+
+    // Some exports carry a ground/backdrop plane alongside the subject —
+    // harmless in Blender's own viewport, but on a stage that fits the
+    // camera to the whole model's bounding box it swamps the framing.
+    root.children
+      .filter((child) => STAGING_NODES.includes(child.name))
+      .forEach((child) => root.remove(child))
 
     root.traverse((o) => {
       const mesh = o as Mesh
@@ -247,18 +259,140 @@ function LoadedModel({ url, scale, fallbackColor }: LoadedModelProps) {
     return { root, fit: TARGET_SIZE / longest }
   }, [scene, fallbackColor])
 
+  // The staging plane was removed above, but the export's clips still carry
+  // tracks addressed to it — and the mixer resolves tracks by walking the
+  // hierarchy for a matching name, so every one of those now finds nothing
+  // and warns. Dropping them is what actually removes the node, rather than
+  // only removing the thing you can see.
+  const clips = useMemo(
+    () =>
+      animations
+        .map((clip) => {
+          const trimmed = clip.clone()
+          trimmed.tracks = trimmed.tracks.filter(
+            (track) => !STAGING_NODES.some((name) => track.name.startsWith(`${name}.`))
+          )
+          return trimmed
+        })
+        .filter((clip) => clip.tracks.length > 0),
+    [animations]
+  )
+
+  // Node-name based (no skinning here), so the plain clone above is enough —
+  // the mixer resolves tracks by walking the clone's hierarchy for matching
+  // names, not by referencing the original nodes.
+  const group = useRef<Group>(null)
+  const { actions } = useAnimations(clips, group)
+
+  useEffect(() => {
+    const list = Object.values(actions)
+    list.forEach((action) => action?.reset().play())
+    return () => {
+      list.forEach((action) => action?.stop())
+    }
+  }, [actions])
+
   // Center normalises the origin, so the model turns about itself however the
   // pivot was left in Blender.
   return (
     <Center>
-      <primitive object={fitted.root} scale={fitted.fit * scale} />
+      <group ref={group}>
+        <primitive object={fitted.root} scale={fitted.fit * scale} />
+      </group>
     </Center>
   )
 }
 
+interface SpriteFlipbookProps {
+  /** Frame images, in playback order — a flat PNG sequence, not a glTF. */
+  frames: string[]
+  fps: number
+  scale: number
+}
+
+/**
+ * A 2D PNG sequence living on the same stage as the glTF products, rather
+ * than a flat overlay — Billboard keeps its face turned to the camera
+ * through Float's drift and Spin's rotation (it cancels out whatever
+ * rotation its ancestors carry, not just its own), so it reads as a sprite
+ * standing in the 3D space instead of a decal on the lens.
+ *
+ * The frame is swapped on a ref, not through state, so a 12fps flip isn't
+ * twelve React renders a second on top of the render loop already running.
+ */
+export function SpriteFlipbook({ frames, fps, scale }: SpriteFlipbookProps) {
+  const textures = useTexture(frames)
+  const materialRef = useRef<MeshBasicMaterial>(null)
+  const frameIndex = useRef(0)
+  const elapsed = useRef(0)
+
+  useEffect(() => {
+    textures.forEach((texture) => {
+      texture.colorSpace = SRGBColorSpace
+    })
+  }, [textures])
+
+  useFrame((_, delta) => {
+    const frameDuration = 1 / fps
+    elapsed.current += delta
+    if (elapsed.current < frameDuration) return
+    elapsed.current %= frameDuration
+    frameIndex.current = (frameIndex.current + 1) % textures.length
+    if (materialRef.current) {
+      materialRef.current.map = textures[frameIndex.current]
+      materialRef.current.needsUpdate = true
+    }
+  })
+
+  // Frames arrive square here; reading it off the first texture rather than
+  // hard-coding it is what keeps a future non-square sequence from stretching.
+  const first = textures[0].image as { width: number; height: number }
+  const aspect = first.width / first.height
+  const height = TARGET_SIZE * scale
+  const width = height * aspect
+
+  return (
+    <Billboard>
+      <mesh>
+        <planeGeometry args={[width, height]} />
+        <meshBasicMaterial
+          ref={materialRef}
+          map={textures[0]}
+          transparent
+          alphaTest={0.5}
+          toneMapped={false}
+        />
+      </mesh>
+    </Billboard>
+  )
+}
+
 export interface CapsuleStageProps {
+  /** Remounts the *scene* — and only the scene — when it changes, so each
+   *  product gets a fresh entrance.
+   *
+   *  This must never be applied as a React `key` on the stage itself. Doing
+   *  that tears down the `<Canvas>` and builds a new WebGL context for every
+   *  project; a browser only keeps around sixteen of those alive and drops
+   *  the oldest to make room, so scrolling briskly through the work fills the
+   *  quota and the canvases start going black with
+   *  `THREE.WebGLRenderer: Context Lost`. One context, swapped contents. */
+  sceneKey?: string
   /** Which glTF to show — lets one stage carry different projects. */
   modelUrl?: string
+  /** A PNG sequence to flip through instead of a glTF — set alongside
+   *  `spriteFps`; when present this replaces `modelUrl` entirely. */
+  spriteFrames?: string[]
+  /** Playback rate for `spriteFrames`. */
+  spriteFps?: number
+  /** Footage for the hand-built POS station's monitor instead of a glTF or
+   *  sprite — takes priority over both when set. */
+  videoUrl?: string
+  /** Escape hatch for one-off hand-built products (a game case, a picture
+   *  frame, a plain card) that don't fit the glTF/sprite/video shapes above
+   *  — called with `modelScale` so the product sizes like every other one.
+   *  Takes priority over all three when set. */
+  renderProduct?: (scale: number) => ReactNode
   /** Extra rpm read live each frame, on top of `rpm` — how a caller drives
    *  the spin from outside React's render cycle (e.g. scroll velocity). */
   spinRef?: MutableRefObject<number>
@@ -287,7 +421,12 @@ export interface CapsuleStageProps {
 }
 
 const CapsuleStage = forwardRef<HTMLDivElement, CapsuleStageProps>(function CapsuleStage({
+  sceneKey,
   modelUrl = MODEL_URL,
+  spriteFrames,
+  spriteFps = 12,
+  videoUrl,
+  renderProduct,
   spinRef,
   focalLength = 103,
   modelScale = 1.1,
@@ -348,8 +487,13 @@ const CapsuleStage = forwardRef<HTMLDivElement, CapsuleStageProps>(function Caps
         <directionalLight position={[-4, 1, -2]} intensity={keyIntensity * 0.25} color="#cdd6e0" />
 
         {/* Nothing stands in while the model streams — a placeholder mesh here
-            reads as a second, wrong product flashing up before the real one. */}
-        <Suspense fallback={null}>
+            reads as a second, wrong product flashing up before the real one.
+
+            The key is here rather than on the stage: it swaps the contents of
+            the scene without touching the canvas or its context. Everything
+            outside it — camera, environment, lights — takes its per-project
+            values through props and effects, so none of it needs remounting. */}
+        <Suspense key={sceneKey} fallback={null}>
           {/* Float sits outside Spin so the drift is added on top of the
               turn rather than being turned with it — the two are meant to be
               usable independently, either one at 0. */}
@@ -365,7 +509,15 @@ const CapsuleStage = forwardRef<HTMLDivElement, CapsuleStageProps>(function Caps
               rotationIntensity={floatRotation}
             >
               <Spin rpm={rpm} spinRef={spinRef}>
-                <LoadedModel url={modelUrl} scale={modelScale} fallbackColor={fallbackColor} />
+                {renderProduct ? (
+                  renderProduct(modelScale)
+                ) : spriteFrames && spriteFrames.length > 0 ? (
+                  <SpriteFlipbook frames={spriteFrames} fps={spriteFps} scale={modelScale} />
+                ) : videoUrl ? (
+                  <PosStation videoUrl={videoUrl} scale={modelScale} />
+                ) : (
+                  <LoadedModel url={modelUrl} scale={modelScale} fallbackColor={fallbackColor} />
+                )}
               </Spin>
             </Float>
           </Entrance>

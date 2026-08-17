@@ -3,6 +3,27 @@ import { gsap } from 'gsap'
 
 // Ported from ReactBits' BlurText (reactbits.dev/text-animations/blur-text),
 // re-implemented on GSAP instead of framer-motion to match this project's stack.
+
+/* The reveal every piece of type on this site arrives with. No blur, so the
+   block clips its own box and each character climbs up out of the cut. Kept
+   identical everywhere on purpose — one hand set all of it — and kept beside
+   the component rather than in a screen, because both the stage and the
+   gallery need it and the gallery cannot import from `Home.tsx` (Home imports
+   the gallery). */
+export function reveal(startDelay: number) {
+  return {
+    animateBy: 'chars' as const,
+    direction: 'bottom' as const,
+    distance: 44,
+    delay: 74,
+    stepDuration: 1.5,
+    ease: 'power3.out',
+    blur: false,
+    fade: true,
+    startDelay
+  }
+}
+
 interface BlurTextProps {
   text?: string
   delay?: number

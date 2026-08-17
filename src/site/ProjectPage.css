@@ -1,0 +1,506 @@
+/* The case study. Set like a printed article: one measure for reading, a
+   twelve-column field for the work, and a wide margin carrying the numbers. */
+
+.pp {
+  --measure: 64ch;
+  --page: min(calc(100vw - var(--gutter) * 2), 1440px);
+  position: relative;
+  padding-bottom: clamp(60px, 10vh, 140px);
+  background:
+    radial-gradient(120% 60% at 50% 0%, var(--paper-raised) 0%, transparent 46%),
+    var(--paper);
+}
+
+/* ---- reading progress ---- */
+
+.pp-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--z-chrome);
+  height: 1px;
+  background: var(--rule-soft);
+}
+
+.pp-progress-fill {
+  display: block;
+  height: 100%;
+  background: var(--ink);
+  transform: scaleX(0);
+  transform-origin: left center;
+  will-change: transform;
+}
+
+/* ---- top bar ---- */
+
+.pp-bar {
+  position: sticky;
+  top: 0;
+  z-index: calc(var(--z-chrome) - 1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: var(--page);
+  margin-inline: auto;
+  padding: 18px 0;
+  font-size: var(--size-small);
+  font-weight: 500;
+  /* The page runs under it, so it needs its own ground or the type collides
+     with whatever is passing behind. */
+  background: linear-gradient(180deg, var(--paper) 62%, transparent);
+}
+
+.pp-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pp-back svg {
+  transition: transform var(--t-fast) var(--ease-out);
+}
+
+.pp-back:hover svg {
+  transform: translateX(-4px);
+}
+
+.pp-bar-name {
+  color: var(--ink-faint);
+}
+
+/* ---- masthead ---- */
+
+.pp-masthead {
+  width: var(--page);
+  margin: clamp(40px, 9vh, 110px) auto clamp(28px, 5vh, 56px);
+}
+
+.pp-kicker {
+  color: var(--ink-faint);
+  margin-bottom: clamp(14px, 2vh, 26px);
+}
+
+.pp-title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(2.9rem, 10.5vw, 9.5rem);
+  line-height: 0.86;
+  letter-spacing: -0.045em;
+  color: var(--ink);
+}
+
+.pp-tagline {
+  margin-top: clamp(12px, 2vh, 22px);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: clamp(1.15rem, 2.4vw, 1.9rem);
+  line-height: 1.2;
+  color: var(--accent);
+}
+
+.pp-facts {
+  margin-top: clamp(28px, 5vh, 56px);
+  padding-top: 18px;
+  border-top: 1px solid var(--rule);
+}
+
+.pp-facts dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(24px, 6vw, 90px);
+}
+
+.pp-facts dt {
+  margin-bottom: 6px;
+  color: var(--ink-faint);
+}
+
+.pp-facts dd {
+  font-size: var(--size-small);
+  color: var(--ink-body);
+}
+
+/* ---- hero ---- */
+
+.pp-hero {
+  width: var(--page);
+  margin: 0 auto clamp(40px, 8vh, 96px);
+}
+
+/* ---- lead ---- */
+
+/* Same two-column field as a section, with the head column left empty. That
+   is what puts the lead on exactly the same left edge as every paragraph
+   below it — centring it in the page only happens to line up at one window
+   width, and drifts at every other. */
+.pp-lead {
+  display: grid;
+  grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
+  gap: clamp(16px, 3vw, 56px);
+  width: var(--page);
+  margin: 0 auto clamp(40px, 8vh, 100px);
+}
+
+.pp-lead .u-body {
+  grid-column: 2;
+  max-width: var(--measure);
+}
+
+.pp-lead .u-lead {
+  font-size: clamp(1.2rem, 1.85vw, 1.7rem);
+  line-height: 1.42;
+  color: var(--ink);
+}
+
+.pp-restricted {
+  width: min(var(--page), 780px);
+  margin: 0 auto clamp(40px, 8vh, 96px);
+  padding: clamp(22px, 3.4vw, 42px);
+  border-left: 2px solid var(--accent);
+  background: var(--paper-raised);
+}
+
+.pp-restricted .u-label {
+  margin-bottom: 10px;
+  color: var(--accent);
+}
+
+/* ---- sections ---- */
+
+.pp-section {
+  display: grid;
+  grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
+  gap: clamp(16px, 3vw, 56px);
+  width: var(--page);
+  margin: 0 auto;
+  padding: clamp(38px, 7vh, 90px) 0;
+  border-top: 1px solid var(--rule-soft);
+}
+
+.pp-section-head {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  /* Stays with the reader down the length of a long section, the way a
+     running head does in print. */
+  position: sticky;
+  top: 76px;
+  align-self: start;
+}
+
+.pp-section-num {
+  color: var(--ink-ghost);
+  letter-spacing: 0.26em;
+}
+
+.pp-section-title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--size-heading);
+  line-height: 1.02;
+  letter-spacing: -0.028em;
+}
+
+.pp-section-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(24px, 4vh, 48px);
+}
+
+.pp-prose {
+  max-width: var(--measure);
+  font-size: var(--size-body);
+  line-height: 1.68;
+  color: var(--ink-body);
+}
+
+/* ---- tags ---- */
+
+.pp-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+}
+
+.pp-tags li {
+  padding: 7px 13px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--ink-body);
+  transition: border-color var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out);
+}
+
+.pp-tags li:hover {
+  border-color: var(--ink-faint);
+  color: var(--ink);
+}
+
+/* ---- links ---- */
+
+.pp-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(16px, 3vw, 34px);
+}
+
+.pp-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: var(--size-small);
+  font-weight: 500;
+}
+
+.pp-link svg {
+  transition: transform var(--t-fast) var(--ease-out);
+}
+
+.pp-link:hover svg {
+  transform: translate(2px, -2px);
+}
+
+/* ---- media ---- */
+
+.pp-media {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  /* Lets a narrow figure backfill a gap a wide one left, so a mixed row of
+     portrait captures and landscape stills packs instead of laddering. */
+  grid-auto-flow: dense;
+  gap: clamp(10px, 1.4vw, 20px);
+}
+
+.pp-figure {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-card);
+  background: var(--paper-deep);
+  box-shadow: inset 0 0 0 1px var(--rule-soft);
+}
+
+.pp-figure-hit {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  cursor: zoom-in;
+}
+
+.pp-figure-still,
+.pp-figure-clip {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pp-figure-clip {
+  opacity: 0;
+  transition: opacity 0.5s var(--ease-out);
+}
+
+/* A clip with sound gets controls, so it must be on top and interactive from
+   the moment it exists rather than waiting to be "ready". */
+.pp-figure-clip[controls] {
+  opacity: 1;
+  cursor: default;
+}
+
+.pp-figure-clip[data-ready='true'] {
+  opacity: 1;
+}
+
+.pp-figure-play {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px 8px 11px;
+  border-radius: 999px;
+  background: var(--paper-veil);
+  backdrop-filter: blur(8px);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+  pointer-events: none;
+}
+
+.pp-figure-caption {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  z-index: 3;
+  padding: 4px 9px;
+  border-radius: 2px;
+  background: var(--paper-veil);
+  backdrop-filter: blur(6px);
+  font-family: var(--font-ui);
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  opacity: 0;
+  transform: translateY(5px);
+  transition:
+    opacity var(--t-fast) var(--ease-out),
+    transform var(--t-fast) var(--ease-out);
+  pointer-events: none;
+}
+
+.pp-figure:hover .pp-figure-caption {
+  opacity: 1;
+  transform: none;
+}
+
+/* A clip with controls owns its bottom edge — the caption would sit on the
+   scrubber. */
+.pp-figure:has(.pp-figure-clip[controls]) .pp-figure-caption {
+  bottom: auto;
+  top: 10px;
+}
+
+/* ---- next ---- */
+
+.pp-next {
+  width: var(--page);
+  margin: clamp(40px, 8vh, 100px) auto 0;
+  padding-top: clamp(28px, 5vh, 60px);
+  border-top: 1px solid var(--rule);
+}
+
+.pp-next-hit {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: clamp(18px, 3vh, 40px) 0;
+  text-align: left;
+}
+
+.pp-next-title {
+  display: block;
+  font-family: var(--font-display);
+  font-size: clamp(2.2rem, 7vw, 6rem);
+  line-height: 0.92;
+  letter-spacing: -0.04em;
+  transition: transform var(--t-mid) var(--ease-out);
+  transform-origin: left center;
+}
+
+.pp-next-hit:hover .pp-next-title {
+  transform: translateX(clamp(8px, 1.4vw, 22px));
+}
+
+.pp-next-tagline {
+  display: block;
+  margin-top: 10px;
+  font-size: var(--size-small);
+  color: var(--ink-soft);
+}
+
+.pp-next-thumb {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  width: clamp(120px, 15vw, 240px);
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: var(--radius-card);
+  transform: translateY(-50%) scale(0.9);
+  opacity: 0;
+  transition:
+    opacity var(--t-mid) var(--ease-out),
+    transform var(--t-mid) var(--ease-out);
+  pointer-events: none;
+}
+
+.pp-next-hit:hover .pp-next-thumb {
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
+}
+
+.pp-next-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pp-colophon {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: clamp(24px, 4vh, 48px);
+  border-top: 1px solid var(--rule-soft);
+  font-size: var(--size-small);
+  color: var(--ink-soft);
+}
+
+/* ---- narrow ---- */
+
+@media (max-width: 900px) {
+  .pp-section {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .pp-section-head {
+    position: static;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 12px;
+  }
+
+  .pp-lead {
+    grid-template-columns: 1fr;
+  }
+
+  .pp-lead .u-body {
+    grid-column: 1;
+  }
+
+  /* Twelve columns is too fine to be legible at this width. Two, with
+     everything on the full measure — except portraits, which keep pairing up:
+     a phone capture given the whole width becomes taller than the screen, and
+     a reader ends up scrolling through one clip at a time. */
+  .pp-media {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pp-media > * {
+    grid-column: span 2 !important;
+  }
+
+  .pp-media > .is-portrait {
+    grid-column: span 1 !important;
+  }
+
+  .pp-next-thumb {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .pp-facts dl {
+    gap: 18px 28px;
+  }
+
+  .pp-bar-name {
+    display: none;
+  }
+}

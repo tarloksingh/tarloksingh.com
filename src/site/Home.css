@@ -1,0 +1,299 @@
+/* The stage: the name inside the field, and the chrome that stays put the
+   whole way through. */
+
+.hm {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 50% 0%, var(--paper-raised) 0%, transparent 58%),
+    linear-gradient(180deg, var(--paper) 0%, var(--paper-deep) 100%);
+}
+
+/* ---- the wall of disciplines ----
+   Printed into the paper behind everything: the field, the name, the chrome.
+   See DISCIPLINES in Home.tsx for why this is the ground rather than a line
+   of caption under the name.
+
+   It sits below `--z-stage` and takes no pointer events, so as far as the
+   rest of the page is concerned it is part of the background. */
+
+.hm-wall {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4vw;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+  will-change: transform, opacity;
+}
+
+/* No `font-size` here: `fitWall` in Home.tsx writes it, measured. */
+.hm-wall-line {
+  font-family: var(--font-times);
+  letter-spacing: var(--tr);
+  line-height: 1.02;
+  text-transform: uppercase;
+  white-space: nowrap;
+  /* Letter-spacing is applied after the last glyph too, so a tracked line's
+     box is wider than its type and centring the box leaves the words sitting
+     left of centre — badly, at half an em of tracking. Taking that trailing
+     air off the box is what lines all seven up on one axis. */
+  margin-right: calc(-1 * var(--tr));
+  color: rgba(20, 18, 14, var(--ink));
+}
+
+/* ---- the name ----
+   Lives inside the field's `preserve-3d` space, so it sorts against the cards
+   by depth. Positioned from the space's origin, which is the screen centre. */
+
+.hm-name {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: max-content;
+  transform: translate3d(-50%, -50%, 0);
+  text-align: center;
+  pointer-events: none;
+  will-change: transform, opacity;
+  /* Big transformed type is the one thing on this page that can rasterise
+     soft; asking for the sharpest pass is cheap insurance. */
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+
+/* The rubric over the name. Times, not the display serif — see `--font-times`
+   for why the small type on this page is deliberately a different voice from
+   the name it sits above. */
+.hm-name-label {
+  margin-bottom: clamp(10px, 1.6vh, 20px);
+  font-family: var(--font-times);
+  font-size: clamp(0.75rem, 1.05vw, 1rem);
+  line-height: 1;
+  letter-spacing: 0.52em;
+  /* Half a millimetre of the same problem the wall has, and a different fix
+     because this line is centred by `text-align` rather than by flex: an
+     indent participates in the centring, so it moves the glyphs by half of
+     itself. A full tracking's worth of indent cancels a full tracking's
+     worth of trailing air. */
+  text-indent: 0.52em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.hm-name-lines {
+  font-family: var(--font-display);
+  font-size: var(--size-hero);
+  font-weight: 400;
+  line-height: 0.82;
+  letter-spacing: var(--track-hero);
+  color: var(--ink);
+}
+
+/* Each line is clipped by its own box (BlurText does that when `blur` is
+   off), so the characters climb into view from under the cut rather than
+   fading in place. */
+.hm-name-line {
+  display: block;
+}
+
+/* ---- chrome ---- */
+
+.hm-mark,
+.hm-menu,
+.hm-cue,
+.hm-foot {
+  position: fixed;
+  z-index: var(--z-chrome);
+}
+
+.hm-mark {
+  top: var(--gutter);
+  left: var(--gutter);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hm-mark-name {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.hm-menu {
+  top: var(--gutter);
+  right: var(--gutter);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 9px;
+  font-family: var(--font-times);
+  font-size: 0.8125rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  line-height: 1;
+  color: var(--ink-faint);
+}
+
+/* Where you are is at full ink and carries the rule; the other two are held
+   back. `data-on` also draws the underline — see `.u-link` in base.css. */
+.hm-menu .u-link[data-on='true'] {
+  color: var(--ink);
+}
+
+.hm-menu .u-link:hover {
+  color: var(--ink);
+}
+
+/* Set on the items rather than only on the nav, because two of the three are
+   buttons and the UA stylesheet gives a form control its own
+   `text-transform` and `letter-spacing` — inheriting the font through
+   `button { font: inherit }` in base.css does not carry either, so the two
+   buttons come out mixed-case and untracked beside an uppercase link.
+
+   The negative margin is the tracking's trailing letter-space, which every
+   item carries on the right — the edge they are all aligned to. Without it
+   the menu sits a fifth of an em off the gutter the mark on the other side
+   uses, and each underline runs that much too wide. */
+.hm-menu .u-link {
+  font-family: inherit;
+  letter-spacing: inherit;
+  text-transform: uppercase;
+  margin-right: -0.22em;
+}
+
+.hm-cue {
+  left: 50%;
+  bottom: calc(var(--gutter) + 54px);
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+  transition: opacity var(--t-mid) var(--ease-out);
+}
+
+.hm-cue-rule {
+  display: block;
+  width: 1px;
+  height: 46px;
+  background: linear-gradient(180deg, var(--ink-faint), transparent);
+  /* Travels down the line and repeats — a drawn stroke rather than a
+     bouncing arrow. */
+  animation: hm-cue-fall 2.4s var(--ease-in-out) infinite;
+  transform-origin: top center;
+}
+
+@keyframes hm-cue-fall {
+  0% {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+  35% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+  70%,
+  100% {
+    transform: scaleY(1) translateY(46px);
+    opacity: 0;
+  }
+}
+
+.hm-foot {
+  left: var(--gutter);
+  right: var(--gutter);
+  bottom: var(--gutter);
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  pointer-events: none;
+}
+
+/* The year, sitting on the point of the rule it belongs to. `left` is written
+   as a percentage of the footer every frame; the translate centres the label
+   on it, and is a percentage of the *label*, which is why the two can be
+   composed without either needing to know the other's width. */
+.hm-foot-year {
+  position: relative;
+  left: 0;
+  align-self: flex-start;
+  transform: translateX(-50%);
+  font-family: var(--font-display);
+  font-size: clamp(0.85rem, 1.05vw, 1.05rem);
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--ink);
+  /* No date until the work has arrived — before that the footer is just the
+     rule. */
+  opacity: 0;
+  transition: opacity var(--t-mid) var(--ease-out);
+}
+
+.hm-foot[data-in-work='true'] .hm-foot-year {
+  opacity: 1;
+}
+
+.hm-foot-track {
+  position: relative;
+  height: 1px;
+  background: var(--rule-soft);
+  overflow: hidden;
+}
+
+.hm-foot-track-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--ink-faint);
+  transform: scaleX(0);
+  transform-origin: left center;
+  will-change: transform;
+}
+
+/* ---- narrow ---- */
+
+@media (max-width: 760px) {
+  .hm-name-lines {
+    line-height: 0.86;
+  }
+
+  /* Nothing here for `.hm-wall-line`: every line is solved to a fraction of
+     the window (see DISCIPLINES), so the wall is already the same
+     composition on a phone as on a desktop, only smaller.
+
+     The mark and the menu share the top row on a phone, so the mark loses
+     its second line to keep both on one baseline. */
+  .hm-mark p.u-label {
+    display: none;
+  }
+
+  .hm-mark-name {
+    font-size: 1.05rem;
+  }
+
+  .hm-menu {
+    flex-direction: row;
+    gap: 14px;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+  }
+
+  .hm-menu .u-link {
+    margin-right: -0.14em;
+  }
+
+  .hm-cue {
+    bottom: calc(var(--gutter) + 62px);
+  }
+
+  .hm-foot-title {
+    font-size: 1.1rem;
+  }
+}

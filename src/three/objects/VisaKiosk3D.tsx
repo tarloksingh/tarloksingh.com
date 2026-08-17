@@ -1,5 +1,6 @@
 import { RoundedBox } from '@react-three/drei'
 import { CLAY_BODY, clayProps, accentProps } from '../Clay'
+import VisaLogo3D from '../VisaLogo3D'
 
 export default function VisaKiosk3D({ accent, hovered }: { accent: string; hovered: boolean }) {
   return (
@@ -22,6 +23,11 @@ export default function VisaKiosk3D({ accent, hovered }: { accent: string; hover
       <RoundedBox args={[0.66, 0.9, 0.02]} radius={0.03} position={[0, 0.38, 0.08]}>
         <meshStandardMaterial {...accentProps(accent, hovered)} />
       </RoundedBox>
+      {/* the wordmark keeps its own brand blue rather than the accent
+          colour — it's a real logo, not a generic highlight */}
+      <group position={[0, 0.38, 0.095]}>
+        <VisaLogo3D width={0.46} />
+      </group>
     </group>
   )
 }

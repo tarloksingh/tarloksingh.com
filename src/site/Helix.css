@@ -1,0 +1,149 @@
+/* The media field. See Helix.tsx for why this is CSS 3D and not WebGL. */
+
+.hx {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-stage);
+  /* Viewing distance. Low enough that the near strand genuinely looms and the
+     far one falls away — at 2500px+ the whole thing flattens to an ellipse of
+     evenly sized cards and stops reading as depth at all. */
+  perspective: 1250px;
+  perspective-origin: 50% 46%;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.hx-space {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  transform-style: preserve-3d;
+  will-change: opacity;
+}
+
+/* Every card is placed from its own centre, so the transform written each
+   frame is purely translate/rotate/scale with no layout offset folded in. */
+.hx-card {
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin-top: -0.5px;
+  margin-left: -0.5px;
+  /* Placed by JS. The translate(-50%,-50%) that would normally centre it is
+     baked into the two negative margins above instead — a percentage
+     translate inside a 3D transform is resolved against the element's own
+     box, which changes per card, and mixing that into the matrix written
+     every frame makes the maths impossible to reason about. */
+  transform-origin: 50% 50%;
+  transform-style: preserve-3d;
+  display: block;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
+  /* Deliberately absent: `will-change: transform`. There are two dozen of
+     these and promoting every one to its own compositor layer costs more
+     memory than the repaints it saves — they are already being written
+     compositor-only properties. */
+}
+
+/* Square corners, no drop shadow. A card in the vortex is a plate of footage
+   hanging in space, not a print lying on the page — and a drop shadow is a
+   lie in here anyway, since it is drawn in the card's own plane and so keeps
+   pointing the wrong way as the card turns.
+
+   The hairline stays, and carries more than it looks like it should: most of
+   this work is pale UI on white, and on parchment a light screenshot with no
+   edge simply dissolves into the page. It is an `outline` rather than the
+   `0 0 0 1px` box-shadow it used to be — same hairline, and it survives
+   "no shadows" honestly. */
+.hx-card-frame {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: hidden;
+  background: var(--paper-deep);
+  outline: 1px solid rgba(20, 18, 14, 0.14);
+  outline-offset: -1px;
+  transition: outline-color var(--t-mid) var(--ease-out);
+}
+
+.hx-card:hover .hx-card-frame {
+  outline-color: var(--card-accent, rgba(20, 18, 14, 0.3));
+}
+
+/* The far side of the vortex. Ink rather than paper: a card that has turned
+   away is in the dark behind the near wall, and washing it toward the page
+   colour instead reads as fog rather than as depth. Opacity only — a
+   `filter: brightness()` on the card would re-rasterise its whole subtree,
+   video and all, on every frame it changed. */
+.hx-card-veil {
+  position: absolute;
+  inset: 0;
+  display: block;
+  background: #0e0d0a;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hx-card-still,
+.hx-card-clip {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Everything on this page is ink on paper; the footage is the only place
+     colour is allowed, and even there it is pulled back a little so a card
+     sits on the page rather than glowing off it. */
+  filter: saturate(0.9) contrast(1.02);
+}
+
+.hx-card-clip {
+  opacity: 0;
+  transition: opacity 0.5s var(--ease-out);
+}
+
+.hx-card-clip[data-ready='true'] {
+  opacity: 1;
+}
+
+/* The project's name, printed under the card, only while it is being
+   looked at. */
+.hx-card-tag {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 9px);
+  display: block;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--ink-soft);
+  opacity: 0;
+  transform: translateY(-4px);
+  transition:
+    opacity var(--t-fast) var(--ease-out),
+    transform var(--t-fast) var(--ease-out);
+}
+
+.hx-card:hover .hx-card-tag {
+  opacity: 1;
+  transform: none;
+}
+
+@media (max-width: 760px) {
+  .hx {
+    perspective: 860px;
+  }
+
+  /* Nothing on the field is reachable by touch on a phone — the cards are
+     small, moving, and sit under the name. The project index in the menu is
+     how you get to a project there. */
+  .hx-card {
+    pointer-events: none !important;
+  }
+}
