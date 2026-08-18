@@ -69,7 +69,7 @@ function Block({ index, color }: BlockProps) {
       <mesh>
         <boxGeometry args={[BLOCK_SIZE, BLOCK_HEIGHT, BLOCK_SIZE]} />
         <meshStandardMaterial color={color} roughness={0.4} metalness={0.05} />
-        <Edges color="#ffffff" />
+        <Edges color="#ffffff" toneMapped={false} />
       </mesh>
     </group>
   )
