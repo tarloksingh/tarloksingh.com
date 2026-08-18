@@ -7,7 +7,7 @@ import { ACESFilmicToneMapping, MathUtils, SRGBColorSpace } from 'three'
 import type { Group, Mesh, MeshStandardMaterial, OrthographicCamera } from 'three'
 import { projects } from '../data/projects'
 import { hasProduct, specDefaults } from '../site/products'
-import { NARROW, NARROW_AT, PANEL_H, PANEL_W, STAGE_SHIFT, WIDE } from '../site/room'
+import { NARROW, NARROW_AT, PANEL_H, PANEL_W, REF_ASPECT, STAGE_SHIFT, WIDE } from '../site/room'
 import type { RoomLayout, RoomTuning } from '../site/room'
 import { StudioEnvironment } from './CapsuleStage'
 import Vitrine, { VITRINE_TOTAL } from './Vitrine'
@@ -656,24 +656,18 @@ export default function Gallery3D(props: Gallery3DProps) {
 }
 
 /**
- * The step and the stage shift in world units. Both arrive as viewport
- * *widths*, and one world unit is one viewport *height*, so the aspect ratio
- * is what converts between them.
- *
- * Derived from the canvas size rather than read off `viewport`, which is a
- * value the store caches and recomputes on its own resize and camera events.
- * `RoomLens` sets the zoom by mutating the camera in an effect, which is not
- * one of them — so `viewport.width` is still reporting the pixel-scale
- * frustum from before the zoom was applied, five hundred times too wide. The
- * only symptom is that every case but the one dead centre is parked several
- * hundred world units off-screen, which looks exactly like a scene that
- * failed to mount.
+ * The step and the stage shift in world units. Both arrive as fractions of a
+ * fixed reference width (`REF_ASPECT`, in room.ts) rather than the *live*
+ * window width — converted at a constant ratio instead of the live one, so
+ * the row's spacing and the case's distance from centre hold still as the
+ * window is resized. Only the camera's own zoom (`RoomLens`, tied to
+ * `size.height`) still answers to the window at all, which is why the room
+ * scales with height but not with width: one world unit is one viewport
+ * height, and now the only axis anything here reads live.
  */
 function RowWithStep(props: Gallery3DProps & Omit<RowExtra, 'step' | 'shift'>) {
-  const size = useThree((s) => s.size)
-  const aspect = size.width / size.height
   const { stepW, shiftW } = props.layout
-  return <Row {...props} step={stepW * aspect} shift={shiftW * aspect} />
+  return <Row {...props} step={stepW * REF_ASPECT} shift={shiftW * REF_ASPECT} />
 }
 
 /**

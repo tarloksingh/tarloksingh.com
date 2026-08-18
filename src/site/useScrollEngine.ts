@@ -263,12 +263,21 @@ export function useScrollEngine({
             : Math.min(hi, step)
     }
 
+    // The dev tuning panel (Leva) floats over the stage and has its own
+    // scrollable folders and drag-to-scrub number fields. The listeners below
+    // are on `window` and know nothing about what they land on, so without
+    // this a wheel over the panel — or a drag that starts on one of its
+    // sliders — would scrub the *page* underneath it as well as whatever
+    // Leva itself did with the same gesture.
+    const withinLeva = (e: Event) => (e.target as HTMLElement | null)?.closest?.('#leva__root')
+
     const onWheel = (e: WheelEvent) => {
       // While locked (a modal like the index is open over the stage) the
       // engine ignores input entirely — leave the event alone so whatever is
       // on top, e.g. the index list, scrolls natively instead of being stuck
       // under a preventDefault() meant for the zero-height document.
       if (lockedRef.current) return
+      if (withinLeva(e)) return
       // The page owns the gesture entirely; without this the browser also
       // scrolls the (zero-height) document and, on a trackpad, fires the
       // back-navigation gesture on horizontal drift.
@@ -287,6 +296,10 @@ export function useScrollEngine({
     let flingRaf = 0
 
     const onTouchStart = (e: TouchEvent) => {
+      if (withinLeva(e)) {
+        touchY = null
+        return
+      }
       cancelAnimationFrame(flingRaf)
       // A finger landing *is* the start of a gesture, so the latch can be
       // released outright here rather than inferred from the shape of the
@@ -298,7 +311,7 @@ export function useScrollEngine({
     }
 
     const onTouchMove = (e: TouchEvent) => {
-      if (touchY === null || lockedRef.current) return
+      if (touchY === null || lockedRef.current || withinLeva(e)) return
       const y = e.touches[0]?.clientY ?? touchY
       push((touchY - y) / optsRef.current.touchPixelsPerUnit)
       touchY = y

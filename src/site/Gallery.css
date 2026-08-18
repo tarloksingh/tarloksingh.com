@@ -16,15 +16,17 @@
      window, so translating the canvas instead would cut the far edge off it
      and pieces would vanish a fraction early on their way out of frame.
 
-     Gallery.tsx writes this inline from `layout.shiftW` — the value here is
-     the resting pose before the first write, and the two are the same number
-     (STAGE_SHIFT in room.ts). */
-  --stage-shift: 7%;
+     Gallery.tsx writes this inline from `layout.shiftW`, in pixels now (see
+     `REF_ASPECT` in room.ts) — the value here is only the resting pose
+     before the first write, at the reference viewport (STAGE_SHIFT + the
+     label's own 0.255, times REF_ASPECT times REF_H). */
+  --stage-shift: 468px;
   /* The wall label's own size — see Gallery.tsx, which writes these from the
-     tuning panel (`panelW`/`panelH` in `room.ts`). The values here are the
-     resting pose before the first write, and match the defaults there. */
-  --panel-w: 22vw;
-  --panel-h: 0vh;
+     tuning panel (`panelW`/`panelH` in `room.ts`), frozen against `REF_W`/
+     `REF_H`. The values here are only the resting pose before the first
+     write, and match the defaults there. */
+  --panel-w: 317px;
+  --panel-h: 0px;
 }
 
 /* The room: one canvas, the full window, holding every case in the row. It
@@ -56,7 +58,11 @@
 .gl-panel {
   position: absolute;
   z-index: 1;
-  left: calc(25.5% + var(--stage-shift));
+  /* `--stage-shift` is a fixed pixel distance from centre now, not a
+     percentage of the live width — see the effect that sets it, in
+     Gallery.tsx — so the label holds its place beside the case on a
+     width-only resize. */
+  left: calc(50% - var(--stage-shift));
   top: 50%;
   /* Placed by JS every frame; this is only the resting pose before the
      first. `-50%` in the Y slot is baked into the written transform too. */
@@ -167,7 +173,7 @@
    opinion, and this follows it. It is set on the first render from the
    window's width, so there is no unstyled frame to flash. */
 .gl[data-narrow='true'] {
-  --stage-shift: 0%;
+  --stage-shift: 0px;
 }
 
 .gl[data-narrow='true'] .gl-panel {

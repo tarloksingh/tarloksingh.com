@@ -9,7 +9,7 @@ import {
   useState
 } from 'react'
 import { workProjects } from '../data/projects'
-import { NARROW, NARROW_AT, PANEL_H, PANEL_W, STAGE_SHIFT, WIDE } from './room'
+import { NARROW, NARROW_AT, PANEL_H, PANEL_W, REF_ASPECT, REF_H, REF_W, STAGE_SHIFT, WIDE } from './room'
 import type { RoomLayout, RoomTuning } from './room'
 import { clamp, ease } from './useScrollEngine'
 import type { ScrollEngine } from './useScrollEngine'
@@ -60,15 +60,6 @@ const ARRIVE_FROM = 0.5
  *  One: at this step, two away is entirely off-frame, and every mounted
  *  project is a glTF or a playing video behind the scenes. */
 const NEIGHBOURS = 1
-
-/** What the tuning panel's `panelW`/`panelH` (still expressed as viewport
- *  fractions, to match the rest of `room.ts`) are resolved against — a fixed
- *  reference size rather than the actual window, so the wall label holds one
- *  physical size and stops growing or shrinking as the browser is resized.
- *  Roughly a common laptop viewport; the exact number only sets the label's
- *  scale, not its position. */
-const PANEL_REF_W = 1440
-const PANEL_REF_H = 900
 
 const wrap = (i: number, n: number) => ((i % n) + n) % n
 
@@ -169,19 +160,37 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
      the scroll loop below, and neither of those can be given a second value
      to add. Written inline, so it beats the stylesheet's own default and its
      narrow-window override — which is why `shiftW` is already zeroed for
-     narrow above rather than being left to the media query. */
+     narrow above rather than being left to the media query.
+
+     In pixels, converted through `REF_ASPECT` and the window's *height* —
+     see `REF_ASPECT` in room.ts — rather than as a plain percentage of the
+     live width, so the label holds its distance from the case on a
+     width-only resize and only travels when the window's height does, same
+     as the case itself. `0.255` is the label's old resting fraction of the
+     window width (the CSS used to read `calc(25.5% + var(--stage-shift))`
+     directly); folded in here now that both terms convert the same way. */
   useEffect(() => {
-    rootRef.current?.style.setProperty('--stage-shift', `${(layout.shiftW * 100).toFixed(2)}%`)
+    const root = rootRef.current
+    if (!root) return
+    const set = () => {
+      const gap = (0.255 + layout.shiftW) * REF_ASPECT * window.innerHeight
+      root.style.setProperty('--stage-shift', `${gap.toFixed(1)}px`)
+    }
+    set()
+    window.addEventListener('resize', set)
+    return () => window.removeEventListener('resize', set)
   }, [layout.shiftW])
 
   // The panel's own size — see `.gl-panel` in Gallery.css, which reads these
   // rather than a fixed width and height now that the tuning panel controls
-  // them (`panelW`/`panelH` in `LAYOUT_SCHEMA`, `Gallery3D.tsx`).
+  // them (`panelW`/`panelH` in `LAYOUT_SCHEMA`, `Gallery3D.tsx`). Frozen
+  // against `REF_W`/`REF_H`, not the live window, for the same reason as
+  // `--stage-shift` above.
   useEffect(() => {
     const root = rootRef.current
     if (!root) return
-    root.style.setProperty('--panel-w', `${((tuning.panelW / 100) * PANEL_REF_W).toFixed(0)}px`)
-    root.style.setProperty('--panel-h', `${((tuning.panelH / 100) * PANEL_REF_H).toFixed(0)}px`)
+    root.style.setProperty('--panel-w', `${((tuning.panelW / 100) * REF_W).toFixed(0)}px`)
+    root.style.setProperty('--panel-h', `${((tuning.panelH / 100) * REF_H).toFixed(0)}px`)
   }, [tuning.panelW, tuning.panelH])
 
   useEffect(() => {
@@ -241,8 +250,11 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
       // the front it is — written straight to the node, never through React.
       // `stepW` already carries the tuning panel's spacing, so the labels
       // spread and close with the cases rather than staying put while the row
-      // moves out from under them.
-      const step = window.innerWidth * layoutRef.current.stepW
+      // moves out from under them. Converted through `REF_ASPECT` and the
+      // window's height, matching the 3D row's own step (`RowWithStep` in
+      // Gallery3D.tsx) — a width-only resize must not change how far apart
+      // the labels sit, any more than it changes how far apart the cases do.
+      const step = window.innerHeight * REF_ASPECT * layoutRef.current.stepW
       // The label stacks under the case on a phone instead of standing beside
       // it, which is a different resting transform. Read here rather than
       // left to the stylesheet: this writes `transform` every frame and would

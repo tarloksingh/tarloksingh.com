@@ -80,3 +80,21 @@ export const PANEL_W = 22
 /** Default `panelH`, in viewport heights. Zero: no minimum, the panel is
  *  exactly as tall as its copy. */
 export const PANEL_H = 0
+
+/** A fixed reference viewport, in pixels — not a real breakpoint, just the
+ *  ratio the row's horizontal spacing and the wall label's size and position
+ *  are frozen against.
+ *
+ *  `stepW` and `shiftW` are fractions of a window *width*, and used to be
+ *  converted into world units (`Gallery3D.tsx`) or pixels (`Gallery.tsx`) by
+ *  the *live* width — so the row's spacing and the case's distance from the
+ *  label both changed as the window was resized, even when only the width
+ *  moved and nothing about the piece itself should have. Both sides now
+ *  convert against this fixed ratio instead: everything in the row holds
+ *  still on a width-only resize, and only scales when the window's *height*
+ *  does, matching the one axis the camera itself already answers to (see
+ *  `RoomLens` in Gallery3D.tsx). The label's own type and box size are frozen
+ *  against `REF_W`/`REF_H` outright, for the same reason. */
+export const REF_W = 1440
+export const REF_H = 900
+export const REF_ASPECT = REF_W / REF_H
