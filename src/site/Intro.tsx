@@ -1,25 +1,35 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { NAME_BOX, NAME_OUTLINE, NAME_PEN, PEN_WIDTH } from './nameGlyphs'
 import './Intro.css'
 
 /* The opening.
 
    A dark room, lit like a print running through a projector, and a hand
-   writing the name into it. Then two words and a door, and the dark lifts.
+   writing the name into it. Then two words and a door, and the dark burns
+   open under the visitor's own scroll.
 
-   Two things about it are unusual enough to be worth stating up front.
+   Three things about it are unusual enough to be worth stating up front.
 
-   The first is that it runs at 24fps. Not "looks like" 24fps — every visible
-   value on screen is sampled from a clock quantised to 1/24s, and nothing
-   moves between those samples. That is the whole reason it reads as film
-   rather than as a web page with a grain overlay on it: the strobe on a
-   moving edge, the way the flicker sits still for two display frames and then
-   jumps, the fact that the pen advances in discrete bites. A 60fps version of
-   exactly this animation looks like an advert. The moment the visitor asks
-   for the work, the quantiser is dropped and the butterflies run at whatever
-   the display can do, because a curtain that stutters just looks broken.
+   The first is that it runs at 24fps until the visitor starts scrolling. Not
+   "looks like" 24fps — every visible value on screen is sampled from a clock
+   quantised to 1/24s, and nothing moves between those samples. That is the
+   whole reason it reads as film rather than as a web page with a grain
+   overlay on it: the strobe on a moving edge, the way the flicker sits still
+   for two display frames and then jumps, the fact that the pen advances in
+   discrete bites. A 60fps version of exactly this animation looks like an
+   advert. The moment the visitor scrolls, the quantiser is dropped and
+   everything runs at whatever the display can do, because a burn that
+   stutters just looks broken.
 
-   The second is that everything here is driven from one `requestAnimationFrame`
+   The second is that leaving the room is not a timed animation at all — it is
+   scroll position, full stop. `progressRef` is 0 at rest and 1 once the page
+   is completely uncovered, and every visual on the way — the hole burning
+   through the veil, the glow at its edge, the name and the word above it
+   lifting off — is a pure function of that one number. Scroll down and it
+   advances; scroll back up and it reverses, because nothing here is played
+   once and left to finish on its own clock.
+
+   The third is that everything is driven from one `requestAnimationFrame`
    loop writing inline styles, rather than from CSS transitions or a timeline
    library. Both of those interpolate on their own clock, which is precisely
    the clock this screen is trying not to have.
@@ -27,8 +37,8 @@ import './Intro.css'
    `Intro` also stands in for the loading screen on the way to the stage: it
    is already covering the page for four seconds, and making someone watch a
    progress bar and *then* an entrance is two waits where the design only has
-   room for one. The name writes regardless; what waits on the images is the
-   invitation to leave. */
+   room for one. The name writes regardless; what waits on the images is
+   whether scrolling is allowed to do anything yet. */
 
 /** Frames a second, while the film is running. */
 const FPS = 24
@@ -44,17 +54,22 @@ const ARTIST_IN = 0.75
 const ENTER_AT = 0.55
 const ENTER_IN = 0.75
 
-/* ---- the exit, in seconds from the click ---- */
-/** Bottom to top: the door, the name, then the word over it. */
+/* ---- the exit, driven by scroll rather than the clock ----
+   `progress` runs 0..1: 0 is fully in the room, 1 is the page fully lit.
+   Each element lifts off at its own point along that range so the door goes
+   before the name, and the name before the word above it — the same
+   bottom-to-top order the click used to give, just run by the wheel instead
+   of a timer. */
 const OUT_ENTER_AT = 0
-const OUT_NAME_AT = 0.18
-const OUT_ARTIST_AT = 0.44
-const OUT_IN = 0.4
-/** Where the veil starts to fade, and how long it takes once it starts —
- *  the page is interactive the instant this reaches 1. */
-const VEIL_AT = 0.72
-const VEIL_FOR = 2.4
-
+const OUT_NAME_AT = 0.14
+const OUT_ARTIST_AT = 0.3
+const OUT_SPAN = 0.4
+/** Where the hole in the veil is centred, and the biggest it ever grows. */
+const BURN_X = '50%'
+const BURN_Y = '56%'
+const BURN_MAX = 165
+/** Cumulative wheel/touch travel, in pixels, to burn all the way through. */
+const SCROLL_RANGE = 1400
 /** Longest the invitation waits on images that are not arriving. */
 const PATIENCE = 6
 
@@ -69,12 +84,12 @@ const inOut = (v: number) => {
 const span = (t: number, at: number, over: number) => clamp01((t - at) / over)
 
 interface IntroProps {
-  /** Stills to have decoded before the visitor is invited through. */
+  /** Stills to have decoded before scrolling is allowed to do anything. */
   preload: string[]
-  /** The visitor has asked for the work: put the page behind into position. */
+  /** The visitor has started leaving: put the page behind into position. */
   onCommit: () => void
-  /** The veil has finished fading: the page underneath is fully visible and
-   *  should unlock. */
+  /** The veil has finished burning away: the page underneath is fully
+   *  visible and should unlock. */
   onReveal: () => void
   /** Nothing here is on screen any more. */
   onDone: () => void
@@ -93,27 +108,19 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
   const nameRef = useRef<HTMLDivElement>(null)
   const penRef = useRef<SVGPathElement[]>([])
   const settledRef = useRef<SVGPathElement>(null)
-  const enterRef = useRef<HTMLButtonElement>(null)
+  const enterRef = useRef<HTMLParagraphElement>(null)
   const grainRef = useRef<HTMLDivElement>(null)
   const vignetteRef = useRef<HTMLDivElement>(null)
   const veilRef = useRef<HTMLDivElement>(null)
+  const burnRef = useRef<HTMLDivElement>(null)
   const marksRef = useRef<HTMLDivElement>(null)
 
-  /* Only for the button's own affordances — the animation itself never
-     re-renders, so nothing here may be state the loop reads. */
-  const [leaving, setLeaving] = useState(false)
-
-  /** Set the instant the visitor asks to leave; the loop watches it. */
-  const leftAtRef = useRef<number | null>(null)
-  /** When the images settled, so the invitation can wait on them. */
+  /** How far through leaving the room the visitor has scrolled: 0..1, and
+   *  read every frame rather than driving one, so scrolling back up is just
+   *  the same number going the other way. */
+  const progressRef = useRef(0)
+  /** When the images settled, so scrolling can wait on them. */
   const readyAtRef = useRef<number | null>(null)
-
-  const leave = useCallback(() => {
-    if (leftAtRef.current != null) return
-    leftAtRef.current = performance.now() / 1000
-    setLeaving(true)
-    onCommit()
-  }, [onCommit])
 
   /* Count the stills in, exactly as the loading screen did: `decode()` rather
      than the load event, because a decoded bitmap is the thing that can
@@ -152,9 +159,10 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
     const grain = grainRef.current
     const vignette = vignetteRef.current
     const veil = veilRef.current
+    const burn = burnRef.current
     const marks = marksRef.current
     if (!root || !stack || !artist || !name || !settledInk || !enter) return
-    if (!grain || !vignette || !veil || !marks) return
+    if (!grain || !vignette || !veil || !burn || !marks) return
     if (strokes.length !== NAME_PEN.length) return
 
     const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -184,27 +192,40 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
     const dust = Array.from(marks.querySelectorAll<HTMLElement>('.in-dust'))
 
     /* One origin for the whole screen. Every time below is seconds since it,
-       including the two refs the click and the preloader write — they record
-       `performance.now()` because they run outside this loop, and are pulled
-       back onto this clock the moment the loop reads them. */
+       including the ref the preloader writes — it records `performance.now()`
+       because it runs outside this loop, and is pulled back onto this clock
+       the moment the loop reads it. */
     const start = performance.now() / 1000
     let frame = -1
     let raf = 0
 
+    /** Whether scrolling is allowed to do anything yet — the writing has
+     *  finished and the stills are in. Set inside `paint`, read by the wheel
+     *  and touch handlers below. */
+    let canLeave = false
+    /** Whether the visitor has actually started scrolling. Once true the
+     *  quantiser drops for good, even if they scroll straight back to 0. */
+    let committed = false
+    let calledCommit = false
+    let revealed = false
+
     /** Everything that is a function of the film clock, sampled on the 24s. */
-    const paintFilm = (t: number, alive: number) => {
+    const paintFilm = (t: number, alive: number, heat: number) => {
+      const boost = 1 + heat * 1.6
+
       // Grain: one turbulence tile, oversized and thrown to a new offset every
       // frame. Moving it is a compositor transform; regenerating noise per
       // frame would not survive on a phone.
       grain.style.transform = `translate3d(${(Math.random() * 180 - 90).toFixed(0)}px, ${(
         Math.random() * 180 - 90
       ).toFixed(0)}px, 0)`
-      grain.style.opacity = (alive * (0.1 + Math.random() * 0.07)).toFixed(3)
+      grain.style.opacity = (alive * (0.1 + Math.random() * 0.07) * boost).toFixed(3)
 
       // Lamp flicker, and the weave of the gate. Both are tiny on purpose: at
       // this size they are felt rather than seen, and any larger reads as a
-      // fault rather than as a projector.
-      root.style.setProperty('--flicker', (0.9 + Math.random() * 0.12).toFixed(3))
+      // fault rather than as a projector — except right at the burn, where
+      // `heat` is allowed to push the lamp past that on purpose.
+      root.style.setProperty('--flicker', (0.9 + Math.random() * 0.12 * boost).toFixed(3))
       stack.style.setProperty(
         '--weave',
         `${(Math.random() * 1.4 - 0.7).toFixed(2)}px, ${(Math.random() * 1.1 - 0.55).toFixed(2)}px`
@@ -216,20 +237,22 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
         // re-thrown every frame like the dust is.
         if (Math.floor(t * 3) % SCRATCHES !== i) return
         line.style.left = `${(Math.random() * 100).toFixed(2)}%`
-        line.style.opacity = (alive * Math.random() * 0.34).toFixed(3)
+        line.style.opacity = (alive * Math.random() * 0.34 * boost).toFixed(3)
         line.style.height = `${(30 + Math.random() * 70).toFixed(0)}%`
         line.style.top = `${(Math.random() * 40).toFixed(0)}%`
       })
       dust.forEach((speck) => {
         speck.style.left = `${(Math.random() * 100).toFixed(2)}%`
         speck.style.top = `${(Math.random() * 100).toFixed(2)}%`
-        speck.style.opacity = (alive * (Math.random() < 0.4 ? Math.random() * 0.4 : 0)).toFixed(3)
+        speck.style.opacity = (
+          alive * (Math.random() < 0.4 ? Math.random() * 0.4 * boost : 0)
+        ).toFixed(3)
       })
     }
 
-    const paint = (t: number, left: number | null) => {
-      const alive = left == null ? 1 : 1 - clamp01((t - left - VEIL_AT) / (VEIL_FOR * 0.4))
-
+    /** `progress` is 0..1 and reversible: everything below it is a pure
+     *  function of that number, never of how it got there. */
+    const paint = (t: number, progress: number) => {
       // ---- the writing ----
       const written = still ? 1 : span(t, HOLD, WRITE)
       // Linear along the journey, not eased: a hand does not accelerate into
@@ -245,17 +268,18 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
       settledInk.style.opacity = span(t, HOLD + WRITE - SETTLE * 0.5, SETTLE).toFixed(3)
 
       // ---- the two things that follow it ----
-      // Held until the stills are in: the name is the entrance, the button is
-      // a promise, and a promise should not be made before it can be kept.
+      // Held until the stills are in: the name is the entrance, and "scroll"
+      // is a promise, and a promise should not be made before it can be kept.
       const ready = readyAtRef.current
       const openedAt = Math.max(HOLD + WRITE, ready == null ? Infinity : ready - start)
       const artistOn = still ? 1 : out(span(t, openedAt + ARTIST_AT, ARTIST_IN))
       const enterOn = still ? 1 : out(span(t, openedAt + ENTER_AT, ENTER_IN))
+      canLeave = enterOn > 0.05
 
-      // ---- the exit, bottom to top ----
-      const goEnter = left == null ? 0 : inOut(span(t, left + OUT_ENTER_AT, OUT_IN))
-      const goName = left == null ? 0 : inOut(span(t, left + OUT_NAME_AT, OUT_IN))
-      const goArtist = left == null ? 0 : inOut(span(t, left + OUT_ARTIST_AT, OUT_IN))
+      // ---- leaving, bottom to top, run entirely off `progress` ----
+      const goEnter = inOut(span(progress, OUT_ENTER_AT, OUT_SPAN))
+      const goName = inOut(span(progress, OUT_NAME_AT, OUT_SPAN))
+      const goArtist = inOut(span(progress, OUT_ARTIST_AT, OUT_SPAN))
 
       artist.style.opacity = (artistOn * (1 - goArtist)).toFixed(3)
       artist.style.transform = `translate3d(0, ${((1 - artistOn) * 10 - goArtist * 14).toFixed(1)}px, 0)`
@@ -265,40 +289,56 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
 
       enter.style.opacity = (enterOn * (1 - goEnter)).toFixed(3)
       enter.style.transform = `translate3d(0, ${((1 - enterOn) * 12 - goEnter * 18).toFixed(1)}px, 0)`
-      enter.style.pointerEvents = enterOn > 0.9 && left == null ? 'auto' : 'none'
 
-      paintFilm(t, alive)
+      // ---- the burn ----
+      // The veil is not fading, it is being eaten through: a hole grows from
+      // one point until nothing of it is left. `reveal` is that hole's
+      // radius, eased, as a fraction of `BURN_MAX`; the page is usable the
+      // instant it reaches 1.
+      const reveal = out(progress)
+      const r = reveal * BURN_MAX
+      // The feather scales with the hole itself, so at rest (`r` at or near
+      // 0) the ramp collapses to nothing instead of leaving a soft halo of
+      // premature transparency sitting over the room.
+      const feather = Math.max(0.4, r * 0.22)
+      const radius = `${r.toFixed(1)}vmax`
+      const mask = `radial-gradient(circle at ${BURN_X} ${BURN_Y}, transparent ${radius}, #000 ${(r + feather).toFixed(1)}vmax)`
+      veil.style.maskImage = mask
+      veil.style.webkitMaskImage = mask
+      veil.style.setProperty('--burn-r', radius)
+      // The glow at the burning edge: a bump that rises as the hole opens and
+      // falls away again once the room is fully lit, not a fade that only
+      // ever goes one way.
+      const heat = still ? 0 : Math.sin(clamp01(progress) * Math.PI)
+      burn.style.opacity = (heat * 0.95).toFixed(3)
 
-      // The dark simply fades — no erosion, no torn patches. The page is
-      // usable the instant this reaches 1.
-      const reveal = left == null ? 0 : span(t, left + VEIL_AT, VEIL_FOR)
-      veil.style.opacity = (1 - reveal).toFixed(3)
+      paintFilm(t, 1 - reveal, heat)
+
       // Once the veil is gone this element has nothing left to hide and
-      // should not still be catching clicks and scroll meant for the page
-      // now showing through it.
+      // should not still be catching wheel and clicks meant for the page now
+      // showing through it.
       root.style.pointerEvents = reveal >= 1 ? 'none' : ''
       return { reveal }
     }
 
-    let revealed = false
     const tick = () => {
       raf = requestAnimationFrame(tick)
       const now = performance.now() / 1000 - start
-      const left = leftAtRef.current == null ? null : leftAtRef.current - start
 
-      /* Before the click the clock is quantised: `t` only ever takes values on
-         the 24ths, so two or three display frames in a row are *identical*,
-         which is what a projected frame does. After it, real time — the
-         curtain has to be smooth. */
-      if (left == null) {
+      /* Before scrolling starts the clock is quantised: `t` only ever takes
+         values on the 24ths, so two or three display frames in a row are
+         *identical*, which is what a projected frame does. Once the visitor
+         has scrolled at all, real time — the burn has to be smooth, and has
+         to answer the wheel the instant it moves. */
+      if (!committed) {
         const next = Math.floor(now * FPS)
         if (next === frame) return
         frame = next
-        paint(next / FPS, null)
+        paint(next / FPS, 0)
         return
       }
 
-      const { reveal } = paint(now, left)
+      const { reveal } = paint(now, progressRef.current)
       if (!revealed && reveal >= 1) {
         revealed = true
         onReveal()
@@ -307,13 +347,66 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
       }
     }
 
-    paint(0, null)
+    /** Wheel and touch both funnel into this: advance or retreat `progress`
+     *  by a distance in the same units the browser already reports, so a
+     *  small nudge burns a little and a hard scroll burns straight through. */
+    const nudge = (delta: number) => {
+      if (revealed) return
+      if (!canLeave && delta > 0) return
+      committed = true
+      progressRef.current = clamp01(progressRef.current + delta / SCROLL_RANGE)
+      if (progressRef.current > 0 && !calledCommit) {
+        calledCommit = true
+        onCommit()
+      }
+    }
+
+    const onWheel = (e: WheelEvent) => {
+      if (!canLeave && e.deltaY <= 0) return
+      e.preventDefault()
+      nudge(e.deltaY)
+    }
+
+    let touchY: number | null = null
+    const onTouchStart = (e: TouchEvent) => {
+      touchY = e.touches[0]?.clientY ?? null
+    }
+    const onTouchMove = (e: TouchEvent) => {
+      if (touchY == null) return
+      const y = e.touches[0]?.clientY
+      if (y == null) return
+      const delta = touchY - y
+      if (!canLeave && delta <= 0) return
+      e.preventDefault()
+      touchY = y
+      nudge(delta)
+    }
+
+    /** A keyboard/AT path to the same door, since the burn itself only
+     *  answers a wheel or a finger. */
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!canLeave) return
+      if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'ArrowDown' && e.key !== 'PageDown') return
+      e.preventDefault()
+      nudge(SCROLL_RANGE)
+    }
+
+    root.addEventListener('wheel', onWheel, { passive: false })
+    root.addEventListener('touchstart', onTouchStart, { passive: true })
+    root.addEventListener('touchmove', onTouchMove, { passive: false })
+    window.addEventListener('keydown', onKeyDown)
+
+    paint(0, 0)
     raf = requestAnimationFrame(tick)
 
     return () => {
       cancelAnimationFrame(raf)
+      root.removeEventListener('wheel', onWheel)
+      root.removeEventListener('touchstart', onTouchStart)
+      root.removeEventListener('touchmove', onTouchMove)
+      window.removeEventListener('keydown', onKeyDown)
     }
-  }, [onReveal, onDone])
+  }, [onCommit, onReveal, onDone])
 
   const [x, y, w, h] = NAME_BOX
   /* The viewBox is the ink and nothing else, so the element's box and the
@@ -325,9 +418,11 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
 
   return (
     <div className="in" ref={rootRef}>
-      {/* The dark. Fades away on its own clock — see `paint` in the effect
-          above — and is what actually hides the page. */}
+      {/* The dark. A hole burns through it on the site's own clock — see
+          `paint` in the effect above — and it is what actually hides the
+          page. */}
       <div className="in-veil" ref={veilRef} aria-hidden="true" />
+      <div className="in-burn" ref={burnRef} aria-hidden="true" />
 
       <div className="in-stack" ref={stackRef}>
         <p className="in-artist" ref={artistRef}>
@@ -371,16 +466,12 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
           </svg>
         </div>
 
-        <button
-          type="button"
-          className="in-enter"
-          ref={enterRef}
-          onClick={leave}
-          disabled={leaving}
-          tabIndex={leaving ? -1 : 0}
-        >
-          See my work
-        </button>
+        {/* Not a button — there is nothing to click. Scrolling (or, for a
+            keyboard or a screen reader, Enter) is what moves this room. */}
+        <p className="in-enter" ref={enterRef} aria-hidden="true">
+          <span className="in-enter-text">scroll</span>
+        </p>
+        <p className="u-sr">Scroll, or press Enter, to continue.</p>
       </div>
 
       <div className="in-marks" ref={marksRef} aria-hidden="true">

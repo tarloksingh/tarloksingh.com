@@ -16,14 +16,39 @@
 }
 
 /* The ground the whole sequence is lit against. No background on `.in`
-   itself: the veil is the only thing hiding the page, so the reveal has
-   exactly one thing to fade away. */
+   itself: the veil is the only thing hiding the page, and it is not faded
+   away but burned through — a hole grows out of `mask-image`, sized in JS
+   by how far the visitor has scrolled. The rule here is just the resting
+   state, before the loop has painted its first frame. */
 .in-veil {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   background: #1a1a1a;
+  -webkit-mask-image: radial-gradient(circle at 50% 56%, transparent 0, #000 0.4vmax);
+  mask-image: radial-gradient(circle at 50% 56%, transparent 0, #000 0.4vmax);
+  will-change: mask-image;
+}
+
+/* The light at the burning edge — a ring that brightens as the hole opens
+   and dims again once the room is fully lit, so it reads as a scorch
+   passing through rather than a glow that only ever grows. `--burn-r` is
+   the same radius the veil's own hole uses, written by the same loop. */
+.in-burn {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  mix-blend-mode: screen;
+  --burn-r: 0vmax;
+  background: radial-gradient(
+    circle at 50% 56%,
+    transparent calc(var(--burn-r) - 8vmax),
+    rgba(255, 244, 214, 0.95) var(--burn-r),
+    rgba(255, 120, 24, 0.55) calc(var(--burn-r) + 7vmax),
+    transparent calc(var(--burn-r) + 15vmax)
+  );
   will-change: opacity;
 }
 
@@ -72,28 +97,31 @@
   overflow: visible;
 }
 
+/* Not a button — a cue. What moves the room is the wheel, not a click. */
 .in-enter {
   margin-top: 0.62rem;
-  padding: 0.42em 1.15em 0.36em;
   font-family: var(--font-display);
-  font-size: clamp(0.82rem, 0.92vw, 1.02rem);
+  font-size: clamp(0.76rem, 0.85vw, 0.94rem);
   line-height: 1.15;
-  letter-spacing: 0.005em;
-  color: #1a1a1a;
-  background: #fff;
-  border-radius: 0;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.86);
   opacity: 0;
-  transition: background 0.24s linear, color 0.24s linear;
 }
 
-.in-enter:hover:not(:disabled),
-.in-enter:focus-visible:not(:disabled) {
-  background: rgba(255, 255, 255, 0.82);
+.in-enter-text {
+  display: inline-block;
+  animation: in-enter-pulse 1.8s ease-in-out infinite;
 }
 
-.in-enter:focus-visible {
-  outline: 1px solid rgba(255, 255, 255, 0.7);
-  outline-offset: 4px;
+@keyframes in-enter-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 /* ---- the print ---- */
@@ -150,12 +178,17 @@
      the weave and the flicker are the parts that actually make someone ill,
      and they are all that is switched off here. */
   .in-grain,
-  .in-marks {
+  .in-marks,
+  .in-burn {
     display: none;
   }
 
   .in-stack {
     transform: none;
     filter: none;
+  }
+
+  .in-enter-text {
+    animation: none;
   }
 }
