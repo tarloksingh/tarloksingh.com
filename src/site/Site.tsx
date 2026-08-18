@@ -5,7 +5,6 @@ import Intro from './Intro'
 import Loader from './Loader'
 import MusicPlayer from './MusicPlayer'
 import ProjectIndex from './Index'
-import { buildHelixCards, helixPosters } from './Helix'
 import { projectById, workProjects } from '../data/projects'
 import { currentRoute, onPopState, push, sameRoute } from './router'
 import type { Route } from './router'
@@ -32,9 +31,8 @@ export default function Site() {
      entrance to a page you did not come for is just a delay. The two never
      both run: `Intro` counts the same stills in and is its own wait. */
   const [intro, setIntro] = useState(() => currentRoute().name === 'home')
-  // The veil fades on a short clock; the flock above it lingers on a much
-  // longer one (see FLOCK_LINGER in Intro.tsx). The stage unlocks on the
-  // first, `intro` only comes down once the second finishes.
+  // The veil fading is both the stage unlocking and `Intro` coming down —
+  // see `onReveal`/`onDone` in Intro.tsx.
   const [introRevealed, setIntroRevealed] = useState(false)
   const [loading, setLoading] = useState(() => currentRoute().name !== 'home')
   const [indexOpen, setIndexOpen] = useState(false)
@@ -52,12 +50,9 @@ export default function Site() {
   const timelineRef = useRef<gsap.core.Timeline | null>(null)
   const [pendingLabel, setPendingLabel] = useState('')
 
-  // Built once here rather than inside Home, because the loader has to know
-  // what it is waiting for before Home has mounted.
-  const posters = useMemo(() => {
-    const count = typeof window !== 'undefined' && window.innerWidth < 760 ? 14 : 24
-    return helixPosters(buildHelixCards(count))
-  }, [])
+  // Nothing left to preload for the entrance itself now that the field rides
+  // no cards — the loader and the intro just wait on the font set.
+  const posters = useMemo<string[]>(() => [], [])
 
   // A case study scrolls; the stage does not. The document's overflow is the
   // one thing that genuinely differs between them, so the shell owns it.
@@ -145,11 +140,10 @@ export default function Site() {
   const loaderDone = useCallback(() => setLoading(false), [])
 
   /* The entrance's three moments. `enterWork` fires on the click, while the
-     butterflies are still on screen: the stage has to already be turned to
+     veil is still covering the page: the stage has to already be turned to
      the first project by the time the dark comes off it, or the reveal shows
-     the page getting into position. `introRevealed` unlocks the stage the
-     instant the veil has finished fading. `introDone` is only the unmount,
-     which waits on the flock's own longer fade above it. */
+     the page getting into position. `introRevealed` and `introDone` both
+     fire together, the instant the veil has finished fading. */
   const enterWork = useCallback(() => setArriveAt(workProjects[0]?.id ?? null), [])
   const onIntroReveal = useCallback(() => setIntroRevealed(true), [])
   const introDone = useCallback(() => setIntro(false), [])

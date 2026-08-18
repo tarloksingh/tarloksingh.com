@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, MouseEvent as ReactMouseEvent } from 'react'
 import BlurText, { reveal } from '../components/BlurText'
-import Helix, { buildHelixCards } from './Helix'
+import Helix from './Helix'
+import type { HelixCard } from './Helix'
 import Gallery from './Gallery'
 import { workProjects, sideProjects } from '../data/projects'
 import { useScrollEngine, clamp, ease, range } from './useScrollEngine'
@@ -21,8 +22,11 @@ import './Home.css'
    flag to get out of step, and scrolling back up genuinely reverses rather
    than replaying an exit animation. */
 
-const CARD_COUNT_DESKTOP = 24
-const CARD_COUNT_PHONE = 14
+/** No cards ride the field any more — the name stands alone in it. Kept as a
+ *  stable reference so `Helix` doesn't get a fresh array identity every
+ *  render. */
+const NO_CARDS: HelixCard[] = []
+
 /** Where the name has completely gone. */
 const NAME_OUT = 0.62
 /** Where the drum has taken over — what the menu calls being in the work. */
@@ -109,7 +113,18 @@ export default function Home({ onOpen, locked, onIndex, arriveAt, noir }: HomePr
   // documentation. Below 1 you are flying through the field and every
   // position is a real picture; at 1 and above you are looking at one piece
   // of work at a time, and there is no such thing as being between two.
-  const engine = useScrollEngine({ pixelsPerUnit: 1250, smoothing: 0.4, min: 0, detentFrom: 1 })
+  // `max` stops the track at the last project rather than letting it run on
+  // forever: without it, scrolling past the end wrapped `Gallery`'s row back
+  // to the first project over and over — the same work rotating past
+  // indefinitely — while the footer's fill, already clamped to the real
+  // range, sat stuck at the end and stopped telling you where you were.
+  const engine = useScrollEngine({
+    pixelsPerUnit: 1250,
+    smoothing: 0.4,
+    min: 0,
+    max: workProjects.length,
+    detentFrom: 1
+  })
   const nameRef = useRef<HTMLDivElement>(null)
   const wallRef = useRef<HTMLDivElement>(null)
   const markRef = useRef<HTMLDivElement>(null)
@@ -128,16 +143,6 @@ export default function Home({ onOpen, locked, onIndex, arriveAt, noir }: HomePr
   // below backs off while a hover is in control of the label, and takes it
   // back the instant the pointer leaves.
   const hoveringRef = useRef(false)
-
-  const cards = useMemo(
-    () =>
-      buildHelixCards(
-        typeof window !== 'undefined' && window.innerWidth < 760
-          ? CARD_COUNT_PHONE
-          : CARD_COUNT_DESKTOP
-      ),
-    []
-  )
 
   useEffect(() => {
     engine.setLocked(locked)
@@ -310,9 +315,8 @@ export default function Home({ onOpen, locked, onIndex, arriveAt, noir }: HomePr
         ))}
       </div>
 
-      <Helix cards={cards} engine={engine} onOpen={goToProject}>
-        {/* Inside the field's 3D space, at depth zero, so near cards pass in
-            front of the name and far ones behind it. */}
+      <Helix cards={NO_CARDS} engine={engine} onOpen={goToProject}>
+        {/* Inside the field's 3D space, at depth zero. */}
         <div className="hm-name" ref={nameRef}>
           <h1 className="u-sr">Tarlok Singh — artist, engineer, filmmaker</h1>
           {/* The rubric over the name. One word, in Times, because a date and

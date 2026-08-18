@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { projects } from '../data/projects'
 import type { MediaItem } from '../data/media'
 import { clamp, ease, range } from './useScrollEngine'
 import type { ScrollEngine } from './useScrollEngine'
@@ -70,38 +69,6 @@ export interface HelixCard {
   projectId: string
   projectTitle: string
   accent: string
-}
-
-/**
- * One card per clip, round-robin across projects so no two neighbours on a
- * strand come from the same piece of work, and never the same source twice.
- */
-export function buildHelixCards(count: number): HelixCard[] {
-  const pools = projects
-    .filter((project) => project.media.length > 0)
-    .map((project) => ({ project, queue: [...project.media] }))
-  if (!pools.length) return []
-
-  const cards: HelixCard[] = []
-  let cursor = 0
-  while (cards.length < count && pools.some((pool) => pool.queue.length > 0)) {
-    const pool = pools[cursor % pools.length]
-    cursor++
-    const media = pool.queue.shift()
-    if (!media) continue
-    cards.push({
-      media,
-      projectId: pool.project.id,
-      projectTitle: pool.project.title,
-      accent: pool.project.accent
-    })
-  }
-  return cards
-}
-
-/** Every poster the field will show — what the loader waits on. */
-export function helixPosters(cards: HelixCard[]): string[] {
-  return cards.map((card) => card.media.poster ?? card.media.src).filter(Boolean)
 }
 
 interface Frame {
