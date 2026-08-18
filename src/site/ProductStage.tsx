@@ -45,6 +45,8 @@ interface ProductStageProps {
    *  and not the initial bundle's — so what it changes about the *room* has
    *  to be handed back up to the side that owns those numbers. */
   onTune?: (tuning: RoomTuning) => void
+  /** The old-film experiment — see `noir` in `Gallery.tsx`. */
+  noir?: boolean
 }
 
 export default function ProductStage({
@@ -53,7 +55,8 @@ export default function ProductStage({
   focus,
   progressRef,
   layout,
-  onTune
+  onTune,
+  noir
 }: ProductStageProps) {
   // Rebuilt only when the mounted set changes, not per frame: `node` calls
   // each product's builder, and for the video-backed ones that is where the
@@ -80,6 +83,7 @@ export default function ProductStage({
       progressRef={progressRef}
       layout={layout}
       onTune={onTune}
+      noir={noir}
     />
   )
 }

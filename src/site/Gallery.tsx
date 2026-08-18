@@ -73,6 +73,7 @@ interface GalleryProps {
 
 export default function Gallery({ engine, onOpen, onFocus }: GalleryProps) {
   const rootRef = useRef<HTMLDivElement>(null)
+  const grainRef = useRef<HTMLDivElement>(null)
   const panelRefs = useRef(new Map<number, HTMLElement>())
   // What the 3D row reads every frame. A ref rather than a prop, so sliding
   // the row is not a React render per frame.
@@ -95,6 +96,15 @@ export default function Gallery({ engine, onOpen, onFocus }: GalleryProps) {
     panelH: PANEL_H
   })
   const onTune = useCallback((next: RoomTuning) => setTuning(next), [])
+
+  /* The old-film experiment, for the room only — the field and the case study
+     are staying as they are. Off by default; the button below is a look, not
+     a setting anyone is meant to find on their own. Read inside the scroll
+     loop through a ref, same reason `layout` and `narrow` are: the
+     subscription is set up once and must not be torn down every toggle. */
+  const [noir, setNoir] = useState(false)
+  const noirRef = useRef(noir)
+  noirRef.current = noir
 
   const [narrow, setNarrow] = useState(
     () => typeof window !== 'undefined' && window.innerWidth <= NARROW_AT
@@ -163,17 +173,16 @@ export default function Gallery({ engine, onOpen, onFocus }: GalleryProps) {
   useEffect(() => {
     let lastFocus = -1
     let lastAwake = false
+    /** Which 12th-of-a-second the DOM was last actually written on, in noir —
+     *  see below. */
+    let lastFrame = -1
 
     return engine.subscribe((state) => {
       const root = rootRef.current
       if (!root) return
 
       const progress = state.value - ARRIVE_AT
-      const arrival = ease(state.value, ARRIVE_FROM, ARRIVE_AT)
       progressRef.current = progress
-
-      root.style.opacity = arrival.toFixed(3)
-      root.style.pointerEvents = arrival > 0.85 ? 'auto' : 'none'
 
       const index = wrap(Math.round(progress), count)
       if (index !== lastFocus) {
@@ -187,6 +196,33 @@ export default function Gallery({ engine, onOpen, onFocus }: GalleryProps) {
         lastAwake = shouldWake
         setAwake(shouldWake)
       }
+
+      /* In noir, everything below is stepped to a real wall-clock 12fps
+         rather than written on every display frame — the same clock the row
+         steps to in Gallery3D.tsx's FrameClock, so the DOM and the WebGL
+         canvas it sits beside never disagree about which frame they are on.
+         `progress` itself is still read continuously above: scroll physics,
+         focus and the wake gate all stay responsive, only the paint is
+         quantised. */
+      if (noirRef.current) {
+        const frame = Math.floor((performance.now() / 1000) * 12)
+        if (frame === lastFrame) return
+        lastFrame = frame
+        // Thrown to a new offset on the same stepped clock as everything
+        // else here — a grain tile that moved every display frame would be
+        // the one thing on screen still running at 60fps.
+        const grain = grainRef.current
+        if (grain) {
+          grain.style.transform = `translate3d(${(Math.random() * 180 - 90).toFixed(0)}px, ${(
+            Math.random() * 180 - 90
+          ).toFixed(0)}px, 0)`
+          grain.style.opacity = (0.1 + Math.random() * 0.07).toFixed(3)
+        }
+      }
+
+      const arrival = ease(state.value, ARRIVE_FROM, ARRIVE_AT)
+      root.style.opacity = arrival.toFixed(3)
+      root.style.pointerEvents = arrival > 0.85 ? 'auto' : 'none'
 
       // Each mounted panel is placed along the row and faded by how far off
       // the front it is — written straight to the node, never through React.
@@ -216,7 +252,7 @@ export default function Gallery({ engine, onOpen, onFocus }: GalleryProps) {
   }, [engine, count])
 
   return (
-    <div className="gl" ref={rootRef} data-narrow={narrow}>
+    <div className="gl" ref={rootRef} data-narrow={narrow} data-noir={noir}>
       {/* One canvas, holding the whole row of cases. It is *not* inside the
           track: the row slides in world units inside the scene, so the canvas
           itself never moves and the WebGL context is built exactly once. */}
@@ -230,6 +266,7 @@ export default function Gallery({ engine, onOpen, onFocus }: GalleryProps) {
               progressRef={progressRef}
               layout={layout}
               onTune={onTune}
+              noir={noir}
             />
           </Suspense>
         ) : null}
@@ -246,6 +283,21 @@ export default function Gallery({ engine, onOpen, onFocus }: GalleryProps) {
           }}
         />
       ))}
+
+      {/* The old-film experiment. See the comment on `noir` above — a look to
+          try, not a setting for a visitor to find, so this is a plain toggle
+          rather than designed chrome. `.gl-grain`/`.gl-vignette` are the same
+          print-and-projector language `Intro.css` uses for the opening. */}
+      <button
+        type="button"
+        className="gl-noir-toggle"
+        onClick={() => setNoir((v) => !v)}
+        aria-pressed={noir}
+      >
+        {noir ? 'Colour' : 'Film'}
+      </button>
+      <div className="gl-grain" ref={grainRef} aria-hidden="true" />
+      <div className="gl-vignette" aria-hidden="true" />
     </div>
   )
 }
