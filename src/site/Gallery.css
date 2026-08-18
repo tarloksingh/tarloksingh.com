@@ -109,9 +109,9 @@
 
 .gl-title {
   margin-top: clamp(14px, 2vh, 26px);
-  font-family: 'Times New Roman', Times, serif;
+  font-family: var(--font-display);
   font-weight: 400;
-  font-size: clamp(2rem, 5.44vh, 3.2rem);
+  font-size: clamp(1.8rem, 4.9vh, 2.9rem);
   line-height: 0.95;
   letter-spacing: -0.05em;
   color: var(--ink);
