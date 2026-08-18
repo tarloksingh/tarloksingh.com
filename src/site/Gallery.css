@@ -104,14 +104,14 @@
   font-size: clamp(0.85rem, 1.68vh, 1.05rem);
   line-height: 1.2;
   letter-spacing: -0.05em;
-  color: var(--ink-faint);
+  color: #b1b1b1;
 }
 
 .gl-title {
   margin-top: clamp(14px, 2vh, 26px);
   font-family: var(--font-display);
   font-weight: 400;
-  font-size: clamp(1.8rem, 4.9vh, 2.9rem);
+  font-size: clamp(1.7rem, 4.3vh, 2.15rem);
   line-height: 0.95;
   letter-spacing: -0.05em;
   color: var(--ink);
@@ -119,11 +119,12 @@
 
 .gl-role {
   margin-top: clamp(12px, 1.8vh, 22px);
-  font-family: var(--font-display);
+  font-family: 'Times New Roman', Times, serif;
   font-style: italic;
   font-size: clamp(0.9rem, 1.76vh, 1.1rem);
   line-height: 1.3;
-  color: var(--ink-soft);
+  letter-spacing: -0.05em;
+  color: #919191;
 }
 
 .gl-lead {
@@ -132,7 +133,7 @@
   font-size: clamp(0.9rem, 1.68vh, 1.05rem);
   line-height: 1.45;
   letter-spacing: -0.05em;
-  color: var(--ink-body);
+  color: #919191;
   /* A wall label is a paragraph you read standing up. Past about eight lines
      nobody does, and the rest is in the case study. */
   display: -webkit-box;
@@ -149,7 +150,7 @@
   background: var(--ink);
   color: var(--paper);
   font-family: var(--font-display);
-  font-size: clamp(0.9rem, 1.68vh, 1.05rem);
+  font-size: clamp(1.05rem, 2.05vh, 1.3rem);
   line-height: 1;
   transition:
     background var(--t-fast) var(--ease-out),
