@@ -86,9 +86,6 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
   // context and its glTFs while the visitor is still looking at the name
   // competes with the entrance for exactly the frames it needs.
   const [awake, setAwake] = useState(false)
-  // Dev-only: see how the wall label reads without its card behind it —
-  // never shipped, so it's gated the same way the tuning panel is.
-  const [plain, setPlain] = useState(false)
   const count = workProjects.length
   /* What the tuning panel has set. It lives inside the 3D chunk (leva is that
      chunk's dependency, not the initial bundle's) and reports back up here,
@@ -274,7 +271,7 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
   }, [engine, count])
 
   return (
-    <div className="gl" ref={rootRef} data-narrow={narrow} data-noir={noir} data-plain={plain}>
+    <div className="gl" ref={rootRef} data-narrow={narrow} data-noir={noir}>
       {/* One canvas, holding the whole row of cases. It is *not* inside the
           track: the row slides in world units inside the scene, so the canvas
           itself never moves and the WebGL context is built exactly once. */}
@@ -311,19 +308,6 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
           one toggle for it lives in `Site.tsx` now, above the route. */}
       <div className="gl-grain" ref={grainRef} aria-hidden="true" />
       <div className="gl-vignette" aria-hidden="true" />
-
-      {/* Dev-only: toggles the wall label's card background off, to see the
-          copy read straight against the room. Never shipped. */}
-      {import.meta.env.DEV ? (
-        <button
-          type="button"
-          className="gl-plain-toggle"
-          onClick={() => setPlain((v) => !v)}
-          aria-pressed={plain}
-        >
-          {plain ? 'Card bg' : 'No bg'}
-        </button>
-      ) : null}
     </div>
   )
 }
