@@ -15,12 +15,15 @@ const BLOCK_SIZE = 0.2
 const BLOCK_HEIGHT = BLOCK_SIZE
 // Waiting layout: a diagonal cascade with each block overlapping the last,
 // the way a kid actually leaves a handful of blocks lying around — not an
-// evenly spaced row floating with gaps between them.
+// evenly spaced row floating with gaps between them. These are per-step
+// fractions of a block's width; the "Spread" slider multiplies them, capped
+// below 1 so adjacent blocks always overlap and never gap apart.
 const OVERLAP_X = BLOCK_SIZE * 0.55
 const OVERLAP_Z = BLOCK_SIZE * 0.45
-// One-way travel time; the full stack-then-unstack loop is twice this. Kept
-// short so the whole thing reads as quick, snappy taps rather than a drift.
-const CYCLE_SECONDS = 1.5
+// One-way travel time at 1x speed; the full stack-then-unstack loop is twice
+// this. Kept short so the whole thing reads as quick, snappy taps rather
+// than a drift. The "Speed" slider divides it.
+const BASE_CYCLE_SECONDS = 1.5
 
 // Overshoots past 1 before easing back — a light landing pop, not a hard stop.
 function easeOutBack(t: number) {
@@ -34,9 +37,11 @@ interface BlockProps {
   color: string
   floorY: number
   brightness: number
+  spread: number
+  speed: number
 }
 
-function Block({ index, color, floorY, brightness }: BlockProps) {
+function Block({ index, color, floorY, brightness, spread, speed }: BlockProps) {
   const ref = useRef<Group>(null)
 
   // Waiting position: laid out on the ground in an overlapping diagonal
@@ -44,8 +49,8 @@ function Block({ index, color, floorY, brightness }: BlockProps) {
   // tidy row.
   const start = useMemo(() => {
     const offset = index - (BLOCK_COUNT - 1) / 2
-    return [offset * OVERLAP_X, floorY, offset * OVERLAP_Z] as [number, number, number]
-  }, [index, floorY])
+    return [offset * OVERLAP_X * spread, floorY, offset * OVERLAP_Z * spread] as [number, number, number]
+  }, [index, floorY, spread])
 
   // Stacked position: a column centred on the origin, bottom block first —
   // exactly one block's height apart, so landed blocks sit flush with no
@@ -57,8 +62,9 @@ function Block({ index, color, floorY, brightness }: BlockProps) {
 
   useFrame(({ clock }) => {
     if (!ref.current) return
-    const period = CYCLE_SECONDS * 2
-    const phase = (clock.getElapsedTime() % period) / CYCLE_SECONDS // 0..2
+    const cycleSeconds = BASE_CYCLE_SECONDS / speed
+    const period = cycleSeconds * 2
+    const phase = (clock.getElapsedTime() % period) / cycleSeconds // 0..2
     const wave = phase <= 1 ? phase : 2 - phase // triangle: 0 → 1 → 0
 
     // Each block owns a slice of the 0..1 window, staggered by index, so
@@ -109,11 +115,15 @@ export interface BlockBuilderProps {
  * on screen when its one-time bounding-box measurement ran.
  */
 export default function BlockBuilder({ scale = 1 }: BlockBuilderProps) {
-  // Dev-only slider (see Gallery3D's tuning panel) — the vitrine's exposure
-  // makes "how bright" a judgement call worth making live rather than
-  // guessing at a hex value.
-  const { brightness } = useControls('Block Builder', {
-    brightness: { value: 0.35, min: 0, max: 1.5, step: 0.05, label: 'Brightness' }
+  // Dev-only sliders (see Gallery3D's tuning panel) — brightness, how spread
+  // out the waiting cascade is, and overall speed are all easier to feel out
+  // live than to guess at as numbers. Spread is capped at 1.7x, which keeps
+  // OVERLAP_X's 0.55 fraction under 1 — adjacent blocks always overlap,
+  // never gap apart.
+  const { brightness, spread, speed } = useControls('Block Builder', {
+    brightness: { value: 0.35, min: 0, max: 1.5, step: 0.05, label: 'Brightness' },
+    spread: { value: 1, min: 0.2, max: 1.7, step: 0.05, label: 'Spread' },
+    speed: { value: 1, min: 0.3, max: 3, step: 0.1, label: 'Speed ×' }
   })
 
   // The ground the cascade rests on: level with the bottom of the finished
@@ -124,7 +134,15 @@ export default function BlockBuilder({ scale = 1 }: BlockBuilderProps) {
   return (
     <group scale={scale}>
       {COLORS.map((color, i) => (
-        <Block key={i} index={i} color={color} floorY={floorY} brightness={brightness} />
+        <Block
+          key={i}
+          index={i}
+          color={color}
+          floorY={floorY}
+          brightness={brightness}
+          spread={spread}
+          speed={speed}
+        />
       ))}
     </group>
   )
