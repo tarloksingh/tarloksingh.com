@@ -91,7 +91,7 @@
    width-only resize still leaves every one of these untouched. */
 
 .gl-client {
-  font-family: var(--font-display);
+  font-family: 'Times New Roman', Times, serif;
   font-size: clamp(0.95rem, 1.92vh, 1.2rem);
   line-height: 1.2;
   color: var(--ink);
@@ -99,7 +99,7 @@
 
 .gl-year {
   margin-top: 2px;
-  font-family: var(--font-display);
+  font-family: 'Times New Roman', Times, serif;
   font-size: clamp(0.85rem, 1.68vh, 1.05rem);
   line-height: 1.2;
   color: var(--ink-faint);
@@ -107,7 +107,8 @@
 
 .gl-title {
   margin-top: clamp(14px, 2vh, 26px);
-  font-family: var(--font-display);
+  font-family: 'Times New Roman', Times, serif;
+  font-style: italic;
   font-weight: 400;
   font-size: clamp(2rem, 5.44vh, 3.2rem);
   line-height: 0.95;
@@ -126,7 +127,7 @@
 
 .gl-lead {
   margin-top: clamp(8px, 1.2vh, 14px);
-  font-family: var(--font-display);
+  font-family: 'Times New Roman', Times, serif;
   font-size: clamp(0.9rem, 1.68vh, 1.05rem);
   line-height: 1.45;
   color: var(--ink-body);
