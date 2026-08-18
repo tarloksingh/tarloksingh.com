@@ -61,12 +61,11 @@
   /* Placed by JS every frame; this is only the resting pose before the
      first. `-50%` in the Y slot is baked into the written transform too. */
   transform: translate3d(0, -50%, 0);
-  /* Ends before the case begins. The measure is set by the character count
-     rather than by the window, so this holds as the window changes shape —
-     but it has to clear the vitrine's own footprint, which starts at 42%.
-     `--panel-w` is the tunable half of the cap; 25ch is the floor under it
-     that a wide setting still should not cross. */
-  width: min(25ch, var(--panel-w));
+  /* `--panel-w` is what the tuning panel actually drives; 25ch is only a
+     floor under it, so a narrow setting never gets so tight the copy wraps
+     onto itself. Was `min(...)` — which made 25ch a *ceiling* instead, so
+     the tuning slider could never push the panel past it. */
+  width: max(25ch, var(--panel-w));
   min-height: var(--panel-h);
   padding: clamp(20px, 2.4vw, 32px);
   border-radius: var(--radius-card);
