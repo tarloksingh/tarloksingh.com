@@ -94,6 +94,7 @@
   font-family: 'Times New Roman', Times, serif;
   font-size: clamp(0.95rem, 1.92vh, 1.2rem);
   line-height: 1.2;
+  letter-spacing: -0.05em;
   color: var(--ink);
 }
 
@@ -102,6 +103,7 @@
   font-family: 'Times New Roman', Times, serif;
   font-size: clamp(0.85rem, 1.68vh, 1.05rem);
   line-height: 1.2;
+  letter-spacing: -0.05em;
   color: var(--ink-faint);
 }
 
@@ -112,7 +114,7 @@
   font-weight: 400;
   font-size: clamp(2rem, 5.44vh, 3.2rem);
   line-height: 0.95;
-  letter-spacing: var(--track-display);
+  letter-spacing: -0.05em;
   color: var(--ink);
 }
 
@@ -130,6 +132,7 @@
   font-family: 'Times New Roman', Times, serif;
   font-size: clamp(0.9rem, 1.68vh, 1.05rem);
   line-height: 1.45;
+  letter-spacing: -0.05em;
   color: var(--ink-body);
   /* A wall label is a paragraph you read standing up. Past about eight lines
      nobody does, and the rest is in the case study. */
