@@ -1,6 +1,7 @@
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Edges } from '@react-three/drei'
+import { useControls } from 'leva'
 import { MathUtils } from 'three'
 import type { Group } from 'three'
 
@@ -12,7 +13,11 @@ const COLORS = ['#ff5b4d', '#4d94ff', '#ffcc33', '#4fdb7a', '#c76dff', '#ff9a3d'
 const BLOCK_COUNT = COLORS.length
 const BLOCK_SIZE = 0.2
 const BLOCK_HEIGHT = BLOCK_SIZE
-const GAP = BLOCK_SIZE * 1.3
+// Waiting layout: a diagonal cascade with each block overlapping the last,
+// the way a kid actually leaves a handful of blocks lying around — not an
+// evenly spaced row floating with gaps between them.
+const OVERLAP_X = BLOCK_SIZE * 0.55
+const OVERLAP_Z = BLOCK_SIZE * 0.45
 // One-way travel time; the full stack-then-unstack loop is twice this. Kept
 // short so the whole thing reads as quick, snappy taps rather than a drift.
 const CYCLE_SECONDS = 1.5
@@ -28,20 +33,23 @@ interface BlockProps {
   index: number
   color: string
   floorY: number
+  brightness: number
 }
 
-function Block({ index, color, floorY }: BlockProps) {
+function Block({ index, color, floorY, brightness }: BlockProps) {
   const ref = useRef<Group>(null)
 
-  // Waiting position: laid out flat on the ground in a row, in plain view —
-  // not hidden below the floor — so the read is "resting blocks" rather than
-  // "spawning" blocks.
+  // Waiting position: laid out on the ground in an overlapping diagonal
+  // cascade, in plain view — not hidden below the floor, not spaced into a
+  // tidy row.
   const start = useMemo(() => {
-    const x = (index - (BLOCK_COUNT - 1) / 2) * GAP
-    return [x, floorY, 0] as [number, number, number]
+    const offset = index - (BLOCK_COUNT - 1) / 2
+    return [offset * OVERLAP_X, floorY, offset * OVERLAP_Z] as [number, number, number]
   }, [index, floorY])
 
-  // Stacked position: a column centred on the origin, bottom block first.
+  // Stacked position: a column centred on the origin, bottom block first —
+  // exactly one block's height apart, so landed blocks sit flush with no
+  // overlap and no gap.
   const target = useMemo(() => {
     const towerBase = -(BLOCK_COUNT * BLOCK_HEIGHT) / 2
     return [0, towerBase + BLOCK_HEIGHT * index + BLOCK_HEIGHT / 2, 0] as [number, number, number]
@@ -56,7 +64,8 @@ function Block({ index, color, floorY }: BlockProps) {
     // Each block owns a slice of the 0..1 window, staggered by index, so
     // they lift off the ground and land — and, on the way back, lift off the
     // stack and settle back down — one at a time, bottom-up, instead of all
-    // moving together.
+    // moving together. Because the windows never overlap in time, no two
+    // blocks are ever converging on the same space at once.
     const windowStart = index / BLOCK_COUNT
     const windowEnd = (index + 1) / BLOCK_COUNT
     const local = MathUtils.clamp((wave - windowStart) / (windowEnd - windowStart), 0, 1)
@@ -78,7 +87,7 @@ function Block({ index, color, floorY }: BlockProps) {
           roughness={0.25}
           metalness={0}
           emissive={color}
-          emissiveIntensity={0.35}
+          emissiveIntensity={brightness}
           toneMapped={false}
         />
         <Edges color="#ffffff" toneMapped={false} lineWidth={3} />
@@ -92,15 +101,22 @@ export interface BlockBuilderProps {
 }
 
 /**
- * Blocks rest on the ground in a row, then lift off and stack into a tower
- * bottom-up, then reverse — a continuous ping-pong loop, not a glTF or a
- * one-shot animation. Positions are authored so the shape stays balanced
- * around the origin through the whole cycle; wrapping this in `<Center>`
- * would only be correct for whichever pose was on screen when its one-time
- * bounding-box measurement ran.
+ * Blocks rest on the ground in an overlapping cascade, then lift off and
+ * stack cleanly into a tower bottom-up, then reverse — a continuous
+ * ping-pong loop, not a glTF or a one-shot animation. Positions are authored
+ * so the shape stays balanced around the origin through the whole cycle;
+ * wrapping this in `<Center>` would only be correct for whichever pose was
+ * on screen when its one-time bounding-box measurement ran.
  */
 export default function BlockBuilder({ scale = 1 }: BlockBuilderProps) {
-  // The ground the row rests on: level with the bottom of the finished
+  // Dev-only slider (see Gallery3D's tuning panel) — the vitrine's exposure
+  // makes "how bright" a judgement call worth making live rather than
+  // guessing at a hex value.
+  const { brightness } = useControls('Block Builder', {
+    brightness: { value: 0.35, min: 0, max: 1.5, step: 0.05, label: 'Brightness' }
+  })
+
+  // The ground the cascade rests on: level with the bottom of the finished
   // tower, so the stack reads as rising up off the same floor the blocks
   // were lying on rather than a different plane.
   const floorY = -(BLOCK_COUNT * BLOCK_HEIGHT) / 2 + BLOCK_HEIGHT / 2
@@ -108,7 +124,7 @@ export default function BlockBuilder({ scale = 1 }: BlockBuilderProps) {
   return (
     <group scale={scale}>
       {COLORS.map((color, i) => (
-        <Block key={i} index={i} color={color} floorY={floorY} />
+        <Block key={i} index={i} color={color} floorY={floorY} brightness={brightness} />
       ))}
     </group>
   )
