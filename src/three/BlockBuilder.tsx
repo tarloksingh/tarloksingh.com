@@ -1,6 +1,6 @@
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { RoundedBox } from '@react-three/drei'
+import { Edges } from '@react-three/drei'
 import { MathUtils } from 'three'
 import type { Group } from 'three'
 
@@ -9,9 +9,8 @@ import type { Group } from 'three'
 // actually about the colours.
 const COLORS = ['#e8483c', '#3d7de0', '#f2b632', '#3fae5c', '#a259d9', '#f27830']
 const BLOCK_COUNT = COLORS.length
-const BLOCK_SIZE = 0.26
-const BLOCK_HEIGHT = 0.16
-const STUD_OFFSET = 0.07
+const BLOCK_SIZE = 0.2
+const BLOCK_HEIGHT = BLOCK_SIZE
 const RING_RADIUS = 0.5
 // One-way travel time; the full stack-then-unstack loop is twice this.
 const CYCLE_SECONDS = 3.4
@@ -19,13 +18,6 @@ const CYCLE_SECONDS = 3.4
 function easeInOutCubic(t: number) {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
 }
-
-const STUD_POSITIONS: [number, number][] = [
-  [-STUD_OFFSET, -STUD_OFFSET],
-  [STUD_OFFSET, -STUD_OFFSET],
-  [-STUD_OFFSET, STUD_OFFSET],
-  [STUD_OFFSET, STUD_OFFSET]
-]
 
 interface BlockProps {
   index: number
@@ -70,20 +62,15 @@ function Block({ index, color }: BlockProps) {
       MathUtils.lerp(start[1], target[1], eased),
       MathUtils.lerp(start[2], target[2], eased)
     )
-    ref.current.rotation.y = (1 - eased) * Math.PI * 1.5
   })
 
   return (
     <group ref={ref} position={start}>
-      <RoundedBox args={[BLOCK_SIZE, BLOCK_HEIGHT, BLOCK_SIZE]} radius={0.02}>
+      <mesh>
+        <boxGeometry args={[BLOCK_SIZE, BLOCK_HEIGHT, BLOCK_SIZE]} />
         <meshStandardMaterial color={color} roughness={0.4} metalness={0.05} />
-      </RoundedBox>
-      {STUD_POSITIONS.map(([sx, sz], i) => (
-        <mesh key={i} position={[sx, BLOCK_HEIGHT / 2 + 0.025, sz]}>
-          <cylinderGeometry args={[0.035, 0.035, 0.05, 12]} />
-          <meshStandardMaterial color={color} roughness={0.4} metalness={0.05} />
-        </mesh>
-      ))}
+        <Edges color="#ffffff" />
+      </mesh>
     </group>
   )
 }
