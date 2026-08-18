@@ -39,17 +39,18 @@
   top: 0;
   z-index: calc(var(--z-chrome) - 1);
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   gap: 16px;
   width: var(--page);
   margin-inline: auto;
   padding: 18px 0;
+  border-bottom: 1px solid var(--rule);
   font-size: var(--size-small);
   font-weight: 500;
   /* The page runs under it, so it needs its own ground or the type collides
      with whatever is passing behind. */
-  background: linear-gradient(180deg, var(--paper) 62%, transparent);
+  background: var(--paper);
 }
 
 .pp-back {
