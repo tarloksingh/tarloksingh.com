@@ -2,13 +2,12 @@ import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Edges } from '@react-three/drei'
 import { folder, useControls } from 'leva'
-import { MathUtils } from 'three'
+import { Color, MathUtils } from 'three'
 import type { Group } from 'three'
 
 // A LEGO-style kids' game reads better in candy colours than the site's
 // usual white/black product language — this is the one product that's
-// actually about the colours. Bright and saturated, not the muted tones the
-// vitrine's low exposure would otherwise flatten them to.
+// actually about the colours.
 const COLORS = ['#ff5b4d', '#4d94ff', '#ffcc33', '#4fdb7a', '#c76dff', '#ff9a3d']
 const BLOCK_COUNT = COLORS.length
 const BLOCK_SIZE = 0.2
@@ -22,20 +21,32 @@ const STEP_X = BLOCK_SIZE * 0.5
 const STEP_Z = BLOCK_SIZE * 0.35
 const JITTER_X = BLOCK_SIZE * 1.1
 const JITTER_Z = BLOCK_SIZE * 0.85
-// One-way travel time at 1x speed; the full stack-then-unstack loop is twice
-// this. Kept short so the whole thing reads as quick, snappy taps rather
-// than a drift. The "Speed" slider divides it.
-const BASE_CYCLE_SECONDS = 1.5
 
-// Overshoots past 1 before easing back — a light landing pop, not a hard stop.
+// The cycle is four phases, not a straight there-and-back: build, hold,
+// collapse, hold — the pause on each end is what makes the collapse read as
+// a *reaction* to a finished tower rather than the same motion in reverse.
+// Seconds at 1x speed; the "Speed" slider divides all four together.
+const RISE_SECONDS = 1.3
+const HOLD_UP_SECONDS = 0.55
+// Falling is quicker than building — gravity, not placement.
+const FALL_SECONDS = 0.8
+const HOLD_DOWN_SECONDS = 0.6
+
+// Overshoots past 1 before easing back — a light landing pop on the way up.
 function easeOutBack(t: number) {
   const c1 = 1.4
   const c3 = c1 + 1
   return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2)
 }
 
+// Starts slow and accelerates — how something actually falls under gravity,
+// in contrast to the rise's springy pop.
+function easeInQuad(t: number) {
+  return t * t
+}
+
 // Deterministic "random" in [-1, 1] — the scatter has to look the same on
-// every reload and every reverse of the loop, not reroll itself.
+// every reload and every collapse, not reroll itself.
 function jitter(seed: number) {
   const x = Math.sin(seed * 12.9898) * 43758.5453
   return (x - Math.floor(x)) * 2 - 1
@@ -71,28 +82,53 @@ function Block({ index, color, floorY, brightness, spread, speed }: BlockProps) 
     return [0, towerBase + BLOCK_HEIGHT * index + BLOCK_HEIGHT / 2, 0] as [number, number, number]
   }, [index])
 
+  // Dimmer at low settings than a straight emissive add would allow — this
+  // scales the block's actual colour, so "brightness" all the way down
+  // means genuinely dark, not just less glow on top of a bright base.
+  const litColor = useMemo(() => new Color(color).multiplyScalar(brightness), [color, brightness])
+
   useFrame(({ clock }) => {
     if (!ref.current) return
-    const cycleSeconds = BASE_CYCLE_SECONDS / speed
-    const period = cycleSeconds * 2
-    const phase = (clock.getElapsedTime() % period) / cycleSeconds // 0..2
-    const wave = phase <= 1 ? phase : 2 - phase // triangle: 0 → 1 → 0
+    const rise = RISE_SECONDS / speed
+    const holdUp = HOLD_UP_SECONDS / speed
+    const fall = FALL_SECONDS / speed
+    const holdDown = HOLD_DOWN_SECONDS / speed
+    const total = rise + holdUp + fall + holdDown
+    const t = clock.getElapsedTime() % total
 
-    // Each block owns a slice of the 0..1 window, staggered by index, so
-    // they lift off the ground and land — and, on the way back, lift off the
-    // stack and settle back down — one at a time, bottom-up, instead of all
-    // moving together. Because the windows never overlap in time, no two
-    // blocks are ever converging on the same space at once.
-    const windowStart = index / BLOCK_COUNT
-    const windowEnd = (index + 1) / BLOCK_COUNT
-    const local = MathUtils.clamp((wave - windowStart) / (windowEnd - windowStart), 0, 1)
-    const eased = easeOutBack(local)
+    let x: number, y: number, z: number
 
-    ref.current.position.set(
-      MathUtils.lerp(start[0], target[0], eased),
-      MathUtils.lerp(start[1], target[1], eased),
-      MathUtils.lerp(start[2], target[2], eased)
-    )
+    if (t < rise) {
+      // Building, bottom-up: each block owns a slice of the rise, staggered
+      // by index, so they lift off the ground and land one at a time.
+      const windowStart = (index / BLOCK_COUNT) * rise
+      const windowEnd = ((index + 1) / BLOCK_COUNT) * rise
+      const local = MathUtils.clamp((t - windowStart) / (windowEnd - windowStart), 0, 1)
+      const eased = easeOutBack(local)
+      x = MathUtils.lerp(start[0], target[0], eased)
+      y = MathUtils.lerp(start[1], target[1], eased)
+      z = MathUtils.lerp(start[2], target[2], eased)
+    } else if (t < rise + holdUp) {
+      // Standing there, finished — the beat that sells the tower as built.
+      ;[x, y, z] = target
+    } else if (t < rise + holdUp + fall) {
+      // Collapsing, top-down: the last block placed is the first to go,
+      // like a real stack toppling from the top.
+      const tf = t - rise - holdUp
+      const fallIndex = BLOCK_COUNT - 1 - index
+      const windowStart = (fallIndex / BLOCK_COUNT) * fall
+      const windowEnd = ((fallIndex + 1) / BLOCK_COUNT) * fall
+      const local = MathUtils.clamp((tf - windowStart) / (windowEnd - windowStart), 0, 1)
+      const eased = easeInQuad(local)
+      x = MathUtils.lerp(target[0], start[0], eased)
+      y = MathUtils.lerp(target[1], start[1], eased)
+      z = MathUtils.lerp(target[2], start[2], eased)
+    } else {
+      // Down, scattered, resting — the beat before it picks back up.
+      ;[x, y, z] = start
+    }
+
+    ref.current.position.set(x, y, z)
   })
 
   return (
@@ -100,11 +136,11 @@ function Block({ index, color, floorY, brightness, spread, speed }: BlockProps) 
       <mesh>
         <boxGeometry args={[BLOCK_SIZE, BLOCK_HEIGHT, BLOCK_SIZE]} />
         <meshStandardMaterial
-          color={color}
+          color={litColor}
           roughness={0.25}
           metalness={0}
-          emissive={color}
-          emissiveIntensity={brightness}
+          emissive={litColor}
+          emissiveIntensity={0.4}
           toneMapped={false}
         />
         <Edges color="#ffffff" toneMapped={false} lineWidth={3} />
@@ -118,12 +154,13 @@ export interface BlockBuilderProps {
 }
 
 /**
- * Blocks rest scattered on the ground, then lift off and stack cleanly into
- * a tower bottom-up, then reverse — a continuous
- * ping-pong loop, not a glTF or a one-shot animation. Positions are authored
- * so the shape stays balanced around the origin through the whole cycle;
- * wrapping this in `<Center>` would only be correct for whichever pose was
- * on screen when its one-time bounding-box measurement ran.
+ * Blocks rest scattered on the ground, lift off and build into a tower
+ * bottom-up, hold, collapse top-down like a real stack toppling, hold again,
+ * then repeat — a continuous loop, not a glTF or a one-shot animation.
+ * Positions are authored so the shape stays balanced around the origin
+ * through the whole cycle; wrapping this in `<Center>` would only be
+ * correct for whichever pose was on screen when its one-time bounding-box
+ * measurement ran.
  */
 export default function BlockBuilder({ scale = 1 }: BlockBuilderProps) {
   // Dev-only sliders, folded into the same "Objects > Block Builder" panel
@@ -134,7 +171,7 @@ export default function BlockBuilder({ scale = 1 }: BlockBuilderProps) {
   const { brightness, spread, speed } = useControls('Objects', {
     'Block Builder': folder(
       {
-        brightness: { value: 0.35, min: 0, max: 1.5, step: 0.05, label: 'Brightness' },
+        brightness: { value: 0.55, min: 0.1, max: 1.5, step: 0.05, label: 'Brightness' },
         spread: { value: 1.4, min: 0.3, max: 3, step: 0.05, label: 'Spread' },
         speed: { value: 1, min: 0.3, max: 3, step: 0.1, label: 'Speed ×' }
       },
