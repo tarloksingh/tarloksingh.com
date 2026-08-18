@@ -110,7 +110,6 @@
 .gl-title {
   margin-top: clamp(14px, 2vh, 26px);
   font-family: 'Times New Roman', Times, serif;
-  font-style: italic;
   font-weight: 400;
   font-size: clamp(2rem, 5.44vh, 3.2rem);
   line-height: 0.95;
