@@ -48,6 +48,9 @@ src/
 | File | What it does |
 |---|---|
 | `Site.tsx` | The shell: route, page transition, index overlay, music, grain |
+| `Intro.tsx` | The opening — the name written in, then the veil and the flock give way to the stage |
+| `flock.ts` | The butterfly flock: `threejs-toys`, patched, and the take-off it doesn't know how to do on its own |
+| `nameGlyphs.ts` | The signature's outline and its hand-authored pen strokes |
 | `useScrollEngine.ts` | The one clock — wheel/touch/keyboard into a single damped number |
 | `Home.tsx` | The stage: the name, the wall of disciplines, the chrome, composes the field and the gallery |
 | `Helix.tsx` | The vortex of media, in CSS 3D |
@@ -223,6 +226,12 @@ Hovering a card eases the whole field to about a tenth speed and dims the rest.
 Clicking one walks the gallery to that project. Only cards facing the camera take
 the pointer — an edge-on sliver must not swallow a click meant for what is
 behind it.
+
+**`IDLE_SPEED` is zero.** The field used to keep turning on its own, even
+sitting untouched at the name — a vortex the moment you arrived and every time
+you scrolled back up to it, which is exactly the read `Intro.tsx`'s entrance
+exists to get away from. Now `travel` only advances from `state.speed` and
+`state.velocity`: no scroll, no motion, in either direction.
 
 ---
 
@@ -472,11 +481,17 @@ vector, like everything else in the row, because a piece nudged along a world
 axis would swing away from wherever it was set as soon as the orbit started.
 
 A **Layout** folder holds what has no per-project meaning: case spacing, the
-stage shift, and the width at which the layout goes to phone — that last one
-because where a two-column layout actually gives out is something you find by
-dragging a window edge, not by reasoning. All three are reported *up* to
-`Gallery.tsx`, which owns the proportions, rather than applied where they are
-set; that is what makes spacing move the labels and not just the cases.
+stage shift, the width at which the layout goes to phone, and the wall label's
+own **Panel width** and **Panel min-height** — the width because where a
+two-column layout actually gives out is something you find by dragging a window
+edge, not by reasoning; the panel size because `.gl-panel`'s footprint used to
+be two numbers baked into `Gallery.css` (`min(25ch, 22vw)`, height left to its
+content) and is now something to drag rather than edit and rebuild for. All of
+it is reported *up* to `Gallery.tsx`, which owns the proportions, rather than
+applied where it is set; that is what makes spacing move the labels and not
+just the cases. `panelW`/`panelH` land on `.gl-panel` as the `--panel-w` /
+`--panel-h` custom properties, and only the wide (beside-the-case) layout reads
+them — the narrow, stacked-under-the-case layout keeps its own fixed measure.
 
 Values survive a reload in `localStorage`, which is a scratchpad and not a
 source of truth — a visitor's browser has an empty one and therefore sees
@@ -631,12 +646,61 @@ exists. It never plays uninvited.
 
 ---
 
+## The opening
+
+`Intro.tsx`, home route only. A dark room; the name writes itself in, in a
+cursive that follows an actual pen trajectory rather than wiping across a mask;
+`artist` and `See my work` fade in once it is done. It also stands in for the
+loading screen on the way to the stage — it is already covering the page while
+the field's posters decode, and making someone watch a progress bar and *then*
+an entrance is two waits where the design only has room for one.
+
+**It runs at 24fps, for real.** Every visible value is sampled from a clock
+quantised to `1/24s`; nothing moves between samples. That is the whole reason it
+reads as film rather than as a web page with a grain overlay on it — the strobe
+on a moving edge, the flicker holding for two display frames and then jumping,
+the pen advancing in discrete bites. The quantiser drops the instant the visitor
+clicks through, because a curtain that stutters just looks broken.
+
+**The signature is geometry, not a webfont.** `scripts/name-path.mjs` walks
+Great Vibes with `opentype.js` and writes `nameGlyphs.ts`: the filled outline,
+and thirteen separate hand-authored bezier strokes — one pen-down each — used as
+an SVG mask with `stroke-dasharray`/`stroke-dashoffset` driven off the film
+clock. Thirteen separate `<path>` elements, not thirteen subpaths of one: a dash
+pattern restarts at every subpath boundary, so one path would draw all thirteen
+strokes at once instead of one at a time with a pause where the pen lifts.
+
+**Clicking through fades everything out bottom to top** — button, then name,
+then `artist` — and lets go of the flock: a GPGPU butterfly simulation
+(`flock.ts`, wrapping `threejs-toys`) standing in for the dark itself. The veil
+underneath is a flat sheet that simply fades — no wipe, no ring, no erosion —
+and the page is interactive the instant it is gone, on `onReveal`, which fires
+well before the sequence finishes unmounting. The flock is on its own, much
+longer clock (`FLOCK_LINGER`, fifteen seconds): invisible until the moment it is
+let go, then it takes off, turns from a near-black tint to the photographs'
+actual colour as it goes (same `material.color` lerp that drives the physics),
+and fades out over the whole fifteen seconds so the wings have room to actually
+clear the frame rather than cutting off mid-flight. `Intro.tsx`'s root goes
+`pointer-events: none` the moment the veil is gone, so the stage underneath
+scrolls and clicks normally while the flock finishes on top of it.
+
+Two compatibility fixes live in `flock.ts` and are easy to lose in an upgrade:
+the library never requests an alpha-enabled WebGL context, so its canvas has to
+have one asked for on its behalf before the library gets it (a canvas only ever
+honours the first `getContext` call); and `threejs-toys` 0.0.7 splices a
+strip-lookup into the fragment shader that assumes three's old `vUv` varying,
+which current three renamed to `vMapUv` — silently, with a dropped shader
+program and zero butterflies drawn, not a thrown error.
+
+---
+
 ## The loading screen
 
-It measures something real: the stills the field paints with, and the fonts the
-page is set in. A fake timer bar would be easier and would also clear *before*
-the images it was pretending to count, so the first thing anyone saw would be a
-field of empty rectangles.
+For a direct link to a case study — the one path that skips the stage and its
+entrance. It measures something real: the stills the field paints with, and the
+fonts the page is set in. A fake timer bar would be easier and would also clear
+*before* the images it was pretending to count, so the first thing anyone saw
+would be a field of empty rectangles.
 
 The name is printed twice on top of itself — a faint impression under, full ink
 over, clipped to the progress. The type is not fading in, it is being *inked*.
@@ -695,6 +759,7 @@ degrade the layout when there is no connection.
 | Chunk | gzip | When |
 |---|---|---|
 | `index` | ~106 KB | First paint: shell, field, gallery, loader |
+| `flock` | ~12 KB | Home route only, after the name starts writing — see "The opening" |
 | `ProductStage` | ~494 KB | First time the gallery wakes — three, R3F, drei, leva |
 | `ProjectPage` | ~3 KB | First time a case study opens |
 

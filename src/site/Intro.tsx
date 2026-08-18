@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { NAME_BOX, NAME_OUTLINE, NAME_PEN, PEN_WIDTH } from './nameGlyphs'
-import { createVeil } from './veil'
 import type { Flock } from './flock'
 import './Intro.css'
 
@@ -54,10 +53,18 @@ const OUT_NAME_AT = 0.18
 const OUT_ARTIST_AT = 0.44
 const OUT_IN = 0.4
 const FLOCK_AT = 0.72
-const FLOCK_FOR = 2.6
-/** How far ahead of the sheet giving way the flock is let go. */
+/** How long the veil itself takes to fade once it starts — the page is
+ *  interactive by the end of this, independent of the flock below. */
+const FLOCK_FOR = 2.4
+/** How far ahead of the veil fading the flock is let go. */
 const LEAD = 0.34
 const FLIGHT_IN = 1.5
+/** How long the flock keeps flying and fading, from the moment it is let go.
+ *  Long on purpose: the veil is gone and the page underneath is already
+ *  usable well before this ends, so nothing is waiting on it — it is purely
+ *  so the wings have room to actually clear the frame rather than fading out
+ *  mid-flight. */
+const FLOCK_LINGER = 15
 
 /** Longest the invitation waits on images that are not arriving. */
 const PATIENCE = 6
@@ -77,7 +84,11 @@ interface IntroProps {
   preload: string[]
   /** The visitor has asked for the work: put the page behind into position. */
   onCommit: () => void
-  /** The butterflies have gone; nothing here is on screen any more. */
+  /** The veil has finished fading: the page underneath is fully visible and
+   *  should unlock, even though the flock is still on screen finishing its
+   *  own much longer fade above it. */
+  onReveal: () => void
+  /** The flock has gone too; nothing here is on screen any more. */
   onDone: () => void
 }
 
@@ -87,7 +98,7 @@ interface IntroProps {
 const SCRATCHES = 3
 const DUST = 7
 
-export default function Intro({ preload, onCommit, onDone }: IntroProps) {
+export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const stackRef = useRef<HTMLDivElement>(null)
   const artistRef = useRef<HTMLParagraphElement>(null)
@@ -97,7 +108,7 @@ export default function Intro({ preload, onCommit, onDone }: IntroProps) {
   const enterRef = useRef<HTMLButtonElement>(null)
   const grainRef = useRef<HTMLDivElement>(null)
   const vignetteRef = useRef<HTMLDivElement>(null)
-  const veilRef = useRef<HTMLCanvasElement>(null)
+  const veilRef = useRef<HTMLDivElement>(null)
   const flockRef = useRef<HTMLCanvasElement>(null)
   const marksRef = useRef<HTMLDivElement>(null)
 
@@ -183,25 +194,20 @@ export default function Intro({ preload, onCommit, onDone }: IntroProps) {
       path.style.strokeDashoffset = String(lengths[i])
     })
 
-    const sheet = createVeil(veil, '#1a1a1a')
-    // Capped: past 2x this is a lot of fill rate for a flat dark sheet.
-    const fit = () => sheet.resize(window.innerWidth, window.innerHeight, Math.min(2, window.devicePixelRatio || 1))
-    fit()
-    window.addEventListener('resize', fit)
-
     /* The flock arrives late on purpose. It drags in three.js and a GPGPU
-       renderer, and at rest it is invisible — near enough the colour of the
-       sheet it is standing on — so nothing about the opening waits for it.
-       Loading it here rather than at the top of the module is the difference
-       between the name starting to write immediately and it starting to write
-       once half a megabyte of WebGL has parsed. If it never arrives, the
-       reveal is the sheet tearing on its own. */
+       renderer, and its canvas sits at zero opacity until the visitor asks to
+       leave (see `paint` below) — the room is just dark until then, so
+       nothing about the opening waits for it. Loading it here rather than at
+       the top of the module is the difference between the name starting to
+       write immediately and it starting to write once half a megabyte of
+       WebGL has parsed. If it never arrives, the reveal is just the veil
+       fading on its own. */
     let flock: Flock | null = null
     let dropped = false
     import('./flock')
       .then(({ createFlock }) => {
         if (dropped) return
-        const made = createFlock(canvas, '/sprites/butterflies.png')
+        const made = createFlock(canvas, '/sprites/butterflies-colour.png')
         // Without an alpha channel its canvas is an opaque black rectangle
         // over the whole page, which would hide the reveal rather than be
         // part of it. Better no butterflies than that.
@@ -308,13 +314,28 @@ export default function Intro({ preload, onCommit, onDone }: IntroProps) {
          of this movement, and putting a curve on top of it only makes the
          whole flock hesitate and then bolt in unison. */
       const reveal = left == null ? 0 : span(t, left + FLOCK_AT, FLOCK_FOR)
-      // The flock is let go a little before the sheet starts to give, so the
-      // wings are already up when the dark begins to come away under them.
-      flock?.setFlight(left == null ? 0 : span(t, left + FLOCK_AT - LEAD, FLIGHT_IN))
-      sheet.erode(reveal)
-      return reveal
+      // The flock is let go a little before the veil starts to give, so the
+      // wings are already up when the dark begins to lift off them.
+      const flightStart = left == null ? null : left + FLOCK_AT - LEAD
+      flock?.setFlight(flightStart == null ? 0 : span(t, flightStart, FLIGHT_IN))
+      // The dark simply fades — no erosion, no torn patches. The page is
+      // usable the instant this reaches 1; the flock is on its own, much
+      // longer clock and is free to still be mid-flight above it.
+      veil.style.opacity = (1 - reveal).toFixed(3)
+      // The flock itself is invisible at rest — the room is just dark, not a
+      // field of dim wings — and only appears once it is let go, quickly
+      // enough that it reads as taking off rather than fading in.
+      const flockIn = flightStart == null ? 0 : span(t, flightStart, 0.5)
+      const flockGone = flightStart == null ? 0 : span(t, flightStart, FLOCK_LINGER)
+      canvas.style.opacity = (flockIn * (1 - flockGone)).toFixed(3)
+      // Once the veil is gone this element has nothing left to hide and
+      // should not still be catching clicks and scroll meant for the page
+      // now showing through it.
+      root.style.pointerEvents = reveal >= 1 ? 'none' : ''
+      return { reveal, flockGone }
     }
 
+    let revealed = false
     const tick = () => {
       raf = requestAnimationFrame(tick)
       const now = performance.now() / 1000 - start
@@ -332,8 +353,12 @@ export default function Intro({ preload, onCommit, onDone }: IntroProps) {
         return
       }
 
-      const reveal = paint(now, left)
-      if (reveal >= 1) {
+      const { reveal, flockGone } = paint(now, left)
+      if (!revealed && reveal >= 1) {
+        revealed = true
+        onReveal()
+      }
+      if (flockGone >= 1) {
         cancelAnimationFrame(raf)
         onDone()
       }
@@ -345,10 +370,9 @@ export default function Intro({ preload, onCommit, onDone }: IntroProps) {
     return () => {
       dropped = true
       cancelAnimationFrame(raf)
-      window.removeEventListener('resize', fit)
       flock?.dispose()
     }
-  }, [onDone])
+  }, [onReveal, onDone])
 
   const [x, y, w, h] = NAME_BOX
   /* The viewBox is the ink and nothing else, so the element's box and the
@@ -360,9 +384,10 @@ export default function Intro({ preload, onCommit, onDone }: IntroProps) {
 
   return (
     <div className="in" ref={rootRef}>
-      {/* The dark. See `veil.ts` — it is torn away rather than faded, and it
-          rather than the flock is what actually hides the page. */}
-      <canvas className="in-veil" ref={veilRef} aria-hidden="true" />
+      {/* The dark. Fades away, in step with the flock — see `paint` in the
+          effect above — and it rather than the flock is what actually hides
+          the page. */}
+      <div className="in-veil" ref={veilRef} aria-hidden="true" />
       <canvas className="in-flock" ref={flockRef} aria-hidden="true" />
 
       <div className="in-stack" ref={stackRef}>

@@ -32,6 +32,10 @@ export default function Site() {
      entrance to a page you did not come for is just a delay. The two never
      both run: `Intro` counts the same stills in and is its own wait. */
   const [intro, setIntro] = useState(() => currentRoute().name === 'home')
+  // The veil fades on a short clock; the flock above it lingers on a much
+  // longer one (see FLOCK_LINGER in Intro.tsx). The stage unlocks on the
+  // first, `intro` only comes down once the second finishes.
+  const [introRevealed, setIntroRevealed] = useState(false)
   const [loading, setLoading] = useState(() => currentRoute().name !== 'home')
   const [indexOpen, setIndexOpen] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -135,11 +139,14 @@ export default function Site() {
   // would tear that effect down and start the whole count again.
   const loaderDone = useCallback(() => setLoading(false), [])
 
-  /* The entrance's two moments. `enterWork` fires on the click, while the
+  /* The entrance's three moments. `enterWork` fires on the click, while the
      butterflies are still on screen: the stage has to already be turned to
      the first project by the time the dark comes off it, or the reveal shows
-     the page getting into position. `introDone` is only the unmount. */
+     the page getting into position. `introRevealed` unlocks the stage the
+     instant the veil has finished fading. `introDone` is only the unmount,
+     which waits on the flock's own longer fade above it. */
   const enterWork = useCallback(() => setArriveAt(workProjects[0]?.id ?? null), [])
+  const onIntroReveal = useCallback(() => setIntroRevealed(true), [])
   const introDone = useCallback(() => setIntro(false), [])
 
   return (
@@ -148,7 +155,7 @@ export default function Site() {
         <Home
           onOpen={openProject}
           onIndex={() => setIndexOpen(true)}
-          locked={busy || indexOpen || intro}
+          locked={busy || indexOpen || (intro && !introRevealed)}
           arriveAt={arriveAt}
         />
       ) : (
@@ -179,7 +186,9 @@ export default function Site() {
         </span>
       </div>
 
-      {intro ? <Intro preload={posters} onCommit={enterWork} onDone={introDone} /> : null}
+      {intro ? (
+        <Intro preload={posters} onCommit={enterWork} onReveal={onIntroReveal} onDone={introDone} />
+      ) : null}
 
       {loading ? <Loader preload={posters} onDone={loaderDone} /> : null}
 

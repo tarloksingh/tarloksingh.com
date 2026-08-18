@@ -9,7 +9,7 @@ import {
   useState
 } from 'react'
 import { workProjects } from '../data/projects'
-import { NARROW, NARROW_AT, STAGE_SHIFT, WIDE } from './room'
+import { NARROW, NARROW_AT, PANEL_H, PANEL_W, STAGE_SHIFT, WIDE } from './room'
 import type { RoomLayout, RoomTuning } from './room'
 import { clamp, ease } from './useScrollEngine'
 import type { ScrollEngine } from './useScrollEngine'
@@ -90,7 +90,9 @@ export default function Gallery({ engine, onOpen, onFocus }: GalleryProps) {
   const [tuning, setTuning] = useState<RoomTuning>({
     spacing: 1,
     shift: STAGE_SHIFT,
-    narrowAt: NARROW_AT
+    narrowAt: NARROW_AT,
+    panelW: PANEL_W,
+    panelH: PANEL_H
   })
   const onTune = useCallback((next: RoomTuning) => setTuning(next), [])
 
@@ -147,6 +149,16 @@ export default function Gallery({ engine, onOpen, onFocus }: GalleryProps) {
   useEffect(() => {
     rootRef.current?.style.setProperty('--stage-shift', `${(layout.shiftW * 100).toFixed(2)}%`)
   }, [layout.shiftW])
+
+  // The panel's own size — see `.gl-panel` in Gallery.css, which reads these
+  // rather than a fixed width and height now that the tuning panel controls
+  // them (`panelW`/`panelH` in `LAYOUT_SCHEMA`, `Gallery3D.tsx`).
+  useEffect(() => {
+    const root = rootRef.current
+    if (!root) return
+    root.style.setProperty('--panel-w', `${tuning.panelW}vw`)
+    root.style.setProperty('--panel-h', `${tuning.panelH}vh`)
+  }, [tuning.panelW, tuning.panelH])
 
   useEffect(() => {
     let lastFocus = -1

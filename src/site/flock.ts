@@ -1,3 +1,4 @@
+import { Color } from 'three'
 import { butterfliesBackground } from 'threejs-toys'
 
 /* The butterflies, from Kevin Levron's `threejs-toys` — a GPGPU flock where
@@ -26,17 +27,19 @@ import { butterfliesBackground } from 'threejs-toys'
    an explosion.
 
    The wing texture is a four-frame strip; the shader picks a column per
-   instance with `uv.x = (mapIndex + vUv.x) / TEXTURE_COUNT`. Ours carries the
-   silhouettes only — the four photographs it was cut from are in colour, and
-   they are multiplied flat by `color` here, so the colour would be several
-   hundred kilobytes of detail that never reaches a pixel. Rebuild it from
-   `packages/toys/public/b1..b4.png` in klevron/threejs-toys if the design ever
-   wants them in colour. */
-
-/** How dark the wings are. Just under the ground they rest on, so the field
- *  has a grain to it before it moves, and reads as a silhouette once there is
- *  a lit page behind it. */
+   instance with `uv.x = (mapIndex + vUv.x) / TEXTURE_COUNT`. The photographs
+   it is cut from are in colour, and the material multiplies that colour flat
+   by `color`, starting near-black and lerping to white as the flock takes
+   flight — white multiplied over the texture is the identity, so at full
+   flight the photograph comes through unaltered. `setFlight` drives that lerp
+   alongside the physics, for exactly the same reason both change together: a
+   flock that is already in colour but not yet moving looks like a rendering
+   bug, not a departure. The canvas itself is invisible before the flock is
+   let go at all — see `Intro.tsx` — so the near-black start is only ever seen
+   mid-lerp, in the instant after take-off. */
 const WING_COLOUR = 0x161616
+const WING_TINTED = new Color(WING_COLOUR)
+const WING_TRUE = new Color(0xffffff)
 
 /* Resting, and fleeing. Everything in between is an interpolation.
 
@@ -45,12 +48,18 @@ const WING_COLOUR = 0x161616
    therefore has to come down as the speed goes up or the beat outruns the
    frame rate and the wings alias into a blur. Resting: a slow breath, one
    cycle every three seconds or so. Fleeing: a hard beat, about a third of a
-   radian a frame. */
+   radian a frame.
+
+   `velocity` and the two radii are pushed well past what the first cut used:
+   letting go of the middle only reads as an exodus if the flock actually
+   clears the frame in the few seconds it is given, rather than still being
+   mid-flight when the veil finishes fading and the canvas disposes under it. */
 const REST = { velocity: 0.02, noise: 0.0006, wings: 1.1, radius1: 100, radius2: 150 }
-const FLEE = { velocity: 1.2, noise: 0.05, wings: 0.3, radius1: 9000, radius2: 12000 }
+const FLEE = { velocity: 2.1, noise: 0.05, wings: 0.3, radius1: 16000, radius2: 20000 }
 
 export interface Flock {
-  /** 0 at rest, 1 fully scattered. Cheap enough to call every frame. */
+  /** 0 at rest, 1 fully scattered. Cheap enough to call every frame — also
+   *  what carries the wings from tinted to true colour, in step. */
   setFlight(k: number): void
   /** True if the canvas really did come back with an alpha channel. */
   hasAlpha: boolean
@@ -76,12 +85,18 @@ const mix = (a: number, b: number, k: number) => a + (b - a) * k
  *
  * Safe to run right after construction: `onBeforeCompile` is not called until
  * the first render, and that is a frame away.
+ *
+ * Also the one place anything here already has to walk the scene for its
+ * instanced meshes, so it hands back each mesh's material too — the tint
+ * `setFlight` lerps every frame has nowhere else convenient to come from.
  */
 function fixMapVarying(scene: { traverse(fn: (object: object) => void): void }) {
+  const tinted: { color: Color }[] = []
   scene.traverse((object) => {
     const mesh = object as { isInstancedMesh?: boolean; material?: Record<string, unknown> }
     if (!mesh.isInstancedMesh || !mesh.material) return
     const material = mesh.material
+    if (material.color instanceof Color) tinted.push(material as unknown as { color: Color })
     const original = material.onBeforeCompile as
       | ((shader: { vertexShader: string; fragmentShader: string }, renderer: unknown) => void)
       | undefined
@@ -99,6 +114,7 @@ function fixMapVarying(scene: { traverse(fn: (object: object) => void): void }) 
         .replace('(vMapIndex + vUv.x)', '(vMapIndex + vMapUv.x)')
     }
   })
+  return tinted
 }
 
 export function createFlock(canvas: HTMLCanvasElement, texture: string): Flock {
@@ -140,7 +156,7 @@ export function createFlock(canvas: HTMLCanvasElement, texture: string): Flock {
 
   const { renderer } = flock.three
   renderer.setClearColor(0x000000, 0)
-  fixMapVarying(flock.three.scene)
+  const tinted = fixMapVarying(flock.three.scene)
 
   const setFlight = (k: number) => {
     const t = k <= 0 ? 0 : k >= 1 ? 1 : k
@@ -155,6 +171,9 @@ export function createFlock(canvas: HTMLCanvasElement, texture: string): Flock {
     // these are near the flock's own size everything is pulled back in.
     u.uAttractionRadius1.value = mix(REST.radius1, FLEE.radius1, e)
     u.uAttractionRadius2.value = mix(REST.radius2, FLEE.radius2, e)
+    // Same curve as the physics, so the wings never look like they are moving
+    // faster than they are turning true colour, or the reverse.
+    for (const material of tinted) material.color.copy(WING_TINTED).lerp(WING_TRUE, e)
   }
 
   setFlight(0)

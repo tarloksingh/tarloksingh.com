@@ -54,6 +54,12 @@ export interface RoomTuning {
   shift: number
   /** Window width at and below which the label stacks under the case. */
   narrowAt: number
+  /** The wall label's own width, in viewport widths — still capped at 25ch so
+   *  it never grows past a comfortable line length, just as before. */
+  panelW: number
+  /** The wall label's minimum height, in viewport heights. Zero leaves it
+   *  exactly as tall as its copy, same as before this existed. */
+  panelH: number
 }
 
 /** Wide: the case is centred with the label beside it, and the next project
@@ -68,3 +74,9 @@ export const NARROW = { stepW: 1, caseH: 0.3, caseY: 0.15 }
 export const NARROW_AT = 900
 /** Default `shiftW`, as a percentage. Roughly half the label's own width. */
 export const STAGE_SHIFT = 7
+/** Default `panelW`, in viewport widths — the cap `.gl-panel` used before it
+ *  was tunable. */
+export const PANEL_W = 22
+/** Default `panelH`, in viewport heights. Zero: no minimum, the panel is
+ *  exactly as tall as its copy. */
+export const PANEL_H = 0

@@ -47,11 +47,12 @@ const SPAN_SCREENS = 1.95
  *  up — a cylinder and a vortex differ by exactly this taper. */
 const FUNNEL_BOTTOM = 1.24
 const FUNNEL_TOP = 0.74
-/** Base drift with no input at all, in loops per second. Slow on purpose —
- *  this is the page at rest — but not so slow it reads as a still: below
- *  about 0.02 a card takes a minute to cross the frame and the motion stops
- *  being perceptible at all. */
-const IDLE_SPEED = 0.045
+/** Base drift with no input at all, in loops per second. Zero: the field
+ *  used to turn on its own even sitting untouched at the name, which is the
+ *  spinning-vortex read the entrance was rebuilt specifically to get away
+ *  from — see Intro.tsx. Now the field only ever moves in response to an
+ *  actual scroll, including when scrolling back up to it. */
+const IDLE_SPEED = 0
 /** How hard scrolling drives the drift on top of the idle rate. */
 const SCROLL_BOOST = 0.19
 /** Seconds between one card arriving and the next during the entrance. */

@@ -7,7 +7,7 @@ import { ACESFilmicToneMapping, MathUtils, SRGBColorSpace } from 'three'
 import type { Group, Mesh, MeshStandardMaterial, OrthographicCamera } from 'three'
 import { projects } from '../data/projects'
 import { hasProduct, specDefaults } from '../site/products'
-import { NARROW, NARROW_AT, STAGE_SHIFT, WIDE } from '../site/room'
+import { NARROW, NARROW_AT, PANEL_H, PANEL_W, STAGE_SHIFT, WIDE } from '../site/room'
 import type { RoomLayout, RoomTuning } from '../site/room'
 import { StudioEnvironment } from './CapsuleStage'
 import Vitrine, { VITRINE_TOTAL } from './Vitrine'
@@ -235,7 +235,9 @@ function tuningSource() {
     `WIDE.stepW    ${round(WIDE.stepW * spacing, 3)}   // was ${WIDE.stepW}`,
     `NARROW.stepW  ${round(NARROW.stepW * spacing, 3)}   // was ${NARROW.stepW}`,
     `STAGE_SHIFT   ${live.shift ?? STAGE_SHIFT}`,
-    `NARROW_AT     ${live.narrowAt ?? NARROW_AT}`
+    `NARROW_AT     ${live.narrowAt ?? NARROW_AT}`,
+    `PANEL_W       ${live.panelW ?? PANEL_W}`,
+    `PANEL_H       ${live.panelH ?? PANEL_H}`
   ].join('\n')
 }
 
@@ -264,6 +266,20 @@ const LAYOUT_SCHEMA = {
     max: 1400,
     step: 10,
     label: 'Mobile below px'
+  },
+  panelW: {
+    value: saved.panelW ?? PANEL_W,
+    min: 14,
+    max: 40,
+    step: 0.5,
+    label: 'Panel width vw'
+  },
+  panelH: {
+    value: saved.panelH ?? PANEL_H,
+    min: 0,
+    max: 60,
+    step: 1,
+    label: 'Panel min-height vh'
   },
   'Copy for source': button(() => {
     const source = tuningSource()
@@ -500,23 +516,26 @@ export default function Gallery3D(props: Gallery3DProps) {
   // One folder per project (see `OBJECT_SCHEMA`) — angle, size and position,
   // each piece on its own.
   const objectControls = useControls('Objects', OBJECT_SCHEMA) as unknown as Record<string, number>
-  const { spacing, shift, narrowAt } = useControls('Layout', LAYOUT_SCHEMA) as unknown as RoomTuning
+  const { spacing, shift, narrowAt, panelW, panelH } = useControls(
+    'Layout',
+    LAYOUT_SCHEMA
+  ) as unknown as RoomTuning
 
   useEffect(() => {
-    Object.assign(live, objectControls, { spacing, shift, narrowAt })
+    Object.assign(live, objectControls, { spacing, shift, narrowAt, panelW, panelH })
     try {
       window.localStorage.setItem(STORE_KEY, JSON.stringify(live))
     } catch {
       // See readStore: an unavailable store means the panel does not persist,
       // which is not a reason for the gallery to stop working.
     }
-  }, [objectControls, spacing, shift, narrowAt])
+  }, [objectControls, spacing, shift, narrowAt, panelW, panelH])
 
   // Up to Gallery.tsx, which owns the room's proportions and has to move the
   // wall labels by the same amounts.
   useEffect(() => {
-    onTune?.({ spacing, shift, narrowAt })
-  }, [onTune, spacing, shift, narrowAt])
+    onTune?.({ spacing, shift, narrowAt, panelW, panelH })
+  }, [onTune, spacing, shift, narrowAt, panelW, panelH])
 
   return (
     <>

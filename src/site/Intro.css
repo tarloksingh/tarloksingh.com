@@ -16,18 +16,25 @@
 }
 
 /* The ground the whole sequence is lit against, and — to the value — the
-   colour the wings are tinted. They must agree, or the flock shows its own
-   edges before it moves. No background on `.in` itself: the veil is the only
-   thing hiding the page, so the reveal has exactly one thing to take away.
+   colour the wings are tinted at rest. They must agree, or the flock shows
+   its own edges before it moves. No background on `.in` itself: the veil is
+   the only thing hiding the page, so the reveal has exactly one thing to
+   fade away.
 
-   The flock sits over the veil, so a butterfly that has crossed onto a torn
-   patch is seen against the page rather than against the dark. */
+   The flock sits over the veil and fades with it — see Intro.tsx's `paint`,
+   which writes both opacities from the same reveal progress so the dark and
+   the wings go together rather than one outlasting the other. */
 .in-veil,
 .in-flock {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
+}
+
+.in-veil {
+  background: #1a1a1a;
+  will-change: opacity;
 }
 
 /* ---- the type ---- */

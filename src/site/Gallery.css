@@ -20,6 +20,11 @@
      the resting pose before the first write, and the two are the same number
      (STAGE_SHIFT in room.ts). */
   --stage-shift: 7%;
+  /* The wall label's own size — see Gallery.tsx, which writes these from the
+     tuning panel (`panelW`/`panelH` in `room.ts`). The values here are the
+     resting pose before the first write, and match the defaults there. */
+  --panel-w: 22vw;
+  --panel-h: 0vh;
 }
 
 /* The room: one canvas, the full window, holding every case in the row. It
@@ -58,8 +63,11 @@
   transform: translate3d(0, -50%, 0);
   /* Ends before the case begins. The measure is set by the character count
      rather than by the window, so this holds as the window changes shape —
-     but it has to clear the vitrine's own footprint, which starts at 42%. */
-  width: min(25ch, 22vw);
+     but it has to clear the vitrine's own footprint, which starts at 42%.
+     `--panel-w` is the tunable half of the cap; 25ch is the floor under it
+     that a wide setting still should not cross. */
+  width: min(25ch, var(--panel-w));
+  min-height: var(--panel-h);
   padding: clamp(20px, 2.4vw, 32px);
   border-radius: var(--radius-card);
   background: var(--paper-raised);
