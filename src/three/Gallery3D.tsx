@@ -1,5 +1,6 @@
 import { Suspense, useEffect, useRef } from 'react'
 import type { MutableRefObject, ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Float } from '@react-three/drei'
 import { Leva, button, folder, useControls } from 'leva'
@@ -550,19 +551,36 @@ export default function Gallery3D(props: Gallery3DProps) {
           Solid elevation colors, against Leva's own translucent default —
           this sits over the page while it's being dragged, and seeing the
           copy through it makes the sliders hard to read and easy to
-          mis-click. */}
-      <Leva
-        collapsed
-        hidden={!import.meta.env.DEV}
-        titleBar={{ title: 'Exhibit tuning' }}
-        theme={{
-          colors: {
-            elevation1: '#161616',
-            elevation2: '#1d1d1d',
-            elevation3: '#292929'
-          }
-        }}
-      />
+          mis-click.
+
+          Portalled straight to `document.body`, not rendered in place: Leva
+          renders itself `position: fixed`, but *in place* that fixed panel
+          is still a descendant of `.gl-room`, which sets its own `z-index`
+          and so opens its own stacking context — trapping the panel inside
+          it no matter how high Leva's own z-index goes. The wall label
+          (`.gl-panel`, a sibling of `.gl-room` one level up) sits in front
+          of that whole stacking context, so the panel was painting *under*
+          the label and catching none of the drag before it reached the
+          stage. Escaping to `body` puts it in the root stacking context,
+          above everything on the page, which is what a floating dev panel
+          is supposed to be. */}
+      {typeof document !== 'undefined'
+        ? createPortal(
+            <Leva
+              collapsed
+              hidden={!import.meta.env.DEV}
+              titleBar={{ title: 'Exhibit tuning' }}
+              theme={{
+                colors: {
+                  elevation1: '#161616',
+                  elevation2: '#1d1d1d',
+                  elevation3: '#292929'
+                }
+              }}
+            />,
+            document.body
+          )
+        : null}
       <Canvas
         className="gl-canvas"
         orthographic

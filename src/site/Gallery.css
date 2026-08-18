@@ -16,17 +16,17 @@
      window, so translating the canvas instead would cut the far edge off it
      and pieces would vanish a fraction early on their way out of frame.
 
-     Gallery.tsx writes this inline from `layout.shiftW`, in pixels now (see
+     Gallery.tsx writes this inline from `layout.shiftW`, in `vh` now (see
      `REF_ASPECT` in room.ts) — the value here is only the resting pose
-     before the first write, at the reference viewport (STAGE_SHIFT + the
-     label's own 0.255, times REF_ASPECT times REF_H). */
-  --stage-shift: 468px;
+     before the first write (STAGE_SHIFT + the label's own 0.255, times
+     REF_ASPECT). */
+  --stage-shift: 52vh;
   /* The wall label's own size — see Gallery.tsx, which writes these from the
-     tuning panel (`panelW`/`panelH` in `room.ts`), frozen against `REF_W`/
-     `REF_H`. The values here are only the resting pose before the first
-     write, and match the defaults there. */
-  --panel-w: 317px;
-  --panel-h: 0px;
+     tuning panel (`panelW`/`panelH` in `room.ts`), in `vh`. The values here
+     are only the resting pose before the first write, and match the
+     defaults there. */
+  --panel-w: 35.2vh;
+  --panel-h: 0vh;
 }
 
 /* The room: one canvas, the full window, holding every case in the row. It
@@ -58,10 +58,10 @@
 .gl-panel {
   position: absolute;
   z-index: 1;
-  /* `--stage-shift` is a fixed pixel distance from centre now, not a
-     percentage of the live width — see the effect that sets it, in
-     Gallery.tsx — so the label holds its place beside the case on a
-     width-only resize. */
+  /* `--stage-shift` is `vh` now, not a percentage of the live width — see
+     the effect that sets it, in Gallery.tsx — so the label holds its place
+     beside the case on a width-only resize, and travels with it, in step,
+     on a height-only one. */
   left: calc(50% - var(--stage-shift));
   top: 50%;
   /* Placed by JS every frame; this is only the resting pose before the
@@ -73,7 +73,7 @@
      the tuning slider could never push the panel past it. */
   width: max(25ch, var(--panel-w));
   min-height: var(--panel-h);
-  padding: 28px;
+  padding: clamp(20px, 3.84vh, 32px);
   border-radius: var(--radius-card);
   background: var(--paper-raised);
   box-shadow: inset 0 0 0 1px var(--rule-soft);
@@ -83,14 +83,16 @@
   will-change: transform, opacity;
 }
 
-/* Fixed sizes throughout the card, deliberately not `vw`/`vh`-relative: the
-   label reads as one fixed piece of print, not something that grows or
-   shrinks as the browser window is resized. Only its *position* — `left`,
-   via `--stage-shift` — travels with the case. */
+/* Sized in `vh`, never `vw`: the case's own on-screen size is height-driven
+   (one world unit is one viewport height — see `RoomLens`, Gallery3D.tsx),
+   so the label has to grow and shrink with it in lockstep or the two drift
+   out of proportion — see `--stage-shift` above, which is where that showed
+   up as outright overlap at a height the pairing hadn't been tuned for. A
+   width-only resize still leaves every one of these untouched. */
 
 .gl-client {
   font-family: var(--font-display);
-  font-size: 1.2rem;
+  font-size: clamp(0.95rem, 1.92vh, 1.2rem);
   line-height: 1.2;
   color: var(--ink);
 }
@@ -98,34 +100,34 @@
 .gl-year {
   margin-top: 2px;
   font-family: var(--font-display);
-  font-size: 1.05rem;
+  font-size: clamp(0.85rem, 1.68vh, 1.05rem);
   line-height: 1.2;
   color: var(--ink-faint);
 }
 
 .gl-title {
-  margin-top: 22px;
+  margin-top: clamp(14px, 2vh, 26px);
   font-family: var(--font-display);
   font-weight: 400;
-  font-size: 3.2rem;
+  font-size: clamp(2rem, 5.44vh, 3.2rem);
   line-height: 0.95;
   letter-spacing: var(--track-display);
   color: var(--ink);
 }
 
 .gl-role {
-  margin-top: 18px;
+  margin-top: clamp(12px, 1.8vh, 22px);
   font-family: var(--font-display);
   font-style: italic;
-  font-size: 1.1rem;
+  font-size: clamp(0.9rem, 1.76vh, 1.1rem);
   line-height: 1.3;
   color: var(--ink-soft);
 }
 
 .gl-lead {
-  margin-top: 12px;
+  margin-top: clamp(8px, 1.2vh, 14px);
   font-family: var(--font-display);
-  font-size: 1.05rem;
+  font-size: clamp(0.9rem, 1.68vh, 1.05rem);
   line-height: 1.45;
   color: var(--ink-body);
   /* A wall label is a paragraph you read standing up. Past about eight lines
@@ -139,12 +141,12 @@
 /* Solid ink, square. The one piece of interface in the room, and it should
    look like a printed button on a card rather than a link in a page. */
 .gl-open {
-  margin-top: 28px;
+  margin-top: clamp(16px, 2.6vh, 32px);
   padding: 10px 18px 11px;
   background: var(--ink);
   color: var(--paper);
   font-family: var(--font-display);
-  font-size: 1.05rem;
+  font-size: clamp(0.9rem, 1.68vh, 1.05rem);
   line-height: 1;
   transition:
     background var(--t-fast) var(--ease-out),
@@ -173,7 +175,7 @@
    opinion, and this follows it. It is set on the first render from the
    window's width, so there is no unstyled frame to flash. */
 .gl[data-narrow='true'] {
-  --stage-shift: 0px;
+  --stage-shift: 0vh;
 }
 
 .gl[data-narrow='true'] .gl-panel {

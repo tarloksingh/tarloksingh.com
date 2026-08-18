@@ -9,7 +9,7 @@ import {
   useState
 } from 'react'
 import { workProjects } from '../data/projects'
-import { NARROW, NARROW_AT, PANEL_H, PANEL_W, REF_ASPECT, REF_H, REF_W, STAGE_SHIFT, WIDE } from './room'
+import { NARROW, NARROW_AT, PANEL_H, PANEL_W, REF_ASPECT, STAGE_SHIFT, WIDE } from './room'
 import type { RoomLayout, RoomTuning } from './room'
 import { clamp, ease } from './useScrollEngine'
 import type { ScrollEngine } from './useScrollEngine'
@@ -162,35 +162,32 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
      narrow-window override — which is why `shiftW` is already zeroed for
      narrow above rather than being left to the media query.
 
-     In pixels, converted through `REF_ASPECT` and the window's *height* —
-     see `REF_ASPECT` in room.ts — rather than as a plain percentage of the
-     live width, so the label holds its distance from the case on a
-     width-only resize and only travels when the window's height does, same
-     as the case itself. `0.255` is the label's old resting fraction of the
-     window width (the CSS used to read `calc(25.5% + var(--stage-shift))`
+     In `vh`, converted through `REF_ASPECT` — see room.ts — rather than as a
+     percentage of the live width. `vh` answers to the window's height on its
+     own, with no resize listener needed, which is exactly the one axis this
+     has to track: the case's own on-screen size is height-driven too (one
+     world unit is one viewport height — see `RoomLens`, Gallery3D.tsx), so
+     the label has to grow and pull back with it in lockstep or the two drift
+     out of proportion and start overlapping at a height the pairing wasn't
+     checked at. `0.255` is the label's old resting fraction of the window
+     width (the CSS used to read `calc(25.5% + var(--stage-shift))`
      directly); folded in here now that both terms convert the same way. */
   useEffect(() => {
-    const root = rootRef.current
-    if (!root) return
-    const set = () => {
-      const gap = (0.255 + layout.shiftW) * REF_ASPECT * window.innerHeight
-      root.style.setProperty('--stage-shift', `${gap.toFixed(1)}px`)
-    }
-    set()
-    window.addEventListener('resize', set)
-    return () => window.removeEventListener('resize', set)
+    const gap = (0.255 + layout.shiftW) * REF_ASPECT * 100
+    rootRef.current?.style.setProperty('--stage-shift', `${gap.toFixed(2)}vh`)
   }, [layout.shiftW])
 
   // The panel's own size — see `.gl-panel` in Gallery.css, which reads these
   // rather than a fixed width and height now that the tuning panel controls
-  // them (`panelW`/`panelH` in `LAYOUT_SCHEMA`, `Gallery3D.tsx`). Frozen
-  // against `REF_W`/`REF_H`, not the live window, for the same reason as
-  // `--stage-shift` above.
+  // them (`panelW`/`panelH` in `LAYOUT_SCHEMA`, `Gallery3D.tsx`). In `vh`,
+  // for the same reason as `--stage-shift` above — `panelW` converts through
+  // `REF_ASPECT` because it's a fraction of a width; `panelH` already is a
+  // fraction of a height and needs no conversion.
   useEffect(() => {
     const root = rootRef.current
     if (!root) return
-    root.style.setProperty('--panel-w', `${((tuning.panelW / 100) * REF_W).toFixed(0)}px`)
-    root.style.setProperty('--panel-h', `${((tuning.panelH / 100) * REF_H).toFixed(0)}px`)
+    root.style.setProperty('--panel-w', `${(tuning.panelW * REF_ASPECT).toFixed(2)}vh`)
+    root.style.setProperty('--panel-h', `${tuning.panelH.toFixed(2)}vh`)
   }, [tuning.panelW, tuning.panelH])
 
   useEffect(() => {
