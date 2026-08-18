@@ -124,6 +124,10 @@ export default function Home({ onOpen, locked, onIndex, arriveAt, noir }: HomePr
   // Read by the hover-scrub below, which runs outside the scroll loop and so
   // cannot close over `inWork` without going stale.
   const inWorkRef = useRef(false)
+  // True while the pointer is over either track — the scroll-driven year
+  // below backs off while a hover is in control of the label, and takes it
+  // back the instant the pointer leaves.
+  const hoveringRef = useRef(false)
 
   const cards = useMemo(
     () =>
@@ -215,6 +219,30 @@ export default function Home({ onOpen, locked, onIndex, arriveAt, noir }: HomePr
       const track = trackRef.current
       if (track) track.style.transform = `scaleX(${through.toFixed(4)})`
 
+      // The year label defaults to naming whichever project you're actually
+      // standing at, sitting over the point on the rule the fill has reached
+      // — a hover on either track (see `scrubTrack`) takes it over instead,
+      // and gives it back the moment the pointer leaves.
+      if (!hoveringRef.current) {
+        const foot = footRef.current
+        const year = yearRef.current
+        const workTrack = track?.parentElement as HTMLElement | null
+        if (foot && year && workTrack && p > IN_WORK_AT) {
+          const index = Math.round(clamp(p - 1, 0, workProjects.length - 1))
+          const project = workProjects[index]
+          if (project) {
+            const trackRect = workTrack.getBoundingClientRect()
+            const footRect = foot.getBoundingClientRect()
+            const x = trackRect.left + through * trackRect.width
+            year.style.left = `${(((x - footRect.left) / footRect.width) * 100).toFixed(2)}%`
+            year.textContent = project.timeline
+            year.style.opacity = '1'
+          }
+        } else if (year) {
+          year.style.opacity = '0'
+        }
+      }
+
       const nowInWork = p > IN_WORK_AT
       inWorkRef.current = nowInWork
       if (nowInWork !== lastInWork) {
@@ -235,6 +263,7 @@ export default function Home({ onOpen, locked, onIndex, arriveAt, noir }: HomePr
     const year = yearRef.current
     if (!foot || !year) return
 
+    hoveringRef.current = true
     const trackRect = e.currentTarget.getBoundingClientRect()
     const t = clamp((e.clientX - trackRect.left) / trackRect.width, 0, 1)
     const project = list[Math.round(t * (list.length - 1))]
@@ -246,9 +275,10 @@ export default function Home({ onOpen, locked, onIndex, arriveAt, noir }: HomePr
     year.style.opacity = '1'
   }, [])
 
+  // Hands the label back to the scroll-driven year rather than hiding it —
+  // see the block above, in the engine subscription.
   const hideScrub = useCallback(() => {
-    const year = yearRef.current
-    if (year) year.style.opacity = '0'
+    hoveringRef.current = false
   }, [])
 
   const goToProject = useCallback(
@@ -302,7 +332,6 @@ export default function Home({ onOpen, locked, onIndex, arriveAt, noir }: HomePr
 
       <div className="hm-mark" ref={markRef}>
         <p className="hm-mark-name">Tarlok Singh</p>
-        <p className="u-label">Artist &amp; Engineer</p>
       </div>
 
       {/* Two of these three are places on this one scroll, so the menu marks

@@ -61,6 +61,15 @@ const ARRIVE_FROM = 0.5
  *  project is a glTF or a playing video behind the scenes. */
 const NEIGHBOURS = 1
 
+/** What the tuning panel's `panelW`/`panelH` (still expressed as viewport
+ *  fractions, to match the rest of `room.ts`) are resolved against — a fixed
+ *  reference size rather than the actual window, so the wall label holds one
+ *  physical size and stops growing or shrinking as the browser is resized.
+ *  Roughly a common laptop viewport; the exact number only sets the label's
+ *  scale, not its position. */
+const PANEL_REF_W = 1440
+const PANEL_REF_H = 900
+
 const wrap = (i: number, n: number) => ((i % n) + n) % n
 
 interface GalleryProps {
@@ -86,6 +95,9 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
   // context and its glTFs while the visitor is still looking at the name
   // competes with the entrance for exactly the frames it needs.
   const [awake, setAwake] = useState(false)
+  // Dev-only: see how the wall label reads without its card behind it —
+  // never shipped, so it's gated the same way the tuning panel is.
+  const [plain, setPlain] = useState(false)
   const count = workProjects.length
   /* What the tuning panel has set. It lives inside the 3D chunk (leva is that
      chunk's dependency, not the initial bundle's) and reports back up here,
@@ -168,8 +180,8 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
   useEffect(() => {
     const root = rootRef.current
     if (!root) return
-    root.style.setProperty('--panel-w', `${tuning.panelW}vw`)
-    root.style.setProperty('--panel-h', `${tuning.panelH}vh`)
+    root.style.setProperty('--panel-w', `${((tuning.panelW / 100) * PANEL_REF_W).toFixed(0)}px`)
+    root.style.setProperty('--panel-h', `${((tuning.panelH / 100) * PANEL_REF_H).toFixed(0)}px`)
   }, [tuning.panelW, tuning.panelH])
 
   useEffect(() => {
@@ -253,7 +265,7 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
   }, [engine, count])
 
   return (
-    <div className="gl" ref={rootRef} data-narrow={narrow} data-noir={noir}>
+    <div className="gl" ref={rootRef} data-narrow={narrow} data-noir={noir} data-plain={plain}>
       {/* One canvas, holding the whole row of cases. It is *not* inside the
           track: the row slides in world units inside the scene, so the canvas
           itself never moves and the WebGL context is built exactly once. */}
@@ -290,6 +302,19 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
           one toggle for it lives in `Site.tsx` now, above the route. */}
       <div className="gl-grain" ref={grainRef} aria-hidden="true" />
       <div className="gl-vignette" aria-hidden="true" />
+
+      {/* Dev-only: toggles the wall label's card background off, to see the
+          copy read straight against the room. Never shipped. */}
+      {import.meta.env.DEV ? (
+        <button
+          type="button"
+          className="gl-plain-toggle"
+          onClick={() => setPlain((v) => !v)}
+          aria-pressed={plain}
+        >
+          {plain ? 'Card bg' : 'No bg'}
+        </button>
+      ) : null}
     </div>
   )
 }

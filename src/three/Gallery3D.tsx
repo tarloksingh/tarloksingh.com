@@ -545,8 +545,24 @@ export default function Gallery3D(props: Gallery3DProps) {
     <>
       {/* Development only. Everything it sets has a permanent home in
           products.tsx and room.ts, and a visitor arriving at a portfolio
-          behind a debug panel is not the impression to make. */}
-      <Leva collapsed hidden={!import.meta.env.DEV} titleBar={{ title: 'Exhibit tuning' }} />
+          behind a debug panel is not the impression to make.
+
+          Solid elevation colors, against Leva's own translucent default —
+          this sits over the page while it's being dragged, and seeing the
+          copy through it makes the sliders hard to read and easy to
+          mis-click. */}
+      <Leva
+        collapsed
+        hidden={!import.meta.env.DEV}
+        titleBar={{ title: 'Exhibit tuning' }}
+        theme={{
+          colors: {
+            elevation1: '#161616',
+            elevation2: '#1d1d1d',
+            elevation3: '#292929'
+          }
+        }}
+      />
       <Canvas
         className="gl-canvas"
         orthographic

@@ -138,13 +138,12 @@
   top: var(--gutter);
   right: var(--rail-inset);
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 9px;
-  font-family: var(--font-times);
-  font-size: 0.8125rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 18px;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  letter-spacing: 0.01em;
   line-height: 1;
   color: var(--ink-faint);
 }
@@ -163,17 +162,11 @@
    buttons and the UA stylesheet gives a form control its own
    `text-transform` and `letter-spacing` — inheriting the font through
    `button { font: inherit }` in base.css does not carry either, so the two
-   buttons come out mixed-case and untracked beside an uppercase link.
-
-   The negative margin is the tracking's trailing letter-space, which every
-   item carries on the right — the edge they are all aligned to. Without it
-   the menu sits a fifth of an em off the gutter the mark on the other side
-   uses, and each underline runs that much too wide. */
+   buttons come out mixed-case beside a lowercase link. */
 .hm-menu .u-link {
   font-family: inherit;
   letter-spacing: inherit;
-  text-transform: uppercase;
-  margin-right: -0.22em;
+  text-transform: lowercase;
 }
 
 .hm-cue {
@@ -316,27 +309,14 @@
 
   /* Nothing here for `.hm-wall-line`: every line is solved to a fraction of
      the window (see DISCIPLINES), so the wall is already the same
-     composition on a phone as on a desktop, only smaller.
-
-     The mark and the menu share the top row on a phone, so the mark loses
-     its second line to keep both on one baseline. */
-  .hm-mark p.u-label {
-    display: none;
-  }
-
+     composition on a phone as on a desktop, only smaller. */
   .hm-mark-name {
     font-size: 1.05rem;
   }
 
   .hm-menu {
-    flex-direction: row;
-    gap: 14px;
-    font-size: 10px;
-    letter-spacing: 0.14em;
-  }
-
-  .hm-menu .u-link {
-    margin-right: -0.14em;
+    gap: 12px;
+    font-size: 0.85rem;
   }
 
   .hm-cue {
