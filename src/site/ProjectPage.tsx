@@ -82,16 +82,20 @@ export default function ProjectPage({ id, onBack, onOpen, onIndex, noir }: Proje
       </div>
 
       <header className="pp-bar">
-        <button type="button" className="pp-back" onClick={onBack}>
-          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
-            <path d="M20 12H5M11 6l-6 6 6 6" fill="none" stroke="currentColor" strokeWidth="1.6" />
-          </svg>
-          <span className="u-link">Stage</span>
+        <button type="button" className="pp-mark-name" onClick={onBack}>
+          Tarlok Singh
         </button>
-        <p className="u-label pp-bar-name">{project.title}</p>
-        <button type="button" className="u-link pp-bar-index" onClick={onIndex}>
-          Index
-        </button>
+        <nav className="pp-menu" aria-label="Main">
+          <button type="button" className="u-link" onClick={onBack}>
+            Home
+          </button>
+          <button type="button" className="u-link" onClick={onIndex}>
+            Work
+          </button>
+          <a className="u-link" href="mailto:tarloksinghfilms@gmail.com">
+            Contact
+          </a>
+        </nav>
       </header>
 
       {/* ---- masthead ---- */}

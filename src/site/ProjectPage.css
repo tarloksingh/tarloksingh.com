@@ -34,10 +34,14 @@
 
 /* ---- top bar ---- */
 
+/* Mirrors `.hm-mark`/`.hm-menu` in Home.css — the same wordmark-left,
+   lowercase-nav-right chrome as the stage, so the two pages read as one
+   site rather than switching header languages at the case-study door. */
+
 .pp-bar {
   position: sticky;
   top: 0;
-  z-index: calc(var(--z-chrome) - 1);
+  z-index: var(--z-chrome);
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -45,30 +49,40 @@
   width: var(--page);
   margin-inline: auto;
   padding: 18px 0;
-  border-bottom: 1px solid var(--rule);
-  font-size: var(--size-small);
-  font-weight: 500;
   /* The page runs under it, so it needs its own ground or the type collides
      with whatever is passing behind. */
-  background: var(--paper);
+  background: linear-gradient(180deg, var(--paper) 62%, transparent);
 }
 
-.pp-back {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+.pp-mark-name {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--ink);
 }
 
-.pp-back svg {
-  transition: transform var(--t-fast) var(--ease-out);
-}
-
-.pp-back:hover svg {
-  transform: translateX(-4px);
-}
-
-.pp-bar-name {
+.pp-menu {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 18px;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  letter-spacing: 0.01em;
+  line-height: 1;
   color: var(--ink-faint);
+}
+
+.pp-menu .u-link {
+  font-family: inherit;
+  letter-spacing: inherit;
+  text-transform: lowercase;
+  color: inherit;
+}
+
+.pp-menu .u-link:hover {
+  color: var(--ink);
 }
 
 /* ---- masthead ---- */
@@ -501,8 +515,13 @@
     gap: 18px 28px;
   }
 
-  .pp-bar-name {
-    display: none;
+  .pp-mark-name {
+    font-size: 1.05rem;
+  }
+
+  .pp-menu {
+    gap: 12px;
+    font-size: 0.85rem;
   }
 }
 
