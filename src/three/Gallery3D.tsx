@@ -563,19 +563,19 @@ export default function Gallery3D(props: Gallery3DProps) {
           toneMapping: ACESFilmicToneMapping,
           outputColorSpace: SRGBColorSpace
         }}
-        // "demand" plus FrameClock below is what makes `noir` a real stepped
-        // 12fps rather than a filter over a smooth render — see FrameClock.
         // Grayscale is a compositor filter on the canvas itself rather than
         // touching any material: the renderer still lights and shades in full
         // colour, it is only ever desaturated on the way to the screen, which
-        // is one line instead of walking every product's materials.
-        frameloop={props.noir ? 'demand' : 'always'}
+        // is one line instead of walking every product's materials. The row
+        // itself keeps tracking the scroll at the display's own framerate in
+        // noir too — see the note on `noir` in Gallery.tsx for why stepping
+        // that specifically, rather than the room's ambient look, is the one
+        // thing this experiment does not do.
         style={{
           background: 'transparent',
           filter: props.noir ? 'grayscale(1) contrast(1.08) brightness(0.96)' : undefined
         }}
       >
-        <FrameClock active={!!props.noir} fps={12} />
         <RoomLens />
         <Exposure value={0.1} />
 
@@ -685,24 +685,3 @@ function Exposure({ value }: { value: number }) {
   return null
 }
 
-/**
- * Steps the whole scene to a real, wall-clock 12fps rather than the
- * display's own — see `noir` on `Gallery3DProps`.
- *
- * `frameloop="demand"` on the Canvas (set below) stops it rendering at all
- * except when told to, which also stops every `useFrame` in the tree —
- * `Row`'s camera-and-row placement, and drei's `Float` on each piece — since
- * none of them run outside a render. This is what tells it to: on an
- * interval, twelve times a second, rather than however often the display
- * refreshes. Nothing about `Row` or `Float` has to know this is happening.
- */
-function FrameClock({ active, fps }: { active: boolean; fps: number }) {
-  const invalidate = useThree((s) => s.invalidate)
-  useEffect(() => {
-    if (!active) return
-    invalidate()
-    const id = window.setInterval(invalidate, 1000 / fps)
-    return () => window.clearInterval(id)
-  }, [active, fps, invalidate])
-  return null
-}

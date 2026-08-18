@@ -69,9 +69,12 @@ interface GalleryProps {
   /** Fires when a different project comes to the front — the page chrome
    *  names it, so it needs telling. */
   onFocus?: (index: number) => void
+  /** The old-film experiment — see `noir` in Site.tsx, which owns the one
+   *  toggle for it across the whole stage. */
+  noir?: boolean
 }
 
-export default function Gallery({ engine, onOpen, onFocus }: GalleryProps) {
+export default function Gallery({ engine, onOpen, onFocus, noir = false }: GalleryProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const grainRef = useRef<HTMLDivElement>(null)
   const panelRefs = useRef(new Map<number, HTMLElement>())
@@ -97,12 +100,11 @@ export default function Gallery({ engine, onOpen, onFocus }: GalleryProps) {
   })
   const onTune = useCallback((next: RoomTuning) => setTuning(next), [])
 
-  /* The old-film experiment, for the room only — the field and the case study
-     are staying as they are. Off by default; the button below is a look, not
-     a setting anyone is meant to find on their own. Read inside the scroll
-     loop through a ref, same reason `layout` and `narrow` are: the
-     subscription is set up once and must not be torn down every toggle. */
-  const [noir, setNoir] = useState(false)
+  /* The old-film experiment. `noir` arrives as a prop now — Site.tsx owns the
+     one toggle for it, so the look survives navigating into a case study and
+     back rather than resetting. Read inside the scroll loop through a ref,
+     same reason `layout` and `narrow` are: the subscription is set up once
+     and must not be torn down every toggle. */
   const noirRef = useRef(noir)
   noirRef.current = noir
 
@@ -197,26 +199,25 @@ export default function Gallery({ engine, onOpen, onFocus }: GalleryProps) {
         setAwake(shouldWake)
       }
 
-      /* In noir, everything below is stepped to a real wall-clock 12fps
-         rather than written on every display frame — the same clock the row
-         steps to in Gallery3D.tsx's FrameClock, so the DOM and the WebGL
-         canvas it sits beside never disagree about which frame they are on.
-         `progress` itself is still read continuously above: scroll physics,
-         focus and the wake gate all stay responsive, only the paint is
-         quantised. */
+      /* Only the grain steps to a real wall-clock 12fps in noir — an ambient
+         flicker, not something anyone is tracking with their eye or their
+         scroll wheel. Everything below this (the room's own opacity, and
+         where every panel actually sits) keeps following the scroll at the
+         display's own framerate regardless: it is what the visitor is
+         scrolling *to see move*, and stepping the one thing that answers
+         "where am I" is what a "true 12fps" pass first made feel laggy
+         rather than cinematic. */
       if (noirRef.current) {
         const frame = Math.floor((performance.now() / 1000) * 12)
-        if (frame === lastFrame) return
-        lastFrame = frame
-        // Thrown to a new offset on the same stepped clock as everything
-        // else here — a grain tile that moved every display frame would be
-        // the one thing on screen still running at 60fps.
-        const grain = grainRef.current
-        if (grain) {
-          grain.style.transform = `translate3d(${(Math.random() * 180 - 90).toFixed(0)}px, ${(
-            Math.random() * 180 - 90
-          ).toFixed(0)}px, 0)`
-          grain.style.opacity = (0.1 + Math.random() * 0.07).toFixed(3)
+        if (frame !== lastFrame) {
+          lastFrame = frame
+          const grain = grainRef.current
+          if (grain) {
+            grain.style.transform = `translate3d(${(Math.random() * 180 - 90).toFixed(0)}px, ${(
+              Math.random() * 180 - 90
+            ).toFixed(0)}px, 0)`
+            grain.style.opacity = (0.1 + Math.random() * 0.07).toFixed(3)
+          }
         }
       }
 
@@ -284,18 +285,9 @@ export default function Gallery({ engine, onOpen, onFocus }: GalleryProps) {
         />
       ))}
 
-      {/* The old-film experiment. See the comment on `noir` above — a look to
-          try, not a setting for a visitor to find, so this is a plain toggle
-          rather than designed chrome. `.gl-grain`/`.gl-vignette` are the same
-          print-and-projector language `Intro.css` uses for the opening. */}
-      <button
-        type="button"
-        className="gl-noir-toggle"
-        onClick={() => setNoir((v) => !v)}
-        aria-pressed={noir}
-      >
-        {noir ? 'Colour' : 'Film'}
-      </button>
+      {/* The old-film experiment's grain and vignette — the same
+          print-and-projector language `Intro.css` uses for the opening. The
+          one toggle for it lives in `Site.tsx` now, above the route. */}
       <div className="gl-grain" ref={grainRef} aria-hidden="true" />
       <div className="gl-vignette" aria-hidden="true" />
     </div>

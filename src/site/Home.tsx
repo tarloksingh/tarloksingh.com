@@ -100,9 +100,11 @@ interface HomeProps {
   onIndex: () => void
   /** Which project to arrive at, when coming back from a case study. */
   arriveAt?: string | null
+  /** The old-film experiment — see `noir` in Site.tsx, which owns the toggle. */
+  noir?: boolean
 }
 
-export default function Home({ onOpen, locked, onIndex, arriveAt }: HomeProps) {
+export default function Home({ onOpen, locked, onIndex, arriveAt, noir }: HomeProps) {
   // `detentFrom: 1` is where the scrubber becomes a list — see the option's
   // documentation. Below 1 you are flying through the field and every
   // position is a real picture; at 1 and above you are looking at one piece
@@ -294,7 +296,7 @@ export default function Home({ onOpen, locked, onIndex, arriveAt }: HomeProps) {
         </div>
       </Helix>
 
-      <Gallery engine={engine} onOpen={onOpen} onFocus={setFocus} />
+      <Gallery engine={engine} onOpen={onOpen} onFocus={setFocus} noir={noir} />
 
       {/* ---- chrome. Fixed above both stages, present the whole way through. ---- */}
 

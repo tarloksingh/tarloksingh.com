@@ -39,6 +39,11 @@ export default function Site() {
   const [loading, setLoading] = useState(() => currentRoute().name !== 'home')
   const [indexOpen, setIndexOpen] = useState(false)
   const [busy, setBusy] = useState(false)
+  /* The old-film experiment — see `noir` in Gallery.tsx and ProjectPage.tsx.
+     Lives here, above the route, so it survives navigating from the gallery
+     into a case study rather than resetting every time. Off by default and
+     not persisted: a look to try, not a setting. */
+  const [noir, setNoir] = useState(false)
   // Set when returning to the stage from a case study, so the drum is already
   // turned to that project when the curtain lifts.
   const [arriveAt, setArriveAt] = useState<string | null>(null)
@@ -157,6 +162,7 @@ export default function Site() {
           onIndex={() => setIndexOpen(true)}
           locked={busy || indexOpen || (intro && !introRevealed)}
           arriveAt={arriveAt}
+          noir={noir}
         />
       ) : (
         <Suspense fallback={<div className="st-holding" />}>
@@ -165,6 +171,7 @@ export default function Site() {
             onBack={goHome}
             onOpen={openProject}
             onIndex={() => setIndexOpen(true)}
+            noir={noir}
           />
         </Suspense>
       )}
@@ -177,6 +184,19 @@ export default function Site() {
       />
 
       <MusicPlayer />
+
+      {/* The old-film experiment. One toggle, above the route, so it follows
+          the stage into a case study and back rather than resetting — see
+          `noir` above. A plain switch rather than designed chrome: this is a
+          look to try, not a shipped setting. */}
+      <button
+        type="button"
+        className="st-noir-toggle"
+        onClick={() => setNoir((v) => !v)}
+        aria-pressed={noir}
+      >
+        {noir ? 'Colour' : 'Film'}
+      </button>
 
       {/* The page turn. Named, so a transition tells you where you are going
           rather than merely that something is happening. */}

@@ -19,9 +19,11 @@ interface ProjectPageProps {
   onBack: () => void
   onOpen: (projectId: string) => void
   onIndex: () => void
+  /** The old-film experiment — see `noir` in Site.tsx, which owns the toggle. */
+  noir?: boolean
 }
 
-export default function ProjectPage({ id, onBack, onOpen, onIndex }: ProjectPageProps) {
+export default function ProjectPage({ id, onBack, onOpen, onIndex, noir }: ProjectPageProps) {
   const project = projectById(id)
   const progressRef = useRef<HTMLSpanElement>(null)
 
@@ -34,7 +36,9 @@ export default function ProjectPage({ id, onBack, onOpen, onIndex }: ProjectPage
      the scroll event, so the write happens once per frame however fast the
      events arrive, and the read of `scrollY` is never interleaved with a
      write to a style — which is what turns a progress bar into layout
-     thrash. */
+     thrash. Kept at the display's own framerate even in noir: it is a direct
+     readout of scroll position, the same reason the gallery's row and panels
+     stay smooth there — see the note on `noir` in Gallery.tsx. */
   useEffect(() => {
     let raf = 0
     let queued = false
@@ -66,7 +70,13 @@ export default function ProjectPage({ id, onBack, onOpen, onIndex }: ProjectPage
   const numbered = project.sections.filter((section) => section.text || section.media.length > 0)
 
   return (
-    <main className="pp">
+    <main className="pp" data-noir={noir}>
+      {/* The old-film experiment's grain and vignette — see `.pp[data-noir]`
+          in ProjectPage.css. Fixed, so they sit over the viewport rather than
+          scrolling with a hundred-paragraph document. */}
+      <div className="pp-grain" aria-hidden="true" />
+      <div className="pp-vignette" aria-hidden="true" />
+
       <div className="pp-progress" aria-hidden="true">
         <span className="pp-progress-fill" ref={progressRef} />
       </div>
