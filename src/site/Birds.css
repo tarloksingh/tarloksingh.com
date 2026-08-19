@@ -5,7 +5,9 @@
 .bd-flock {
   /* One frame, at the twelve a second everything drawn on this site moves at
      — the frames' weave, the sprigs, these birds. Every duration below is a
-     whole number of these, so that the whole flock is on one clock. */
+     whole number of these, so that the whole flock is on one clock. Its twin
+     is `FRAME` in Birds.tsx, which is how often the loop paints a bird's
+     position: the wings and the flight have to be cut to the same number. */
   --bd-frame: 0.08333s;
   position: fixed;
   inset: 0;

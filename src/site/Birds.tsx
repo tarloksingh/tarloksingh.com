@@ -80,6 +80,13 @@ const FIDGET = [0.4, 1.9]
 const FLAP_FOR = 0.5
 const TURN_FOR = 0.833
 
+/** One frame, at the twelve a second everything drawn on this site moves at.
+ *  Its twin is `--bd-frame` in Birds.css, which is what the wingbeat and the
+ *  fidgets are cut to; this is what the flight across the window is cut to,
+ *  and the two have to be the same number or a bird flaps on one clock while
+ *  it travels on another. */
+const FRAME = 1 / 12
+
 const rand = (lo: number, hi: number) => lo + Math.random() * (hi - lo)
 
 type Mode = 'in' | 'perched' | 'out'
@@ -375,6 +382,7 @@ export default function Birds({ perch: selector, active }: BirdsProps) {
 
     let raf = 0
     let previous = performance.now()
+    let paint = 0
 
     const tick = (now: number) => {
       raf = requestAnimationFrame(tick)
@@ -382,6 +390,23 @@ export default function Birds({ perch: selector, active }: BirdsProps) {
       const dt = Math.min(0.05, (now - previous) / 1000)
       previous = now
       still += dt
+
+      /* Whether anything gets drawn this time round.
+       *
+       * The flight itself is worked out every frame the display offers, so
+       * that the timing of a landing is exact and the swoop is computed off
+       * real elapsed time rather than off a frame count. What is *painted* is
+       * a twelfth of a second apart, because a bird whose wings cut at twelve
+       * frames a second while its body slides along at a hundred and twenty
+       * is two different drawings at once — and the sliding one wins, which is
+       * why it read as smooth however the wings were stepped.
+       *
+       * The pose goes with the position, in the same block: they have to agree
+       * about which frame this is, or a bird arrives in its perched drawing an
+       * eighth of a second before it arrives on the rail. */
+      paint += dt
+      const draw = paint >= FRAME
+      if (draw) paint %= FRAME
 
       for (const bird of birds) {
         if (bird.mode === 'perched') {
@@ -462,7 +487,7 @@ export default function Birds({ perch: selector, active }: BirdsProps) {
         }
 
         const el = bird.el
-        if (!el) continue
+        if (!el || !draw) continue
         el.style.transform = `translate3d(${bird.x.toFixed(1)}px, ${bird.y.toFixed(1)}px, 0) rotate(${bird.rot.toFixed(1)}deg) scaleX(${bird.flip})`
         const mode = bird.mode === 'perched' ? 'perched' : 'flying'
         if (el.dataset.mode !== mode) el.dataset.mode = mode
