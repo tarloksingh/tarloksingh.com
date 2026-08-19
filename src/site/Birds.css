@@ -1,0 +1,157 @@
+/* See Birds.tsx. Where each bird *is* is written to its node every frame by
+   the one loop in there; everything here is what a bird looks like in its two
+   states, and how it changes between them. */
+
+.bd-flock {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-chrome);
+  /* Never a hit target. The birds react to the cursor coming near — see
+     `STARTLE` in Birds.tsx — but they must not be able to swallow a click
+     meant for the menu behind them. */
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.6s var(--ease-out);
+}
+
+.bd-flock[data-on='true'] {
+  opacity: 1;
+}
+
+.bd {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 34px;
+  /* Written every frame while a bird is in the air. */
+  will-change: transform;
+  color: var(--ink-faint);
+}
+
+.bd-art {
+  width: 100%;
+  height: auto;
+  /* The wings reach well outside the body's own box. */
+  overflow: visible;
+}
+
+.bd path {
+  fill: none;
+  stroke: currentColor;
+  /* In the drawing's own units: the box is 44 across at 34px, so this comes
+     out a little under a pixel and a half — the same weight as a sprig beside
+     a word, which is the scale a bird is at here. */
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ---- the two poses ---- */
+
+.bd-fly,
+.bd-sit {
+  transition: opacity 0.18s linear;
+}
+
+.bd[data-mode='perched'] .bd-fly {
+  opacity: 0;
+}
+
+.bd-sit {
+  opacity: 0;
+}
+
+.bd[data-mode='perched'] .bd-sit {
+  opacity: 1;
+}
+
+/* Landing writes the perched bird on, stroke by stroke, the same way a sprig
+   grows out of a word: body first, then the tail, the beak, the wing, the eye
+   and the legs. Taking off runs the list backwards, so the bird comes apart
+   from the outside in rather than a leg being the last thing left standing on
+   the rail. */
+.bd-sit path {
+  stroke-dashoffset: 1;
+  transition: stroke-dashoffset 0.26s var(--ease-out);
+  /* Nine strokes in `BIRD_SIT`, so eight is the last index. */
+  transition-delay: calc((8 - var(--sp-i, 0)) * 0.02s);
+}
+
+.bd[data-mode='perched'] .bd-sit path {
+  stroke-dashoffset: 0;
+  transition-delay: calc(var(--sp-i, 0) * 0.045s);
+}
+
+/* ---- the wingbeat ----
+
+   Two wings, one shown at a time, cut between on a steps() cycle. Tweening
+   one wing between up and down would read as rubber; a wingbeat is two
+   positions and the eye filling in the rest, which is also how the frames'
+   own weave is stepped rather than eased.
+
+   Each bird takes a slightly different beat, off `nth-child`, so three of
+   them in the air do not flap in unison. */
+.bd[data-mode='flying'] .bd-wing-up {
+  animation: bd-beat 0.26s steps(1, end) infinite;
+}
+
+.bd[data-mode='flying'] .bd-wing-down {
+  /* Its own keyframes rather than the same ones reversed: `bd-beat` is
+     symmetric about its midpoint, so playing it backwards gives the identical
+     sequence and both wings would show at once. */
+  animation: bd-beat-alt 0.26s steps(1, end) infinite;
+}
+
+.bd:nth-child(2)[data-mode='flying'] .bd-wing-up,
+.bd:nth-child(2)[data-mode='flying'] .bd-wing-down {
+  animation-duration: 0.22s;
+}
+
+.bd:nth-child(3)[data-mode='flying'] .bd-wing-up,
+.bd:nth-child(3)[data-mode='flying'] .bd-wing-down {
+  animation-duration: 0.3s;
+}
+
+/* Perched, neither wing beats and only the folded one in `BIRD_SIT` is
+   showing — but the flying pair are still in the box, so they are held down
+   rather than left on their last frame. */
+.bd-wing-down {
+  opacity: 0;
+}
+
+.bd[data-mode='perched'] .bd-wing-up,
+.bd[data-mode='perched'] .bd-wing-down {
+  animation: none;
+}
+
+@keyframes bd-beat {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes bd-beat-alt {
+  0% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The loop never starts (see Birds.tsx), so there would be nothing here but
+     three birds parked off the edge of the screen. */
+  .bd-flock {
+    display: none;
+  }
+}

@@ -26,6 +26,7 @@ import type { RoomLayout, RoomTuning } from './room'
 import { clearPatternShift, setPatternShift } from './pattern'
 import ProjectFrame from './ProjectFrame'
 import Sprig from './Sprig'
+import BlurText, { reveal } from '../components/BlurText'
 import { clamp, ease } from './useScrollEngine'
 import type { ScrollEngine } from './useScrollEngine'
 import './Gallery.css'
@@ -455,6 +456,7 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
         <ProjectCopy
           key={index}
           project={workProjects[index]}
+          active={index === focus}
           onOpen={onOpen}
           ref={(el) => {
             if (el) panelRefs.current.set(index, el)
@@ -483,6 +485,9 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
 interface CopyProps {
   project: (typeof workProjects)[number]
   onOpen: (projectId: string) => void
+  /** Whether this is the label in front of you. Every time it becomes so, the
+   *  copy is written again — see `run` below. */
+  active: boolean
 }
 
 // `forwardRef`, and not a `ref` prop: this is React 18, where `ref` is not a
@@ -491,26 +496,43 @@ interface CopyProps {
 // and every panel silently stacks on top of the first at its resting
 // position, which looks like a layout bug and is not one.
 const ProjectCopy = forwardRef<HTMLElement, CopyProps>(function ProjectCopy(
-  { project, onOpen },
+  { project, onOpen, active },
   ref
 ) {
   // The opening paragraph only. The intro is several paragraphs on some
   // projects, and a wall label is one.
   const lead = useMemo(() => project.intro.split('\n').filter(Boolean)[0] ?? '', [project.intro])
 
-  /* Deliberately not animated.
-     The label used to play the site's per-character reveal each time its
-     project came to the front, and it read as busy rather than as arriving:
-     the piece is already rising and turning a foot to the right, and a second
-     thing moving at the same moment splits the arrival in two. A wall label
-     is printed. It is simply there when you get to it. */
+  /* The label is written each time its project comes to the front, in the
+     same reveal every other piece of type on the site arrives with: each
+     character climbing up out of the line it is set on (`reveal`, and the
+     clipped box in BlurText.tsx). A wall label being *printed* was the older
+     reading, and it left the one thing you are meant to read as the only
+     thing on the page that never moved.
+
+     `run` is what replays it: bumped on every false-to-true crossing of
+     `active` and used as the reveal's key, so the five blocks are rebuilt and
+     tween again from the floor. Keyed rather than driven by a `show` prop
+     because the reveal's own entrance is the whole effect — there is nothing
+     here to toggle, only something to play. */
+  const [run, setRun] = useState(0)
+  useEffect(() => {
+    if (active) setRun((r) => r + 1)
+  }, [active])
+
+  /* The five blocks arrive in reading order rather than together, which is
+     what makes it read as the label being written and not as a block of text
+     sliding up. Small gaps: the whole thing has to be legible by the time the
+     piece beside it has finished turning. */
   return (
     <article className="gl-panel" ref={ref} style={{ ['--accent' as string]: project.accent }}>
-      <p className="gl-client">{project.company}</p>
-      <p className="gl-year">{project.timeline}</p>
-      <h2 className="gl-title">{project.title}</h2>
-      <p className="gl-role">{project.role}</p>
-      <p className="gl-lead">{lead}</p>
+      <BlurText key={`client-${run}`} className="gl-client" text={project.company} {...reveal(0)} />
+      <BlurText key={`year-${run}`} className="gl-year" text={project.timeline} {...reveal(0.05)} />
+      <h2 className="gl-title">
+        <BlurText key={`title-${run}`} text={project.title} {...reveal(0.1)} />
+      </h2>
+      <BlurText key={`role-${run}`} className="gl-role" text={project.role} {...reveal(0.18)} />
+      <BlurText key={`lead-${run}`} className="gl-lead" text={lead} {...reveal(0.24)} />
       {/* `u-vine` puts a sprig either side of it while the pointer is on it —
           the same drawing the menu and the mark carry, so the one gesture the
           wall label offers is in the same hand as everything else. */}

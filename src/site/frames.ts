@@ -271,6 +271,63 @@ export const SPRIG: string[] = [
  * Flat on purpose. The runner drops eight units over its whole length, which
  * at a menu item's size is a couple of pixels: enough that it reads as drawn
  * rather than ruled, not so much that three of them in a row look crooked. */
+/* ---- the birds ----
+ *
+ * Same pen as everything else here: stroked, never filled, deliberately not
+ * exact. Two poses of one bird, both drawn facing right in a 44 x 30 box —
+ * `Birds.tsx` mirrors it with a `scaleX(-1)` when it is travelling the other
+ * way, so there is one drawing rather than two that could disagree.
+ *
+ * Perched, the feet stand on y = 28, which is what `Birds.tsx` lands on a
+ * rail: the bird's own contact point, not the bottom of its box.
+ *
+ * Written in the order they should arrive, because the perched pose draws
+ * itself on landing the way the sprigs and the frames do — body first, then
+ * the things that only make sense once there is a body for them to be on. */
+export const BIRD_SIT: string[] = [
+  // Beak, over the head, down the back to where the tail leaves it.
+  'M40 10 C36 4 28 3 22 7 C16 10 11 14 7 17',
+  // Throat, breast, belly, back to the same point — the body closes.
+  'M40 10 C42 13 41 17 37 19 C31 22 23 23 17 22 C12 21 9 19 7 17',
+  // The tail: two edges of one wedge, out of the back of the body and down.
+  'M7 17 C4 19 2 21 -1 23',
+  'M10 20 C7 21 4 22 0 23',
+  'M40 10 L45 11 L40 12',
+  // The folded wing, laid along the flank.
+  'M31 13 C27 16 22 19 17 21',
+  'M36 9 C37 9 37 10 36 10 C35 10 35 9 36 9',
+  // Legs. Bent, not ruled: two straight sticks under a bird read as a
+  // diagram of one.
+  'M23 22 C23 25 22 26 23 28',
+  'M27 22 C27 25 26 26 27 28'
+]
+
+/* Flying: the same bird stretched level, tail forked out behind. The wings
+ * are separate so they can beat — see `.bd-wing-*` in Birds.css, which shows
+ * one and hides the other on a steps() cycle rather than tweening between
+ * them. A wing that interpolates reads as rubber; a wing that cuts between
+ * two positions reads as a wingbeat, which is the same reason the frames'
+ * weave is stepped at 12fps and not eased. */
+export const BIRD_BODY: string[] = [
+  'M41 12 C37 7 30 6 24 9 C18 11 11 14 6 16',
+  'M41 12 C43 14 42 18 38 19 C31 21 23 22 16 21 C11 20 9 18 6 16',
+  'M6 16 C3 14 1 12 -1 10',
+  'M41 12 L46 13 L41 15'
+]
+
+/* Each wing is one stroke that goes out along the leading edge and comes back
+ * along the trailing one, so it has width — two curves close together read as
+ * a blade, which is what these were before they were drawn at size and
+ * looked at.
+ *
+ * The up-stroke leaves the back line and the down-stroke leaves the belly,
+ * because on a downbeat the wing root is behind the body and only the part
+ * below it is visible. A down-wing drawn from the shoulder crosses the whole
+ * body on its way out. */
+export const BIRD_WING_UP: string[] = ['M26 11 C20 2 14 -4 6 -8 C11 0 14 7 17 12']
+
+export const BIRD_WING_DOWN: string[] = ['M24 21 C20 26 15 30 9 31 C13 26 15 24 17 21']
+
 /* The mark on the date line — the year is a label standing over one point on
  * a rule, so what grows out of it grows *downward*, onto the point it names:
  * a stem out of the label's baseline, a leaf either side of it, and the same
