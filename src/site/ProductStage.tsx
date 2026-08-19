@@ -24,6 +24,10 @@ const EMPTY_CASE = {
   lift: 1,
   offsetX: 0,
   offsetY: 0,
+  narrowScale: 1,
+  narrowTurn: 0,
+  narrowOffsetX: 0,
+  narrowOffsetY: 0,
   floatIntensity: 0,
   floatRotation: 0,
   floatSpeed: 1
@@ -41,6 +45,10 @@ interface ProductStageProps {
   /** Room proportions, in fractions of the window — owned by Gallery.tsx so
    *  the cases and the copy beside them cannot disagree. */
   layout: RoomLayout
+  /** Whether the label is stacked under the case rather than beside it —
+   *  Gallery.tsx's own breakpoint state, handed down so each piece can read
+   *  its mobile offsets instead of its desktop ones. */
+  narrow: boolean
   /** The debug panel lives down here, because leva is the 3D chunk's problem
    *  and not the initial bundle's — so what it changes about the *room* has
    *  to be handed back up to the side that owns those numbers. */
@@ -55,6 +63,7 @@ export default function ProductStage({
   focus,
   progressRef,
   layout,
+  narrow,
   onTune,
   noir
 }: ProductStageProps) {
@@ -69,7 +78,7 @@ export default function ProductStage({
         // A project with no modelled piece still gets its case — an empty
         // vitrine is a truthful thing for a museum to have, and a gap in the
         // row where a case should be is not.
-        const exhibit = exhibitFor(project.id)
+        const exhibit = exhibitFor(project.id, { progressRef, slot: index, count })
         return [{ id: project.id, slot: index, ...(exhibit ?? EMPTY_CASE) }]
       }),
     [slots]
@@ -82,6 +91,7 @@ export default function ProductStage({
       count={count}
       progressRef={progressRef}
       layout={layout}
+      narrow={narrow}
       onTune={onTune}
       noir={noir}
     />

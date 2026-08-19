@@ -2,7 +2,7 @@ import { Suspense, forwardRef, useEffect, useMemo, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Billboard, Center, Float, useAnimations, useGLTF, useTexture } from '@react-three/drei'
-import { ACESFilmicToneMapping, Box3, Color, PMREMGenerator, SRGBColorSpace, Vector3 } from 'three'
+import { ACESFilmicToneMapping, Box3, Color, MathUtils, PMREMGenerator, SRGBColorSpace, Vector3 } from 'three'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import PosStation from './PosStation'
 import type { Group, Mesh, MeshBasicMaterial, MeshStandardMaterial, PerspectiveCamera } from 'three'
@@ -198,12 +198,36 @@ interface LoadedModelProps {
   scale: number
   /** Colour for materials that arrived without a pbrMetallicRoughness block. */
   fallbackColor: string
+  /** Added to every real material's exported metalness/roughness, then
+   *  clamped to [0, 1] — additive rather than a multiplier, because a model
+   *  exported fully non-metallic (as this one is) has nothing for a scale to
+   *  multiply. All three default to a no-op, so a caller that doesn't pass
+   *  them gets exactly the old behaviour. */
+  metalnessBoost?: number
+  roughnessBoost?: number
+  /** Multiplies `envMapIntensity` on top of whatever the room's `lift` prop
+   *  already sets — see the note on `lift` in products.tsx. */
+  liftBoost?: number
+  /** Extra tilt in degrees, on top of the per-project `turn` the row already
+   *  applies about Y — these are about X and Z, for posing the piece rather
+   *  than spinning it. */
+  tiltX?: number
+  tiltZ?: number
 }
 
 /** Blender staging geometry that is in the export but is not the product. */
 const STAGING_NODES = ['Plane']
 
-export function LoadedModel({ url, scale, fallbackColor }: LoadedModelProps) {
+export function LoadedModel({
+  url,
+  scale,
+  fallbackColor,
+  metalnessBoost = 0,
+  roughnessBoost = 0,
+  liftBoost = 1,
+  tiltX = 0,
+  tiltZ = 0
+}: LoadedModelProps) {
   const { scene, animations } = useGLTF(url, DRACO_PATH)
 
   // Framing is derived from the model rather than hard-coded, because a
@@ -219,9 +243,19 @@ export function LoadedModel({ url, scale, fallbackColor }: LoadedModelProps) {
       .filter((child) => STAGING_NODES.includes(child.name))
       .forEach((child) => root.remove(child))
 
+    // Cloned per material below (not just for the default-trap fix), and
+    // each clone's exported roughness/metalness kept alongside — the
+    // metalness/roughness boosts further down adjust from these bases every
+    // time a slider moves, rather than compounding onto a previous drag, and
+    // cloning keeps that mutation off the loader's own cached material,
+    // which every other instance of this glTF shares.
+    const materials: { material: MeshStandardMaterial; baseRoughness: number; baseMetalness: number }[] = []
     root.traverse((o) => {
       const mesh = o as Mesh
       if (!mesh.isMesh) return
+
+      const mat = mesh.material as MeshStandardMaterial
+      if (!mat?.isMeshStandardMaterial) return
 
       // A material that reaches glTF without a pbrMetallicRoughness block
       // takes the spec default — white, but fully metallic AND fully rough,
@@ -231,33 +265,45 @@ export function LoadedModel({ url, scale, fallbackColor }: LoadedModelProps) {
       //
       // Materials exported with real values fall through untouched: the test
       // is the exact 1.0/1.0/white triple only the glTF default produces.
-      const mat = mesh.material as MeshStandardMaterial
-      if (mat?.isMeshStandardMaterial) {
-        const isGltfDefault =
-          mat.metalness === 1 && mat.roughness === 1 && mat.color?.getHex() === 0xffffff
-        if (isGltfDefault) {
-          const fixed = mat.clone()
-          fixed.metalness = 0
-          fixed.roughness = 0.4
-          fixed.color = new Color(fallbackColor)
-          // The logos are flat decals lying on the case, coplanar with it to
-          // within a rounding error, so the depth test cannot separate them
-          // and they strobe as the model turns. Biasing them toward the
-          // camera settles it without moving anything visibly.
-          fixed.polygonOffset = true
-          fixed.polygonOffsetFactor = -2
-          fixed.polygonOffsetUnits = -2
-          mesh.material = fixed
-        }
+      const isGltfDefault = mat.metalness === 1 && mat.roughness === 1 && mat.color?.getHex() === 0xffffff
+      const fixed = mat.clone()
+      if (isGltfDefault) {
+        fixed.metalness = 0
+        fixed.roughness = 0.4
+        fixed.color = new Color(fallbackColor)
+        // The logos are flat decals lying on the case, coplanar with it to
+        // within a rounding error, so the depth test cannot separate them
+        // and they strobe as the model turns. Biasing them toward the
+        // camera settles it without moving anything visibly.
+        fixed.polygonOffset = true
+        fixed.polygonOffsetFactor = -2
+        fixed.polygonOffsetUnits = -2
       }
+      mesh.material = fixed
+      materials.push({ material: fixed, baseRoughness: fixed.roughness, baseMetalness: fixed.metalness })
     })
 
     // Normalise to a known size so framing holds whatever scale the next
     // export arrives at.
     const size = new Box3().setFromObject(root).getSize(new Vector3())
     const longest = Math.max(size.x, size.y, size.z) || 1
-    return { root, fit: TARGET_SIZE / longest }
+    return { root, fit: TARGET_SIZE / longest, materials }
   }, [scene, fallbackColor])
+
+  // Every frame rather than an effect keyed on the boost values: the room's
+  // `Lift` wrapper (Gallery3D.tsx) writes `envMapIntensity` on every one of
+  // its own re-renders with no dependency array, so it can catch meshes that
+  // arrive later out of Suspense — and an effect here would only sometimes
+  // run after it, silently losing this component's own boosts on whichever
+  // commits Lift's happened to land second. Reapplying continuously means
+  // whoever wrote last within a frame doesn't matter.
+  useFrame(() => {
+    for (const { material, baseRoughness, baseMetalness } of fitted.materials) {
+      material.roughness = MathUtils.clamp(baseRoughness + roughnessBoost, 0, 1)
+      material.metalness = MathUtils.clamp(baseMetalness + metalnessBoost, 0, 1)
+      material.envMapIntensity = liftBoost
+    }
+  })
 
   // The staging plane was removed above, but the export's clips still carry
   // tracks addressed to it — and the mixer resolves tracks by walking the
@@ -296,7 +342,10 @@ export function LoadedModel({ url, scale, fallbackColor }: LoadedModelProps) {
   // pivot was left in Blender.
   return (
     <Center>
-      <group ref={group}>
+      <group
+        ref={group}
+        rotation={[MathUtils.degToRad(tiltX), 0, MathUtils.degToRad(tiltZ)]}
+      >
         <primitive object={fitted.root} scale={fitted.fit * scale} />
       </group>
     </Center>

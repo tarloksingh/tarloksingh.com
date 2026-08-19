@@ -1,6 +1,8 @@
 import { Center } from '@react-three/drei'
-import type { ReactNode } from 'react'
+import type { MutableRefObject, ReactNode } from 'react'
+import AdamFace from '../three/AdamFace'
 import BlockBuilder from '../three/BlockBuilder'
+import CapsuleC1 from '../three/CapsuleC1'
 import DiscHolder from '../three/DiscHolder'
 import Phone3D from '../three/Phone3D'
 import VideoFrame from '../three/VideoFrame'
@@ -8,7 +10,7 @@ import WyteCard from '../three/WyteCard'
 import PosStation from '../three/PosStation'
 import Printer3D from '../three/objects/Printer3D'
 import VisaKiosk3D from '../three/objects/VisaKiosk3D'
-import { LoadedModel, SpriteFlipbook } from '../three/CapsuleStage'
+import { SpriteFlipbook } from '../three/CapsuleStage'
 import { resolveVideo } from '../data/media'
 
 /* What piece stands for each project in the gallery.
@@ -68,9 +70,18 @@ const clay = (node: ReactNode, fit: number) => (scale: number) => (
   </Center>
 )
 
+/** What a piece can read to know where the visitor is standing — see
+ *  `progressRef` in Gallery3D. Only Adam's case uses it so far. */
+export interface NodeContext {
+  progressRef: MutableRefObject<number>
+  slot: number
+  count: number
+}
+
 export interface ProductSpec {
-  /** The piece itself, built at the scale the gallery hands it. */
-  node: (scale: number) => ReactNode
+  /** The piece itself, built at the scale the gallery hands it. `ctx` is
+   *  only handed to pieces that ask for it. */
+  node: (scale: number, ctx: NodeContext) => ReactNode
   /** Longest edge, as a multiple of the ~1.1-unit norm. */
   scale?: number
   /** See the note above — the piece's own `envMapIntensity`. */
@@ -92,6 +103,20 @@ export interface ProductSpec {
   floatIntensity?: number
   floatRotation?: number
   floatSpeed?: number
+  /** Overrides for the label-stacked-under-the-case layout — same four
+   *  numbers, read instead of the ones above when the room is narrow. Any
+   *  field left out falls back to this spec's own desktop value, not to
+   *  `DEFAULTS`: a piece angled for its case on a laptop is a reasonable
+   *  starting pose for the phone case too, and this is what the gallery's
+   *  tuning panel seeds its Mobile sliders from before anyone's touched
+   *  them. Tune live (Objects → the project → Mobile), then paste back here
+   *  the same way the desktop numbers are. */
+  narrow?: {
+    scale?: number
+    turn?: number
+    offsetX?: number
+    offsetY?: number
+  }
 }
 
 const DEFAULTS = {
@@ -115,14 +140,12 @@ const DEFAULTS = {
 
 const SPECS: Record<string, ProductSpec> = {
   'capsule-c1': {
-    node: (scale) => (
-      <LoadedModel url="/models/capsule-c1.glb" scale={scale} fallbackColor="#000000" />
-    ),
+    node: (scale) => <CapsuleC1 scale={scale} />,
     turn: 42
   },
   'mr-takahashi': {
-    node: (scale) => (
-      <LoadedModel url="/models/mr-takahashi.glb" scale={scale} fallbackColor="#000000" />
+    node: (scale, ctx) => (
+      <AdamFace scale={scale} progressRef={ctx.progressRef} slot={ctx.slot} count={ctx.count} />
     ),
     scale: 1.52,
     turn: 24,
@@ -200,13 +223,21 @@ const SPECS: Record<string, ProductSpec> = {
 
 export type Exhibit = ReturnType<typeof exhibitFor>
 
-/** Everything the gallery needs to stand one project in a case. */
-export function exhibitFor(projectId: string) {
+/** Everything the gallery needs to stand one project in a case.
+ *
+ *  The narrow (mobile) pose travels alongside the desktop one rather than
+ *  replacing it — `node` is expensive to rebuild (a glTF request, a video
+ *  element) and must not be called twice just because the window crossed
+ *  the breakpoint, so both poses are computed once here and `Row` in
+ *  Gallery3D picks between the plain fields and the `narrow*` ones every
+ *  frame instead. */
+export function exhibitFor(projectId: string, ctx: NodeContext) {
   const spec = SPECS[projectId]
   if (!spec) return null
   const merged = { ...DEFAULTS, ...spec }
+  const narrow = { ...merged, ...spec.narrow }
   return {
-    node: spec.node(merged.scale),
+    node: spec.node(merged.scale, ctx),
     // Already baked into `node` above, and passed on anyway: the gallery's
     // tuning panel shows sizes as a multiplier on whatever a piece is set to
     // here, and cannot write a number worth pasting back without knowing what
@@ -216,6 +247,10 @@ export function exhibitFor(projectId: string) {
     lift: merged.lift,
     offsetX: merged.offsetX,
     offsetY: merged.offsetY,
+    narrowScale: narrow.scale,
+    narrowTurn: narrow.turn,
+    narrowOffsetX: narrow.offsetX,
+    narrowOffsetY: narrow.offsetY,
     floatIntensity: merged.floatIntensity,
     floatRotation: merged.floatRotation,
     floatSpeed: merged.floatSpeed
@@ -231,6 +266,17 @@ export const hasProduct = (projectId: string) => projectId in SPECS
  *  every project on the site, and `node` is where a glTF gets requested and a
  *  video element gets made. */
 export function specDefaults(projectId: string) {
-  const { scale, turn, offsetX, offsetY } = { ...DEFAULTS, ...SPECS[projectId] }
-  return { scale, turn, offsetX, offsetY }
+  const spec = SPECS[projectId]
+  const { scale, turn, offsetX, offsetY } = { ...DEFAULTS, ...spec }
+  const narrow = { ...DEFAULTS, ...spec, ...spec?.narrow }
+  return {
+    scale,
+    turn,
+    offsetX,
+    offsetY,
+    narrowScale: narrow.scale,
+    narrowTurn: narrow.turn,
+    narrowOffsetX: narrow.offsetX,
+    narrowOffsetY: narrow.offsetY
+  }
 }
