@@ -123,8 +123,6 @@ export interface ScrollEngine {
   nudge: (units: number) => void
   /** Ignore input (used while a page transition is covering the stage). */
   setLocked: (locked: boolean) => void
-  /** True once the visitor has scrolled at all — the entrance cue hides on it. */
-  hasMoved: () => boolean
   /** Override how far a finger has to travel for one unit, live. The tuning
    *  panel drives this (see `touchPerUnit` in room.ts) — a swipe is the one
    *  input that cannot be judged from a desk, so it has to be adjustable on
@@ -148,7 +146,6 @@ export function useScrollEngine({
    *  null. See `setTouchPixelsPerUnit`. */
   const touchOverrideRef = useRef<number | null>(null)
   const touchPerUnit = () => touchOverrideRef.current ?? optsRef.current.touchPixelsPerUnit
-  const movedRef = useRef(false)
   // Read live in the loop and in the handlers, so retuning any of them takes
   // effect without tearing down the listeners mid-scroll.
   const optsRef = useRef({
@@ -181,19 +178,16 @@ export function useScrollEngine({
       },
       goTo: (unit) => {
         stateRef.current.target = unit
-        movedRef.current = true
       },
       nudge: (units) => {
         stateRef.current.target += units
-        movedRef.current = true
       },
       setTouchPixelsPerUnit: (px) => {
         touchOverrideRef.current = px
       },
       setLocked: (locked) => {
         lockedRef.current = locked
-      },
-      hasMoved: () => movedRef.current
+      }
     }),
     []
   )
@@ -235,7 +229,6 @@ export function useScrollEngine({
 
     const push = (units: number) => {
       if (lockedRef.current) return
-      movedRef.current = true
 
       const { detentFrom: from, min: lo, max: hi } = optsRef.current
       if (from === undefined) {

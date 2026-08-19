@@ -78,25 +78,33 @@
 }
 
 /* Out of flow, so what this column centres is the signature by itself.
- 
+
    In flow it was one of two items in a centred stack, which put the *pair* on
    the screen's middle and the signature a little below it — and the page this
    hands to centres the signature alone, so the mark stepped down by half a
    rubric at the handover. Hung off the middle instead: half the signature's
    own height (its viewBox is 4839 x 1137, so half of that is width / 8.512)
-   plus the gap it used to sit at. */
+   plus the gap.
+
+   Both numbers below are the page's, not this screen's own.
+
+   They used to be written independently — a `0.7rem` gap here against a
+   proportional one there, and a `clamp()` here whose floor and ceiling did not
+   land where the page's did. Two formulas that agree at one window width and
+   nowhere else, so the word moved and resized as the film came off it, at
+   every width but about 1450px. There is nothing to tune here: the page draws
+   this same mark at this same size, and this word has to be the same word in
+   the same place. `--sig-w` is the same clamp `.hm-sig`'s hero size is solved
+   from, and `0.056` / `0.0406` are the two products `.hm-sig-artist` works out
+   to once the signature's transform has been applied to it. */
 .in-artist {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 50%;
-  margin-bottom: calc(var(--sig-w) / 8.512 + 0.7rem);
+  margin-bottom: calc(var(--sig-w) / 8.512 + var(--sig-w) * 0.0406);
   font-family: var(--font-display);
-  /* Solved against `.hm-sig-artist` in Home.css — the page sets this same word
-     over this same mark, and it must not resize across the handover. Both went
-     up together: at the old size it was a caption on something a foot wide
-     rather than a rubric over it. */
-  font-size: clamp(0.93rem, 1.07vw, 1.22rem);
+  font-size: calc(var(--sig-w) * 0.056);
   letter-spacing: 0.01em;
   line-height: 1;
   color: rgba(255, 255, 255, 0.92);

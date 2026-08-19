@@ -178,19 +178,35 @@ export const frameFor = (index: number) =>
  */
 export const VINE_FRAME: FrameVariant = {
   reach: 0.82,
+  /* Written in the order it grows, which matters much more here than it does
+     for a project's frame: this one is drawn over about a quarter of a minute
+     (`VINE_DRAW`, Home.tsx) and most visitors will only ever see the first
+     part of it, so the sequence has to make sense stopped at any point. The
+     stem goes down first, then the ornaments come out along it working from
+     the ends of the arms in toward the turn — which is the way growth
+     actually travels, and it means a vine caught early is a young vine rather
+     than a finished one with pieces missing. */
   corner: [
     // The stem, out of the bottom of one arm and away along the other.
     'M9 152 C9 100 13 64 31 42 C49 20 88 10 152 9',
-    // Two leaves down the arm and two along it — the same pair mirrored about
-    // the diagonal, so the corner reads the same whichever way it is turned.
-    'M10 124 C24 124 34 116 34 104 C21 104 11 112 10 124',
-    'M124 10 C124 24 116 34 104 34 C104 21 112 11 124 10',
-    'M13 90 C24 86 30 76 27 66 C17 71 11 80 13 90',
-    'M90 13 C86 24 76 30 66 27 C71 17 80 11 90 13',
-    // The bloom, hung inside the turn on a short stalk off the sweep. It sits
-    // where it does because that is the one part of the corner with room for
-    // it: a flower on the arms would be a bead on a string, and one on the
-    // turn itself collides with everything the turn is already doing.
+    // A leaf at the far end of each arm. Everything below comes in mirrored
+    // pairs about the diagonal, so the corner reads the same whichever of the
+    // four turns it has been flipped onto.
+    'M9 148 C22 147 31 139 30 128 C18 130 10 138 9 148',
+    'M148 9 C147 22 139 31 128 30 C130 18 138 10 148 9',
+    // A bloom sitting straight on the stem, one per arm.
+    'M26 97 C33 98 37 103 34 109 C38 115 35 121 28 120 C23 124 17 122 17 116 C11 114 10 107 15 104 C15 98 20 96 26 97',
+    'M21 106 C26 104 29 107 27 111 C24 114 19 112 21 106',
+    'M97 26 C98 33 103 37 109 34 C115 38 121 35 120 28 C124 23 122 17 116 17 C114 11 107 10 104 15 C98 15 96 20 97 26',
+    'M106 21 C104 26 107 29 111 27 C114 24 112 19 106 21',
+    // A second leaf further in.
+    'M13 86 C25 83 32 74 30 63 C19 67 12 76 13 86',
+    'M86 13 C83 25 74 32 63 30 C67 19 76 12 86 13',
+    // And the last thing to open: the bloom hung inside the turn on a short
+    // stalk off the sweep. It sits where it does because that is the one part
+    // of the corner with room for it — a flower on the arms is a bead on a
+    // string, and one on the turn itself collides with everything the turn is
+    // already doing.
     'M47 26 C51 32 52 37 53 41',
     'M58 39 C66 40 70 46 66 53 C71 60 67 68 59 67 C54 73 46 71 45 63 C38 61 37 53 43 48 C43 41 50 38 58 39',
     'M52 51 C57 49 60 52 58 56 C55 59 50 57 52 51'
@@ -199,11 +215,15 @@ export const VINE_FRAME: FrameVariant = {
     // Two runners in off the edge line, rising to meet in the middle.
     'M2 40 C30 40 56 39 80 30',
     'M158 40 C130 40 104 39 80 30',
-    // A leaf off each.
-    'M36 40 C38 31 46 26 55 28 C51 37 44 42 36 40',
-    'M124 40 C122 31 114 26 105 28 C109 37 116 42 124 40',
+    // A leaf off each, and a closed bud further along it.
+    'M24 40 C26 31 34 26 43 28 C39 37 32 42 24 40',
+    'M136 40 C134 31 126 26 117 28 C121 37 128 42 136 40',
+    'M58 37 C53 33 53 26 58 22 C63 26 63 33 58 37',
+    'M102 37 C107 33 107 26 102 22 C97 26 97 33 102 37',
     // The flower they meet in: a petal opening either side, and one standing
-    // up between them.
+    // up between them. On the bottom edge this is flipped, so the standing
+    // petal points down and away — which is where the page hangs the stroke
+    // that says to scroll (`.hm-vine-cue`, Home.css).
     'M80 30 C70 29 64 21 67 12 C75 15 80 22 80 30',
     'M80 30 C90 29 96 21 93 12 C85 15 80 22 80 30',
     'M80 26 C74 21 74 11 80 5 C86 11 86 21 80 26'
@@ -211,3 +231,28 @@ export const VINE_FRAME: FrameVariant = {
   rails: [9],
   crestArm: 40
 }
+
+/* A sprig, for the things you can press.
+ *
+ * The same hand as the frames at the size of a line of type: one runner with a
+ * leaf either side of it and a closed bud at its end, drawn in a 100 x 44 box
+ * that grows left to right off an anchor at (0, 32). Sprig.tsx sets one on each
+ * side of whatever it is put on, the left one mirrored, and the whole thing is
+ * a CSS transition on the dash rather than a loop — see Sprig.css. It is the
+ * frames' trick shrunk to something that can afford to happen on a hover.
+ *
+ * A bud rather than the frames' open flower, and only five strokes. This is
+ * drawn a couple of centimetres wide next to a word, where five petals come
+ * out as a blot; the bud is the one shape that still reads as a flower at that
+ * size, and it is the same one the crests carry.
+ *
+ * Written outward from the anchor, in the order it should arrive. Retracting
+ * plays the same list backwards — see the two `transition-delay`s in Sprig.css.
+ */
+export const SPRIG: string[] = [
+  'M0 32 C24 32 46 31 64 25 C74 21 81 17 86 12',
+  'M26 32 C29 24 37 20 45 22 C41 30 34 34 26 32',
+  'M52 28 C56 34 55 42 48 45 C45 38 47 31 52 28',
+  'M86 12 C77 10 72 2 76 -6 C84 -3 89 4 86 12',
+  'M86 12 C95 10 100 2 96 -6 C88 -3 83 4 86 12'
+]

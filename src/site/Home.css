@@ -60,16 +60,72 @@
    invitation and its falling rule below it, and that stack is much taller than
    the signature is. */
 .hm-vine {
-  /* Centred on the *stack*, not on the mark. Above the name is one short line;
-     below it are three — the word, the stroke under it, and the length that
-     stroke travels before it has faded — so a ring hung on the signature's own
-     middle comes out visibly top-heavy. This is half that difference, down. */
-  top: calc(50% + var(--sig-w) * 0.093);
+  /* On the mark's own middle, and now genuinely so: what the ring holds is the
+     rubric, the name and the invitation, and the rubric and the invitation are
+     the same height as each other by construction — both are `0.056` of the
+     mark's width, hung at the same `0.0406` off the same ink box. So the stack
+     inside here is symmetric about the signature's centre and needs no nudge.
+     (It needed one while the falling stroke was still part of that stack; the
+     stroke grows out of the ring now, on the far side of it.) */
+  top: 50%;
   left: 50%;
-  width: calc(var(--sig-w) * 1.3);
-  height: calc(var(--sig-w) * 0.95);
+  /* Not free numbers. The height has to stay at or above 0.6 of the width, or
+     `--vine-corner` below starts being solved off the height instead — and the
+     ornaments, which are the flowers, get smaller the moment it does. */
+  --vine-w: calc(var(--sig-w) * 1.3);
+  --vine-h: calc(var(--sig-w) * 0.8);
+  width: var(--vine-w);
+  height: var(--vine-h);
   transform: translate(-50%, -50%);
   pointer-events: none;
+  /* How much of the whole draw one stroke takes, against ProjectFrame.css's
+     default of a half. A project's frame is drawn in three seconds and wants
+     its lines overlapping, so the thing arrives as one movement; this one is
+     given the better part of a quarter of a minute and wants the opposite —
+     small enough that the starts spread right across the draw and one leaf, or
+     one flower, opens at a time. There are twenty-two strokes in it, so at a
+     sixth something new happens about every half second for the whole of it. */
+  --pf-hold: 0.17;
+  /* The ornament's own size, solved exactly the way ProjectFrame does it (see
+     `size` there): the smaller of two fractions of the box, times the
+     variant's `reach`. Repeated here — rather than read off the frame, which
+     writes it on a child and so cannot hand it back up — because the stroke
+     below has to know where the bottom crest's flower ends up. */
+  --vine-corner: calc(min(var(--vine-w) * 0.24, var(--vine-h) * 0.4) * 0.82);
+}
+
+/* Which way to go: a stroke growing down out of the flower at the middle of
+   the vine's bottom edge, travelling its own length and going again.
+
+   `0.294` is where that flower's tip falls, below the box, once the crest has
+   been hung so its ends land on the rail — `--pf-hang` in ProjectFrame.css is
+   `(9 - 40 x 1.6) / 160` of the ornament, which puts the box's bottom edge
+   0.344 of it under the frame, and the standing petal reaches back up 0.05 of
+   it from there. Written out because the frame cannot be asked. */
+.hm-vine-cue {
+  position: absolute;
+  top: calc(100% + var(--vine-corner) * 0.294);
+  /* Half its own hairline, rather than a `translateX(-50%)`: the stroke inside
+     writes `transform` outright and would drop any resting one. */
+  left: calc(50% - 0.5px);
+  display: block;
+  width: 1px;
+  height: calc(var(--sig-w) * 0.115);
+}
+
+/* Two elements for one stroke, because two things want to own its opacity: the
+   loop above fades this cue out as you scroll away from the name, and the
+   keyframes fade it in and out as it lays itself down again and again. A
+   running animation beats an inline style, so written onto one element the
+   scroll's fade is simply ignored. The box holds the position and takes the
+   scroll's opacity; the stroke inside it takes the animation's. */
+.hm-vine-cue-line {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(180deg, var(--ink-faint), transparent);
+  transform-origin: top center;
+  animation: hm-cue-fall 2.4s var(--ease-in-out) infinite;
 }
 
 /* A finer pen than the exhibits get. Theirs is drawn around most of a window;
@@ -101,6 +157,8 @@
   top: var(--gutter);
   left: var(--rail-inset);
   transform-origin: 0 0;
+  /* Handed back by `placeSign` once the mark has parked, so its sprigs can be
+     reached in the menu bar and never at the hero pose. */
   pointer-events: none;
   will-change: transform;
   /* A signature is a drawn path scaled across a five-fold range on this page.
@@ -151,6 +209,18 @@
   color: var(--ink);
 }
 
+/* The mark's own sprigs. Wider and lighter than the menu's, because this is
+   a drawn signature rather than a word set in type and a sprig at the menu's
+   weight beside it reads as a second, competing mark. `em` here is the
+   signature's inherited body size, not its drawn width, so the size is given
+   against the parked mark directly. */
+.hm-sig .sp {
+  color: var(--ink-faint);
+  --sp-w: 3.4em;
+  --sp-gap: 0.9em;
+  --sp-pen: 2.2;
+}
+
 .hm-menu {
   top: var(--gutter);
   right: var(--rail-inset);
@@ -186,6 +256,16 @@
   text-transform: lowercase;
 }
 
+/* Three items in a row eighteen pixels apart, each with a drawing hanging off
+   both sides: without holding them in they would run into their neighbours.
+   Held back in colour too — the sprig belongs to the word, and at full ink it
+   competes with it. */
+.hm-menu .sp {
+  color: var(--ink-faint);
+  --sp-w: 2.3em;
+  --sp-gap: 0.4em;
+}
+
 /* The invitation, hung under the name the way the rubric is hung over it.
 
    Off the middle of the window rather than off the foot of it: half the
@@ -204,10 +284,6 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  /* On the mark's scale like the rest of the stack, so the whole of it —
-     word, gap, and the stroke's full travel — stays inside the vine at every
-     width rather than only at the one it was measured at. */
-  gap: calc(var(--sig-w) * 0.022);
   pointer-events: none;
   transition: opacity var(--t-mid) var(--ease-out);
 }
@@ -264,21 +340,13 @@
   }
 }
 
-/* On the mark's scale too, and travelling its own length rather than a fixed
-   46px — the whole stack is inside the vine now, and a stroke that kept its
-   pixel length while everything around it shrank would run straight through
-   the bottom of it on a narrow window. */
-.hm-cue-rule {
-  display: block;
-  width: 1px;
-  height: calc(var(--sig-w) * 0.11);
-  background: linear-gradient(180deg, var(--ink-faint), transparent);
-  /* Travels down the line and repeats — a drawn stroke rather than a
-     bouncing arrow. */
-  animation: hm-cue-fall 2.4s var(--ease-in-out) infinite;
-  transform-origin: top center;
-}
+/* The stroke lays itself down from the flower it grows out of, holds, and then
+   travels its own length away and is gone — a drawn stroke put down again and
+   again rather than an arrow bouncing. Used by `.hm-vine-cue`.
 
+   It travelled a fixed 46px once, back when it was a fixed 46px long. It is on
+   the mark's scale now, so `100%` — its own length, whatever that has come out
+   as at this width — is the only distance that stays right. */
 @keyframes hm-cue-fall {
   0% {
     transform: scaleY(0);
@@ -288,26 +356,9 @@
     transform: scaleY(1);
     opacity: 1;
   }
-  /* Its own length, whatever that has come out as — see `.hm-cue-rule`. */
   70%,
   100% {
     transform: scaleY(1) translateY(100%);
-    opacity: 0;
-  }
-}
-
-@keyframes hm-cue-draw-left {
-  0% {
-    transform: scaleX(0);
-    opacity: 0;
-  }
-  35% {
-    transform: scaleX(1);
-    opacity: 1;
-  }
-  70%,
-  100% {
-    transform: scaleX(1) translateX(-100%);
     opacity: 0;
   }
 }
@@ -341,6 +392,15 @@
      under it are. */
   opacity: 0;
   transition: opacity var(--t-fast) var(--ease-out);
+}
+
+/* Small, and on the same `data-on` the label is shown with — so the two
+   sprigs arrive with the year rather than needing a hover of their own, which
+   they could never get: this label sits above the rule and takes no pointer. */
+.hm-foot-year .sp {
+  color: var(--ink-faint);
+  --sp-w: 2em;
+  --sp-gap: 0.45em;
 }
 
 .hm-foot-tracks {
@@ -402,7 +462,11 @@
   position: absolute;
   inset: 9px 0 auto 0;
   height: 2px;
-  background: var(--ink-faint);
+  /* Full ink. The room you have walked is the thing this line is actually
+     saying, and at `--ink-faint` over a `--rule` ground it was one grey on
+     another — a difference you had to go looking for rather than one you
+     read. */
+  background: var(--ink);
   transform: scaleX(0);
   transform-origin: left center;
   will-change: transform;
@@ -427,25 +491,20 @@
     font-size: 0.85rem;
   }
 
-  /* The stroke under the invitation lies on its side here (see below), so what
-     hangs below the name is barely taller than the rubric above it: the ring
-     closes in, and it goes back to sitting on the mark's own middle rather
-     than being nudged down to find the stack's. */
+  /* The mark takes up a much larger share of a phone's screen, so the ring has
+     to sit closer in to leave the gutters alone. Everything inside it is a
+     fraction of that same mark, so the stack shrinks with it and the clearances
+     hold. */
   .hm-vine {
-    top: 50%;
-    height: calc(var(--sig-w) * 0.78);
+    --vine-w: calc(var(--sig-w) * 1.24);
+    --vine-h: calc(var(--sig-w) * 0.78);
   }
 
-  /* A phone's opening travels right to left, so the line under the word has
-     to point that way: the same stroke and the same rhythm, turned on its
-     side and drawn from the right-hand end, since the direction it is drawn
-     in is the whole of what it says. */
-  .hm-cue-rule {
-    width: calc(var(--sig-w) * 0.11);
-    height: 1px;
-    background: linear-gradient(270deg, var(--ink-faint), transparent);
-    transform-origin: right center;
-    animation-name: hm-cue-draw-left;
+  /* The sprigs go. There is no pointer here to grow them, the menu is at
+     0.85rem with 12px between its items, and two drawings hung off each side of
+     each of those would meet in the middle. */
+  .sp {
+    display: none;
   }
 
   .hm-foot-title {
@@ -464,7 +523,7 @@
     animation: none;
   }
 
-  .hm-cue-rule {
+  .hm-vine-cue-line {
     animation: none;
   }
 }

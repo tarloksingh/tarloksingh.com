@@ -5,6 +5,7 @@ import type { HelixCard } from './Helix'
 import Gallery from './Gallery'
 import Wordmark from './Wordmark'
 import ProjectFrame from './ProjectFrame'
+import Sprig from './Sprig'
 import { VINE_FRAME } from './frames'
 import { workProjects, sideProjects } from '../data/projects'
 import { SCROLL_BOX, SCROLL_OUTLINE } from './cueGlyphs'
@@ -40,12 +41,67 @@ const IN_WORK_AT = 0.75
  *  screen and the corner; after it, parked. */
 const NAME_DOCK = 0.62
 
-/** Seconds the vine around the name takes to grow in. Far slower than a
- *  project's frame (`DRAW_IN`, ProjectFrame.tsx): that one is drawn in the
- *  moment you arrive at a piece and has to be finished before you move on,
- *  while this one has the whole of the first screen to itself and is meant to
- *  be caught happening rather than found already done. */
-const VINE_DRAW = 8
+/** Seconds the vine around the name takes to grow in, and to pull back off.
+ *
+ *  The growth is deliberately longer than anyone will watch. A project's frame
+ *  (`DRAW_IN`, ProjectFrame.tsx) is drawn the moment you arrive at a piece and
+ *  has to be finished before you move on; this one is a plant on the first
+ *  screen, and a plant is never finished. Most visitors will scroll a few
+ *  seconds in and see a third of it, which is the intended picture — with
+ *  `--pf-hold` down at a sixth (Home.css) one thing opens at a time, about
+ *  every half second, so at any moment it is visibly still going.
+ *
+ *  Leaving un-draws it rather than fading it: the retreat runs the same list
+ *  backwards, and it is given real time because it is the last thing the
+ *  screen does and worth watching. */
+const VINE_DRAW = 13
+const VINE_UNDRAW = 2.4
+
+/** How far up the scroll the name stops being the thing you are looking at.
+ *  Past this the vine starts pulling back off. Small on purpose — the entrance
+ *  is about two notches of a wheel end to end (see `entranceGain`), so
+ *  anything larger would not have begun before the name had gone. */
+const AT_NAME_UNTIL = 0.03
+
+/** The one year a piece of work goes under, for the date line.
+ *
+ *  `timeline` is written for a case study's masthead — 'Jan — Jul 2026',
+ *  '2024 — 2025', '2015 — Present' — and the rule across the room is not a
+ *  masthead. It is a date line, and what a date line carries is a date. The
+ *  last four-figure year in the string is the one that reads right in every
+ *  shape the field takes: the year a finished piece finished, and the year an
+ *  ongoing one started, there being no second year in it to take. */
+const oneYear = (timeline: string) => {
+  const years = timeline.match(/\d{4}/g)
+  return years ? years[years.length - 1] : timeline
+}
+
+/* Putting a date on the rule and taking it off again. Two calls rather than
+   one flag because there are three places that do it — the scroll-driven
+   readout, the hover scrubber, and the scrubber letting go — and every one of
+   them has to set the same three things. `data-on` is the one worth naming: it
+   is what grows the sprigs either side of the label, and it is the same
+   attribute the menu marks its current item with, so a single rule in
+   Sprig.css covers both. */
+const showYear = (year: HTMLElement, text: HTMLElement, timeline: string) => {
+  text.textContent = oneYear(timeline)
+  year.style.opacity = '1'
+  year.dataset.on = 'true'
+}
+
+const hideYear = (year: HTMLElement) => {
+  year.style.opacity = '0'
+  year.removeAttribute('data-on')
+}
+
+/** Which entry in a list of `count` a pointer is standing over, along the rule
+ *  it is standing on. Shared by the hover label and the press, so the year you
+ *  are shown and the place you are sent can never be two different pieces. */
+const trackIndex = (e: ReactMouseEvent<HTMLElement>, count: number) => {
+  if (count === 0) return -1
+  const box = e.currentTarget.getBoundingClientRect()
+  return Math.round(clamp((e.clientX - box.left) / box.width, 0, 1) * (count - 1))
+}
 
 interface HomeProps {
   /** Navigates, with the shell's curtain over the top. */
@@ -104,13 +160,22 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
   const artistRef = useRef<HTMLParagraphElement>(null)
   const vineRef = useRef<HTMLDivElement>(null)
   const cueRef = useRef<HTMLDivElement>(null)
+  const tendrilRef = useRef<HTMLSpanElement>(null)
   const footRef = useRef<HTMLElement>(null)
   const trackRef = useRef<HTMLSpanElement>(null)
   const yearRef = useRef<HTMLSpanElement>(null)
+  // The label's text, separately: the label itself also holds its two sprigs,
+  // and writing `textContent` on the whole thing would take them out with it.
+  const yearTextRef = useRef<HTMLSpanElement>(null)
   // Only the setter is used — see `scrubTrack` for why the footer no longer
   // reads which project is focused.
   const [, setFocus] = useState(0)
   const [inWork, setInWork] = useState(false)
+  /* Whether the name is still the thing on screen. The vine reads this and
+     nothing else: it grows while you are standing here and un-draws itself the
+     moment you start to leave, which is a different thing from the opacity the
+     rubric beside it is given — that one dims, this one is taken back. */
+  const [atName, setAtName] = useState(true)
   // Read by the hover-scrub below, which runs outside the scroll loop and so
   // cannot close over `inWork` without going stale.
   const inWorkRef = useRef(false)
@@ -150,14 +215,14 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
     // The rubric belongs to the big pose only: parked, it would be a caption
     // on something the size of a caption.
     const artist = artistRef.current
-    const off = (1 - ease(p, 0, NAME_DOCK * 0.45)).toFixed(3)
-    if (artist) artist.style.opacity = off
-    /* The vine goes with it, and for the same reason. It is drawn around the
-       *screen's* middle rather than inside the signature — a frame that rode
-       the mark would be scaled down to a doodle in the menu bar, and its pen
-       with it — so it cannot simply travel along; it lets go instead. */
-    const vine = vineRef.current
-    if (vine) vine.style.opacity = off
+    if (artist) artist.style.opacity = (1 - ease(p, 0, NAME_DOCK * 0.45)).toFixed(3)
+    /* Parked, the mark sits in the menu bar in a row with the three links, and
+       there it answers a pointer the way they do — see `.hm-sig` in Home.css
+       and `Sprig`. On the way out to the middle of the screen it does not: it
+       is a foot wide there, already inside a drawn frame, and a hover flourish
+       on top of that is one flourish too many. `out` is 1 at the hero pose and
+       0 parked, so this only opens up once it has arrived. */
+    sig.style.pointerEvents = out < 0.02 ? 'auto' : 'none'
   }, [])
 
   // Layout, not effect: unmeasured, the signature would paint parked for one
@@ -205,6 +270,7 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
 
   useEffect(() => {
     let lastInWork = false
+    let lastAtName = true
 
     return engine.subscribe((state) => {
       const p = state.value
@@ -217,13 +283,20 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
          of `p` — it walks straight back to the middle when you scroll up. */
       placeSign(p)
 
-      // The scroll cue is for someone who hasn't scrolled. It goes on the
-      // first input and does not come back.
+      /* The scroll cue belongs to the name, not to a visitor who has never
+         scrolled. It used to latch off on the first input and never return,
+         which is right if you read it as an onboarding hint and wrong if you
+         read it as part of this screen — and it is part of this screen: scroll
+         back up to the name and the invitation under it should be there again,
+         the same way the rubric above it and the vine around it are. A pure
+         function of `p`, like everything else here. */
+      const on = 1 - range(p, 0, 0.05)
       const cue = cueRef.current
-      if (cue) {
-        const on = engine.hasMoved() ? 0 : 1 - range(p, 0, 0.05)
-        cue.style.opacity = on.toFixed(3)
-      }
+      if (cue) cue.style.opacity = on.toFixed(3)
+      // The stroke that says which way to go grows out of the vine rather than
+      // out of the word, so it is not inside `.hm-cue` to be faded with it.
+      const tendril = tendrilRef.current
+      if (tendril) tendril.style.opacity = on.toFixed(3)
 
       // The rule fills as you travel through the work. The year no longer
       // rides it — see `scrubTrack` below, which is what puts a date on the
@@ -240,8 +313,9 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
       if (!hoveringRef.current) {
         const foot = footRef.current
         const year = yearRef.current
+        const yearText = yearTextRef.current
         const workTrack = track?.parentElement as HTMLElement | null
-        if (foot && year && workTrack && p > IN_WORK_AT) {
+        if (foot && year && yearText && workTrack && p > IN_WORK_AT) {
           const index = Math.round(clamp(p - 1, 0, workProjects.length - 1))
           const project = workProjects[index]
           if (project) {
@@ -249,11 +323,10 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
             const footRect = foot.getBoundingClientRect()
             const x = trackRect.left + through * trackRect.width
             year.style.left = `${(((x - footRect.left) / footRect.width) * 100).toFixed(2)}%`
-            year.textContent = project.timeline
-            year.style.opacity = '1'
+            showYear(year, yearText, project.timeline)
           }
         } else if (year) {
-          year.style.opacity = '0'
+          hideYear(year)
         }
       }
 
@@ -263,6 +336,12 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
         lastInWork = nowInWork
         setInWork(nowInWork)
       }
+
+      const nowAtName = p < AT_NAME_UNTIL
+      if (nowAtName !== lastAtName) {
+        lastAtName = nowAtName
+        setAtName(nowAtName)
+      }
     })
   }, [engine])
 
@@ -270,23 +349,26 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
      scroll is: move along either one and the year at that point stands in
      for the whole design's one date label, `.hm-foot-year`, wherever the
      cursor is — not tied to `focus`, so scrubbing the side line doesn't fight
-     the work line's own scroll-driven fill above. */
+     the work line's own scroll-driven fill above.
+
+     It answers from the name too now. It used to sit dead until you were
+     already in the work, which is defensible while it is only a readout and
+     wrong the moment it is also the way to travel: a rule you can press to go
+     to a year has to be pressable from the screen you start on. What it says
+     when you are standing at the name is what it does. */
   const scrubTrack = useCallback((e: ReactMouseEvent<HTMLDivElement>, list: typeof workProjects) => {
-    if (!inWorkRef.current || list.length === 0) return
     const foot = footRef.current
     const year = yearRef.current
-    if (!foot || !year) return
-
-    hoveringRef.current = true
-    const trackRect = e.currentTarget.getBoundingClientRect()
-    const t = clamp((e.clientX - trackRect.left) / trackRect.width, 0, 1)
-    const project = list[Math.round(t * (list.length - 1))]
+    const yearText = yearTextRef.current
+    if (!foot || !year || !yearText) return
+    const index = trackIndex(e, list.length)
+    const project = list[index]
     if (!project) return
 
+    hoveringRef.current = true
     const footRect = foot.getBoundingClientRect()
     year.style.left = `${(((e.clientX - footRect.left) / footRect.width) * 100).toFixed(2)}%`
-    year.textContent = project.timeline
-    year.style.opacity = '1'
+    showYear(year, yearText, project.timeline)
   }, [])
 
   // Hands the label back to the scroll-driven year rather than hiding it —
@@ -294,6 +376,31 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
   const hideScrub = useCallback(() => {
     hoveringRef.current = false
   }, [])
+
+  /* And the rules as a way to get somewhere, which is what makes the date line
+     a date line rather than a progress bar: press a point on it and you are at
+     that year's work.
+
+     The two lines answer differently because they are two different kinds of
+     thing. The work line is this page's own scroll, so a press turns the drum
+     to the piece standing at that point. The side projects are not places on
+     this scroll at all — they appear on no part of it — so there is nowhere to
+     send the drum, and pressing one opens its case study instead. */
+  const pickWork = useCallback(
+    (e: ReactMouseEvent<HTMLDivElement>) => {
+      const index = trackIndex(e, workProjects.length)
+      if (index >= 0) engine.goTo(1 + index)
+    },
+    [engine]
+  )
+
+  const pickSide = useCallback(
+    (e: ReactMouseEvent<HTMLDivElement>) => {
+      const project = sideProjects[trackIndex(e, sideProjects.length)]
+      if (project) onOpen(project.id)
+    },
+    [onOpen]
+  )
 
   const goToProject = useCallback(
     (projectId: string) => {
@@ -318,19 +425,43 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
       {/* The vine. The same drawing machinery the projects' frames are made of
           (ProjectFrame.tsx) around a very much smaller box: those are hung off
           the window and stand a whole exhibit tall, this one is a close ring
-          around the name itself. It grows from the moment the film starts to
-          lift, over eight seconds, so it is still coming while the black goes.
+          around the name itself. It starts the moment the film starts to lift,
+          and it keeps going for as long as you stand here — see `VINE_DRAW`.
+
+          `active` is the two conditions together, which is the whole of its
+          behaviour: it grows while the page is yours and the name is what you
+          are looking at, and the instant you begin to leave it goes back the
+          way it came. Not faded — un-drawn, stroke by stroke in reverse.
 
           Before the signature, so the name is drawn over the line rather than
           under it — they share `--z-chrome`, and at equal z-index the later
           element wins. */}
       <div className="hm-vine" ref={vineRef} aria-hidden="true">
-        <ProjectFrame variant={VINE_FRAME} drawIn={VINE_DRAW} active={unveiling} />
+        <ProjectFrame
+          variant={VINE_FRAME}
+          drawIn={VINE_DRAW}
+          drawOut={VINE_UNDRAW}
+          active={unveiling && atName}
+        />
+        {/* Which way to go, growing out of the plant rather than floating
+            under the word. It hangs off the bloom at the middle of the vine's
+            bottom edge — Home.css solves where that bloom's tip lands — so the
+            invitation is one thing the page is doing rather than two. */}
+        <span className="hm-vine-cue" ref={tendrilRef}>
+          <span className="hm-vine-cue-line" />
+        </span>
       </div>
 
       {/* The one mark on the page. Laid out parked in the menu bar and
-          transformed out to the middle of the screen — see `placeSign`. */}
-      <div className="hm-sig" ref={sigRef}>
+          transformed out to the middle of the screen — see `placeSign`.
+
+          `u-vine` puts a sprig either side of it, the same one the menu beside
+          it and the button on a case get. It can only ever be seen parked:
+          `placeSign` hands the element back its pointer events at the end of
+          the journey and takes them away again on the way out, because at the
+          hero pose this is already standing inside a drawn frame. */}
+      <div className="hm-sig u-vine" ref={sigRef}>
+        <Sprig />
         <h1 className="u-sr">Tarlok Singh — artist, engineer, filmmaker</h1>
         {/* The rubric, set exactly as the opening sets it (`.in-artist`,
             Intro.css): lowercase, in the display serif, small over a very
@@ -345,15 +476,19 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
       {/* Two of these three are places on this one scroll, so the menu marks
           which one you are standing in rather than merely offering links.
           `aria-current` is the real signal; `data-on` is what draws the rule
-          under it, and is the same underline every link on the site uses. */}
+          under it, and is the same underline every link on the site uses — and
+          now also what holds each item's sprigs out, so the place you are
+          standing in keeps them and the other two only borrow them while the
+          pointer is on them. */}
       <nav className="hm-menu" aria-label="Main">
         <button
           type="button"
-          className="u-link"
+          className="u-link u-vine"
           data-on={!inWork}
           aria-current={!inWork ? 'true' : undefined}
           onClick={() => engine.goTo(0)}
         >
+          <Sprig />
           Home
         </button>
         {/* Does two things, because there are only three items and the index
@@ -363,16 +498,18 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
             you are standing in to see all of it is the ordinary reading. */}
         <button
           type="button"
-          className="u-link"
+          className="u-link u-vine"
           data-on={inWork}
           aria-current={inWork ? 'true' : undefined}
           onClick={() => (inWork ? onIndex() : engine.goTo(1))}
         >
+          <Sprig />
           Work
         </button>
         {/* Never marked: it leaves the page rather than being a third place
             on it. */}
-        <a className="u-link" href="mailto:tarloksinghfilms@gmail.com">
+        <a className="u-link u-vine" href="mailto:tarloksinghfilms@gmail.com">
+          <Sprig />
           Contact
         </a>
       </nav>
@@ -381,9 +518,13 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
           way — the opening writes the signature, and this is the first thing
           the page says after it, so it should be the same voice. The reveal
           is a sweep along the writing direction rather than a pen (see
-          `cueGlyphs.ts`), and the rule under it points the way the stage
-          actually travels, which is not the same way on a phone (Home.css).
-          The word itself is drawing, so the readable one is the label.
+          `cueGlyphs.ts`). The word itself is drawing, so the readable one is
+          the label.
+
+          The word only. The stroke that points the way used to hang under it
+          and is now `.hm-vine-cue`, growing out of the vine's own bottom bloom
+          — a line under a word is a line under a word, and a line coming out of
+          the plant is the plant telling you.
 
           It hangs under the signature at exactly the distance the rubric hangs
           above it, so the three read as one stack rather than as a mark in the
@@ -396,25 +537,36 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
             <path d={SCROLL_OUTLINE} fill="currentColor" />
           </svg>
         </span>
-        <span className="hm-cue-rule" />
       </div>
 
       {/* A rule across the room, read as a date line rather than as a
           loading state — a gallery tells you what period you are in, not
           what percentage of it you have seen. The main line still fills as
-          you travel through the work; the year on it is a hover scrubber
-          now, not a readout of the scroll (see `scrubTrack`).
+          you travel through the work; the year on it is a hover scrubber, not
+          a readout of the scroll (see `scrubTrack`), and pressing a point on
+          it takes you there (`pickWork`, `pickSide`).
 
           The dot and the shorter line after it are the side projects — the
           same rule, at a smaller scale, for the work that isn't client
-          work. */}
+          work.
+
+          The keyboard's way to the same places is the contents overlay, which
+          the menu's second item opens; these two rules are a pointer
+          affordance on top of it, not the only door. */}
       <footer className="hm-foot" data-in-work={inWork} ref={footRef}>
-        <span className="hm-foot-year" ref={yearRef} />
+        {/* One date, and one year of it — see `oneYear`. Its own span inside
+            the label, because the label also carries the two sprigs that grow
+            with it and writing text onto the whole thing would remove them. */}
+        <span className="hm-foot-year u-vine" ref={yearRef}>
+          <span ref={yearTextRef} />
+          <Sprig />
+        </span>
         <div className="hm-foot-tracks">
           <div
             className="hm-foot-track hm-foot-track--work"
             onMouseMove={(e) => scrubTrack(e, workProjects)}
             onMouseLeave={hideScrub}
+            onClick={pickWork}
           >
             <span className="hm-foot-track-fill" ref={trackRef} />
           </div>
@@ -423,6 +575,7 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
             className="hm-foot-track hm-foot-track--side"
             onMouseMove={(e) => scrubTrack(e, sideProjects)}
             onMouseLeave={hideScrub}
+            onClick={pickSide}
           />
         </div>
       </footer>

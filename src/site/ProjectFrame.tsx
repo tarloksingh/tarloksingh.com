@@ -69,6 +69,10 @@ interface ProjectFrameProps {
   /** Seconds to take over drawing itself in, where the row's own pace is the
    *  wrong one. A thing that grows takes longer than a thing that is ruled. */
   drawIn?: number
+  /** Seconds to take pulling back off. The default is quick because a
+   *  project's frame is only clearing the way for the next one; where the
+   *  retreat is itself something to watch, it is worth slowing down. */
+  drawOut?: number
 }
 
 /** Seconds the frame takes to draw itself in once its project is stood at,
@@ -145,7 +149,8 @@ export default function ProjectFrame({
   index = 0,
   active,
   variant: given,
-  drawIn = DRAW_IN
+  drawIn = DRAW_IN,
+  drawOut = DRAW_OUT
 }: ProjectFrameProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const variant = given ?? frameFor(index)
@@ -226,7 +231,7 @@ export default function ProjectFrame({
       draw =
         target > draw
           ? Math.min(target, draw + step / drawIn)
-          : Math.max(target, draw - step / DRAW_OUT)
+          : Math.max(target, draw - step / drawOut)
       root.style.setProperty('--pf-draw', draw.toFixed(4))
 
       const r = () => Math.random() * 2 - 1
@@ -236,7 +241,7 @@ export default function ProjectFrame({
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [drawIn])
+  }, [drawIn, drawOut])
 
   /* The order the frame assembles in: the corners are set down, the rails run
      out from them, and the crest closes the middle of each edge last. */

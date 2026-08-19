@@ -25,6 +25,7 @@ import {
 import type { RoomLayout, RoomTuning } from './room'
 import { clearPatternShift, setPatternShift } from './pattern'
 import ProjectFrame from './ProjectFrame'
+import Sprig from './Sprig'
 import { clamp, ease } from './useScrollEngine'
 import type { ScrollEngine } from './useScrollEngine'
 import './Gallery.css'
@@ -510,7 +511,15 @@ const ProjectCopy = forwardRef<HTMLElement, CopyProps>(function ProjectCopy(
       <h2 className="gl-title">{project.title}</h2>
       <p className="gl-role">{project.role}</p>
       <p className="gl-lead">{lead}</p>
-      <button type="button" className="gl-open" onClick={() => onOpen(project.id)}>
+      {/* `u-vine` puts a sprig either side of it while the pointer is on it —
+          the same drawing the menu and the mark carry, so the one gesture the
+          wall label offers is in the same hand as everything else. */}
+      <button
+        type="button"
+        className="gl-open u-vine"
+        onClick={() => onOpen(project.id)}
+      >
+        <Sprig />
         {project.restricted ? 'Read More' : 'View Project'}
       </button>
     </article>

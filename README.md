@@ -55,8 +55,9 @@ src/
 | `Home.tsx` | The stage: the signature walking between the middle of the screen and the menu bar, the chrome, composes the field and the gallery |
 | `Helix.tsx` | The vortex of media, in CSS 3D |
 | `Gallery.tsx` | The row of vitrines, and each project's wall label |
-| `ProjectFrame.tsx` | The corner flourishes drawn around whichever project you are standing at |
-| `frames.ts` | The flourishes themselves — one corner per variant, flipped four ways |
+| `ProjectFrame.tsx` | The drawn frame — around whichever project you are standing at, and around the name |
+| `frames.ts` | The drawings themselves: a corner and a crest per variant flipped four ways, the vine, and the sprig |
+| `Sprig.tsx` | The two small vines that grow out of anything you can press |
 | `pattern.ts` | The background wallpaper's drift, driven by whichever screen is mounted |
 | `room.ts` | The gallery's proportions — the one copy both sides of the chunk boundary read |
 | `ProductStage.tsx` | The only door to three.js — a lazy chunk boundary |
@@ -156,6 +157,22 @@ Contact is never marked: it leaves the page rather than being a third place on
 it. Work does double duty, because at three items the index overlay would
 otherwise have no way in from this page: from the name it turns the row to the
 first project, and once you are already in the work it opens the contents.
+
+**The rule across the foot is a date line, and you can travel on it.** The
+longer line is the client work and fills as you move through it; the dot and the
+shorter line after it are the side projects. Running along either one puts the
+year at that point under your cursor, and pressing it goes there — the work line
+turns the row to the piece standing at that point, and the side line opens that
+case study, since those are not places on this scroll and there is nowhere on it
+to send you. It answers from the name too: a readout can afford to sit dead
+until you are already in the work, and a control cannot.
+
+**One year, not the masthead's date.** A project's `timeline` is written for the
+top of its case study — `Jan — Jul 2026`, `2024 — 2025`, `2015 — Present` — and
+a date line carries a date. `oneYear` in `Home.tsx` takes the last four figures
+in the string, which reads right in every shape the field takes: the year a
+finished piece finished, and the year an ongoing one started, there being no
+second year in it to take.
 
 ---
 
@@ -280,6 +297,88 @@ below where the other screen puts it.
 That also took the name out of the field's `preserve-3d` space, which it had to
 leave: the journey is across the window, and it cannot be made from inside a
 perspective space with its own idea of where the middle is.
+
+### The stack, and what grows around it
+
+Three lines sit on the middle of the screen: `artist` above the signature, the
+signature, and `scroll` below it. The two words are the same size and hang the
+same distance off the mark's ink box — `0.056` of its width, at `0.0406` — so
+the spacing above and below is even by construction rather than by having been
+eyeballed at one window size. Both screens compute them the same way from the
+same `--sig-w`, because the film hands this exact picture to the page and a word
+that resizes or steps across that handover is the one thing the whole
+arrangement exists to prevent.
+
+**A vine grows around them.** It is `ProjectFrame.tsx` again — the same drawing
+machinery the exhibits' frames are made of, given a different ornament
+(`VINE_FRAME`) around a very much smaller box. The exhibits' frames are hung off
+the window and stand a whole exhibit tall; this is a close ring around the name,
+about a third of the width and drawn in a finer pen.
+
+It is deliberately slower than anything else on the site: **thirteen seconds to
+grow, and `--pf-hold` down at a sixth.** That variable is the share of the whole
+draw one stroke takes. At the default half, a frame's lines overlap and the
+thing arrives as one movement, which is right for something drawn in three
+seconds; at a sixth the starts spread right across the draw and one leaf, or one
+flower, opens at a time — about every half second, for the whole of it. Most
+visitors will scroll a few seconds in and see a third of a vine, which is the
+intended picture. `VINE_FRAME` is written in the order it grows for that reason:
+the stem first, then the ornaments working from the ends of the arms in toward
+the turn, so a vine caught early is a young vine rather than a finished one with
+pieces missing.
+
+**Leaving un-draws it.** Not a fade — the strokes go back the way they came,
+last one first, over `VINE_UNDRAW`. The signature beside it dims on the way to
+the menu bar and this does not, because they are two different statements: the
+rubric is a caption being taken off something that is no longer caption-sized,
+and the vine is a plant being taken back.
+
+**The stroke that says which way to go comes out of the plant.** It used to be a
+line under the word, which is a line under a word; it hangs off the flower at
+the middle of the vine's bottom edge now, so the invitation is one thing the
+page is doing rather than two. Where that flower's tip lands is solved in
+`Home.css` from the same two fractions `ProjectFrame` uses, because the frame
+writes its ornament size onto a child and cannot be asked for it. It is two
+elements for one stroke: a running animation beats an inline style, so the box
+takes the scroll's opacity and the stroke inside it takes the keyframes'.
+
+The cue is **a pure function of scroll**, like everything else here. It used to
+latch off on the first input and never return, which is right if you read it as
+an onboarding hint and wrong if you read it as part of this screen — scroll back
+up to the name and the invitation under it is there again, the same way the
+rubric above it and the vine around it are.
+
+### Sprigs
+
+`Sprig.tsx`. Two small vines that grow out of the sides of anything you can
+press — the three menu items, the button on a wall label, the parked mark, and
+the year on the date line — and pull back off when you are not on it. Same hand
+as the frames, at the size of a word: a runner, a leaf either side, and a closed
+bud. A bud rather than the frames' open flower, because five petals a couple of
+centimetres wide come out as a blot.
+
+**No JavaScript.** The paths are normalised to `pathLength="1"` and the dash
+offset is a CSS transition, so growing is a `:hover` and retracting is the
+absence of one. There can be a dozen of these on the page and every one of them
+is idle almost all of the time; a `requestAnimationFrame` loop each, the way
+`ProjectFrame` has one, would be a dozen loops running to draw nothing. The
+delays run forwards on the way in and backwards on the way out, so the bud goes
+first and the runner it stands on goes last.
+
+Two things are less obvious than they look. **An undrawn stroke is not
+invisible** — the pen is round-capped, so a dash offset of the whole path length
+still paints the cap where the pen would have started, which is five full stops
+hanging in mid-air beside every word on the page until the sprig carries its own
+opacity. And **the mark's sprigs can only ever be seen parked**: `placeSign`
+hands `.hm-sig` its pointer events back at the end of the journey and takes them
+away on the way out, because at the hero pose it is a foot wide and already
+standing inside a drawn frame.
+
+The trigger class `u-vine` goes on the host, not on the sprig: a sprig sits
+outside its host's box and cannot be hovered itself, and should not be — a
+flourish is not a hit target. `data-on` grows them too, which is the same
+attribute the menu marks its current item with, so a sprig and the rule under a
+link can never disagree about whether something is current.
 
 ---
 
@@ -424,10 +523,25 @@ to any of the work on it.
 
 The strokes are normalised with `pathLength="1"`, so the dash pattern is in
 fractions of each stroke's own length and nothing has to be measured to animate
-it. Each takes half the draw to put itself down and their starts are spread
-across the other half, solved from the variant's own stroke count — fixed, the
-sparse variants would finish long before the visitor arrived and the ornate
-ones would still be drawing after they had.
+it. Each takes `--pf-hold` of the draw to put itself down and their starts are
+spread across whatever is left, solved from the variant's own stroke count —
+fixed, the sparse variants would finish long before the visitor arrived and the
+ornate ones would still be drawing after they had. `--pf-hold` is half here,
+which is what makes a frame arrive as one movement; the vine around the name
+turns it down to a sixth so that one thing happens at a time.
+
+**The pen is written in each drawing's own units, not in pixels.** That is not a
+preference. The draw is a dash walked along a path normalised to a length of 1,
+and `vector-effect: non-scaling-stroke` is measured *after* the drawing has been
+scaled — so the dash and the path it is walking stop agreeing about how long the
+path is the moment that scale is not 1, and the line comes apart into ticks,
+worse the larger the frame is drawn. It looked fine on a phone and wrong on a
+monitor for exactly that reason.
+
+**The component is not only for projects.** `variant` overrides whichever
+drawing an index would land on, and `drawIn`/`drawOut` override the pace — which
+is the whole of what the vine around the name needed to be the same machinery
+rather than a second copy of it.
 
 **Both of its clocks are wall-clock, quantised to 12fps**, which is what makes
 the line lay itself down in bites and the drawing wobble as though redrawn. Its
@@ -446,13 +560,15 @@ slow approach to read from.** One gesture sends the target a whole project and
 during the flight and was finished before the piece had settled — it was never
 actually seen being drawn.
 
-So the cue is **standing still**, not heading somewhere. `settledAt` in
-Gallery.tsx is the project the row has come to rest at, or -1 while it is
-moving; deliberately not `focus`, which flips at the *midpoint* of a move and
-would have a frame drawing while the row was still flying. `value` chases
-`target` on an exponential and so never arrives exactly, so `SETTLED` is how
-close counts as stopped — about a second after the gesture at the engine's
-0.42s, which is roughly when the movement stops being visible.
+So the cue is **arriving, not having arrived**. `near` in Gallery.tsx is the
+list of projects within `NEAR` of the front — the one you are standing at, and
+whichever is coming in beside it — so the drawing and the piece travel onto the
+screen together, which is the whole of what a frame is for. Keyed to the row
+having come to *rest* instead, the line could only ever start at a piece already
+sitting square-on in front of you, and so arrived at a settled picture rather
+than coming in with it. It is a list and not an index because two are on screen
+through a move, and React state rather than a per-frame write because it changes
+twice a project and everything downstream of it wants to be told, not polled.
 
 From there the frame times itself: **3.2s to draw in, 0.4s to pull off.** It
 advances at a steady rate rather than easing, because a pen travels at one
@@ -732,12 +848,20 @@ screen on the way to the stage — it is already covering the page while the
 field's posters decode, and making someone watch a progress bar and *then* an
 entrance is two waits where the design only has room for one.
 
-**There is no cue to scroll**, because there is nothing to ask for: about a
-second after the signature settles the black fades off by itself
-(`AUTO_LEAVE`, `AUTO_FADE`), with the film still running on its 24ths the whole
+**There is no cue to scroll**, because there is nothing to ask for: the black
+starts fading off by itself the moment `artist` starts arriving over the
+finished signature (`ARTIST_AT`, `AUTO_FADE`) — the rubric fading up and the
+room fading off are one beat, rather than the opening saying its last word and
+then waiting to be let out. The film keeps running on its 24ths the whole
 way down, so the black and the crackle go together as one picture dimming. The
 page it hands to raises its own cue — that is the first screen where scrolling
 is a choice.
+
+`artist` is set here from the same two fractions of `--sig-w` the page sets it
+from, and hangs off the middle of the screen rather than sitting in the column,
+so what the middle holds is the signature alone. Both of those exist for one
+reason: this word and this mark have to be in the same place, at the same size,
+on both sides of the handover.
 
 **It runs at 24fps, for real.** Every visible value is sampled from a clock
 quantised to `1/24s`; nothing moves between samples. That is the whole reason it
@@ -775,6 +899,13 @@ middle of the screen.
 
 The page is interactive the instant the veil is gone, on `onReveal`, which
 fires before the sequence finishes unmounting.
+
+**`onLeaving` fires a good deal earlier** — the moment the room *starts* to go,
+on whichever of the two exits happens first. It is the cue for the page
+underneath to begin its own entrance, so that what you see is the film coming
+off something already growing rather than a settled page appearing behind it.
+The vine around the name starts there, which is why it is already a second and a
+bit into itself by the time the last of the black has gone.
 
 ---
 

@@ -178,21 +178,32 @@
   /* `pathLength="1"` on the element normalises every path, so this is in
      fractions of each stroke's own length and nothing has to be measured.
 
-     Each stroke takes half the draw to put itself down, and their starts are
-     spread across the other half — so the frame is still being drawn most of
-     the way into a project rather than snapping complete the moment one is
-     near, and it assembles corner-outward and then along the edges instead of
-     every line unrolling at once.
+     Each stroke takes `--pf-hold` of the draw to put itself down, and their
+     starts are spread across whatever is left — so the frame is still being
+     drawn most of the way into a project rather than snapping complete the
+     moment one is near, and it assembles corner-outward and then along the
+     edges instead of every line unrolling at once.
 
      The stagger is solved from `--pf-n`, the number of strokes in this
      variant, rather than fixed: fixed, the sparse variants would finish long
      before the visitor arrived and the ornate ones would still be drawing
      after they had. This way every frame lands on the last stroke exactly as
-     the piece comes square-on, whatever it is made of. */
+     the piece comes square-on, whatever it is made of.
+
+     `--pf-hold` is half by default, which is the right split for a frame drawn
+     in three seconds: at that pace the lines overlap and the whole thing
+     arrives as one movement. A drawing given twenty seconds wants the opposite
+     — a small hold, so the starts spread right across the draw and one thing
+     happens at a time. The vine around the name sets it down to about a sixth
+     (see `.hm-vine` in Home.css). */
   stroke-dashoffset: clamp(
     0,
     calc(
-      1 - (var(--pf-draw, 0) - var(--pf-i, 0) * (0.5 / max(1, var(--pf-n, 1) - 1))) / 0.5
+      1 -
+        (
+          var(--pf-draw, 0) - var(--pf-i, 0) *
+            ((1 - var(--pf-hold, 0.5)) / max(1, var(--pf-n, 1) - 1))
+        ) / var(--pf-hold, 0.5)
     ),
     1
   );
