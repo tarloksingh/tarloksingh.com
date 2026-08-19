@@ -97,58 +97,6 @@
   overflow: visible;
 }
 
-/* Not a button — a cue. What moves the room is the wheel, not a click. */
-.in-enter {
-  margin-top: 0.62rem;
-  font-family: var(--font-display);
-  font-size: clamp(0.76rem, 0.85vw, 0.94rem);
-  line-height: 1.15;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.86);
-  opacity: 0;
-}
-
-.in-enter-text {
-  display: inline-block;
-  animation: in-enter-pulse 1.8s ease-in-out infinite;
-}
-
-@keyframes in-enter-pulse {
-  0%,
-  100% {
-    opacity: 0.5;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-/* ---- the print ---- */
-
-/* One tile of turbulence, oversized so the per-frame throw can never drag an
-   edge into view, and moved with a transform so a frame of grain costs a
-   composite rather than a repaint. */
-.in-grain {
-  position: absolute;
-  top: -120px;
-  left: -120px;
-  width: calc(100% + 240px);
-  height: calc(100% + 240px);
-  pointer-events: none;
-  opacity: 0.14;
-  background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size: 220px 220px;
-  will-change: transform;
-}
-
-.in-vignette {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  box-shadow: inset 0 0 200px 44px #000;
-}
-
 .in-marks {
   position: absolute;
   inset: 0;
@@ -188,7 +136,4 @@
     filter: none;
   }
 
-  .in-enter-text {
-    animation: none;
-  }
 }

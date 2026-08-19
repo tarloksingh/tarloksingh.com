@@ -299,8 +299,19 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
         }
       }
 
+      /* The room does not fade in. It was already sliding in — `progress` is
+         -1 at the top of the scroll, so the row sits a full step to the
+         right, off-frame, and walks on as you travel — and ramping opacity
+         over the same stretch put a dissolve on top of a move, which read as
+         the first project *appearing* rather than arriving. Switched, not
+         ramped: the instant the scroll leaves the top the room is fully lit
+         and the piece drives in from the wing. Off again at rest, so nothing
+         hangs at the edge of the opening frame. */
       const arrival = ease(state.value, ARRIVE_FROM, ARRIVE_AT)
-      root.style.opacity = arrival.toFixed(3)
+      // Lit exactly when there is something in it to light — `shouldWake` is
+      // what mounts the pieces, and switching on any earlier would only mean
+      // an empty room standing lit for a third of the entrance.
+      root.style.opacity = shouldWake ? '1' : '0'
       root.style.pointerEvents = arrival > 0.85 ? 'auto' : 'none'
 
       // Each mounted panel is placed along the row and faded by how far off

@@ -56,11 +56,10 @@ const ENTER_IN = 0.75
 
 /* ---- the exit, driven by scroll rather than the clock ----
    `progress` runs 0..1: 0 is fully in the room, 1 is the page fully lit.
-   Each element lifts off at its own point along that range so the door goes
-   before the name, and the name before the word above it — the same
-   bottom-to-top order the click used to give, just run by the wheel instead
-   of a timer. */
-const OUT_ENTER_AT = 0
+   Each element lifts off at its own point along that range so the name goes
+   before the word above it — the same bottom-to-top order the click used to
+   give, just run by the wheel instead of a timer. (There was a third, the
+   scroll cue, which went first; it has no element left to move.) */
 const OUT_NAME_AT = 0.14
 const OUT_ARTIST_AT = 0.3
 const OUT_SPAN = 0.4
@@ -118,7 +117,6 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
   const nameRef = useRef<HTMLDivElement>(null)
   const penRef = useRef<SVGPathElement[]>([])
   const settledRef = useRef<SVGPathElement>(null)
-  const enterRef = useRef<HTMLParagraphElement>(null)
   const grainRef = useRef<HTMLDivElement>(null)
   const vignetteRef = useRef<HTMLDivElement>(null)
   const veilRef = useRef<HTMLDivElement>(null)
@@ -167,7 +165,6 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
     const name = nameRef.current
     const strokes = penRef.current.filter(Boolean)
     const settledInk = settledRef.current
-    const enter = enterRef.current
     const grain = grainRef.current
     const vignette = vignetteRef.current
     const veil = veilRef.current
@@ -175,7 +172,7 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
     const burnCircle = burnCircleRef.current
     const burnNoise = burnNoiseRef.current
     const marks = marksRef.current
-    if (!root || !stack || !artist || !name || !settledInk || !enter) return
+    if (!root || !stack || !artist || !name || !settledInk) return
     if (!grain || !vignette || !veil || !burn || !burnCircle || !burnNoise || !marks) return
     if (strokes.length !== NAME_PEN.length) return
 
@@ -328,11 +325,16 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
       const ready = readyAtRef.current
       const openedAt = Math.max(HOLD + WRITE, ready == null ? Infinity : ready - start)
       const artistOn = still ? 1 : out(span(t, openedAt + ARTIST_AT, ARTIST_IN))
-      const enterOn = still ? 1 : out(span(t, openedAt + ENTER_AT, ENTER_IN))
-      canLeave = enterOn > 0.05
+      /* `settledOn` is only a clock now — the cue it used to raise is gone
+         (see the markup), but the moment it marked is still the one that
+         matters: the signature has finished writing and the opening has said
+         what it came to say. Everything that may only happen afterwards —
+         leaving on the timer, or a scroll being allowed to burn through —
+         hangs off it. */
+      const settledOn = still ? 1 : out(span(t, openedAt + ENTER_AT, ENTER_IN))
+      canLeave = settledOn > 0.05
 
       // ---- leaving, bottom to top, run entirely off `progress` ----
-      const goEnter = inOut(span(progress, OUT_ENTER_AT, OUT_SPAN))
       const goName = inOut(span(progress, OUT_NAME_AT, OUT_SPAN))
       const goArtist = inOut(span(progress, OUT_ARTIST_AT, OUT_SPAN))
 
@@ -341,9 +343,6 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
 
       name.style.opacity = (1 - goName).toFixed(3)
       name.style.transform = `translate3d(0, ${(-goName * 16).toFixed(1)}px, 0)`
-
-      enter.style.opacity = (enterOn * (1 - goEnter)).toFixed(3)
-      enter.style.transform = `translate3d(0, ${((1 - enterOn) * 12 - goEnter * 18).toFixed(1)}px, 0)`
 
       // ---- the burn ----
       // The veil is not fading, it is being eaten through: a hole grows from
@@ -601,12 +600,11 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
           </svg>
         </div>
 
-        {/* Not a button — there is nothing to click. Scrolling (or, for a
-            keyboard or a screen reader, Enter) is what moves this room. */}
-        <p className="in-enter" ref={enterRef} aria-hidden="true">
-          <span className="in-enter-text">scroll</span>
-        </p>
-        <p className="u-sr">Scroll, or press Enter, to continue.</p>
+        {/* No cue here any more. The opening leaves on its own, so a prompt
+            to scroll would be asking for something that is about to happen
+            regardless — and the page it hands to raises its own cue
+            (`.hm-cue` in Home.css), which is where the invitation belongs,
+            because that is the first screen where scrolling is a choice. */}
       </div>
 
       <div className="in-marks" ref={marksRef} aria-hidden="true">
