@@ -1,8 +1,9 @@
 import type { CSSProperties } from 'react'
-import { SPRIG } from './frames'
+import { SPRIG, VSPRIG } from './frames'
 import './Sprig.css'
 
-/* Two small vines, one on each side of whatever this is dropped into.
+/* Two small vines, one on each side of whatever this is dropped into — or,
+ * with `vertical`, one above and one below.
  *
  * They grow out of the thing while it is hovered, held, or marked as the place
  * you are standing in, and pull back off it when it is not — the same gesture
@@ -19,12 +20,29 @@ import './Sprig.css'
  * Sprig.css, which is where the hover lives, and which explains why the class
  * is on the host rather than here.
  */
-export default function Sprig() {
+interface SprigProps {
+  /** Grow above and below the host instead of to either side of it. For the
+   *  menu: three items sit close enough together, eighteen pixels apart, that
+   *  a sprig reaching sideways off one runs into the word next to it — see
+   *  `VSPRIG` in frames.ts, which is the same drawing turned to grow this
+   *  way. */
+  vertical?: boolean
+}
+
+export default function Sprig({ vertical = false }: SprigProps) {
+  const sides = vertical ? ['sp-t', 'sp-b'] : ['sp-l', 'sp-r']
+  const paths = vertical ? VSPRIG : SPRIG
   return (
-    <span className="sp" aria-hidden="true">
-      {['sp-l', 'sp-r'].map((side) => (
-        <svg key={side} className={side} viewBox="0 0 100 44" fill="none" focusable="false">
-          {SPRIG.map((d, i) => (
+    <span className={vertical ? 'sp sp--y' : 'sp'} aria-hidden="true">
+      {sides.map((side) => (
+        <svg
+          key={side}
+          className={side}
+          viewBox={vertical ? '0 0 44 100' : '0 0 100 44'}
+          fill="none"
+          focusable="false"
+        >
+          {paths.map((d, i) => (
             <path
               key={d}
               d={d}

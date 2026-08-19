@@ -43,19 +43,18 @@ const NAME_DOCK = 0.62
 
 /** Seconds the vine around the name takes to grow in, and to pull back off.
  *
- *  The growth is deliberately longer than anyone will watch. A project's frame
- *  (`DRAW_IN`, ProjectFrame.tsx) is drawn the moment you arrive at a piece and
- *  has to be finished before you move on; this one is a plant on the first
- *  screen, and a plant is never finished. Most visitors will scroll a few
- *  seconds in and see a third of it, which is the intended picture — with
- *  `--pf-hold` down at a sixth (Home.css) one thing opens at a time, about
- *  every half second, so at any moment it is visibly still going.
+ *  The growth is deliberately longer than anyone will watch — most visitors
+ *  will scroll a few seconds in and see a third of it, which is the intended
+ *  picture. With `--pf-hold` down at a sixth (Home.css) one thing opens at a
+ *  time, about every quarter second at this pace, so at any moment it is
+ *  visibly still going.
  *
  *  Leaving un-draws it rather than fading it: the retreat runs the same list
- *  backwards, and it is given real time because it is the last thing the
- *  screen does and worth watching. */
-const VINE_DRAW = 13
-const VINE_UNDRAW = 2.4
+ *  backwards. Quick, unlike a project's own frame turning to face the next
+ *  piece — leaving the name is the one gesture on this screen that has to
+ *  keep up with a visitor who has already decided to move on. */
+const VINE_DRAW = 6
+const VINE_UNDRAW = 0.9
 
 /** How far up the scroll the name stops being the thing you are looking at.
  *  Past this the vine starts pulling back off. Small on purpose — the entrance
@@ -160,7 +159,6 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
   const artistRef = useRef<HTMLParagraphElement>(null)
   const vineRef = useRef<HTMLDivElement>(null)
   const cueRef = useRef<HTMLDivElement>(null)
-  const tendrilRef = useRef<HTMLSpanElement>(null)
   const footRef = useRef<HTMLElement>(null)
   const trackRef = useRef<HTMLSpanElement>(null)
   const yearRef = useRef<HTMLSpanElement>(null)
@@ -293,10 +291,6 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
       const on = 1 - range(p, 0, 0.05)
       const cue = cueRef.current
       if (cue) cue.style.opacity = on.toFixed(3)
-      // The stroke that says which way to go grows out of the vine rather than
-      // out of the word, so it is not inside `.hm-cue` to be faded with it.
-      const tendril = tendrilRef.current
-      if (tendril) tendril.style.opacity = on.toFixed(3)
 
       // The rule fills as you travel through the work. The year no longer
       // rides it — see `scrubTrack` below, which is what puts a date on the
@@ -423,15 +417,18 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
       {/* ---- chrome. Fixed above both stages, present the whole way through. ---- */}
 
       {/* The vine. The same drawing machinery the projects' frames are made of
-          (ProjectFrame.tsx) around a very much smaller box: those are hung off
-          the window and stand a whole exhibit tall, this one is a close ring
-          around the name itself. It starts the moment the film starts to lift,
-          and it keeps going for as long as you stand here — see `VINE_DRAW`.
+          (ProjectFrame.tsx), around the same size of box those stand in too —
+          held off all four edges of the window rather than close around the
+          name, now that this is the frame for the whole first screen and not
+          a ring cinched tight around one word in the middle of it. It starts
+          the moment the film starts to lift, and it keeps going for as long as
+          you stand here — see `VINE_DRAW`.
 
           `active` is the two conditions together, which is the whole of its
           behaviour: it grows while the page is yours and the name is what you
           are looking at, and the instant you begin to leave it goes back the
-          way it came. Not faded — un-drawn, stroke by stroke in reverse.
+          way it came, quickly — see `VINE_UNDRAW`. Not faded — un-drawn,
+          stroke by stroke in reverse.
 
           Before the signature, so the name is drawn over the line rather than
           under it — they share `--z-chrome`, and at equal z-index the later
@@ -443,13 +440,6 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
           drawOut={VINE_UNDRAW}
           active={unveiling && atName}
         />
-        {/* Which way to go, growing out of the plant rather than floating
-            under the word. It hangs off the bloom at the middle of the vine's
-            bottom edge — Home.css solves where that bloom's tip lands — so the
-            invitation is one thing the page is doing rather than two. */}
-        <span className="hm-vine-cue" ref={tendrilRef}>
-          <span className="hm-vine-cue-line" />
-        </span>
       </div>
 
       {/* The one mark on the page. Laid out parked in the menu bar and
@@ -479,7 +469,12 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
           under it, and is the same underline every link on the site uses — and
           now also what holds each item's sprigs out, so the place you are
           standing in keeps them and the other two only borrow them while the
-          pointer is on them. */}
+          pointer is on them.
+
+          `vertical`: the three items sit eighteen pixels apart, and a sprig
+          reaching sideways off one at this size reaches straight into the
+          word next to it. Grown up and down instead, there is nothing beside
+          any of them to run into — see `vertical` on Sprig.tsx. */}
       <nav className="hm-menu" aria-label="Main">
         <button
           type="button"
@@ -488,7 +483,7 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
           aria-current={!inWork ? 'true' : undefined}
           onClick={() => engine.goTo(0)}
         >
-          <Sprig />
+          <Sprig vertical />
           Home
         </button>
         {/* Does two things, because there are only three items and the index
@@ -503,13 +498,13 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
           aria-current={inWork ? 'true' : undefined}
           onClick={() => (inWork ? onIndex() : engine.goTo(1))}
         >
-          <Sprig />
+          <Sprig vertical />
           Work
         </button>
         {/* Never marked: it leaves the page rather than being a third place
             on it. */}
         <a className="u-link u-vine" href="mailto:tarloksinghfilms@gmail.com">
-          <Sprig />
+          <Sprig vertical />
           Contact
         </a>
       </nav>
@@ -521,21 +516,27 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
           `cueGlyphs.ts`). The word itself is drawing, so the readable one is
           the label.
 
-          The word only. The stroke that points the way used to hang under it
-          and is now `.hm-vine-cue`, growing out of the vine's own bottom bloom
-          — a line under a word is a line under a word, and a line coming out of
-          the plant is the plant telling you.
-
           It hangs under the signature at exactly the distance the rubric hangs
           above it, so the three read as one stack rather than as a mark in the
           middle of the screen and a note at the foot of it — see `.hm-cue` in
-          Home.css, which is where that arithmetic lives. */}
+          Home.css, which is where that arithmetic lives.
+
+          The stroke under the word is `.hm-vine-cue`, laid out in the flow
+          right after it rather than hung off the vine itself: the vine is the
+          width of the window now, and its own bottom bloom is nowhere near
+          this stack any more. Still the same drawn line, laying itself down
+          and gone again — it just answers to this word's own opacity now,
+          being inside the element that carries it, instead of needing a
+          fade of its own. */}
       <div className="hm-cue" ref={cueRef} data-wrote={wrote ? 'true' : undefined}>
         <span className="u-sr">Scroll</span>
         <span className="hm-cue-word" aria-hidden="true">
           <svg viewBox={`${cx} ${cy} ${cw} ${ch}`} focusable="false">
             <path d={SCROLL_OUTLINE} fill="currentColor" />
           </svg>
+        </span>
+        <span className="hm-vine-cue" aria-hidden="true">
+          <span className="hm-vine-cue-line" />
         </span>
       </div>
 

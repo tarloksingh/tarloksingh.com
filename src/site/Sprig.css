@@ -59,6 +59,49 @@
   transform: translateY(-72.7%);
 }
 
+/* The vertical pair — `vertical` on Sprig.tsx, drawing `VSPRIG` instead. Grown
+   above and below rather than to either side, for anything whose neighbours
+   are close enough on that axis that a sideways sprig would reach into them.
+   The artwork is turned to suit (see the note on `VSPRIG` in frames.ts)
+   instead of the box being rotated, so nothing here needs a transform-origin
+   solved for a pivot — only the plain centring `.sp-l`/`.sp-r` already do,
+   turned through ninety degrees.
+
+   `top` cleared rather than left unset: the base rule above sets it to
+   position the sideways pair, and with an explicit height already on this
+   element (below), leaving `top: 50%` in place alongside `.sp-t`'s `bottom:
+   100%` over-constrains the box and the browser drops `bottom` to resolve it
+   — the vertical pair would silently sit on the sideways pair's own line. No
+   `left` here: the base rule never sets one, so `.sp-t`/`.sp-b` centre
+   themselves with nothing to out-rank. */
+.sp--y svg {
+  top: auto;
+  width: auto;
+  height: var(--sp-w, 2.6em);
+}
+
+/* `0.32` is where the anchor sits across the box, now that the box is this
+   way up: `0.727` along its own width (the same fraction `.sp-l`/`.sp-r` are
+   centred on) times `0.44`, the ratio a 44 x 100 box is drawn at. Subtracted
+   from the host's own middle, it puts the anchor under the word rather than
+   off to a side of it — there being no side left to hang off, once the
+   drawing runs the other way. */
+.sp-t {
+  bottom: 100%;
+  left: calc(50% - var(--sp-w, 2.6em) * 0.32);
+  margin-bottom: var(--sp-gap, 0.55em);
+  /* `VSPRIG` reads downward. Flipped about its own centre, which is exactly
+     where `bottom: 100%` already put the anchor — the turn does not move
+     it. */
+  transform: scaleY(-1);
+}
+
+.sp-b {
+  top: 100%;
+  left: calc(50% - var(--sp-w, 2.6em) * 0.32);
+  margin-top: var(--sp-gap, 0.55em);
+}
+
 .sp path {
   fill: none;
   stroke: currentColor;

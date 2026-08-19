@@ -256,3 +256,27 @@ export const SPRIG: string[] = [
   'M86 12 C77 10 72 2 76 -6 C84 -3 89 4 86 12',
   'M86 12 C95 10 100 2 96 -6 C88 -3 83 4 86 12'
 ]
+
+/* `SPRIG`, turned to grow down instead of sideways — every x and y in its five
+ * paths swapped, which is a 90-degree turn done to the coordinates themselves
+ * rather than to the drawing on screen. A `transform: rotate()` was the other
+ * way to get here and was worse: it pivots the whole box around one point, and
+ * getting that point to land back on the anchor without also dragging the
+ * drawing off-centre from whatever it is grown under takes a translation
+ * solved for the rotation, in the rotated frame, which is a great deal of
+ * trigonometry to carry for a hover effect. Transposed, the anchor is just
+ * wherever it always was — (0, 32) becomes (32, 0), still the box's own edge —
+ * and Sprig.css centres it with the same arithmetic the sideways pair already
+ * uses, no rotation involved.
+ *
+ * For the menu: three items sit close enough together that a sprig reaching
+ * sideways off one runs into the next (see Sprig.tsx's `vertical` prop). Read
+ * downward — flipped with `scaleY(-1)` in Sprig.css, it is the one that reads
+ * upward. */
+export const VSPRIG: string[] = [
+  'M32 0 C32 24 31 46 25 64 C21 74 17 81 12 86',
+  'M32 26 C24 29 20 37 22 45 C30 41 34 34 32 26',
+  'M28 52 C34 56 42 55 45 48 C38 45 31 47 28 52',
+  'M12 86 C10 77 2 72 -6 76 C-3 84 4 89 12 86',
+  'M12 86 C10 95 2 100 -6 96 C-3 88 4 83 12 86'
+]
