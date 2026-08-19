@@ -3,6 +3,10 @@
    states, and how it changes between them. */
 
 .bd-flock {
+  /* One frame, at the twelve a second everything drawn on this site moves at
+     — the frames' weave, the sprigs, these birds. Every duration below is a
+     whole number of these, so that the whole flock is on one clock. */
+  --bd-frame: 0.08333s;
   position: fixed;
   inset: 0;
   z-index: var(--z-chrome);
@@ -102,10 +106,17 @@
 
    A bird standing on a rail is doing three things at once, and none of them
    is holding a pose. Underneath everything there is the settle: a constant,
-   almost invisible shift of weight, off its own feet, running on each bird's
-   own clock so the three are never in phase. Over that, every second or two,
-   one of two fidgets — the wings shaken out, or a look around — started by
-   Birds.tsx setting `data-fidget` and lasting exactly as long as it holds it.
+   almost invisible shift of weight, off its own feet. Over that, most of a
+   second apart, one of two fidgets — the wings shaken out, or a look around —
+   started by Birds.tsx setting `data-fidget` and lasting exactly as long as
+   it holds it.
+
+   All of it is on twelve frames a second, like everything else drawn on this
+   site: the frames' own weave, the wingbeat below. `--bd-frame` is one of
+   those frames, every duration here is a whole number of them, and `steps()`
+   is what keeps the motion on that clock rather than on the display's. A
+   drawn bird that moves at 120Hz is a drawn bird sliding around; a drawn bird
+   that moves at 12 is animation.
 
    The three animate three different elements on purpose. `.bd` itself is
    written by the loop every frame and cannot be touched from here; `.bd-art`
@@ -116,17 +127,18 @@
   /* About the feet, which is the one point on a perched bird that does not
      move. Rocking a bird about its middle looks like it is floating. */
   transform-origin: 50% 93%;
-  animation: bd-settle 2.9s ease-in-out infinite;
+  /* Three intervals of exactly a second, each cut into twelve. The three
+     birds share one duration and differ only in phase — a shared frame rate
+     is the point, and varying it would put two of them off the clock. */
+  animation: bd-settle calc(var(--bd-frame) * 36) steps(12) infinite;
 }
 
 .bd:nth-child(2)[data-mode='perched'] .bd-art {
-  animation-duration: 3.7s;
-  animation-delay: -1.3s;
+  animation-delay: calc(var(--bd-frame) * -13);
 }
 
 .bd:nth-child(3)[data-mode='perched'] .bd-art {
-  animation-duration: 2.3s;
-  animation-delay: -0.6s;
+  animation-delay: calc(var(--bd-frame) * -25);
 }
 
 @keyframes bd-settle {
@@ -134,11 +146,11 @@
   100% {
     transform: translateY(0) rotate(0deg);
   }
-  35% {
-    transform: translateY(-0.9px) rotate(-1.2deg);
+  33.333% {
+    transform: translateY(-0.9px) rotate(-1.3deg);
   }
-  70% {
-    transform: translateY(0.4px) rotate(0.9deg);
+  66.667% {
+    transform: translateY(0.4px) rotate(1deg);
   }
 }
 
@@ -149,15 +161,19 @@
   transform-origin: 50% 100%;
 }
 
+/* Six frames and ten frames — the two durations Birds.tsx holds the attribute
+   for. `steps(1, end)` on a keyframe list spaced a frame apart is a cel
+   sheet: each pose is held for its whole frame and then replaced, with
+   nothing tweened in between. */
 .bd[data-fidget='flap'] .bd-sit {
-  animation: bd-shudder 0.44s ease-out;
+  animation: bd-shudder calc(var(--bd-frame) * 6) steps(1, end);
 }
 
 .bd[data-fidget='turn'] .bd-sit {
-  animation: bd-turn 0.9s ease-in-out;
+  animation: bd-turn calc(var(--bd-frame) * 10) steps(1, end);
 }
 
-/* The folded wing, lifted off the flank and dropped back three times. Rotated
+/* The folded wing, thrown open and shut three times over six frames. Rotated
    about its own shoulder — the top right of its box, which is where the
    stroke starts — because a wing that pivots anywhere else detaches from the
    body it is folded against. */
@@ -167,7 +183,7 @@
 }
 
 .bd[data-fidget='flap'] .bd-sit-wing {
-  animation: bd-shake 0.44s ease-out;
+  animation: bd-shake calc(var(--bd-frame) * 6) steps(1, end);
 }
 
 @keyframes bd-shake {
@@ -175,20 +191,20 @@
   100% {
     transform: rotate(0deg);
   }
-  15% {
-    transform: rotate(34deg);
+  16.667% {
+    transform: rotate(36deg);
   }
-  30% {
+  33.333% {
+    transform: rotate(6deg);
+  }
+  50% {
+    transform: rotate(31deg);
+  }
+  66.667% {
     transform: rotate(5deg);
   }
-  45% {
-    transform: rotate(30deg);
-  }
-  62% {
-    transform: rotate(4deg);
-  }
-  80% {
-    transform: rotate(21deg);
+  83.333% {
+    transform: rotate(22deg);
   }
 }
 
@@ -198,26 +214,51 @@
   100% {
     transform: translateY(0);
   }
-  20% {
-    transform: translateY(-1.3px);
+  16.667% {
+    transform: translateY(-1.4px);
   }
-  55% {
-    transform: translateY(-0.6px);
+  33.333% {
+    transform: translateY(-0.4px);
+  }
+  50% {
+    transform: translateY(-1.2px);
+  }
+  66.667% {
+    transform: translateY(-0.3px);
+  }
+  83.333% {
+    transform: translateY(-0.8px);
   }
 }
 
-/* Looking about: the whole bird turns on its feet, further one way than the
-   other, so it reads as having chosen a direction rather than oscillating. */
+/* Looking about: ten frames, held longest at the far end of the turn, so it
+   reads as the bird having looked at something rather than as it oscillating
+   back through where it started. */
 @keyframes bd-turn {
   0%,
   100% {
     transform: rotate(0deg);
   }
-  28% {
+  10% {
+    transform: rotate(-2deg);
+  }
+  20%,
+  30%,
+  40% {
     transform: rotate(-5deg);
   }
-  64% {
+  50% {
+    transform: rotate(-2deg);
+  }
+  60% {
+    transform: rotate(1deg);
+  }
+  70%,
+  80% {
     transform: rotate(3deg);
+  }
+  90% {
+    transform: rotate(1deg);
   }
 }
 
@@ -228,27 +269,34 @@
    positions and the eye filling in the rest, which is also how the frames'
    own weave is stepped rather than eased.
 
-   Each bird takes a slightly different beat, off `nth-child`, so three of
-   them in the air do not flap in unison. */
+   One frame up and one frame down: six beats a second, which is a small bird
+   working rather than a large one gliding, and the fastest a wing can go and
+   still be two drawings.
+
+   Each bird takes a different number of frames per pose, off `nth-child`, so
+   three of them in the air do not flap in unison — but every one of those is
+   a whole number of frames, so all three stay on the same clock. */
 .bd[data-mode='flying'] .bd-wing-up {
-  animation: bd-beat 0.26s steps(1, end) infinite;
+  animation: bd-beat calc(var(--bd-frame) * 2) steps(1, end) infinite;
 }
 
 .bd[data-mode='flying'] .bd-wing-down {
   /* Its own keyframes rather than the same ones reversed: `bd-beat` is
      symmetric about its midpoint, so playing it backwards gives the identical
      sequence and both wings would show at once. */
-  animation: bd-beat-alt 0.26s steps(1, end) infinite;
+  animation: bd-beat-alt calc(var(--bd-frame) * 2) steps(1, end) infinite;
 }
 
 .bd:nth-child(2)[data-mode='flying'] .bd-wing-up,
 .bd:nth-child(2)[data-mode='flying'] .bd-wing-down {
-  animation-duration: 0.22s;
+  animation-duration: calc(var(--bd-frame) * 4);
 }
 
 .bd:nth-child(3)[data-mode='flying'] .bd-wing-up,
 .bd:nth-child(3)[data-mode='flying'] .bd-wing-down {
-  animation-duration: 0.3s;
+  /* Offset rather than slowed: at three frames a cycle the two poses cannot
+     divide evenly, and an uneven wingbeat reads as a limp. */
+  animation-delay: var(--bd-frame);
 }
 
 /* Perched, neither wing beats and only the folded one in `BIRD_SIT` is

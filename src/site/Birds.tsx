@@ -45,9 +45,25 @@ const STARTLE = 110
 
 /** Seconds a bird will sit if nothing disturbs it, and seconds it waits off
  *  screen before coming back. Both are ranges, picked per trip: birds that
- *  come and go on the same clock read as a mechanism. */
+ *  come and go on the same clock read as a mechanism. A bird that left
+ *  because the page moved under it waits the longer time — it was not bored,
+ *  it was startled, and coming straight back turns being spooked into a
+ *  shuttle service. */
 const SIT = [7, 22]
 const AWAY = [2.5, 9]
+const SPOOKED = [5, 13]
+
+/** Seconds of a genuinely still page before anything lands. Scrolling is not
+ *  one gesture but a run of them with pauses in it, and without this the flock
+ *  spends the whole run diving at the page every time your finger stops. */
+const SETTLE = 1.2
+
+/** How far a bird holds off the last place it stood, and off wherever another
+ *  bird is standing. The first is why the flock never lands twice in the same
+ *  arrangement; the second is why two of them never end up drawn on top of
+ *  each other. Both in px, against a drawing `SIZE` wide. */
+const NOT_AGAIN = SIZE * 2.2
+const ELBOW = SIZE * 1.5
 
 /** Px per second in the air, and the bounds on how long any one flight may
  *  take — a bird crossing a wide monitor should not take five seconds over
@@ -60,9 +76,9 @@ const FLIGHT = [1.1, 2.8]
  *  ten seconds at a time is a sticker of a bird. The durations have to agree
  *  with the animations in Birds.css — the attribute is what starts them, and
  *  it has to stay set for as long as they run. */
-const FIDGET = [0.7, 2.9]
-const FLAP_FOR = 0.44
-const TURN_FOR = 0.9
+const FIDGET = [0.4, 1.9]
+const FLAP_FOR = 0.5
+const TURN_FOR = 0.833
 
 const rand = (lo: number, hi: number) => lo + Math.random() * (hi - lo)
 
@@ -95,6 +111,20 @@ interface Bird {
   next: number
   fidget: Fidget
   fidgetLeft: number
+  /** Where it last stood, so it does not stand there again. */
+  wasX: number
+  wasY: number
+  /** How long to stay away, decided at the moment it leaves — which is the
+   *  only moment it is still known whether it was bored or startled. */
+  awayFor: number
+}
+
+/** One place a bird could stand: a point on a line somebody can actually see.
+ *  `y` is the line itself, not the box around it. */
+interface Rail {
+  left: number
+  right: number
+  y: number
 }
 
 /** A point off the side of the window, at a height a bird might plausibly
@@ -104,48 +134,131 @@ const offscreen = () => ({
   y: rand(window.innerHeight * 0.12, window.innerHeight * 0.72)
 })
 
-/** Everything matching the page's perch selector that a bird could actually
- *  stand on right now: wide enough to be a rail, on screen, and not faded
- *  out. That last one is what keeps birds off the stage's vine once it has
- *  been shrunk onto the parked mark — it is still in the document there, at
- *  zero opacity, and a bird standing on nothing is worse than no bird. */
-const railsOn = (selector: string) =>
-  Array.from(document.querySelectorAll<HTMLElement>(selector)).filter((el) => {
-    const box = el.getBoundingClientRect()
-    if (box.width < 90) return false
-    if (box.bottom < HEIGHT * 2 || box.top > window.innerHeight - HEIGHT) return false
-    return Number.parseFloat(getComputedStyle(el).opacity) > 0.2
-  })
-
-/** Somewhere to sit: a point along one of those elements' horizontal edges,
- *  held in from the ends where a frame's ornaments and a bar's own words are.
- *  Falls back to the window's own edges if nothing on the page qualifies, so
- *  a bird never has nowhere to go. */
-const perch = (selector: string) => {
-  const rails = railsOn(selector)
-  const box = rails.length ? rails[Math.floor(Math.random() * rails.length)].getBoundingClientRect() : null
-  const left = box ? box.left : window.innerWidth * 0.12
-  const right = box ? box.right : window.innerWidth * 0.88
-  const top = box ? box.top : window.innerHeight * 0.2
-  const bottom = box ? box.bottom : window.innerHeight * 0.8
-  const inset = Math.min(120, (right - left) * 0.22)
-  /* Which edge. A box tall enough to have two distinct rails offers both —
-     the vine around the name is one of those. A bar or a rule is a single
-     line, and its top is the line you can see. Either way a rail with no room
-     for a bird above it is not offered: a sticky header's own top edge is
-     level with the window's, and a bird there would be half off the page. */
-  const rail =
-    bottom - top < 24
-      ? top
-      : top > HEIGHT * 1.6 && Math.random() < 0.55
-        ? top
-        : bottom
-  return {
-    x: rand(left + inset, right - inset) - SIZE / 2,
-    // The rail is where the feet go, so the box sits above it by exactly the
-    // distance from the top of the drawing down to the feet.
-    y: rail - FEET
+/** Everything an ancestor chain does to an element's opacity. A bird must not
+ *  stand on the stage's vine once it has been shrunk onto the parked mark, and
+ *  what is faded there is the vine's own box — the rails inside it still read
+ *  as fully opaque if you only ask them. */
+const shows = (el: HTMLElement) => {
+  let seen = 1
+  for (let node: HTMLElement | null = el; node && node !== document.body; node = node.parentElement) {
+    seen *= Number.parseFloat(getComputedStyle(node).opacity) || 0
+    if (seen < 0.2) return false
   }
+  return seen >= 0.2
+}
+
+/* Where the line somebody can actually see is.
+ *
+ * This is the whole difference between a bird standing on something and a
+ * bird hovering near it, and none of the three kinds of rule on this site
+ * puts its line at the edge of its own box:
+ *
+ *  - the frames draw theirs as a path inside a stretched svg, nine px down
+ *    from the top of the box on the top rail and twenty-two up from the
+ *    bottom of it on the bottom one;
+ *  - the footer's scrub rules are two px of background inside nine px of
+ *    padding, so that a hairline can still be pressed;
+ *  - a case study's rules are ordinary `border-top`s.
+ *
+ * So each is measured for what it paints rather than for how big it is. */
+const railsOf = (el: HTMLElement): Rail[] => {
+  const box = el.getBoundingClientRect()
+  if (box.width < 90) return []
+
+  /* A frame's rail: one stretched svg per edge, one path per line in it.
+     `preserveAspectRatio="none"`, so the viewBox maps straight onto the box
+     and the path's own bounding box says where the line landed. */
+  const svg = el.querySelector('svg')
+  const view = svg?.viewBox.baseVal
+  if (svg && view && view.height > 0) {
+    const rails: Rail[] = []
+    svg.querySelectorAll<SVGPathElement>('path').forEach((path) => {
+      let bounds: DOMRect
+      try {
+        bounds = path.getBBox()
+      } catch {
+        return
+      }
+      if (bounds.height > view.height * 0.4) return
+      rails.push({
+        left: box.left,
+        right: box.right,
+        y: box.top + ((bounds.y + bounds.height / 2) / view.height) * box.height
+      })
+    })
+    return rails
+  }
+
+  const style = getComputedStyle(el)
+  const border = Number.parseFloat(style.borderTopWidth) || 0
+  if (border > 0) return [{ left: box.left, right: box.right, y: box.top + border / 2 }]
+
+  // Whatever is painted in the content box, if that is thin enough to be a
+  // line rather than a panel.
+  const top = box.top + border + (Number.parseFloat(style.paddingTop) || 0)
+  const height = el.clientHeight - (Number.parseFloat(style.paddingTop) || 0) - (Number.parseFloat(style.paddingBottom) || 0)
+  if (height > 0 && height <= 6) return [{ left: box.left, right: box.right, y: top + height / 2 }]
+  return []
+}
+
+/** Every line on the page right now that a bird could get to: painted, on
+ *  screen, and with room above it for a bird to stand without hanging off the
+ *  top of the window. */
+const railsOn = (selector: string): Rail[] =>
+  Array.from(document.querySelectorAll<HTMLElement>(selector))
+    .filter(shows)
+    .flatMap(railsOf)
+    .filter((rail) => rail.y > HEIGHT * 1.6 && rail.y < window.innerHeight - 8)
+
+/** Somewhere to sit, held in from the ends of the line where a frame's
+ *  ornaments and a bar's own words are.
+ *
+ *  Tried a dozen times over, because where a bird lands is only half the
+ *  question and the other half is where it is *not* landing: not where this
+ *  bird just was, and not on top of one of the others. A run of tries rather
+ *  than arithmetic that solves for a gap, because the answer depends on how
+ *  many rails the page is offering and how crowded they already are, and
+ *  twelve throws at it is both shorter and better behaved than the closed
+ *  form. If all twelve are refused the last one stands: a bird landing
+ *  somewhere imperfect beats a bird that never comes back. */
+const perch = (selector: string, bird: Bird, flock: Bird[]) => {
+  const rails = railsOn(selector)
+  let spot = { x: 0, y: 0 }
+
+  for (let attempt = 0; attempt < 12; attempt++) {
+    if (rails.length) {
+      const rail = rails[Math.floor(Math.random() * rails.length)]
+      const inset = Math.min(120, (rail.right - rail.left) * 0.22)
+      spot = {
+        x: rand(rail.left + inset, rail.right - inset) - SIZE / 2,
+        // The line is where the feet go, so the box stands above it by
+        // exactly the distance from the top of the drawing down to the feet.
+        y: rail.y - FEET
+      }
+    } else {
+      // Nothing on the page qualifies — mid-transition, most likely. A bird
+      // still needs somewhere to be.
+      spot = {
+        x: rand(window.innerWidth * 0.12, window.innerWidth * 0.88) - SIZE / 2,
+        y: window.innerHeight * 0.3 - FEET
+      }
+    }
+
+    const sameSpot = Math.abs(spot.x - bird.wasX) < NOT_AGAIN && Math.abs(spot.y - bird.wasY) < HEIGHT
+    if (sameSpot) continue
+    // Only birds on the same line can collide; one standing on the rail above
+    // is not in the way however close it looks in x.
+    const crowded = flock.some(
+      (other) =>
+        other !== bird &&
+        other.mode !== 'out' &&
+        Math.abs(spot.y - other.ty) < HEIGHT &&
+        Math.abs(spot.x - other.tx) < ELBOW
+    )
+    if (!crowded) break
+  }
+
+  return spot
 }
 
 /** Sets a bird on a course, and works out how long it should take and how
@@ -173,11 +286,12 @@ const launch = (bird: Bird, to: { x: number; y: number }, mode: Mode) => {
 const smooth = (t: number) => t * t * (3 - 2 * t)
 
 interface BirdsProps {
-  /** A CSS selector for whatever on this page counts as a rail — the vine on
-   *  the stage, the sticky bar on a case study. Several may be listed; a bird
-   *  picks between whichever of them are on screen when it chooses a perch,
-   *  so a page whose furniture scrolls past simply offers different rails as
-   *  you go. */
+  /** A CSS selector for whatever on this page carries a line — the stage's
+   *  frame rails and its footer rules, a case study's section rules. Several
+   *  may be listed; a bird picks between whichever of them are on screen when
+   *  it chooses a perch, so a page whose furniture scrolls past simply offers
+   *  different rails as you go. What matters is that every one of them paints
+   *  a line: `railsOf` measures the line, not the element. */
   perch: string
   /** False while the page is not somewhere birds belong: everything perched
    *  takes off, and nothing new arrives until it is true again. */
@@ -217,6 +331,29 @@ export default function Birds({ perch: selector, active }: BirdsProps) {
     }
     window.addEventListener('pointermove', onMove, { passive: true })
 
+    /* Anything that moves the page. A bird stands on a line, so the moment
+       that line goes anywhere — a case study scrolling, the drum turning to
+       the next project, the vine shrinking onto the parked mark as you leave
+       the name — the bird is standing on nothing and has to go.
+
+       Read as gestures rather than as motion, because the stage does not
+       scroll: it is a fixed screen driven by the wheel, so watching for the
+       document to move would miss every one of those. Four events cover every
+       way this site is got through, and `scroll` is captured so that a pane
+       scrolling inside the page counts as well as the document.
+
+       This is also the clock birds come back on. `still` has to run past
+       `SETTLE` before anything lands, so a run of flicks with pauses in it
+       reads as one movement rather than as a dozen invitations to land. */
+    let still = 0
+    const stir = () => {
+      still = 0
+    }
+    window.addEventListener('wheel', stir, { passive: true })
+    window.addEventListener('touchmove', stir, { passive: true })
+    window.addEventListener('keydown', stir)
+    window.addEventListener('scroll', stir, { passive: true, capture: true })
+
     /* And the tap itself. Only a perched bird answers — `.bd` takes its
        pointer events back in Birds.css for exactly as long as it is standing
        still — because a hit target crossing the window at three hundred
@@ -226,7 +363,10 @@ export default function Birds({ perch: selector, active }: BirdsProps) {
       if (!el) return () => {}
       const onTap = () => {
         if (bird.mode !== 'perched') return
+        bird.wasX = bird.x
+        bird.wasY = bird.y
         bird.fidget = ''
+        bird.awayFor = rand(SPOOKED[0], SPOOKED[1])
         launch(bird, offscreen(), 'out')
       }
       el.addEventListener('pointerdown', onTap)
@@ -241,17 +381,25 @@ export default function Birds({ perch: selector, active }: BirdsProps) {
       // Capped: a tab coming back should not teleport the whole flock.
       const dt = Math.min(0.05, (now - previous) / 1000)
       previous = now
+      still += dt
 
       for (const bird of birds) {
         if (bird.mode === 'perched') {
           bird.hold -= dt
           const near =
             Math.hypot(pointer.x - (bird.x + SIZE / 2), pointer.y - (bird.y + HEIGHT / 2)) < STARTLE
-          if (near || bird.hold <= 0 || !activeRef.current) {
+          const moved = still < dt * 1.5
+          if (near || moved || bird.hold <= 0 || !activeRef.current) {
             // Startled birds leave the way they were facing; bored ones pick
             // an edge. Either way it is a flight off the screen, not a hop.
+            bird.wasX = bird.x
+            bird.wasY = bird.y
             bird.fidget = ''
             launch(bird, offscreen(), 'out')
+            // Decided on the way out rather than on arrival, because only
+            // here is it still known *why* the bird left.
+            const spooked = moved || near
+            bird.awayFor = spooked ? rand(SPOOKED[0], SPOOKED[1]) : rand(AWAY[0], AWAY[1])
           } else if (bird.fidget) {
             bird.fidgetLeft -= dt
             // Cleared rather than left set, because setting the attribute is
@@ -270,11 +418,13 @@ export default function Birds({ perch: selector, active }: BirdsProps) {
           }
         } else if (bird.mode === 'out' && bird.t >= 1) {
           bird.hold -= dt
-          if (bird.hold <= 0 && activeRef.current) {
+          // Its own wait *and* a page that has stopped moving. Either alone
+          // lands birds on a line that is about to slide out from under them.
+          if (bird.hold <= 0 && still > SETTLE && activeRef.current) {
             const from = offscreen()
             bird.x = from.x
             bird.y = from.y
-            launch(bird, perch(selector), 'in')
+            launch(bird, perch(selector, bird, birds), 'in')
           }
         }
 
@@ -306,7 +456,7 @@ export default function Birds({ perch: selector, active }: BirdsProps) {
               // on for the first quarter-second (see `.bd-sit path`).
               bird.next = rand(0.5, 1.6)
             } else {
-              bird.hold = rand(AWAY[0], AWAY[1])
+              bird.hold = bird.awayFor
             }
           }
         }
@@ -324,6 +474,10 @@ export default function Birds({ perch: selector, active }: BirdsProps) {
     return () => {
       cancelAnimationFrame(raf)
       window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('wheel', stir)
+      window.removeEventListener('touchmove', stir)
+      window.removeEventListener('keydown', stir)
+      window.removeEventListener('scroll', stir, { capture: true })
       releases.forEach((release) => release())
     }
   }, [selector])
@@ -362,7 +516,10 @@ export default function Birds({ perch: selector, active }: BirdsProps) {
                 rot: 0,
                 next: 0,
                 fidget: '',
-                fidgetLeft: 0
+                fidgetLeft: 0,
+                wasX: -9999,
+                wasY: -9999,
+                awayFor: 0
               }
             } else {
               list[i].el = el

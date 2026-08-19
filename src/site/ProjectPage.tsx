@@ -106,13 +106,21 @@ export default function ProjectPage({ id, onBack, onOpen, onIndex, noir }: Proje
         <Menu className="pp-menu" current="work" onHome={onBack} onWork={onIndex} />
       </header>
 
-      {/* The same three birds that live on the stage, on the one rail this
-          page has: the bar is sticky, so it holds still in the window while a
-          hundred paragraphs go past underneath and a bird standing on it does
-          not have to be re-measured every frame. After the header, so they
-          land on top of it rather than behind the nav — the two share
-          `--z-chrome`, and at equal z-index the later element wins. */}
-      <Birds perch=".pp-bar" active />
+      {/* The same three birds that live on the stage. What they stand on here
+          is this page's own furniture — the rules over the facts, over every
+          section, over what comes next and over the colophon. Real lines,
+          rather than the sticky bar, whose bottom edge is a gradient fading
+          out and so is not anything a bird could be standing on.
+
+          Those rules scroll, which is fine and in fact the point: Birds.tsx
+          puts the whole flock back in the air the moment the page moves, so a
+          bird is only ever drawn on a line that is holding still. Reading is
+          how you get rid of them, and stopping is how they come back.
+
+          After the header, so they pass over it rather than behind the nav —
+          the two share `--z-chrome`, and at equal z-index the later element
+          wins. */}
+      <Birds perch=".pp-facts, .pp-section, .pp-next, .pp-colophon" active />
 
       {/* ---- masthead ---- */}
 

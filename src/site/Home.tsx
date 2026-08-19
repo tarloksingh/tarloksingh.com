@@ -475,14 +475,16 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
           scroll and a bird standing on it would be scaled with it; they read
           the rail's position for themselves instead.
 
-          Two rails are offered, and which one a bird gets is a question of
-          where the scroll is rather than of anything set here: the vine while
-          the name is on screen, and once it has shrunk away — Birds.tsx will
-          not perch on something faded out — the footer's own two rules,
-          which are the only horizontal lines the work screen has. So the
-          flock moves down the page with you instead of leaving at the top
-          of it. */}
-      <Birds perch=".hm-vine, .hm-foot-track" active={vineActive} />
+          What is offered is the vine's own four horizontal rail segments and
+          the footer's two scrub rules — the drawn lines themselves rather
+          than the boxes they are drawn in, which is what Birds.tsx measures.
+          Which of them a bird gets is a question of where the scroll is
+          rather than of anything set here: the vine while the name is on
+          screen, and once it has shrunk onto the parked mark the footer,
+          because a faded rail is not offered. So the flock moves down the
+          page with you instead of leaving at the top of it — and turning the
+          drum puts every one of them back in the air. */}
+      <Birds perch=".hm-vine .pf-r--h, .hm-foot-track" active={vineActive} />
 
       {/* The one mark on the page. Laid out parked in the menu bar and
           transformed out to the middle of the screen — see `placeSign`.
