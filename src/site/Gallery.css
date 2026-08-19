@@ -27,6 +27,9 @@
      defaults there. */
   --panel-w: 35.2vh;
   --panel-h: 0vh;
+  /* Narrow-only — the cap `.gl[data-narrow='true'] .gl-panel` uses below,
+     also written by Gallery.tsx from the tuning panel's Mobile group. */
+  --panel-max-ch: 38ch;
 }
 
 /* The room: one canvas, the full window, holding every case in the row. It
@@ -186,7 +189,7 @@
   left: 50%;
   top: auto;
   bottom: calc(var(--gutter) + 64px);
-  width: min(38ch, calc(100vw - var(--gutter) * 2));
+  width: min(var(--panel-max-ch), calc(100vw - var(--gutter) * 2));
   align-items: center;
   text-align: center;
   /* No `transform` here — Gallery.tsx writes it every frame and knows about

@@ -4,10 +4,17 @@
 .hm {
   position: fixed;
   inset: 0;
+  /* Above the background wash — see `--z-screen` in tokens.css. Being fixed
+     makes this a stacking context no matter what, so this one number decides
+     where *everything* on the stage paints relative to `.site-pattern`; the
+     z-indexes inside here are only ever argued out amongst themselves. */
+  z-index: var(--z-screen);
   overflow: hidden;
-  background:
-    radial-gradient(120% 90% at 50% 0%, var(--paper-raised) 0%, transparent 58%),
-    linear-gradient(180deg, var(--paper) 0%, var(--paper-deep) 100%);
+  /* The paper gradient this used to paint itself is on `body.is-fixed` now
+     (base.css). It has to sit under `.site-pattern` for the wash to show,
+     and nothing inside a stacking context can be under something outside
+     it — so the ground moved out rather than the stage moving down. */
+  background: transparent;
   /* The mark, the menu and the footer rule are each pinned to a screen edge
      with `left`/`right: var(--gutter)`, which is right up until the window
      is wider than a page of text ever gets read at — past that they just

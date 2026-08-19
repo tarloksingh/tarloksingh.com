@@ -36,6 +36,15 @@ body {
 body.is-fixed {
   overflow: hidden;
   height: 100%;
+  /* The stage's ground. Painted here rather than on `.hm`, which is what
+     used to carry it: `.hm` is fixed, so it is a stacking context, and the
+     background pattern — which has to lie *between* this gradient and the
+     stage — cannot be slotted inside one from outside. Putting the ground
+     on the body is what leaves room for it. See `.site-pattern` and
+     `--z-screen` in tokens.css. */
+  background:
+    radial-gradient(120% 90% at 50% 0%, var(--paper-raised) 0%, transparent 58%),
+    linear-gradient(180deg, var(--paper) 0%, var(--paper-deep) 100%);
 }
 
 #app {

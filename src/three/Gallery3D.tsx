@@ -8,7 +8,16 @@ import { ACESFilmicToneMapping, MathUtils, SRGBColorSpace } from 'three'
 import type { Group, Mesh, MeshStandardMaterial, OrthographicCamera } from 'three'
 import { projects } from '../data/projects'
 import { hasProduct, specDefaults } from '../site/products'
-import { NARROW, NARROW_AT, PANEL_H, PANEL_W, REF_ASPECT, STAGE_SHIFT, WIDE } from '../site/room'
+import {
+  NARROW,
+  NARROW_AT,
+  NARROW_PANEL_MAX_CH,
+  PANEL_H,
+  PANEL_W,
+  REF_ASPECT,
+  STAGE_SHIFT,
+  WIDE
+} from '../site/room'
 import type { RoomLayout, RoomTuning } from '../site/room'
 import { StudioEnvironment } from './CapsuleStage'
 import Vitrine, { VITRINE_TOTAL } from './Vitrine'
@@ -118,6 +127,12 @@ const turnKey = (id: string) => `turn__${id}`
 const scaleKey = (id: string) => `scale__${id}`
 const xKey = (id: string) => `x__${id}`
 const yKey = (id: string) => `y__${id}`
+/** Same four, namespaced again for the Mobile sub-folder each project gets —
+ *  see the note on `OBJECT_SCHEMA` below. */
+const narrowTurnKey = (id: string) => `narrowTurn__${id}`
+const narrowScaleKey = (id: string) => `narrowScale__${id}`
+const narrowXKey = (id: string) => `narrowX__${id}`
+const narrowYKey = (id: string) => `narrowY__${id}`
 
 /** Where the panel's numbers survive a reload.
  *
@@ -146,6 +161,23 @@ const saved = typeof window === 'undefined' ? {} : readStore()
  *  see what the panel now says. */
 const live: Record<string, number> = { ...saved }
 
+/** Controls that live outside this file — Adam's Face folder, Capsule C1's
+ *  Material/Angle folder, any future piece with its own tunable knobs —
+ *  register themselves here so the one "Copy for source" button can include
+ *  them too, without this file needing to know their schemas. Keyed by a
+ *  human-readable label rather than a Leva key: there's no shared namespace
+ *  to collide in, and the label is what the copied text should read anyway. */
+export const EXTRA_CONTROLS: Record<string, { value: number; defaultValue: number }> = {}
+
+/** The one non-numeric light control (fillColor is a hex string), kept out
+ *  of `live`/`saved` so those can stay a plain number map — everything else
+ *  the panel writes back is a number. */
+const COLOR_STORE_KEY = 'gallery.tuning.fillColor.v1'
+const FILL_COLOR_DEFAULT = '#ffffff'
+const savedFillColor =
+  (typeof window !== 'undefined' && window.localStorage.getItem(COLOR_STORE_KEY)) || FILL_COLOR_DEFAULT
+let liveFillColor = savedFillColor
+
 /** One collapsed folder per project — built once at module scope, not per
  *  render, so retyping a value does not fight a schema object that is a new
  *  reference every time.
@@ -153,25 +185,50 @@ const live: Record<string, number> = { ...saved }
  *  Each slider starts where products.tsx already has that piece, so the panel
  *  opens showing what is actually on screen rather than a row of zeroes you
  *  have to find your way back from. Turn is shown post-`REST_TURN`, i.e. the
- *  angle you can see; scale is a multiplier on the piece's own. */
+ *  angle you can see; scale is a multiplier on the piece's own.
+ *
+ *  Each project also gets a nested Mobile folder, read instead of the outer
+ *  four when the label is stacked under the case (`Row` in this file, keyed
+ *  off the `narrow` prop) — same reasoning as the Layout folder's Desktop/
+ *  Mobile split in `LAYOUT_SCHEMA`: a piece sized to sit next to its label on
+ *  a laptop is not sized right stacked above it on a phone, and one number
+ *  serving both meant fixing one broke the other. Seeded from
+ *  `spec.narrow` (products.tsx) — which itself falls back to the desktop
+ *  pose — rather than always from the desktop *slider's* live value, so a
+ *  project that already has a narrow pose on disk opens the panel showing
+ *  it rather than silently overwriting it with whatever desktop happens to
+ *  be set to right now. Scale is seeded as a ratio: the model is only ever
+ *  built once, at the desktop scale (see `exhibitFor`), so the Mobile
+ *  slider is a multiplier on that same baked size, not a second absolute
+ *  one. */
 const OBJECT_SCHEMA = Object.fromEntries(
   projects.map((project) => {
     const spec = specDefaults(project.id)
     const seed = (key: string, fallback: number) => saved[key] ?? fallback
     const id = project.id
+    const turnDefault = Math.round(spec.turn * REST_TURN)
+    const scaleDefault = 1
+    const xDefault = spec.offsetX
+    const yDefault = spec.offsetY
+    const turnLive = seed(turnKey(id), turnDefault)
+    const scaleLive = seed(scaleKey(id), scaleDefault)
+    const xLive = seed(xKey(id), xDefault)
+    const yLive = seed(yKey(id), yDefault)
+    const narrowTurnDefault = Math.round(spec.narrowTurn * REST_TURN)
+    const narrowScaleDefault = spec.narrowScale / spec.scale
     return [
       project.title,
       folder(
         {
           [turnKey(id)]: {
-            value: seed(turnKey(id), Math.round(spec.turn * REST_TURN)),
+            value: turnLive,
             min: -180,
             max: 180,
             step: 1,
             label: 'Turn °'
           },
           [scaleKey(id)]: {
-            value: seed(scaleKey(id), 1),
+            value: scaleLive,
             min: 0.4,
             max: 2.5,
             step: 0.02,
@@ -181,19 +238,52 @@ const OBJECT_SCHEMA = Object.fromEntries(
           // piece the same distance on screen — which is the whole point of
           // having two sliders rather than a pair of unrelated numbers.
           [xKey(id)]: {
-            value: seed(xKey(id), spec.offsetX),
+            value: xLive,
             min: -0.6,
             max: 0.6,
             step: 0.005,
             label: 'X'
           },
           [yKey(id)]: {
-            value: seed(yKey(id), spec.offsetY),
+            value: yLive,
             min: -0.6,
             max: 0.6,
             step: 0.005,
             label: 'Y'
-          }
+          },
+          Mobile: folder(
+            {
+              [narrowTurnKey(id)]: {
+                value: seed(narrowTurnKey(id), narrowTurnDefault),
+                min: -180,
+                max: 180,
+                step: 1,
+                label: 'Turn °'
+              },
+              [narrowScaleKey(id)]: {
+                value: seed(narrowScaleKey(id), narrowScaleDefault),
+                min: 0.4,
+                max: 2.5,
+                step: 0.02,
+                label: 'Scale ×'
+              },
+              [narrowXKey(id)]: {
+                value: seed(narrowXKey(id), spec.narrowOffsetX),
+                min: -0.6,
+                max: 0.6,
+                step: 0.005,
+                label: 'X'
+              },
+              [narrowYKey(id)]: {
+                value: seed(narrowYKey(id), spec.narrowOffsetY),
+                min: -0.6,
+                max: 0.6,
+                step: 0.005,
+                label: 'Y'
+              }
+            },
+            { collapsed: true }
+          )
         },
         { collapsed: true }
       )
@@ -203,64 +293,161 @@ const OBJECT_SCHEMA = Object.fromEntries(
 
 const round = (n: number, places: number) => Number(n.toFixed(places))
 
+/** Treats two numbers as equal once they're this close — float drift from a
+ *  round-trip through a slider's step shouldn't read as "changed". */
+const closeTo = (a: number, b: number, eps = 1e-6) => Math.abs(a - b) < eps
+
 /**
- * The panel's numbers, written out in the shape the source keeps them in.
+ * The panel's numbers, written out in the shape the source keeps them in —
+ * but only the ones that actually differ from their default, across every
+ * section of the panel (Objects, Layout, Lighting, and whatever any other
+ * piece has registered into `EXTRA_CONTROLS`). One button covers all of it:
+ * a session that only nudged one slider shouldn't hand back forty-eight
+ * unchanged lines to sift through for the one that matters.
  *
- * A tuning session is only worth having if it can be made permanent, and
- * transcribing forty-eight sliders by hand is how a session gets lost. Turn
- * and scale are converted back on the way out: the panel shows the angle
- * actually on screen and a multiplier on the piece's own size, while
+ * Turn and scale are converted back on the way out: the panel shows the
+ * angle actually on screen and a multiplier on the piece's own size, while
  * products.tsx stores the pre-`REST_TURN` angle and the size itself.
  */
-function tuningSource() {
-  const specs = projects
-    .filter((project) => hasProduct(project.id))
-    .map((project) => {
-      const spec = specDefaults(project.id)
-      const turn = live[turnKey(project.id)] ?? spec.turn * REST_TURN
-      const fields = [
-        `scale: ${round(spec.scale * (live[scaleKey(project.id)] ?? 1), 3)}`,
-        `turn: ${round(turn / REST_TURN, 1)}`,
-        `offsetX: ${round(live[xKey(project.id)] ?? spec.offsetX, 3)}`,
-        `offsetY: ${round(live[yKey(project.id)] ?? spec.offsetY, 3)}`
-      ]
-      return `  '${project.id}': { ${fields.join(', ')} },`
-    })
+function fullTuningSource() {
+  const lines: string[] = []
 
-  const spacing = live.spacing ?? 1
-  return [
-    '// src/site/products.tsx — merge into each SPECS entry',
-    ...specs,
-    '',
-    '// src/site/room.ts',
-    `WIDE.stepW    ${round(WIDE.stepW * spacing, 3)}   // was ${WIDE.stepW}`,
-    `NARROW.stepW  ${round(NARROW.stepW * spacing, 3)}   // was ${NARROW.stepW}`,
-    `STAGE_SHIFT   ${live.shift ?? STAGE_SHIFT}`,
-    `NARROW_AT     ${live.narrowAt ?? NARROW_AT}`,
-    `PANEL_W       ${live.panelW ?? PANEL_W}`,
-    `PANEL_H       ${live.panelH ?? PANEL_H}`
-  ].join('\n')
+  // ---- Objects: one line per project, only for the fields that moved.
+  // Mobile's four nest under a `narrow: { ... }` inside the same entry —
+  // that's the shape `ProductSpec['narrow']` expects in products.tsx. ----
+  const objectLines = projects
+    .filter((project) => hasProduct(project.id))
+    .flatMap((project) => {
+      const spec = specDefaults(project.id)
+      const id = project.id
+      const turnDefault = Math.round(spec.turn * REST_TURN)
+      const turnLive = live[turnKey(id)] ?? turnDefault
+      const scaleLive = live[scaleKey(id)] ?? 1
+      const xLive = live[xKey(id)] ?? spec.offsetX
+      const yLive = live[yKey(id)] ?? spec.offsetY
+
+      const fields: string[] = []
+      if (!closeTo(turnLive, turnDefault)) fields.push(`turn: ${round(turnLive / REST_TURN, 1)}`)
+      if (!closeTo(scaleLive, 1)) fields.push(`scale: ${round(spec.scale * scaleLive, 3)}`)
+      if (!closeTo(xLive, spec.offsetX)) fields.push(`offsetX: ${round(xLive, 3)}`)
+      if (!closeTo(yLive, spec.offsetY)) fields.push(`offsetY: ${round(yLive, 3)}`)
+
+      // Mobile's own four, each compared against `spec.narrow*` (which is
+      // already "the desktop value, unless products.tsx already overrides
+      // it") rather than against the desktop slider's live value — the
+      // same reasoning `OBJECT_SCHEMA`'s seeding above uses.
+      const narrowTurnDefault = Math.round(spec.narrowTurn * REST_TURN)
+      const narrowScaleDefault = spec.narrowScale / spec.scale
+      const narrowTurnLive = live[narrowTurnKey(id)] ?? narrowTurnDefault
+      const narrowScaleLive = live[narrowScaleKey(id)] ?? narrowScaleDefault
+      const narrowXLive = live[narrowXKey(id)] ?? spec.narrowOffsetX
+      const narrowYLive = live[narrowYKey(id)] ?? spec.narrowOffsetY
+
+      const narrowFields: string[] = []
+      if (!closeTo(narrowTurnLive, narrowTurnDefault)) {
+        narrowFields.push(`turn: ${round(narrowTurnLive / REST_TURN, 1)}`)
+      }
+      if (!closeTo(narrowScaleLive, narrowScaleDefault)) {
+        narrowFields.push(`scale: ${round(spec.scale * narrowScaleLive, 3)}`)
+      }
+      if (!closeTo(narrowXLive, spec.narrowOffsetX)) narrowFields.push(`offsetX: ${round(narrowXLive, 3)}`)
+      if (!closeTo(narrowYLive, spec.narrowOffsetY)) narrowFields.push(`offsetY: ${round(narrowYLive, 3)}`)
+      if (narrowFields.length > 0) fields.push(`narrow: { ${narrowFields.join(', ')} }`)
+
+      return fields.length > 0 ? [`  '${id}': { ${fields.join(', ')} },`] : []
+    })
+  if (objectLines.length > 0) {
+    lines.push('// src/site/products.tsx — merge into each SPECS entry', ...objectLines, '')
+  }
+
+  // ---- Layout: the room's own proportions, desktop and mobile apart ----
+  const layoutLines: string[] = []
+  const spacingLive = live.spacing ?? 1
+  if (!closeTo(spacingLive, 1)) {
+    layoutLines.push(`WIDE.stepW        ${round(WIDE.stepW * spacingLive, 3)}   // was ${WIDE.stepW}`)
+  }
+  if (!closeTo(live.shift ?? STAGE_SHIFT, STAGE_SHIFT)) layoutLines.push(`STAGE_SHIFT       ${live.shift}`)
+  if (!closeTo(live.narrowAt ?? NARROW_AT, NARROW_AT)) layoutLines.push(`NARROW_AT         ${live.narrowAt}`)
+  if (!closeTo(live.panelW ?? PANEL_W, PANEL_W)) layoutLines.push(`PANEL_W           ${live.panelW}`)
+  if (!closeTo(live.panelH ?? PANEL_H, PANEL_H)) layoutLines.push(`PANEL_H           ${live.panelH}`)
+
+  const narrowSpacingLive = live.narrowSpacing ?? 1
+  if (!closeTo(narrowSpacingLive, 1)) {
+    layoutLines.push(`NARROW.stepW      ${round(NARROW.stepW * narrowSpacingLive, 3)}   // was ${NARROW.stepW}`)
+  }
+  if (!closeTo(live.narrowCaseH ?? NARROW.caseH, NARROW.caseH)) {
+    layoutLines.push(`NARROW.caseH      ${live.narrowCaseH}   // was ${NARROW.caseH}`)
+  }
+  if (!closeTo(live.narrowCaseY ?? NARROW.caseY, NARROW.caseY)) {
+    layoutLines.push(`NARROW.caseY      ${live.narrowCaseY}   // was ${NARROW.caseY}`)
+  }
+  if (!closeTo(live.narrowPanelMaxCh ?? NARROW_PANEL_MAX_CH, NARROW_PANEL_MAX_CH)) {
+    layoutLines.push(`NARROW_PANEL_MAX_CH  ${live.narrowPanelMaxCh}`)
+  }
+  if (!closeTo(live.narrowPanelH ?? PANEL_H, PANEL_H)) layoutLines.push(`narrowPanelH      ${live.narrowPanelH}`)
+  if (layoutLines.length > 0) lines.push('// src/site/room.ts', ...layoutLines, '')
+
+  // ---- Lighting: the shared rig, only the lights that actually moved ----
+  const lightingLines: string[] = []
+  const envLive = live.envIntensity ?? LIGHT_DEFAULTS.envIntensity
+  const ambientLive = live.ambientIntensity ?? LIGHT_DEFAULTS.ambientIntensity
+  const keyXLive = live.keyX ?? LIGHT_DEFAULTS.keyX
+  const keyYLive = live.keyY ?? LIGHT_DEFAULTS.keyY
+  const keyZLive = live.keyZ ?? LIGHT_DEFAULTS.keyZ
+  const keyIntensityLive = live.keyIntensity ?? LIGHT_DEFAULTS.keyIntensity
+  const fillXLive = live.fillX ?? LIGHT_DEFAULTS.fillX
+  const fillYLive = live.fillY ?? LIGHT_DEFAULTS.fillY
+  const fillZLive = live.fillZ ?? LIGHT_DEFAULTS.fillZ
+  const fillIntensityLive = live.fillIntensity ?? LIGHT_DEFAULTS.fillIntensity
+
+  if (!closeTo(envLive, LIGHT_DEFAULTS.envIntensity)) {
+    lightingLines.push(`<StudioEnvironment intensity={${round(envLive, 2)}} />`)
+  }
+  if (!closeTo(ambientLive, LIGHT_DEFAULTS.ambientIntensity)) {
+    lightingLines.push(`<ambientLight intensity={${round(ambientLive, 2)}} />`)
+  }
+  if (
+    !closeTo(keyXLive, LIGHT_DEFAULTS.keyX) ||
+    !closeTo(keyYLive, LIGHT_DEFAULTS.keyY) ||
+    !closeTo(keyZLive, LIGHT_DEFAULTS.keyZ) ||
+    !closeTo(keyIntensityLive, LIGHT_DEFAULTS.keyIntensity)
+  ) {
+    lightingLines.push(
+      `<directionalLight position={[${round(keyXLive, 2)}, ${round(keyYLive, 2)}, ${round(keyZLive, 2)}]} intensity={${round(keyIntensityLive, 2)}} ... (castShadow + shadow-* props unchanged) />`
+    )
+  }
+  if (
+    !closeTo(fillXLive, LIGHT_DEFAULTS.fillX) ||
+    !closeTo(fillYLive, LIGHT_DEFAULTS.fillY) ||
+    !closeTo(fillZLive, LIGHT_DEFAULTS.fillZ) ||
+    !closeTo(fillIntensityLive, LIGHT_DEFAULTS.fillIntensity) ||
+    liveFillColor !== FILL_COLOR_DEFAULT
+  ) {
+    lightingLines.push(
+      `<directionalLight position={[${round(fillXLive, 2)}, ${round(fillYLive, 2)}, ${round(fillZLive, 2)}]} intensity={${round(fillIntensityLive, 2)}} color="${liveFillColor}" />`
+    )
+  }
+  if (lightingLines.length > 0) lines.push('// src/three/Gallery3D.tsx — lighting block', ...lightingLines, '')
+
+  // ---- Whatever any other piece (Adam, Capsule C1, ...) has registered ----
+  const extraLines = Object.entries(EXTRA_CONTROLS)
+    .filter(([, { value, defaultValue }]) => !closeTo(value, defaultValue))
+    .map(([label, { value, defaultValue }]) => `${label}: ${round(value, 3)}   // was ${round(defaultValue, 3)}`)
+  if (extraLines.length > 0) {
+    lines.push('// Per-piece controls — see that piece’s own component for where each default lives', ...extraLines)
+  }
+
+  return lines.length > 0 ? lines.join('\n').trimEnd() : '// Nothing has been changed from its default yet.'
 }
 
-/** How the room itself is set, as opposed to what is standing in it. All of
- *  it applies to every case at once — spacing and the breakpoint have no
- *  per-project meaning, and a stage shift that differed per project would
- *  make the row wander as you scrolled. */
+/** How the room itself is set, as opposed to what is standing in it. Split
+ *  into a Desktop group and a Mobile group that share nothing but the
+ *  breakpoint between them — every other number here used to move both
+ *  layouts at once, which meant there was no way to fix the phone's spacing
+ *  or case size without also nudging the desktop version. `narrowAt` is the
+ *  one exception: it's the switch between the two, not a proportion of
+ *  either, so there is only one of it. */
 const LAYOUT_SCHEMA = {
-  spacing: {
-    value: saved.spacing ?? 1,
-    min: 0.5,
-    max: 2.2,
-    step: 0.02,
-    label: 'Case spacing ×'
-  },
-  shift: {
-    value: saved.shift ?? STAGE_SHIFT,
-    min: -20,
-    max: 20,
-    step: 0.5,
-    label: 'Stage shift %'
-  },
   narrowAt: {
     value: saved.narrowAt ?? NARROW_AT,
     min: 480,
@@ -268,26 +455,143 @@ const LAYOUT_SCHEMA = {
     step: 10,
     label: 'Mobile below px'
   },
-  panelW: {
-    value: saved.panelW ?? PANEL_W,
-    min: 14,
-    max: 40,
-    step: 0.5,
-    label: 'Panel width vw'
-  },
-  panelH: {
-    value: saved.panelH ?? PANEL_H,
+  Desktop: folder(
+    {
+      spacing: {
+        value: saved.spacing ?? 1,
+        min: 0.5,
+        max: 2.2,
+        step: 0.02,
+        label: 'Case spacing ×'
+      },
+      shift: {
+        value: saved.shift ?? STAGE_SHIFT,
+        min: -20,
+        max: 20,
+        step: 0.5,
+        label: 'Stage shift %'
+      },
+      panelW: {
+        value: saved.panelW ?? PANEL_W,
+        min: 14,
+        max: 40,
+        step: 0.5,
+        label: 'Panel width vw'
+      },
+      panelH: {
+        value: saved.panelH ?? PANEL_H,
+        min: 0,
+        max: 60,
+        step: 1,
+        label: 'Panel min-height vh'
+      }
+    },
+    { collapsed: true }
+  ),
+  Mobile: folder(
+    {
+      narrowSpacing: {
+        value: saved.narrowSpacing ?? 1,
+        min: 0.5,
+        max: 2.2,
+        step: 0.02,
+        label: 'Case spacing ×'
+      },
+      narrowCaseH: {
+        value: saved.narrowCaseH ?? NARROW.caseH,
+        min: 0.15,
+        max: 0.6,
+        step: 0.01,
+        label: 'Case height vh'
+      },
+      narrowCaseY: {
+        value: saved.narrowCaseY ?? NARROW.caseY,
+        min: 0,
+        max: 0.35,
+        step: 0.005,
+        label: 'Case lift vh'
+      },
+      narrowPanelMaxCh: {
+        value: saved.narrowPanelMaxCh ?? NARROW_PANEL_MAX_CH,
+        min: 20,
+        max: 60,
+        step: 1,
+        label: 'Panel max width ch'
+      },
+      narrowPanelH: {
+        value: saved.narrowPanelH ?? PANEL_H,
+        min: 0,
+        max: 60,
+        step: 1,
+        label: 'Panel min-height vh'
+      }
+    },
+    { collapsed: true }
+  )
+}
+
+/** The room's own lights — shared by every piece, so tuning one project's
+ *  case necessarily moves everyone else's too. `fullTuningSource` above
+ *  diffs the live panel against exactly these numbers, so they have to stay
+ *  the single source of truth for "default" rather than duplicated as bare
+ *  literals in the schema below. */
+const LIGHT_DEFAULTS = {
+  envIntensity: 5.6,
+  ambientIntensity: 0,
+  keyIntensity: 25,
+  keyX: -3.78,
+  keyY: 0.2,
+  keyZ: 9,
+  fillIntensity: 11.1,
+  fillX: 2.1,
+  fillY: -0.2,
+  fillZ: -1
+}
+
+/** Defaults below match what's hardcoded in the JSX — tuned against a
+ *  screenshot of the Blender viewport rather than derived from a physical
+ *  rig, so don't read the position/intensity numbers as meaningful on their
+ *  own; nothing here reaches a visitor until its number is copied back into
+ *  that JSX by hand — see `LAYOUT_SCHEMA` above for why. */
+const LIGHT_SCHEMA = {
+  envIntensity: {
+    value: saved.envIntensity ?? LIGHT_DEFAULTS.envIntensity,
     min: 0,
-    max: 60,
-    step: 1,
-    label: 'Panel min-height vh'
+    max: 12,
+    step: 0.1,
+    label: 'Environment ×'
   },
-  'Copy for source': button(() => {
-    const source = tuningSource()
-    // Logged as well as copied, always: a clipboard write can be refused and
-    // there is no useful way to tell the panel about it.
-    console.log(source)
-    void navigator.clipboard?.writeText(source).catch(() => {})
+  ambientIntensity: {
+    value: saved.ambientIntensity ?? LIGHT_DEFAULTS.ambientIntensity,
+    min: 0,
+    max: 3,
+    step: 0.05,
+    label: 'Ambient'
+  },
+  Key: folder({
+    keyIntensity: {
+      value: saved.keyIntensity ?? LIGHT_DEFAULTS.keyIntensity,
+      min: 0,
+      max: 30,
+      step: 0.1,
+      label: 'Intensity'
+    },
+    keyX: { value: saved.keyX ?? LIGHT_DEFAULTS.keyX, min: -10, max: 10, step: 0.1, label: 'X' },
+    keyY: { value: saved.keyY ?? LIGHT_DEFAULTS.keyY, min: -10, max: 10, step: 0.1, label: 'Y' },
+    keyZ: { value: saved.keyZ ?? LIGHT_DEFAULTS.keyZ, min: -10, max: 10, step: 0.1, label: 'Z' }
+  }),
+  Fill: folder({
+    fillIntensity: {
+      value: saved.fillIntensity ?? LIGHT_DEFAULTS.fillIntensity,
+      min: 0,
+      max: 20,
+      step: 0.1,
+      label: 'Intensity'
+    },
+    fillColor: { value: savedFillColor, label: 'Color' },
+    fillX: { value: saved.fillX ?? LIGHT_DEFAULTS.fillX, min: -10, max: 10, step: 0.1, label: 'X' },
+    fillY: { value: saved.fillY ?? LIGHT_DEFAULTS.fillY, min: -10, max: 10, step: 0.1, label: 'Y' },
+    fillZ: { value: saved.fillZ ?? LIGHT_DEFAULTS.fillZ, min: -10, max: 10, step: 0.1, label: 'Z' }
   })
 }
 
@@ -296,6 +600,11 @@ interface Piece {
   /** Which slot in the row — the project's index. */
   slot: number
   node: ReactNode
+  /** The size the piece was *built* at — already baked into `node`. Kept
+   *  because the narrow set below is an absolute size too, and the model is
+   *  never rebuilt per breakpoint: turning one into the other needs the
+   *  number it is being measured against. See `exhibitFor` in products.tsx. */
+  scale: number
   /** Degrees the piece is turned to face inside its case. */
   turn: number
   /** Multiplies `envMapIntensity` on the piece's own materials. See the note
@@ -307,6 +616,13 @@ interface Piece {
    *  note on them in products.tsx. */
   offsetX: number
   offsetY: number
+  /** The same four, for when the room is narrow — see the note on
+   *  `ProductSpec['narrow']` in products.tsx. `Row` picks this set or the
+   *  plain one above per frame; nothing here forces the piece to rebuild. */
+  narrowScale: number
+  narrowTurn: number
+  narrowOffsetX: number
+  narrowOffsetY: number
   floatIntensity: number
   /** `Float`'s rotational wobble. Zero everywhere — see products.tsx. */
   floatRotation: number
@@ -325,6 +641,10 @@ interface Gallery3DProps {
   /** How many projects the row loops through. */
   count: number
   layout: RoomLayout
+  /** Whether the label is stacked under the case rather than beside it —
+   *  see the note on it in ProductStage.tsx. `Row` reads each piece's
+   *  `narrow*` fields instead of its plain ones while this is true. */
+  narrow: boolean
   /** Hands the tuning panel's room settings back to `Gallery.tsx`, which owns
    *  the room's proportions and applies them to the labels as well. */
   onTune?: (tuning: RoomTuning) => void
@@ -374,6 +694,7 @@ function Row({
   progressRef,
   count,
   layout,
+  narrow,
   step,
   shift,
   objectControls
@@ -431,7 +752,9 @@ function Row({
          apart. */
       const turn = turns.current.get(piece.id)
       if (turn) {
-        const rest = objectControls[turnKey(piece.id)] ?? piece.turn * REST_TURN
+        const rest = narrow
+          ? (objectControls[narrowTurnKey(piece.id)] ?? piece.narrowTurn * REST_TURN)
+          : (objectControls[turnKey(piece.id)] ?? piece.turn * REST_TURN)
         turn.rotation.y = azimuth + MathUtils.degToRad(rest + delta * ORBIT)
       }
 
@@ -441,8 +764,14 @@ function Row({
          are distances *across the screen*, so all three are multiplied into
          the camera's right vector together. Vertical needs no such treatment:
          world Y is up on screen at any azimuth. */
-      const along = delta * step + shift + (objectControls[xKey(piece.id)] ?? piece.offsetX)
-      const up = layout.caseY + (objectControls[yKey(piece.id)] ?? piece.offsetY)
+      const x = narrow
+        ? (objectControls[narrowXKey(piece.id)] ?? piece.narrowOffsetX)
+        : (objectControls[xKey(piece.id)] ?? piece.offsetX)
+      const y = narrow
+        ? (objectControls[narrowYKey(piece.id)] ?? piece.narrowOffsetY)
+        : (objectControls[yKey(piece.id)] ?? piece.offsetY)
+      const along = delta * step + shift + x
+      const up = layout.caseY + y
       group.position.set(along * rightX, up, along * rightZ)
     }
   })
@@ -459,7 +788,16 @@ function Row({
           <Vitrine height={layout.caseH} showCase={SHOW_CASE}>
             <Lift intensity={piece.lift}>
               <group
-                scale={PIECE_FIT * (objectControls[scaleKey(piece.id)] ?? 1)}
+                scale={
+                  PIECE_FIT *
+                  (narrow
+                    ? // The model is only ever built once, at the desktop
+                      // scale (see `exhibitFor`), so the narrow multiplier
+                      // has to be expressed as a ratio against it rather
+                      // than as its own absolute size.
+                      (objectControls[narrowScaleKey(piece.id)] ?? piece.narrowScale / piece.scale)
+                    : (objectControls[scaleKey(piece.id)] ?? 1))
+                }
                 ref={(el) => {
                   if (el) turns.current.set(piece.id, el)
                   else turns.current.delete(piece.id)
@@ -518,29 +856,150 @@ function Lift({ intensity, children }: { intensity: number; children: ReactNode 
 
 export default function Gallery3D(props: Gallery3DProps) {
   const { onTune } = props
+  // Root-level — no folder name — so this sits at the top of the panel
+  // rather than inside Objects, Layout, or Lighting: one button that covers
+  // all three, plus whatever any other piece has registered into
+  // `EXTRA_CONTROLS`, rather than one per section.
+  useControls({
+    'Copy for source': button(() => {
+      const source = fullTuningSource()
+      // Logged as well as copied, always: a clipboard write can be refused
+      // and there is no useful way to tell the panel about it.
+      console.log(source)
+      void navigator.clipboard?.writeText(source).catch(() => {})
+    })
+  })
   // One folder per project (see `OBJECT_SCHEMA`) — angle, size and position,
   // each piece on its own.
   const objectControls = useControls('Objects', OBJECT_SCHEMA) as unknown as Record<string, number>
-  const { spacing, shift, narrowAt, panelW, panelH } = useControls(
-    'Layout',
-    LAYOUT_SCHEMA
-  ) as unknown as RoomTuning
+  const {
+    spacing,
+    shift,
+    narrowAt,
+    panelW,
+    panelH,
+    narrowSpacing,
+    narrowCaseH,
+    narrowCaseY,
+    narrowPanelMaxCh,
+    narrowPanelH
+  } = useControls('Layout', LAYOUT_SCHEMA) as unknown as RoomTuning
+  const {
+    envIntensity,
+    ambientIntensity,
+    keyIntensity,
+    keyX,
+    keyY,
+    keyZ,
+    fillIntensity,
+    fillColor,
+    fillX,
+    fillY,
+    fillZ
+  } = useControls('Lighting', LIGHT_SCHEMA) as unknown as {
+    envIntensity: number
+    ambientIntensity: number
+    keyIntensity: number
+    keyX: number
+    keyY: number
+    keyZ: number
+    fillIntensity: number
+    fillColor: string
+    fillX: number
+    fillY: number
+    fillZ: number
+  }
 
   useEffect(() => {
-    Object.assign(live, objectControls, { spacing, shift, narrowAt, panelW, panelH })
+    Object.assign(live, objectControls, {
+      spacing,
+      shift,
+      narrowAt,
+      panelW,
+      panelH,
+      narrowSpacing,
+      narrowCaseH,
+      narrowCaseY,
+      narrowPanelMaxCh,
+      narrowPanelH,
+      envIntensity,
+      ambientIntensity,
+      keyIntensity,
+      keyX,
+      keyY,
+      keyZ,
+      fillIntensity,
+      fillX,
+      fillY,
+      fillZ
+    })
     try {
       window.localStorage.setItem(STORE_KEY, JSON.stringify(live))
     } catch {
       // See readStore: an unavailable store means the panel does not persist,
       // which is not a reason for the gallery to stop working.
     }
-  }, [objectControls, spacing, shift, narrowAt, panelW, panelH])
+  }, [
+    objectControls,
+    spacing,
+    shift,
+    narrowAt,
+    panelW,
+    panelH,
+    narrowSpacing,
+    narrowCaseH,
+    narrowCaseY,
+    narrowPanelMaxCh,
+    narrowPanelH,
+    envIntensity,
+    ambientIntensity,
+    keyIntensity,
+    keyX,
+    keyY,
+    keyZ,
+    fillIntensity,
+    fillX,
+    fillY,
+    fillZ
+  ])
+
+  useEffect(() => {
+    liveFillColor = fillColor
+    try {
+      window.localStorage.setItem(COLOR_STORE_KEY, fillColor)
+    } catch {
+      // See readStore.
+    }
+  }, [fillColor])
 
   // Up to Gallery.tsx, which owns the room's proportions and has to move the
   // wall labels by the same amounts.
   useEffect(() => {
-    onTune?.({ spacing, shift, narrowAt, panelW, panelH })
-  }, [onTune, spacing, shift, narrowAt, panelW, panelH])
+    onTune?.({
+      spacing,
+      shift,
+      narrowAt,
+      panelW,
+      panelH,
+      narrowSpacing,
+      narrowCaseH,
+      narrowCaseY,
+      narrowPanelMaxCh,
+      narrowPanelH
+    })
+  }, [
+    onTune,
+    spacing,
+    shift,
+    narrowAt,
+    panelW,
+    panelH,
+    narrowSpacing,
+    narrowCaseH,
+    narrowCaseY,
+    narrowPanelMaxCh,
+    narrowPanelH
+  ])
 
   return (
     <>
@@ -575,6 +1034,20 @@ export default function Gallery3D(props: Gallery3DProps) {
                   elevation1: '#161616',
                   elevation2: '#1d1d1d',
                   elevation3: '#292929'
+                },
+                // Wider than Leva's 280px default: Adam's controls sit four
+                // folders deep (Objects › Mr. Takahashi › Face › ‹group›),
+                // and each level's indent eats into the label column —
+                // narrow enough at the default width that every label past
+                // the first couple of characters was truncating to "…".
+                //
+                // Capped against the viewport, not just widened: the panel is
+                // `position: fixed; right: 10px`, so a bare 420px pushed the
+                // whole thing — collapse toggle included — off the left edge
+                // of anything narrower than about 440px, which on a phone
+                // meant tapping the title bar tapped empty page.
+                sizes: {
+                  rootWidth: 'min(420px, calc(100vw - 20px))'
                 }
               }}
             />,
@@ -623,30 +1096,18 @@ export default function Gallery3D(props: Gallery3DProps) {
           spans a hundred units and this whole room is about two units tall, so
           left at the default the entire scene falls inside a couple of texels
           and every shadow arrives as a grey smear. */}
-        <StudioEnvironment intensity={4} />
-        <ambientLight intensity={0.85} />
+        <StudioEnvironment intensity={envIntensity} />
+        <ambientLight intensity={ambientIntensity} />
         <directionalLight
           castShadow
-          /* High, like a gallery downlight — and fixed, while the camera walks.
-           The elevation is doing real work at that combination: at 90 degrees
-           of orbit per project the key ends up behind the case every other
-           detent, and only a light this close to overhead keeps the faces
-           turned toward you lit at every step. It is also what the reference
-           photograph has, and why the shadow there is short and tucked under
-           the plinth rather than thrown across the floor.
-
-           Nearly overhead is also what makes a *fixed* key survive an orbit at
-           all. A vertical face takes the key at cos(incidence), so at eighty
-           degrees of elevation it is picking up a sixth of the beam whichever
-           way it is turned, and the difference between a face toward the light
-           and one away from it is small next to what the environment is
-           already giving it. Drop the light toward the horizon and the same
-           orbit swings the plinth from white to mid-grey every other project.
-           The plinth's *top* still takes the beam square-on, which is where
-           the contrast belongs — and is what the reference photograph
-           does. */
-          position={[0.72, 6.5, 0.9]}
-          intensity={5.6}
+          /* Fixed, while the camera walks — and, unlike the gallery-photo
+           rig this replaced, tuned against a screenshot of Adam's own
+           Blender viewport rather than derived from a physical downlight,
+           so its position is no longer doing the "stays lit across the
+           orbit" work described in git history for the old numbers. Live
+           values in the "Lighting" Leva panel; see `LIGHT_SCHEMA` above. */
+          position={[keyX, keyY, keyZ]}
+          intensity={keyIntensity}
           shadow-mapSize={[2048, 2048]}
           shadow-camera-near={0.5}
           shadow-camera-far={12}
@@ -657,10 +1118,10 @@ export default function Gallery3D(props: Gallery3DProps) {
           shadow-bias={-0.0008}
           shadow-normalBias={0.012}
         />
-        {/* Fill, from the other side and cool, so the turned-away faces of the
+        {/* Fill, from the other side, so the turned-away faces of the
           plinths are not dead. No shadow: a second caster gives every object
           two shadows, which reads as a rendering error rather than as light. */}
-        <directionalLight position={[-3.2, 2.2, -2.6]} intensity={1.7} color="#cdd6e0" />
+        <directionalLight position={[fillX, fillY, fillZ]} intensity={fillIntensity} color={fillColor} />
 
         {/* Exactly under the plinths, from the vitrine's own proportions — a
           floor guessed at with a magic number is a floor the cases hover

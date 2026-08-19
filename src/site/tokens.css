@@ -48,10 +48,10 @@
   /* ---- ground ---- */
   /* Warm, not grey. The whole page is one sheet of paper and every surface
      on it is a tint of the same three values. */
-  --paper: #f4f2ec;
+  --paper: #f0eeeb;
   --paper-deep: #e3dfd4;
   --paper-raised: #fbfaf6;
-  --paper-veil: rgba(244, 242, 236, 0.86);
+  --paper-veil: rgba(240, 238, 235, 0.86);
 
   /* ---- ink ---- */
   --ink: #14120e;
@@ -116,11 +116,42 @@
      Named so the stacking order is arguable in one place rather than being
      rediscovered from scattered magic numbers. */
   --z-stage: 1;
+  --z-pattern: 2;
+  /* The screen currently mounted — `.hm`, the stage. It has to carry an
+     explicit z-index above `--z-pattern`, because it is `position: fixed`
+     and therefore its own stacking context whatever its z-index: everything
+     inside it, `--z-panel`'s 3D room included, is painted at *this* level as
+     far as the pattern is concerned. Left at `auto` the whole stage sits
+     under the wash. See `.hm` in Home.css. */
+  --z-screen: 5;
   --z-panel: 10;
   --z-chrome: 40;
   --z-overlay: 60;
   --z-loader: 90;
   --z-grain: 95;
+
+  /* ---- background pattern ----
+     The rendered width of one repeat of `.site-pattern`'s tile — see the
+     note there. Desktop and mobile are two independent numbers, not one
+     fluid formula, on purpose: the same reasoning as the gallery's Layout/
+     Objects tuning split (see room.ts) — a size that reads right on a
+     laptop is not automatically the right one stacked on a phone, and
+     keeping them separate is what lets one be retuned without dragging the
+     other along with it. */
+  --pattern-size: 560px;
+  /* How strong the wash reads — see the note on `.site-pattern`. One number
+     for both breakpoints on purpose, unlike `--pattern-size`: it isn't the
+     3D room's Layout/Objects situation, where a size that suits a laptop
+     is provably wrong stacked on a phone — it's an opacity, and there is no
+     reason a phone screen would want a *different strength* of the same
+     texture. */
+  --pattern-opacity: 0.04;
+}
+
+@media (max-width: 900px) {
+  :root {
+    --pattern-size: 300px;
+  }
 }
 
 /* The paper's tooth. A single tile of value noise, multiplied over
@@ -135,6 +166,63 @@
   mix-blend-mode: multiply;
   background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.14'/%3E%3C/svg%3E");
   background-size: 180px 180px;
+}
+
+/* The doodle wallpaper — every project's icon, tiled faint behind the whole
+   site. `luminosity`, so it reads as texture, not as a second copy of the
+   poster sitting on the page — flat opacity alone left the ink looking
+   pasted on top; taking only the source's luminance and keeping the paper's
+   own hue underneath is what makes it read as grain in the paper instead.
+   Opacity itself is well under the 10% asked for: this is dense black line
+   art, and even a little of it read at full luminance contrast is loud —
+   4% was where it stopped competing with the page's own type and started
+   reading as texture. Retune `--pattern-opacity` if a stronger wash is
+   wanted once it's live.
+
+   The source art isn't a seamless pattern — it's one illustrated sheet — so
+   tiling it plain would repeat the same skyline of titles in a dead-straight
+   grid, and the eye catches a grid instantly. `supertile.webp` is two copies
+   of one tile side by side, the right one rolled half a tile-height (with
+   wraparound, so it stays seamless top-to-bottom on its own): tiled normally,
+   that one image reproduces as alternating columns out of phase with each
+   other, which is what breaks the grid without needing anything cleverer
+   than `background-repeat`. Regenerate it from a new source with the ImageMagick
+   pipeline noted in public/patterns/README, if this piece ever changes.
+
+   `--z-pattern` sits above the page's own ground but below `--z-screen` (the
+   stage, and so the 3D gallery inside it) — texture behind the room, not a
+   film over the pieces standing in it. The room is what actually needs this:
+   a WebGL canvas is opaque pixels, so a pattern painted *over* it doesn't
+   fade into the page the way it does over flat type — it sits on the render
+   as a visible haze. Under it, the canvas simply draws over the pattern
+   where a piece stands, same as it draws over the plain paper everywhere
+   else.
+
+   Getting under the stage means getting under `.hm`, not under `.gl`: a
+   fixed-position element is always a stacking context, so `.gl`'s z-index is
+   only ever compared with its siblings inside `.hm` and never with anything
+   out here. That is why the stage's paper gradient lives on `body.is-fixed`
+   (base.css) rather than on `.hm` — the ground has to be *below* this layer
+   for the wash to be visible at all, while the stage itself is above it. */
+.site-pattern {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-pattern);
+  pointer-events: none;
+  opacity: var(--pattern-opacity);
+  mix-blend-mode: luminosity;
+  background-image: url('/patterns/supertile.webp');
+  background-repeat: repeat;
+  /* The tile image is 1440×1080 — two 720×1080 (2:3) columns side by side —
+     so the height follows the width at the same 3:4 ratio whatever
+     `--pattern-size` is retuned to. Sized comfortably above both
+     breakpoints' `--pattern-size`, so the browser is downscaling the tile
+     rather than stretching it up at any size these ship with — the
+     safer direction for a repeating background, since upscaling is what
+     tends to show sampling seams at tile edges on some renderers. The tile
+     itself is pixel-seamless at both joins (checked directly against the
+     file, not just by eye — see public/patterns/README.md). */
+  background-size: var(--pattern-size) calc(var(--pattern-size) * 0.75);
 }
 
 @media (prefers-reduced-motion: reduce) {
