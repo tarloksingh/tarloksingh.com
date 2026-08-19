@@ -138,7 +138,7 @@
      laptop is not automatically the right one stacked on a phone, and
      keeping them separate is what lets one be retuned without dragging the
      other along with it. */
-  --pattern-size: 560px;
+  --pattern-size: 380px;
   /* How strong the wash reads — see the note on `.site-pattern`. One number
      for both breakpoints on purpose, unlike `--pattern-size`: it isn't the
      3D room's Layout/Objects situation, where a size that suits a laptop
@@ -150,7 +150,7 @@
 
 @media (max-width: 900px) {
   :root {
-    --pattern-size: 300px;
+    --pattern-size: 210px;
   }
 }
 
@@ -223,6 +223,12 @@
      itself is pixel-seamless at both joins (checked directly against the
      file, not just by eye — see public/patterns/README.md). */
   background-size: var(--pattern-size) calc(var(--pattern-size) * 0.75);
+  /* Held at the top-left unless a screen is driving the drift — see
+     pattern.ts, and `Background` in the gallery's tuning panel. Sliding the
+     position rather than transforming the layer keeps `repeat` doing the
+     work: the tile wraps for free, so there is nothing to reset and no edge
+     to run off however far it travels. */
+  background-position: 0 var(--pattern-shift, 0px);
 }
 
 @media (prefers-reduced-motion: reduce) {

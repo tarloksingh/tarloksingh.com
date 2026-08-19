@@ -4,6 +4,7 @@ import BlurText, { reveal } from '../components/BlurText'
 import Helix from './Helix'
 import type { HelixCard } from './Helix'
 import Gallery from './Gallery'
+import Wordmark from './Wordmark'
 import { workProjects, sideProjects } from '../data/projects'
 import { useScrollEngine, clamp, ease, range } from './useScrollEngine'
 import './Home.css'
@@ -335,7 +336,7 @@ export default function Home({ onOpen, locked, onIndex, arriveAt, noir }: HomePr
       {/* ---- chrome. Fixed above both stages, present the whole way through. ---- */}
 
       <div className="hm-mark" ref={markRef}>
-        <p className="hm-mark-name">Tarlok Singh</p>
+        <Wordmark className="hm-mark-name" />
       </div>
 
       {/* Two of these three are places on this one scroll, so the menu marks

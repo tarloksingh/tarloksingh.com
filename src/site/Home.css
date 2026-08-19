@@ -135,10 +135,8 @@
 }
 
 .hm-mark-name {
-  font-family: var(--font-display);
-  font-size: 1.35rem;
-  line-height: 1.05;
-  letter-spacing: -0.02em;
+  display: block;
+  color: var(--ink);
 }
 
 .hm-menu {
@@ -318,7 +316,7 @@
      the window (see DISCIPLINES), so the wall is already the same
      composition on a phone as on a desktop, only smaller. */
   .hm-mark-name {
-    font-size: 1.05rem;
+    --wordmark-w: 6.4rem;
   }
 
   .hm-menu {

@@ -12,6 +12,8 @@ import {
   NARROW,
   NARROW_AT,
   NARROW_PANEL_MAX_CH,
+  PATTERN_DRIFT,
+  PATTERN_PARALLAX,
   PANEL_H,
   PANEL_W,
   REF_ASPECT,
@@ -527,6 +529,27 @@ const LAYOUT_SCHEMA = {
       }
     },
     { collapsed: true }
+  ),
+  /* The wallpaper behind everything — `.site-pattern` in tokens.css. It is
+     not part of the room, but it is the only tuning panel on the site and
+     the drift is a thing to be tried at a few strengths rather than argued
+     about in the abstract, so it is here. Gallery.tsx and ProjectPage.tsx
+     are what actually drive it; see pattern.ts. */
+  Background: folder(
+    {
+      patternParallax: {
+        value: saved.patternParallax ?? PATTERN_PARALLAX,
+        label: 'Drift on scroll'
+      },
+      patternDrift: {
+        value: saved.patternDrift ?? PATTERN_DRIFT,
+        min: -400,
+        max: 400,
+        step: 10,
+        label: 'Drift px / screen'
+      }
+    },
+    { collapsed: true }
   )
 }
 
@@ -882,7 +905,9 @@ export default function Gallery3D(props: Gallery3DProps) {
     narrowCaseH,
     narrowCaseY,
     narrowPanelMaxCh,
-    narrowPanelH
+    narrowPanelH,
+    patternParallax,
+    patternDrift
   } = useControls('Layout', LAYOUT_SCHEMA) as unknown as RoomTuning
   const {
     envIntensity,
@@ -922,6 +947,8 @@ export default function Gallery3D(props: Gallery3DProps) {
       narrowCaseY,
       narrowPanelMaxCh,
       narrowPanelH,
+      patternParallax,
+      patternDrift,
       envIntensity,
       ambientIntensity,
       keyIntensity,
@@ -951,6 +978,8 @@ export default function Gallery3D(props: Gallery3DProps) {
     narrowCaseY,
     narrowPanelMaxCh,
     narrowPanelH,
+    patternParallax,
+    patternDrift,
     envIntensity,
     ambientIntensity,
     keyIntensity,
@@ -985,7 +1014,9 @@ export default function Gallery3D(props: Gallery3DProps) {
       narrowCaseH,
       narrowCaseY,
       narrowPanelMaxCh,
-      narrowPanelH
+      narrowPanelH,
+      patternParallax,
+      patternDrift
     })
   }, [
     onTune,
@@ -998,7 +1029,9 @@ export default function Gallery3D(props: Gallery3DProps) {
     narrowCaseH,
     narrowCaseY,
     narrowPanelMaxCh,
-    narrowPanelH
+    narrowPanelH,
+    patternParallax,
+    patternDrift
   ])
 
   return (

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef } from 'react'
 import BlurText from '../components/BlurText'
 import Reveal from './Reveal'
+import Wordmark from './Wordmark'
+import { clearPatternShift, readPatternSettings, setPatternShift } from './pattern'
 import MediaFigure, { shapeOf, spanFor } from './MediaFigure'
 import { projectById, projects } from '../data/projects'
 import './ProjectPage.css'
@@ -42,8 +44,17 @@ export default function ProjectPage({ id, onBack, onOpen, onIndex, noir }: Proje
   useEffect(() => {
     let raf = 0
     let queued = false
+    /* The wallpaper's drift rides along with the progress bar rather than
+       adding a second scroll listener — this is already a once-per-frame
+       readout of `scrollY`, which is exactly what it needs. Quoted in px per
+       *screen* scrolled, so it means the same here as it does on the stage,
+       where a screen is a project. See pattern.ts. */
+    const pattern = readPatternSettings()
     const draw = () => {
       queued = false
+      if (pattern.parallax) {
+        setPatternShift((-window.scrollY / window.innerHeight) * pattern.drift)
+      }
       const el = progressRef.current
       if (!el) return
       const span = document.body.scrollHeight - window.innerHeight
@@ -60,6 +71,7 @@ export default function ProjectPage({ id, onBack, onOpen, onIndex, noir }: Proje
     draw()
     return () => {
       cancelAnimationFrame(raf)
+      clearPatternShift()
       window.removeEventListener('scroll', onScroll)
       window.removeEventListener('resize', onScroll)
     }
@@ -83,7 +95,7 @@ export default function ProjectPage({ id, onBack, onOpen, onIndex, noir }: Proje
 
       <header className="pp-bar">
         <button type="button" className="pp-mark-name" onClick={onBack}>
-          Tarlok Singh
+          <Wordmark />
         </button>
         <nav className="pp-menu" aria-label="Main">
           <button type="button" className="u-link" onClick={onBack}>

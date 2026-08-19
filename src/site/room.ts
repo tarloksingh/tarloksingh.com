@@ -47,27 +47,64 @@ export interface RoomLayout {
  *  and not to the initial bundle — so its values come back up to this side,
  *  which owns the proportions, rather than being applied where they are set. */
 export interface RoomTuning {
-  /** Multiplier on `stepW`, both wide and narrow. */
+  /** Multiplier on `stepW`, wide only — see `narrowSpacing` for the narrow
+   *  equivalent. Split in two because a value that moved both layouts made
+   *  fixing one break the other. */
   spacing: number
   /** `shiftW`, as a percentage rather than a fraction — a slider reading 7 is
-   *  easier to aim than one reading 0.07. */
+   *  easier to aim than one reading 0.07. Wide only: zeroed outright on
+   *  narrow, where there is no *beside* to shift toward. */
   shift: number
-  /** Window width at and below which the label stacks under the case. */
+  /** Window width at and below which the label stacks under the case. The
+   *  one number both layouts genuinely share — it's the switch between them,
+   *  not a proportion of either. */
   narrowAt: number
   /** The wall label's own width, in viewport widths — still capped at 25ch so
-   *  it never grows past a comfortable line length, just as before. */
+   *  it never grows past a comfortable line length, just as before. Wide
+   *  only: the narrow layout sizes its label from `narrowPanelMaxCh`
+   *  instead — see `.gl[data-narrow='true'] .gl-panel` in Gallery.css. */
   panelW: number
-  /** The wall label's minimum height, in viewport heights. Zero leaves it
-   *  exactly as tall as its copy, same as before this existed. */
+  /** The wall label's minimum height, in viewport heights, wide only. Zero
+   *  leaves it exactly as tall as its copy. */
   panelH: number
+  /** Multiplier on `stepW`, narrow only. */
+  narrowSpacing: number
+  /** Case height, in viewport heights, narrow only — replaces `NARROW.caseH`
+   *  as the live value once the panel has set one. */
+  narrowCaseH: number
+  /** How far the row lifts into the top half, in viewport heights, narrow
+   *  only — replaces `NARROW.caseY`. */
+  narrowCaseY: number
+  /** The wall label's max width on narrow, in `ch` — replaces the `38ch`
+   *  `.gl[data-narrow='true'] .gl-panel` used before this was tunable. */
+  narrowPanelMaxCh: number
+  /** The wall label's minimum height, in viewport heights, narrow only. */
+  narrowPanelH: number
+  /** Whether the background wallpaper drifts against the page as it scrolls.
+   *  Off by default — this is a look being tried, not a decided one. See
+   *  pattern.ts. */
+  patternParallax: boolean
+  /** How far it drifts, in px per screen scrolled, when it is on. Negative
+   *  sends it the other way. Both screens measure their position in screens
+   *  travelled, so this one number reads the same on either. */
+  patternDrift: number
 }
 
 /** Wide: the case is centred with the label beside it, and the next project
  *  waits two thirds of a window away, just off-frame. */
 export const WIDE = { stepW: 0.66, caseH: 0.46, caseY: 0 }
 /** Narrow: there is no *beside*, so a project takes the whole window, the case
- *  shrinks and rises into the top half, and the label goes underneath it. */
+ *  shrinks and rises into the top half, and the label goes underneath it.
+ *  These are only the resting defaults now — `narrowCaseH`/`narrowCaseY` in
+ *  the tuning panel are the live values, same relationship `STAGE_SHIFT` has
+ *  to `shift` below. */
 export const NARROW = { stepW: 1, caseH: 0.3, caseY: 0.15 }
+/** Default `narrowPanelMaxCh` — the cap `.gl-panel` used on narrow before it
+ *  was tunable. */
+export const NARROW_PANEL_MAX_CH = 38
+/** Resting defaults for the wallpaper drift — see `RoomTuning` above. */
+export const PATTERN_PARALLAX = false
+export const PATTERN_DRIFT = 90
 /** Below this the label cannot stand beside the case. Adjustable live from the
  *  tuning panel, because where a two-column layout actually gives out is
  *  something you find by dragging a window edge, not by reasoning. */

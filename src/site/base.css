@@ -19,7 +19,15 @@ html {
 
 body {
   min-height: 100%;
-  background: var(--paper);
+  /* The page's ground, under `.site-pattern`. A case study used to paint its
+     own on `.pp`, which put an opaque surface *over* the wash and hid it —
+     the same problem the stage had. `fixed` keeps the highlight anchored to
+     the window rather than to the top of a very long document, which is
+     where `.pp` had it and how it read. */
+  background:
+    radial-gradient(120% 60% at 50% 0%, var(--paper-raised) 0%, transparent 46%),
+    var(--paper);
+  background-attachment: fixed;
   color: var(--ink);
   font-family: var(--font-ui);
   font-size: var(--size-body);

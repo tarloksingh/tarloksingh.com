@@ -30,7 +30,9 @@ export default function Site() {
      study — a shared link, a reload — gets the loading screen, because an
      entrance to a page you did not come for is just a delay. The two never
      both run: `Intro` counts the same stills in and is its own wait. */
-  const [intro, setIntro] = useState(() => currentRoute().name === 'home')
+  // TEMP: intro disabled while testing mobile layout — restore
+  // `currentRoute().name === 'home'` when done.
+  const [intro, setIntro] = useState(() => false)
   // The veil fading is both the stage unlocking and `Intro` coming down —
   // see `onReveal`/`onDone` in Intro.tsx.
   const [introRevealed, setIntroRevealed] = useState(false)
@@ -193,6 +195,7 @@ export default function Site() {
 
       {loading ? <Loader preload={posters} onDone={loaderDone} /> : null}
 
+      <div className="site-pattern" aria-hidden="true" />
       <div className="grain" aria-hidden="true" />
     </>
   )

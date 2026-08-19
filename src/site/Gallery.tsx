@@ -9,8 +9,20 @@ import {
   useState
 } from 'react'
 import { workProjects } from '../data/projects'
-import { NARROW, NARROW_AT, PANEL_H, PANEL_W, REF_ASPECT, STAGE_SHIFT, WIDE } from './room'
+import {
+  NARROW,
+  NARROW_AT,
+  NARROW_PANEL_MAX_CH,
+  PATTERN_DRIFT,
+  PATTERN_PARALLAX,
+  PANEL_H,
+  PANEL_W,
+  REF_ASPECT,
+  STAGE_SHIFT,
+  WIDE
+} from './room'
 import type { RoomLayout, RoomTuning } from './room'
+import { clearPatternShift, setPatternShift } from './pattern'
 import { clamp, ease } from './useScrollEngine'
 import type { ScrollEngine } from './useScrollEngine'
 import './Gallery.css'
@@ -96,7 +108,14 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
     shift: STAGE_SHIFT,
     narrowAt: NARROW_AT,
     panelW: PANEL_W,
-    panelH: PANEL_H
+    panelH: PANEL_H,
+    narrowSpacing: 1,
+    narrowCaseH: NARROW.caseH,
+    narrowCaseY: NARROW.caseY,
+    narrowPanelMaxCh: NARROW_PANEL_MAX_CH,
+    narrowPanelH: PANEL_H,
+    patternParallax: PATTERN_PARALLAX,
+    patternDrift: PATTERN_DRIFT
   })
   const onTune = useCallback((next: RoomTuning) => setTuning(next), [])
 
@@ -113,17 +132,27 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
   )
 
   const layout = useMemo<RoomLayout>(() => {
-    const base = narrow ? NARROW : WIDE
-    return {
-      stepW: base.stepW * tuning.spacing,
-      caseH: base.caseH,
-      caseY: base.caseY,
-      // Zero when the label is stacked under the case: there is nothing
-      // standing beside the piece then, so the pair is already centred and
-      // shifting it would only push it off.
-      shiftW: narrow ? 0 : tuning.shift / 100
+    // Desktop and mobile each read their own set of tuning numbers now —
+    // see the note on `RoomTuning` in room.ts — so fixing one can no longer
+    // nudge the other.
+    if (narrow) {
+      return {
+        stepW: NARROW.stepW * tuning.narrowSpacing,
+        caseH: tuning.narrowCaseH,
+        caseY: tuning.narrowCaseY,
+        // Nothing stands beside the piece when the label is stacked under
+        // it, so the pair is already centred and shifting it would only
+        // push it off.
+        shiftW: 0
+      }
     }
-  }, [narrow, tuning.spacing, tuning.shift])
+    return {
+      stepW: WIDE.stepW * tuning.spacing,
+      caseH: WIDE.caseH,
+      caseY: WIDE.caseY,
+      shiftW: tuning.shift / 100
+    }
+  }, [narrow, tuning.spacing, tuning.shift, tuning.narrowSpacing, tuning.narrowCaseH, tuning.narrowCaseY])
 
   // Read inside the scroll loop, which must not be torn down and rebuilt
   // every time the window crosses the breakpoint.
@@ -176,16 +205,39 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
 
   // The panel's own size — see `.gl-panel` in Gallery.css, which reads these
   // rather than a fixed width and height now that the tuning panel controls
-  // them (`panelW`/`panelH` in `LAYOUT_SCHEMA`, `Gallery3D.tsx`). In `vh`,
-  // for the same reason as `--stage-shift` above — `panelW` converts through
-  // `REF_ASPECT` because it's a fraction of a width; `panelH` already is a
-  // fraction of a height and needs no conversion.
+  // them (`LAYOUT_SCHEMA`, `Gallery3D.tsx`). In `vh`, for the same reason as
+  // `--stage-shift` above — `panelW` converts through `REF_ASPECT` because
+  // it's a fraction of a width; the heights already are.
+  //
+  // `--panel-h` and `--panel-max-ch` switch on `narrow` because the wide and
+  // narrow panels are sized by two different rules in Gallery.css (`width`
+  // vs. the narrow block's own `min(Nch, ...)`) — each needs its own number
+  // rather than sharing the desktop one.
   useEffect(() => {
     const root = rootRef.current
     if (!root) return
     root.style.setProperty('--panel-w', `${(tuning.panelW * REF_ASPECT).toFixed(2)}vh`)
-    root.style.setProperty('--panel-h', `${tuning.panelH.toFixed(2)}vh`)
-  }, [tuning.panelW, tuning.panelH])
+    root.style.setProperty('--panel-h', `${(narrow ? tuning.narrowPanelH : tuning.panelH).toFixed(2)}vh`)
+    root.style.setProperty('--panel-max-ch', `${tuning.narrowPanelMaxCh}ch`)
+  }, [narrow, tuning.panelW, tuning.panelH, tuning.narrowPanelH, tuning.narrowPanelMaxCh])
+
+  /* The wallpaper's drift. `state.value` counts projects, and one project is
+     one screenful of travel here, so it is already in the units `patternDrift`
+     is quoted in — see pattern.ts. Its own subscription rather than a branch
+     inside the main one below: that loop is the room's readout and runs every
+     frame regardless, and this is an experiment that spends most of its life
+     turned off. */
+  useEffect(() => {
+    if (!tuning.patternParallax) {
+      clearPatternShift()
+      return
+    }
+    const stop = engine.subscribe((state) => setPatternShift(-state.value * tuning.patternDrift))
+    return () => {
+      stop()
+      clearPatternShift()
+    }
+  }, [engine, tuning.patternParallax, tuning.patternDrift])
 
   useEffect(() => {
     let lastFocus = -1
@@ -284,6 +336,7 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
               focus={focus}
               progressRef={progressRef}
               layout={layout}
+              narrow={narrow}
               onTune={onTune}
               noir={noir}
             />
