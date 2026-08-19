@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import BlurText from '../components/BlurText'
+import Birds from './Birds'
 import Reveal from './Reveal'
 import Wordmark from './Wordmark'
 import Menu from './Menu'
@@ -104,6 +105,14 @@ export default function ProjectPage({ id, onBack, onOpen, onIndex, noir }: Proje
             also carries the stage's own copy of this nav. */}
         <Menu className="pp-menu" current="work" onHome={onBack} onWork={onIndex} />
       </header>
+
+      {/* The same three birds that live on the stage, on the one rail this
+          page has: the bar is sticky, so it holds still in the window while a
+          hundred paragraphs go past underneath and a bird standing on it does
+          not have to be re-measured every frame. After the header, so they
+          land on top of it rather than behind the nav — the two share
+          `--z-chrome`, and at equal z-index the later element wins. */}
+      <Birds perch=".pp-bar" active />
 
       {/* ---- masthead ---- */}
 

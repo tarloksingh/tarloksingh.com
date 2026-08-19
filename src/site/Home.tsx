@@ -56,13 +56,6 @@ const NAME_DOCK = 0.62
 const VINE_DRAW = 4
 const VINE_UNDRAW = 0.5
 
-/** How far up the scroll the name stops being the thing you are looking at.
- *  What the birds leave on — small, because the entrance is about two notches
- *  of a wheel end to end (see `entranceGain`) and a bird that waited for the
- *  middle of it would still be sitting on a frame that had shrunk out from
- *  under it. */
-const AT_NAME_UNTIL = 0.03
-
 /** How much of the whole journey to the menu bar the vine is still visible
  *  for. It is a frame around the first screen, and a frame the size of a
  *  postage stamp sitting in the corner is not one — so it is gone well before
@@ -180,12 +173,6 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
      `placeSign`, so the exit is a pure function of the scroll and reverses
      exactly on the way back up. */
   const vineActive = unveiling
-  /* Whether the name is still the thing on screen. Only the birds read this
-     now, and they read it as a boolean rather than as a position because what
-     they do with it is not a transform: they fly off. A flight has its own
-     duration and cannot be a function of the scroll the way the vine's own
-     exit is. */
-  const [atName, setAtName] = useState(true)
   // Read by the hover-scrub below, which runs outside the scroll loop and so
   // cannot close over `inWork` without going stale.
   const inWorkRef = useRef(false)
@@ -316,7 +303,6 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
 
   useEffect(() => {
     let lastInWork = false
-    let lastAtName = true
 
     return engine.subscribe((state) => {
       const p = state.value
@@ -377,12 +363,6 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
       if (nowInWork !== lastInWork) {
         lastInWork = nowInWork
         setInWork(nowInWork)
-      }
-
-      const nowAtName = p < AT_NAME_UNTIL
-      if (nowAtName !== lastAtName) {
-        lastAtName = nowAtName
-        setAtName(nowAtName)
       }
     })
   }, [engine])
@@ -489,13 +469,20 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
       </div>
 
       {/* And what lives on it. Three birds come in off the edge of the window,
-          sit on the vine's rails, and go again — startled by the cursor, or
+          sit on a rail, and go again — startled by the cursor, pressed, or
           simply having sat long enough. Outside `.hm-vine` rather than inside
           it, because that box is being scaled onto the parked mark as you
-          scroll and a bird standing on it would be scaled with it; the birds
-          read the rail's position instead and leave under their own power
-          when the name is no longer what you are looking at. */}
-      <Birds frameRef={vineRef} active={vineActive && atName} />
+          scroll and a bird standing on it would be scaled with it; they read
+          the rail's position for themselves instead.
+
+          Two rails are offered, and which one a bird gets is a question of
+          where the scroll is rather than of anything set here: the vine while
+          the name is on screen, and once it has shrunk away — Birds.tsx will
+          not perch on something faded out — the footer's own two rules,
+          which are the only horizontal lines the work screen has. So the
+          flock moves down the page with you instead of leaving at the top
+          of it. */}
+      <Birds perch=".hm-vine, .hm-foot-track" active={vineActive} />
 
       {/* The one mark on the page. Laid out parked in the menu bar and
           transformed out to the middle of the screen — see `placeSign`.

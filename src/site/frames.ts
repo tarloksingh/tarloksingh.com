@@ -302,6 +302,11 @@ export const BIRD_SIT: string[] = [
   'M27 22 C27 25 26 26 27 28'
 ]
 
+/** Which stroke of `BIRD_SIT` is the folded wing. A perched bird shakes it
+ *  out every few seconds, and that rotation has to be put on the wing alone
+ *  rather than on the whole group — see `.bd-sit-wing` in Birds.css. */
+export const BIRD_SIT_WING = 5
+
 /* Flying: the same bird stretched level, tail forked out behind. The wings
  * are separate so they can beat — see `.bd-wing-*` in Birds.css, which shows
  * one and hides the other on a steps() cycle rather than tweening between

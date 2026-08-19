@@ -1,26 +1,26 @@
 import { useEffect, useRef } from 'react'
-import type { RefObject } from 'react'
-import { BIRD_BODY, BIRD_SIT, BIRD_WING_DOWN, BIRD_WING_UP } from './frames'
+import { BIRD_BODY, BIRD_SIT, BIRD_SIT_WING, BIRD_WING_DOWN, BIRD_WING_UP } from './frames'
 import './Birds.css'
 
-/* Birds on the vine.
+/* Birds on the page.
  *
- * Three of them, drawn in the same hand as the frame they land on. Each one
- * comes in off the edge of the window, settles on one of the vine's two
- * horizontal rails, sits there — drawing itself as it lands — and eventually
- * leaves again, either because it has sat long enough or because the cursor
- * came too close. Off screen it waits a few seconds and comes back to a
- * different spot, so the flock is never twice in the same arrangement.
+ * Three of them, drawn in the same hand as the frames they land on. Each one
+ * comes in off the edge of the window, settles on a horizontal rail somewhere
+ * on screen, sits there — drawing itself as it lands, then shifting its
+ * weight and shaking its wings out — and eventually leaves again, because it
+ * has sat long enough, because the cursor came too close, or because someone
+ * touched it. Off screen it waits a few seconds and comes back to a different
+ * spot, so the flock is never twice in the same arrangement.
  *
  * One rAF loop for all three, writing transforms straight to the nodes. Three
  * birds is not a lot, but it is the same reasoning as everywhere else on this
  * site: React renders the elements once, and where they *are* is not state.
  *
- * The perches are read off the vine's own box at the moment a bird chooses
- * one, rather than measured up front — the box moves as you scroll (see
- * `placeSign` in Home.tsx, which shrinks it onto the parked mark) and is a
- * different shape at every window size. A bird that measured once would land
- * where the rail used to be.
+ * What counts as a rail is a CSS selector the page hands in, and it is
+ * resolved at the moment a bird chooses a perch rather than measured up
+ * front. Both screens move what they are made of — the stage shrinks the vine
+ * onto the parked mark as you scroll, a case study scrolls under a sticky bar
+ * — and a bird that measured once would land where the rail used to be.
  */
 
 /** How many. Three reads as "some birds"; two reads as a pair, and a pair is
@@ -28,8 +28,12 @@ import './Birds.css'
 const COUNT = 3
 
 /** The drawing's width on screen, in px, and the two numbers derived off it:
- *  the box is 44 x 30 in its own units and the feet stand on y = 28. */
-const SIZE = 34
+ *  the box is 44 x 30 in its own units and the feet stand on y = 28. Small
+ *  enough to read as a bird noticed at the edge of a page rather than as an
+ *  illustration of one; the stroke is thickened to match (see Birds.css), so
+ *  going smaller made them darker rather than fainter. Written out to the
+ *  stylesheet as `--bd-size`, so this is the only place it is stated. */
+const SIZE = 28
 const HEIGHT = (SIZE * 30) / 44
 const FEET = (SIZE * 28) / 44
 
@@ -51,9 +55,21 @@ const AWAY = [2.5, 9]
 const SPEED = 300
 const FLIGHT = [1.1, 2.8]
 
+/** Seconds between one fidget and the next while perched, and how long each
+ *  of the two kinds lasts. Short, and short gaps: a bird that holds still for
+ *  ten seconds at a time is a sticker of a bird. The durations have to agree
+ *  with the animations in Birds.css — the attribute is what starts them, and
+ *  it has to stay set for as long as they run. */
+const FIDGET = [0.7, 2.9]
+const FLAP_FOR = 0.44
+const TURN_FOR = 0.9
+
 const rand = (lo: number, hi: number) => lo + Math.random() * (hi - lo)
 
 type Mode = 'in' | 'perched' | 'out'
+/** What a perched bird is doing this second: shaking its wings out, looking
+ *  about, or nothing. */
+type Fidget = '' | 'flap' | 'turn'
 
 interface Bird {
   el: HTMLDivElement | null
@@ -75,6 +91,10 @@ interface Bird {
   /** -1 when travelling left, so the drawing faces where it is going. */
   flip: number
   rot: number
+  /** Seconds until the next fidget, what it is, and what is left of it. */
+  next: number
+  fidget: Fidget
+  fidgetLeft: number
 }
 
 /** A point off the side of the window, at a height a bird might plausibly
@@ -84,22 +104,47 @@ const offscreen = () => ({
   y: rand(window.innerHeight * 0.12, window.innerHeight * 0.72)
 })
 
-/** Somewhere to sit: a point along the top or the bottom rail of the vine's
- *  own box, held in from the corners where the frame's ornaments are. Falls
- *  back to the window's own edges if the vine is not up yet, so a bird never
- *  has nowhere to go. */
-const perch = (frame: HTMLElement | null) => {
-  const box = frame?.getBoundingClientRect()
+/** Everything matching the page's perch selector that a bird could actually
+ *  stand on right now: wide enough to be a rail, on screen, and not faded
+ *  out. That last one is what keeps birds off the stage's vine once it has
+ *  been shrunk onto the parked mark — it is still in the document there, at
+ *  zero opacity, and a bird standing on nothing is worse than no bird. */
+const railsOn = (selector: string) =>
+  Array.from(document.querySelectorAll<HTMLElement>(selector)).filter((el) => {
+    const box = el.getBoundingClientRect()
+    if (box.width < 90) return false
+    if (box.bottom < HEIGHT * 2 || box.top > window.innerHeight - HEIGHT) return false
+    return Number.parseFloat(getComputedStyle(el).opacity) > 0.2
+  })
+
+/** Somewhere to sit: a point along one of those elements' horizontal edges,
+ *  held in from the ends where a frame's ornaments and a bar's own words are.
+ *  Falls back to the window's own edges if nothing on the page qualifies, so
+ *  a bird never has nowhere to go. */
+const perch = (selector: string) => {
+  const rails = railsOn(selector)
+  const box = rails.length ? rails[Math.floor(Math.random() * rails.length)].getBoundingClientRect() : null
   const left = box ? box.left : window.innerWidth * 0.12
   const right = box ? box.right : window.innerWidth * 0.88
   const top = box ? box.top : window.innerHeight * 0.2
   const bottom = box ? box.bottom : window.innerHeight * 0.8
   const inset = Math.min(120, (right - left) * 0.22)
+  /* Which edge. A box tall enough to have two distinct rails offers both —
+     the vine around the name is one of those. A bar or a rule is a single
+     line, and its top is the line you can see. Either way a rail with no room
+     for a bird above it is not offered: a sticky header's own top edge is
+     level with the window's, and a bird there would be half off the page. */
+  const rail =
+    bottom - top < 24
+      ? top
+      : top > HEIGHT * 1.6 && Math.random() < 0.55
+        ? top
+        : bottom
   return {
     x: rand(left + inset, right - inset) - SIZE / 2,
     // The rail is where the feet go, so the box sits above it by exactly the
     // distance from the top of the drawing down to the feet.
-    y: (Math.random() < 0.55 ? top : bottom) - FEET
+    y: rail - FEET
   }
 }
 
@@ -128,14 +173,18 @@ const launch = (bird: Bird, to: { x: number; y: number }, mode: Mode) => {
 const smooth = (t: number) => t * t * (3 - 2 * t)
 
 interface BirdsProps {
-  /** The vine's own element — what the birds sit on. */
-  frameRef: RefObject<HTMLElement | null>
-  /** False once the name is no longer what you are looking at: everything
-   *  perched takes off, and nothing new arrives until it is true again. */
+  /** A CSS selector for whatever on this page counts as a rail — the vine on
+   *  the stage, the sticky bar on a case study. Several may be listed; a bird
+   *  picks between whichever of them are on screen when it chooses a perch,
+   *  so a page whose furniture scrolls past simply offers different rails as
+   *  you go. */
+  perch: string
+  /** False while the page is not somewhere birds belong: everything perched
+   *  takes off, and nothing new arrives until it is true again. */
   active: boolean
 }
 
-export default function Birds({ frameRef, active }: BirdsProps) {
+export default function Birds({ perch: selector, active }: BirdsProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const birdsRef = useRef<Bird[]>([])
   const activeRef = useRef(active)
@@ -156,12 +205,33 @@ export default function Birds({ frameRef, active }: BirdsProps) {
       bird.hold = 0.4 + i * rand(0.8, 2.2)
     })
 
+    /* Mouse only. A touch that lands on a bird is a tap, handled below, and
+       a touch that lands anywhere else should not scare one off the far side
+       of the page — but a touchscreen reports its drags through the same
+       event, so without this every scroll would clear the rails. */
     const pointer = { x: -9999, y: -9999 }
     const onMove = (e: PointerEvent) => {
+      if (e.pointerType !== 'mouse') return
       pointer.x = e.clientX
       pointer.y = e.clientY
     }
     window.addEventListener('pointermove', onMove, { passive: true })
+
+    /* And the tap itself. Only a perched bird answers — `.bd` takes its
+       pointer events back in Birds.css for exactly as long as it is standing
+       still — because a hit target crossing the window at three hundred
+       pixels a second is not one anybody meant to press. */
+    const releases = birds.map((bird) => {
+      const el = bird.el
+      if (!el) return () => {}
+      const onTap = () => {
+        if (bird.mode !== 'perched') return
+        bird.fidget = ''
+        launch(bird, offscreen(), 'out')
+      }
+      el.addEventListener('pointerdown', onTap)
+      return () => el.removeEventListener('pointerdown', onTap)
+    })
 
     let raf = 0
     let previous = performance.now()
@@ -180,7 +250,23 @@ export default function Birds({ frameRef, active }: BirdsProps) {
           if (near || bird.hold <= 0 || !activeRef.current) {
             // Startled birds leave the way they were facing; bored ones pick
             // an edge. Either way it is a flight off the screen, not a hop.
+            bird.fidget = ''
             launch(bird, offscreen(), 'out')
+          } else if (bird.fidget) {
+            bird.fidgetLeft -= dt
+            // Cleared rather than left set, because setting the attribute is
+            // what starts the animation: it has to go away before the same
+            // fidget can happen twice in a row.
+            if (bird.fidgetLeft <= 0) bird.fidget = ''
+          } else {
+            bird.next -= dt
+            if (bird.next <= 0) {
+              // Mostly wings. Looking about is the quieter of the two and
+              // reads as punctuation between them.
+              bird.fidget = Math.random() < 0.66 ? 'flap' : 'turn'
+              bird.fidgetLeft = bird.fidget === 'flap' ? FLAP_FOR : TURN_FOR
+              bird.next = bird.fidgetLeft + rand(FIDGET[0], FIDGET[1])
+            }
           }
         } else if (bird.mode === 'out' && bird.t >= 1) {
           bird.hold -= dt
@@ -188,7 +274,7 @@ export default function Birds({ frameRef, active }: BirdsProps) {
             const from = offscreen()
             bird.x = from.x
             bird.y = from.y
-            launch(bird, perch(frameRef.current), 'in')
+            launch(bird, perch(selector), 'in')
           }
         }
 
@@ -216,6 +302,9 @@ export default function Birds({ frameRef, active }: BirdsProps) {
               bird.mode = 'perched'
               bird.hold = rand(SIT[0], SIT[1])
               bird.rot = 0
+              // Not straight away: the perched pose is still drawing itself
+              // on for the first quarter-second (see `.bd-sit path`).
+              bird.next = rand(0.5, 1.6)
             } else {
               bird.hold = rand(AWAY[0], AWAY[1])
             }
@@ -227,6 +316,7 @@ export default function Birds({ frameRef, active }: BirdsProps) {
         el.style.transform = `translate3d(${bird.x.toFixed(1)}px, ${bird.y.toFixed(1)}px, 0) rotate(${bird.rot.toFixed(1)}deg) scaleX(${bird.flip})`
         const mode = bird.mode === 'perched' ? 'perched' : 'flying'
         if (el.dataset.mode !== mode) el.dataset.mode = mode
+        if (el.dataset.fidget !== bird.fidget) el.dataset.fidget = bird.fidget
       }
     }
 
@@ -234,11 +324,18 @@ export default function Birds({ frameRef, active }: BirdsProps) {
     return () => {
       cancelAnimationFrame(raf)
       window.removeEventListener('pointermove', onMove)
+      releases.forEach((release) => release())
     }
-  }, [frameRef])
+  }, [selector])
 
   return (
-    <div className="bd-flock" ref={rootRef} data-on={active ? 'true' : undefined} aria-hidden="true">
+    <div
+      className="bd-flock"
+      ref={rootRef}
+      data-on={active ? 'true' : undefined}
+      aria-hidden="true"
+      style={{ ['--bd-size' as string]: `${SIZE}px` }}
+    >
       {Array.from({ length: COUNT }, (_, i) => (
         <div
           key={i}
@@ -262,7 +359,10 @@ export default function Birds({ frameRef, active }: BirdsProps) {
                 x: -200,
                 y: -200,
                 flip: 1,
-                rot: 0
+                rot: 0,
+                next: 0,
+                fidget: '',
+                fidgetLeft: 0
               }
             } else {
               list[i].el = el
@@ -288,6 +388,7 @@ export default function Birds({ frameRef, active }: BirdsProps) {
               {BIRD_SIT.map((d, s) => (
                 <path
                   key={d}
+                  className={s === BIRD_SIT_WING ? 'bd-sit-wing' : undefined}
                   d={d}
                   pathLength="1"
                   strokeDasharray="1"

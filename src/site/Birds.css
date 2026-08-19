@@ -6,9 +6,9 @@
   position: fixed;
   inset: 0;
   z-index: var(--z-chrome);
-  /* Never a hit target. The birds react to the cursor coming near — see
-     `STARTLE` in Birds.tsx — but they must not be able to swallow a click
-     meant for the menu behind them. */
+  /* The sheet is never a hit target — a fixed layer over the whole window
+     that swallowed clicks would take the menu with it. Individual birds take
+     their own events back below, and only while they are standing still. */
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.6s var(--ease-out);
@@ -22,10 +22,25 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: 34px;
+  /* Written on the flock by Birds.tsx, which is where the number lives — the
+     loop has to know the same width to land the feet on a rail. */
+  width: var(--bd-size, 28px);
   /* Written every frame while a bird is in the air. */
   will-change: transform;
-  color: var(--ink-faint);
+  /* Body ink rather than the faintest — at this size a bird set in the tone
+     of a hairline rule reads as a smudge on the paper rather than as a
+     drawing of something alive. */
+  color: var(--ink-body);
+}
+
+/* Perched, a bird is small enough to press. Flying, it is a target crossing
+   the window at three hundred pixels a second, which nobody is aiming at on
+   purpose and everybody would hit by accident. See the tap handler in
+   Birds.tsx — on a mouse this rarely comes up, because the cursor startles
+   one off its rail long before it arrives. */
+.bd[data-mode='perched'] {
+  pointer-events: auto;
+  cursor: pointer;
 }
 
 .bd-art {
@@ -38,10 +53,11 @@
 .bd path {
   fill: none;
   stroke: currentColor;
-  /* In the drawing's own units: the box is 44 across at 34px, so this comes
+  /* In the drawing's own units: the box is 44 across at 28px, so this comes
      out a little under a pixel and a half — the same weight as a sprig beside
-     a word, which is the scale a bird is at here. */
-  stroke-width: 1.9;
+     a word, which is the scale a bird is at here. Raised when the birds were
+     made smaller, so that shrinking them did not also thin them. */
+  stroke-width: 2.2;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -80,6 +96,129 @@
 .bd[data-mode='perched'] .bd-sit path {
   stroke-dashoffset: 0;
   transition-delay: calc(var(--sp-i, 0) * 0.045s);
+}
+
+/* ---- perched, but never still ----
+
+   A bird standing on a rail is doing three things at once, and none of them
+   is holding a pose. Underneath everything there is the settle: a constant,
+   almost invisible shift of weight, off its own feet, running on each bird's
+   own clock so the three are never in phase. Over that, every second or two,
+   one of two fidgets — the wings shaken out, or a look around — started by
+   Birds.tsx setting `data-fidget` and lasting exactly as long as it holds it.
+
+   The three animate three different elements on purpose. `.bd` itself is
+   written by the loop every frame and cannot be touched from here; `.bd-art`
+   takes the settle, and the two fidgets share `.bd-sit` because only one of
+   them ever runs at a time. */
+
+.bd[data-mode='perched'] .bd-art {
+  /* About the feet, which is the one point on a perched bird that does not
+     move. Rocking a bird about its middle looks like it is floating. */
+  transform-origin: 50% 93%;
+  animation: bd-settle 2.9s ease-in-out infinite;
+}
+
+.bd:nth-child(2)[data-mode='perched'] .bd-art {
+  animation-duration: 3.7s;
+  animation-delay: -1.3s;
+}
+
+.bd:nth-child(3)[data-mode='perched'] .bd-art {
+  animation-duration: 2.3s;
+  animation-delay: -0.6s;
+}
+
+@keyframes bd-settle {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  35% {
+    transform: translateY(-0.9px) rotate(-1.2deg);
+  }
+  70% {
+    transform: translateY(0.4px) rotate(0.9deg);
+  }
+}
+
+/* The fidgets are on the group, so the numbers here are the drawing's own
+   units (the box is 44 x 30) rather than pixels. */
+.bd-sit {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+.bd[data-fidget='flap'] .bd-sit {
+  animation: bd-shudder 0.44s ease-out;
+}
+
+.bd[data-fidget='turn'] .bd-sit {
+  animation: bd-turn 0.9s ease-in-out;
+}
+
+/* The folded wing, lifted off the flank and dropped back three times. Rotated
+   about its own shoulder — the top right of its box, which is where the
+   stroke starts — because a wing that pivots anywhere else detaches from the
+   body it is folded against. */
+.bd-sit-wing {
+  transform-box: fill-box;
+  transform-origin: 100% 0%;
+}
+
+.bd[data-fidget='flap'] .bd-sit-wing {
+  animation: bd-shake 0.44s ease-out;
+}
+
+@keyframes bd-shake {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  15% {
+    transform: rotate(34deg);
+  }
+  30% {
+    transform: rotate(5deg);
+  }
+  45% {
+    transform: rotate(30deg);
+  }
+  62% {
+    transform: rotate(4deg);
+  }
+  80% {
+    transform: rotate(21deg);
+  }
+}
+
+/* The body rides the wingbeat rather than staying put under it. */
+@keyframes bd-shudder {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  20% {
+    transform: translateY(-1.3px);
+  }
+  55% {
+    transform: translateY(-0.6px);
+  }
+}
+
+/* Looking about: the whole bird turns on its feet, further one way than the
+   other, so it reads as having chosen a direction rather than oscillating. */
+@keyframes bd-turn {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  28% {
+    transform: rotate(-5deg);
+  }
+  64% {
+    transform: rotate(3deg);
+  }
 }
 
 /* ---- the wingbeat ----
