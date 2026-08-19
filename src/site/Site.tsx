@@ -34,6 +34,10 @@ export default function Site() {
   // The veil fading is both the stage unlocking and `Intro` coming down —
   // see `onReveal`/`onDone` in Intro.tsx.
   const [introRevealed, setIntroRevealed] = useState(false)
+  /* Earlier than that: the moment the room *starts* to go. The stage's own
+     drawing begins here rather than at the reveal, so the vine around the name
+     is already growing while the last of the black is fading off it. */
+  const [introLeaving, setIntroLeaving] = useState(false)
   const [loading, setLoading] = useState(() => currentRoute().name !== 'home')
   const [indexOpen, setIndexOpen] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -145,6 +149,7 @@ export default function Site() {
      the page getting into position. `introRevealed` and `introDone` both
      fire together, the instant the veil has finished fading. */
   const enterWork = useCallback(() => setArriveAt(workProjects[0]?.id ?? null), [])
+  const onIntroLeaving = useCallback(() => setIntroLeaving(true), [])
   const onIntroReveal = useCallback(() => setIntroRevealed(true), [])
   const introDone = useCallback(() => setIntro(false), [])
 
@@ -155,6 +160,10 @@ export default function Site() {
           onOpen={openProject}
           onIndex={() => setIndexOpen(true)}
           locked={busy || indexOpen || (intro && !introRevealed)}
+          /* True from the moment the film starts to lift, and true straight
+             away when there is no film — coming back from a case study, or a
+             deep link. */
+          unveiling={!intro || introLeaving}
           arriveAt={arriveAt}
           noir={noir}
         />
@@ -188,7 +197,13 @@ export default function Site() {
       </div>
 
       {intro ? (
-        <Intro preload={posters} onCommit={enterWork} onReveal={onIntroReveal} onDone={introDone} />
+        <Intro
+          preload={posters}
+          onLeaving={onIntroLeaving}
+          onCommit={enterWork}
+          onReveal={onIntroReveal}
+          onDone={introDone}
+        />
       ) : null}
 
       {loading ? <Loader preload={posters} onDone={loaderDone} /> : null}

@@ -4,6 +4,8 @@ import Helix from './Helix'
 import type { HelixCard } from './Helix'
 import Gallery from './Gallery'
 import Wordmark from './Wordmark'
+import ProjectFrame from './ProjectFrame'
+import { VINE_FRAME } from './frames'
 import { workProjects, sideProjects } from '../data/projects'
 import { SCROLL_BOX, SCROLL_OUTLINE } from './cueGlyphs'
 import { useScrollEngine, clamp, ease, range } from './useScrollEngine'
@@ -38,11 +40,23 @@ const IN_WORK_AT = 0.75
  *  screen and the corner; after it, parked. */
 const NAME_DOCK = 0.62
 
+/** Seconds the vine around the name takes to grow in. Far slower than a
+ *  project's frame (`DRAW_IN`, ProjectFrame.tsx): that one is drawn in the
+ *  moment you arrive at a piece and has to be finished before you move on,
+ *  while this one has the whole of the first screen to itself and is meant to
+ *  be caught happening rather than found already done. */
+const VINE_DRAW = 8
+
 interface HomeProps {
   /** Navigates, with the shell's curtain over the top. */
   onOpen: (projectId: string) => void
   /** True while a transition covers the page — input is ignored then. */
   locked: boolean
+  /** The film over this page has begun to lift — see `onLeaving` in Intro.tsx.
+   *  Earlier than `locked` coming off, which is the film being *gone*: the
+   *  vine starts growing here so that it is already under way while the last
+   *  of the black fades off it. */
+  unveiling: boolean
   /** Opens the project index overlay. */
   onIndex: () => void
   /** Which project to arrive at, when coming back from a case study. */
@@ -51,7 +65,7 @@ interface HomeProps {
   noir?: boolean
 }
 
-export default function Home({ onOpen, locked, onIndex, arriveAt, noir }: HomeProps) {
+export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noir }: HomeProps) {
   // `detentFrom: 1` is where the scrubber becomes a list — see the option's
   // documentation. Below 1 you are flying through the field and every
   // position is a real picture; at 1 and above you are looking at one piece
@@ -88,6 +102,7 @@ export default function Home({ onOpen, locked, onIndex, arriveAt, noir }: HomePr
 
   const sigRef = useRef<HTMLDivElement>(null)
   const artistRef = useRef<HTMLParagraphElement>(null)
+  const vineRef = useRef<HTMLDivElement>(null)
   const cueRef = useRef<HTMLDivElement>(null)
   const footRef = useRef<HTMLElement>(null)
   const trackRef = useRef<HTMLSpanElement>(null)
@@ -135,7 +150,14 @@ export default function Home({ onOpen, locked, onIndex, arriveAt, noir }: HomePr
     // The rubric belongs to the big pose only: parked, it would be a caption
     // on something the size of a caption.
     const artist = artistRef.current
-    if (artist) artist.style.opacity = (1 - ease(p, 0, NAME_DOCK * 0.45)).toFixed(3)
+    const off = (1 - ease(p, 0, NAME_DOCK * 0.45)).toFixed(3)
+    if (artist) artist.style.opacity = off
+    /* The vine goes with it, and for the same reason. It is drawn around the
+       *screen's* middle rather than inside the signature — a frame that rode
+       the mark would be scaled down to a doodle in the menu bar, and its pen
+       with it — so it cannot simply travel along; it lets go instead. */
+    const vine = vineRef.current
+    if (vine) vine.style.opacity = off
   }, [])
 
   // Layout, not effect: unmeasured, the signature would paint parked for one
@@ -293,6 +315,19 @@ export default function Home({ onOpen, locked, onIndex, arriveAt, noir }: HomePr
 
       {/* ---- chrome. Fixed above both stages, present the whole way through. ---- */}
 
+      {/* The vine. The same drawing machinery the projects' frames are made of
+          (ProjectFrame.tsx) around a very much smaller box: those are hung off
+          the window and stand a whole exhibit tall, this one is a close ring
+          around the name itself. It grows from the moment the film starts to
+          lift, over eight seconds, so it is still coming while the black goes.
+
+          Before the signature, so the name is drawn over the line rather than
+          under it — they share `--z-chrome`, and at equal z-index the later
+          element wins. */}
+      <div className="hm-vine" ref={vineRef} aria-hidden="true">
+        <ProjectFrame variant={VINE_FRAME} drawIn={VINE_DRAW} active={unveiling} />
+      </div>
+
       {/* The one mark on the page. Laid out parked in the menu bar and
           transformed out to the middle of the screen — see `placeSign`. */}
       <div className="hm-sig" ref={sigRef}>
@@ -348,7 +383,12 @@ export default function Home({ onOpen, locked, onIndex, arriveAt, noir }: HomePr
           is a sweep along the writing direction rather than a pen (see
           `cueGlyphs.ts`), and the rule under it points the way the stage
           actually travels, which is not the same way on a phone (Home.css).
-          The word itself is drawing, so the readable one is the label. */}
+          The word itself is drawing, so the readable one is the label.
+
+          It hangs under the signature at exactly the distance the rubric hangs
+          above it, so the three read as one stack rather than as a mark in the
+          middle of the screen and a note at the foot of it — see `.hm-cue` in
+          Home.css, which is where that arithmetic lives. */}
       <div className="hm-cue" ref={cueRef} data-wrote={wrote ? 'true' : undefined}>
         <span className="u-sr">Scroll</span>
         <span className="hm-cue-word" aria-hidden="true">

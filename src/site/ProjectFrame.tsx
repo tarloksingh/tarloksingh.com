@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import type { CSSProperties } from 'react'
 import { frameFor } from './frames'
+import type { FrameVariant } from './frames'
 import './ProjectFrame.css'
 
 /* The frame drawn around one project's exhibit.
@@ -54,12 +55,20 @@ import './ProjectFrame.css'
  */
 
 interface ProjectFrameProps {
-  /** Which project's frame to draw — an index into the row. */
-  index: number
+  /** Which project's frame to draw — an index into the row. Ignored when
+   *  `variant` names a drawing directly. */
+  index?: number
   /** Whether the visitor is standing at this project. The frame draws itself
    *  in while this is true and pulls back off while it is not; Gallery.tsx
    *  decides it, since it is the one that knows where the row is. */
   active: boolean
+  /** A drawing to use instead of whichever one `index` would land on. The
+   *  home page's vine is this same machinery around a different box with a
+   *  different ornament in it — see `VINE_FRAME` in frames.ts. */
+  variant?: FrameVariant
+  /** Seconds to take over drawing itself in, where the row's own pace is the
+   *  wrong one. A thing that grows takes longer than a thing that is ruled. */
+  drawIn?: number
 }
 
 /** Seconds the frame takes to draw itself in once its project is stood at,
@@ -132,9 +141,14 @@ const stroke = (d: string, i: number) => (
   />
 )
 
-export default function ProjectFrame({ index, active }: ProjectFrameProps) {
+export default function ProjectFrame({
+  index = 0,
+  active,
+  variant: given,
+  drawIn = DRAW_IN
+}: ProjectFrameProps) {
   const rootRef = useRef<HTMLDivElement>(null)
-  const variant = frameFor(index)
+  const variant = given ?? frameFor(index)
   /* Read inside the loop rather than closed over, so changing it does not tear
      the loop down and restart it — which would drop the drawing back to zero
      every time the visitor moved. */
@@ -211,7 +225,7 @@ export default function ProjectFrame({ index, active }: ProjectFrameProps) {
       const target = activeRef.current ? 1 : 0
       draw =
         target > draw
-          ? Math.min(target, draw + step / DRAW_IN)
+          ? Math.min(target, draw + step / drawIn)
           : Math.max(target, draw - step / DRAW_OUT)
       root.style.setProperty('--pf-draw', draw.toFixed(4))
 
@@ -222,7 +236,7 @@ export default function ProjectFrame({ index, active }: ProjectFrameProps) {
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [])
+  }, [drawIn])
 
   /* The order the frame assembles in: the corners are set down, the rails run
      out from them, and the crest closes the middle of each edge last. */

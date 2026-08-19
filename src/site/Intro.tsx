@@ -87,6 +87,12 @@ const span = (t: number, at: number, over: number) => clamp01((t - at) / over)
 interface IntroProps {
   /** Stills to have decoded before scrolling is allowed to do anything. */
   preload: string[]
+  /** The room has *begun* to go — the black has started fading on its own, or
+   *  a scroll has taken the burn over. Fires once, and well before `onReveal`:
+   *  it is the cue for the page underneath to start its own entrance, so that
+   *  what the visitor sees is the film coming off something already growing
+   *  rather than a settled page appearing behind it. */
+  onLeaving: () => void
   /** The visitor has started leaving: put the page behind into position. */
   onCommit: () => void
   /** The veil has finished burning away: the page underneath is fully
@@ -102,7 +108,7 @@ interface IntroProps {
 const SCRATCHES = 3
 const DUST = 7
 
-export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProps) {
+export default function Intro({ preload, onLeaving, onCommit, onReveal, onDone }: IntroProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const stackRef = useRef<HTMLDivElement>(null)
   const artistRef = useRef<HTMLParagraphElement>(null)
@@ -211,6 +217,13 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
      *  quantiser drops for good, even if they scroll straight back to 0. */
     let committed = false
     let calledCommit = false
+    /** Said once, on whichever of the two ways out happens first. */
+    let calledLeaving = false
+    const leaving = () => {
+      if (calledLeaving) return
+      calledLeaving = true
+      onLeaving()
+    }
     /** When the word above the name starts arriving — the auto-fade is timed
      *  from it, so the two are one movement rather than two waits. Written by
      *  `paint`, which is where the opening's clock is resolved. */
@@ -400,6 +413,7 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
         if (!leaveFrom) return
         const k = clamp01((now - leaveFrom) / AUTO_FADE)
         if (k <= 0) return
+        leaving()
         root.style.opacity = (1 - k).toFixed(3)
         // Half-faded, this is a sheet of glass over a live page. The wheel
         // and touch listeners are on `window` and still take the burn over,
@@ -433,6 +447,7 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
       // the picture, and it cannot eat through a veil that is half see-through.
       if (!committed) {
         committed = true
+        leaving()
         root.style.opacity = '1'
       }
       progressRef.current = clamp01(progressRef.current + delta / SCROLL_RANGE)
@@ -487,7 +502,7 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
       root.removeEventListener('touchmove', onTouchMove)
       window.removeEventListener('keydown', onKeyDown)
     }
-  }, [onCommit, onReveal, onDone])
+  }, [onLeaving, onCommit, onReveal, onDone])
 
   const [x, y, w, h] = NAME_BOX
   /* The viewBox is the ink and nothing else, so the element's box and the

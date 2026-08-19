@@ -160,3 +160,54 @@ export const FRAMES: FrameVariant[] = [
  *  project never leaves one without a frame. */
 export const frameFor = (index: number) =>
   FRAMES[((index % FRAMES.length) + FRAMES.length) % FRAMES.length]
+
+/* The one around the name on the home page.
+ *
+ * Deliberately not in `FRAMES` — it belongs to no project and should never
+ * come up in the row's rotation. It is the same machinery drawn to a
+ * different brief: where a project's frame is a printer's rule, this is
+ * growing. A stem sweeps the corner, leaves hang off it, a bloom opens where
+ * it turns, and the crest is two runners meeting in a flower at the middle of
+ * each edge. `ProjectFrame` draws it much more slowly than it draws those —
+ * see `VINE_DRAW` in Home.tsx — because a thing that grows should not arrive
+ * at the same speed as a thing that is ruled.
+ *
+ * `reach` is under 1 on purpose: this frame is drawn around a box a fraction
+ * of the size of a project's exhibit, and at the ornament's usual share of it
+ * the four corners meet in the middle with no run of stem left between them.
+ */
+export const VINE_FRAME: FrameVariant = {
+  reach: 0.82,
+  corner: [
+    // The stem, out of the bottom of one arm and away along the other.
+    'M9 152 C9 100 13 64 31 42 C49 20 88 10 152 9',
+    // Two leaves down the arm and two along it — the same pair mirrored about
+    // the diagonal, so the corner reads the same whichever way it is turned.
+    'M10 124 C24 124 34 116 34 104 C21 104 11 112 10 124',
+    'M124 10 C124 24 116 34 104 34 C104 21 112 11 124 10',
+    'M13 90 C24 86 30 76 27 66 C17 71 11 80 13 90',
+    'M90 13 C86 24 76 30 66 27 C71 17 80 11 90 13',
+    // The bloom, hung inside the turn on a short stalk off the sweep. It sits
+    // where it does because that is the one part of the corner with room for
+    // it: a flower on the arms would be a bead on a string, and one on the
+    // turn itself collides with everything the turn is already doing.
+    'M47 26 C51 32 52 37 53 41',
+    'M58 39 C66 40 70 46 66 53 C71 60 67 68 59 67 C54 73 46 71 45 63 C38 61 37 53 43 48 C43 41 50 38 58 39',
+    'M52 51 C57 49 60 52 58 56 C55 59 50 57 52 51'
+  ],
+  crest: [
+    // Two runners in off the edge line, rising to meet in the middle.
+    'M2 40 C30 40 56 39 80 30',
+    'M158 40 C130 40 104 39 80 30',
+    // A leaf off each.
+    'M36 40 C38 31 46 26 55 28 C51 37 44 42 36 40',
+    'M124 40 C122 31 114 26 105 28 C109 37 116 42 124 40',
+    // The flower they meet in: a petal opening either side, and one standing
+    // up between them.
+    'M80 30 C70 29 64 21 67 12 C75 15 80 22 80 30',
+    'M80 30 C90 29 96 21 93 12 C85 15 80 22 80 30',
+    'M80 26 C74 21 74 11 80 5 C86 11 86 21 80 26'
+  ],
+  rails: [9],
+  crestArm: 40
+}

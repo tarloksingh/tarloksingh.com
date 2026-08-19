@@ -23,6 +23,15 @@
      edges of a centred 1200px rail instead; short of that it is exactly
      `var(--gutter)`, unchanged. */
   --rail-inset: max(var(--gutter), calc((100vw - 1200px) / 2));
+  /* How wide the signature sits in the middle of the screen, as a length the
+     stylesheet can do arithmetic with. `--sig-hero-*` on `.hm-sig` are these
+     same three numbers taken apart, because `placeSign` has to read them as
+     plain numbers — `getPropertyValue` hands a `clamp()` back unevaluated.
+     Matched to `--sig-w` on `.in-stack` (Intro.css): the opening draws this
+     same mark at this same size, and everything on this screen that is hung
+     off the middle — the vine, the invitation under the name — is measured
+     from it, so the whole stack holds its proportions at every width. */
+  --sig-w: clamp(15rem, 19vw, 26rem);
 }
 
 /* ---- chrome ---- */
@@ -30,9 +39,50 @@
 .hm-sig,
 .hm-menu,
 .hm-cue,
+.hm-vine,
 .hm-foot {
   position: fixed;
   z-index: var(--z-chrome);
+}
+
+/* The vine around the name — the drawing itself is ProjectFrame.tsx's, and
+   `VINE_FRAME` in frames.ts is the ornament it puts in each corner.
+
+   Centred on the window rather than laid out around the signature, because
+   the signature is a transform away from a parked pose the whole time and a
+   frame parented to it would be scaled with it — down to a scribble a
+   centimetre across once the name has docked, pen and all. Home.tsx fades this
+   out on the same curve the rubric goes out on instead.
+
+   Both measurements are fractions of the mark's own hero width, so the ring
+   holds its distance from the name at every width. The height is the looser of
+   the two on purpose: the box has to clear the rubric above the name *and* the
+   invitation and its falling rule below it, and that stack is much taller than
+   the signature is. */
+.hm-vine {
+  /* Centred on the *stack*, not on the mark. Above the name is one short line;
+     below it are three — the word, the stroke under it, and the length that
+     stroke travels before it has faded — so a ring hung on the signature's own
+     middle comes out visibly top-heavy. This is half that difference, down. */
+  top: calc(50% + var(--sig-w) * 0.093);
+  left: 50%;
+  width: calc(var(--sig-w) * 1.3);
+  height: calc(var(--sig-w) * 0.95);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* A finer pen than the exhibits get. Theirs is drawn around most of a window;
+   this one is a third the size, and the site's hairline at this scale reads as
+   a heavy outline rather than as something grown. Two rules because the crest
+   is drawn larger than the corners and carries its own weight — see the note
+   on `.pf-k path` in ProjectFrame.css. */
+.hm-vine .pf path {
+  stroke-width: calc(var(--pf-w, 1.4) * 0.78);
+}
+
+.hm-vine .pf-k path {
+  stroke-width: calc(var(--pf-w-k, 1.4) * 0.78);
 }
 
 /* The signature, and the only mark on the page.
@@ -85,8 +135,13 @@
      in Intro.css: at the hero size they come out at the same pixel size and
      the same gap it uses, so the rubric does not resize across the handover
      any more than the signature does. */
-  font-size: calc(var(--wordmark-w, 8.2rem) * 0.048);
-  margin-bottom: 0.845em;
+  font-size: calc(var(--wordmark-w, 8.2rem) * 0.056);
+  /* In em, so the two factors above are the only things that set the rubric's
+     size — but the *gap* is meant to hold while the type grows, so this comes
+     down whenever that goes up. The product is what matters: 0.0406 of the
+     mark's width, and the invitation below the name is hung at exactly that
+     same distance (see `.hm-cue`). */
+  margin-bottom: 0.724em;
   line-height: 1;
   letter-spacing: 0.01em;
   color: var(--ink-soft);
@@ -131,14 +186,28 @@
   text-transform: lowercase;
 }
 
+/* The invitation, hung under the name the way the rubric is hung over it.
+
+   Off the middle of the window rather than off the foot of it: half the
+   signature's own height (its viewBox is 4839 x 1137, so half of that is
+   width / 8.512) and then the rubric's own gap, `0.0406` of the mark's width —
+   the product of the two factors on `.hm-sig-artist`, which is the number that
+   has to be matched for the spacing above and below the name to be even. The
+   same technique `.in-artist` uses in Intro.css, and for the same reason:
+   what the middle of the screen holds is the signature alone, so anything set
+   against it is measured from there rather than laid out in a column with it. */
 .hm-cue {
-  left: 50%;
-  bottom: calc(var(--gutter) + 54px);
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  top: 50%;
+  margin-top: calc(var(--sig-w) / 8.512 + var(--sig-w) * 0.0406);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  /* On the mark's scale like the rest of the stack, so the whole of it —
+     word, gap, and the stroke's full travel — stays inside the vine at every
+     width rather than only at the one it was measured at. */
+  gap: calc(var(--sig-w) * 0.022);
   pointer-events: none;
   transition: opacity var(--t-mid) var(--ease-out);
 }
@@ -153,10 +222,16 @@
    the edge reads as a nib rather than as a fade.
 
    Linear on purpose: a hand does not accelerate into the middle of a word.
-   The delay is the beat after the page has settled from the opening. */
+   The delay is the beat after the page has settled from the opening.
+
+   Sized off the mark rather than off the root, now that it sits directly under
+   it: a word an inch across was the right size for the foot of the page, and
+   next to the signature it read as a second heading. A fraction of the mark's
+   width instead, and a small one — under the name this is the quietest of the
+   three lines, quieter than the rubric above it. */
 .hm-cue-word {
   display: block;
-  width: 4.1rem;
+  width: calc(var(--sig-w) * 0.15);
   color: var(--ink-soft);
   -webkit-mask-image: linear-gradient(90deg, #000 38%, transparent 45%);
   mask-image: linear-gradient(90deg, #000 38%, transparent 45%);
@@ -189,10 +264,14 @@
   }
 }
 
+/* On the mark's scale too, and travelling its own length rather than a fixed
+   46px — the whole stack is inside the vine now, and a stroke that kept its
+   pixel length while everything around it shrank would run straight through
+   the bottom of it on a narrow window. */
 .hm-cue-rule {
   display: block;
   width: 1px;
-  height: 46px;
+  height: calc(var(--sig-w) * 0.11);
   background: linear-gradient(180deg, var(--ink-faint), transparent);
   /* Travels down the line and repeats — a drawn stroke rather than a
      bouncing arrow. */
@@ -209,9 +288,10 @@
     transform: scaleY(1);
     opacity: 1;
   }
+  /* Its own length, whatever that has come out as — see `.hm-cue-rule`. */
   70%,
   100% {
-    transform: scaleY(1) translateY(46px);
+    transform: scaleY(1) translateY(100%);
     opacity: 0;
   }
 }
@@ -227,7 +307,7 @@
   }
   70%,
   100% {
-    transform: scaleX(1) translateX(-46px);
+    transform: scaleX(1) translateX(-100%);
     opacity: 0;
   }
 }
@@ -294,8 +374,8 @@
 
 .hm-foot-track {
   position: relative;
-  height: 1px;
-  /* The rule a visitor can actually see is 1px; the box a cursor can
+  height: 2px;
+  /* The rule a visitor can actually see is 2px; the box a cursor can
      actually land on is not — the padding stretches the hit area well past
      the hairline without widening the line itself, which stays clipped to
      the unpadded content box. The negative margin takes the padding back
@@ -303,13 +383,17 @@
      line, not by this.
 
      `content-box` explicitly, against the site-wide `border-box`: under
-     border-box, 18px of padding is taken out of a 1px height rather than
+     border-box, 18px of padding is taken out of a 2px height rather than
      added to it, so the content box — the only part `content-box` clip
      paints — floors at zero and the rule disappears entirely. */
   box-sizing: content-box;
   padding: 9px 0;
   margin: -9px 0;
-  background: var(--rule-soft);
+  /* The part of the room you have not walked yet. At `--rule-soft` it was
+     nearly the paper's own colour, which made the line read as a fill with
+     nothing behind it rather than as a length with a position on it; one
+     step darker is enough to see where the rest of the work is. */
+  background: var(--rule);
   background-clip: content-box;
   cursor: pointer;
 }
@@ -317,7 +401,7 @@
 .hm-foot-track-fill {
   position: absolute;
   inset: 9px 0 auto 0;
-  height: 1px;
+  height: 2px;
   background: var(--ink-faint);
   transform: scaleX(0);
   transform-origin: left center;
@@ -343,8 +427,13 @@
     font-size: 0.85rem;
   }
 
-  .hm-cue {
-    bottom: calc(var(--gutter) + 62px);
+  /* The stroke under the invitation lies on its side here (see below), so what
+     hangs below the name is barely taller than the rubric above it: the ring
+     closes in, and it goes back to sitting on the mark's own middle rather
+     than being nudged down to find the stack's. */
+  .hm-vine {
+    top: 50%;
+    height: calc(var(--sig-w) * 0.78);
   }
 
   /* A phone's opening travels right to left, so the line under the word has
@@ -352,7 +441,7 @@
      side and drawn from the right-hand end, since the direction it is drawn
      in is the whole of what it says. */
   .hm-cue-rule {
-    width: 46px;
+    width: calc(var(--sig-w) * 0.11);
     height: 1px;
     background: linear-gradient(270deg, var(--ink-faint), transparent);
     transform-origin: right center;

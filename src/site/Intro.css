@@ -92,7 +92,11 @@
   bottom: 50%;
   margin-bottom: calc(var(--sig-w) / 8.512 + 0.7rem);
   font-family: var(--font-display);
-  font-size: clamp(0.8rem, 0.92vw, 1.05rem);
+  /* Solved against `.hm-sig-artist` in Home.css — the page sets this same word
+     over this same mark, and it must not resize across the handover. Both went
+     up together: at the old size it was a caption on something a foot wide
+     rather than a rubric over it. */
+  font-size: clamp(0.93rem, 1.07vw, 1.22rem);
   letter-spacing: 0.01em;
   line-height: 1;
   color: rgba(255, 255, 255, 0.92);
