@@ -101,10 +101,6 @@ interface IntroProps {
    while and then is gone, and dust is one frame and never the same twice. */
 const SCRATCHES = 3
 const DUST = 7
-/** Sparks thrown off the burning edge, each living this long before the next
- *  one takes its place. */
-const EMBERS = 14
-const EMBER_LIFE = 1.05
 
 export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProps) {
   const rootRef = useRef<HTMLDivElement>(null)
@@ -197,11 +193,6 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
 
     const scratches = Array.from(marks.querySelectorAll<HTMLElement>('.in-scratch'))
     const dust = Array.from(marks.querySelectorAll<HTMLElement>('.in-dust'))
-    const embers = Array.from(marks.querySelectorAll<HTMLElement>('.in-ember'))
-    /** One ember's whole life: the angle it left the edge at, when it was
-     *  born, and how it wanders — mutated in place rather than reallocated,
-     *  since a new one is only ever due when the old one has fully faded. */
-    const emberState = embers.map(() => ({ angle: 0, born: -Infinity, wobble: 0, drift: 0 }))
 
     /* One origin for the whole screen. Every time below is seconds since it,
        including the ref the preloader writes — it records `performance.now()`
@@ -224,6 +215,9 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
      *  from it, so the two are one movement rather than two waits. Written by
      *  `paint`, which is where the opening's clock is resolved. */
     let leaveFrom = 0
+    /** The mask currently on the veil, so the string is only written when it
+     *  has actually changed — which, outside a burn, is never. */
+    let maskedWith = ''
     let revealed = false
 
     /** Everything that is a function of the film clock, sampled on the 24s. */
@@ -264,39 +258,6 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
         speck.style.opacity = (
           alive * (Math.random() < 0.4 ? Math.random() * 0.4 * boost : 0)
         ).toFixed(3)
-      })
-    }
-
-    /** Sparks thrown off wherever the fire currently is: each is born at the
-     *  burning edge, rises and drifts outward as it ages, and fades in and
-     *  back out over its life rather than blinking on and off. Nothing here
-     *  is random per frame — a spark's whole arc is fixed the moment it is
-     *  born, so it reads as a trajectory rather than as static. */
-    const paintEmbers = (t: number, cx: number, cy: number, r: number, heat: number) => {
-      if (heat < 0.015) {
-        embers.forEach((el) => {
-          el.style.opacity = '0'
-        })
-        return
-      }
-      embers.forEach((el, i) => {
-        const st = emberState[i]
-        let age = t - st.born
-        if (age > EMBER_LIFE) {
-          st.born = t - Math.random() * EMBER_LIFE * 0.3
-          st.angle = Math.random() * Math.PI * 2
-          st.wobble = Math.random() * 10 - 5
-          st.drift = 0.6 + Math.random() * 0.5
-          age = t - st.born
-        }
-        const k = clamp01(age / EMBER_LIFE)
-        const rise = k * k * 60 * st.drift
-        const outward = r * (0.92 + k * 0.22)
-        const x = cx + Math.cos(st.angle) * outward + Math.sin(k * 7 + st.angle) * st.wobble
-        const y = cy + Math.sin(st.angle) * outward * 0.62 - rise
-        const fade = k < 0.2 ? k / 0.2 : (1 - k) / 0.8
-        el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) scale(${(0.5 + fade * 0.7).toFixed(2)})`
-        el.style.opacity = (clamp01(fade) * heat).toFixed(3)
       })
     }
 
@@ -359,7 +320,23 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
       burnCircle.setAttribute('cy', cy.toFixed(1))
       burnCircle.setAttribute('r', r.toFixed(1))
       burn.style.setProperty('--burn-r', `${rVmax.toFixed(1)}vmax`)
-      veil.style.setProperty('--burn-r', `${rVmax.toFixed(1)}vmax`)
+      /* The hole in the veil, written as a whole mask rather than as a radius
+         the stylesheet interpolates. At rest there is no mask at all — a
+         radial gradient whose stops have collapsed onto each other is not
+         reliably an unbroken sheet across browsers, and the one that isn't
+         leaves a speck of the page showing through under the name (or, worse,
+         eats the whole veil and takes the dark room with it). No mask can
+         only mean solid black. */
+      const hole = rVmax > 0.01
+        ? `radial-gradient(circle at ${BURN_X * 100}% ${BURN_Y * 100}%, transparent ${(
+            rVmax * 0.72
+          ).toFixed(1)}vmax, #000 ${rVmax.toFixed(1)}vmax)`
+        : ''
+      if (hole !== maskedWith) {
+        maskedWith = hole
+        veil.style.webkitMaskImage = hole
+        veil.style.maskImage = hole
+      }
       // The glow at the burning edge: a bump that rises as the hole opens and
       // falls away again once the room is fully lit, not a fade that only
       // ever goes one way.
@@ -374,7 +351,6 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
       }
 
       paintFilm(t, 1 - reveal, heat)
-      paintEmbers(t, cx, cy, r, heat)
 
       // Once the veil is gone this element has nothing left to hide and
       // should not still be catching wheel and clicks meant for the page now

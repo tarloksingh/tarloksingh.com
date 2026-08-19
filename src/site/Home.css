@@ -156,7 +156,7 @@
    The delay is the beat after the page has settled from the opening. */
 .hm-cue-word {
   display: block;
-  width: 6.2rem;
+  width: 4.1rem;
   color: var(--ink-soft);
   -webkit-mask-image: linear-gradient(90deg, #000 38%, transparent 45%);
   mask-image: linear-gradient(90deg, #000 38%, transparent 45%);
@@ -166,7 +166,13 @@
   mask-repeat: no-repeat;
   -webkit-mask-position: 100% 0;
   mask-position: 100% 0;
-  animation: hm-cue-write 1.5s linear 0.5s forwards;
+}
+
+/* Held until the film has actually lifted off the page — see `wrote` in
+   Home.tsx — and then a beat, so the word arrives into a page that has
+   already settled rather than underneath the last of the black. */
+.hm-cue[data-wrote='true'] .hm-cue-word {
+  animation: hm-cue-write 1.5s linear 0.35s forwards;
 }
 
 .hm-cue-word svg {
@@ -362,7 +368,8 @@
   /* The word is hidden until its sweep uncovers it, so with the sweep gone
      it has to start uncovered — a cue nobody can read is worse than a cue
      that does not move. The rule simply stands still. */
-  .hm-cue-word {
+  .hm-cue-word,
+  .hm-cue[data-wrote='true'] .hm-cue-word {
     -webkit-mask-position: 0 0;
     mask-position: 0 0;
     animation: none;

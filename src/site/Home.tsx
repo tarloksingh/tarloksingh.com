@@ -76,6 +76,16 @@ export default function Home({ onOpen, locked, onIndex, arriveAt, noir }: HomePr
     entranceGain: 6,
     detentFrom: 1
   })
+  /* The cue writes itself once, and only after the opening has gone: `locked`
+     is exactly that — it is held while the film is still over the page — and
+     this latches on the first moment it lifts, so the word is not un-written
+     again later when the index opens and locks the stage a second time. On a
+     deep link there is no film and no lock, and it writes straight away. */
+  const [wrote, setWrote] = useState(false)
+  useEffect(() => {
+    if (!locked) setWrote(true)
+  }, [locked])
+
   const sigRef = useRef<HTMLDivElement>(null)
   const artistRef = useRef<HTMLParagraphElement>(null)
   const cueRef = useRef<HTMLDivElement>(null)
@@ -339,7 +349,7 @@ export default function Home({ onOpen, locked, onIndex, arriveAt, noir }: HomePr
           `cueGlyphs.ts`), and the rule under it points the way the stage
           actually travels, which is not the same way on a phone (Home.css).
           The word itself is drawing, so the readable one is the label. */}
-      <div className="hm-cue" ref={cueRef}>
+      <div className="hm-cue" ref={cueRef} data-wrote={wrote ? 'true' : undefined}>
         <span className="u-sr">Scroll</span>
         <span className="hm-cue-word" aria-hidden="true">
           <svg viewBox={`${cx} ${cy} ${cw} ${ch}`} focusable="false">
