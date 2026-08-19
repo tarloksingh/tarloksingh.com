@@ -74,9 +74,8 @@ const SCROLL_RANGE = 1400
  *  Long enough to read as a title card that has landed, short enough that it
  *  never reads as the page having stalled. */
 const AUTO_LEAVE = 0.9
-/** Seconds the burn takes on its own. A scroll still drives it faster — this
- *  is the pace for someone who does nothing. */
-const AUTO_BURN = 1.5
+/** Seconds the black takes to fade off on its own. */
+const AUTO_FADE = 1.2
 /** Longest the invitation waits on images that are not arriving. */
 const PATIENCE = 6
 
@@ -228,9 +227,8 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
      *  quantiser drops for good, even if they scroll straight back to 0. */
     let committed = false
     let calledCommit = false
-    /** When the signature settled, and when the auto-burn last stepped. */
+    /** When the signature settled — the auto-fade is timed from it. */
     let settledAt = 0
-    let burnedAt = 0
     let revealed = false
 
     /** Everything that is a function of the film clock, sampled on the 24s. */
@@ -397,35 +395,52 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
          to answer the wheel the instant it moves. */
       if (!committed) {
         const next = Math.floor(now * FPS)
-        if (next === frame) return
-        frame = next
-        paint(next / FPS, 0)
-        /* The black lifts on its own once the name has finished writing.
-           The signature settling *is* the cue — it is the thing the opening
-           was for — and making someone scroll to get past a title card they
-           have just watched land is a toll rather than a moment. Scrolling
-           still works and still burns through faster; it is no longer the
-           only way out. `canLeave` is already the "the name is done" flag,
-           set from the same `enterOn` that raises the scroll cue. */
-        if (canLeave) {
-          if (!settledAt) settledAt = now
-          else if (now - settledAt > AUTO_LEAVE) {
-            committed = true
-            burnedAt = now
-            if (!calledCommit) {
-              calledCommit = true
-              onCommit()
-            }
-          }
+        if (next !== frame) {
+          frame = next
+          paint(next / FPS, 0)
+        }
+
+        /* Leaving without being asked to.
+
+           The black lifts on its own once the name has finished writing —
+           `canLeave` is already that flag, raised off the same `enterOn` that
+           puts up the scroll cue. It *fades*, and the film keeps running on
+           its 24ths underneath the whole way down, so what goes is the black
+           and the crackle together, as one picture dimming.
+
+           Deliberately not the burn. The burn is a hole eaten through the
+           veil from a point, which is a thing a gesture does — it answers the
+           wheel, which is why `progress` exists at all — and driving it off a
+           timer instead read as a rip rather than an exit. A scroll still
+           gets the burn; this is only the way out for someone who does
+           nothing.
+
+           And no `onCommit` on this path. That tells the shell to put the
+           stage on the first project (`enterWork`, Site.tsx), which is right
+           when a scroll asked to go there and wrong here: nobody asked for
+           anything, so the page underneath should be its own opening frame,
+           with the name still in the middle of the screen. Calling it was
+           what sent the opening straight into the work. */
+        if (!canLeave) return
+        if (!settledAt) {
+          settledAt = now
+          return
+        }
+        const k = clamp01((now - settledAt - AUTO_LEAVE) / AUTO_FADE)
+        if (k <= 0) return
+        root.style.opacity = (1 - k).toFixed(3)
+        // Half-faded, this is a sheet of glass over a live page. The wheel
+        // and touch listeners are on `window` and still take the burn over,
+        // so nothing is lost by letting clicks through as it goes.
+        root.style.pointerEvents = 'none'
+        if (k >= 1 && !revealed) {
+          revealed = true
+          onReveal()
+          cancelAnimationFrame(raf)
+          onDone()
         }
         return
       }
-
-      // Real seconds, capped so a backgrounded tab returning does not burn
-      // the whole opening off in one frame.
-      const step = Math.min(0.05, now - burnedAt)
-      burnedAt = now
-      progressRef.current = clamp01(progressRef.current + step / AUTO_BURN)
 
       const { reveal } = paint(now, progressRef.current)
       if (!revealed && reveal >= 1) {
@@ -442,9 +457,11 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
     const nudge = (delta: number) => {
       if (revealed) return
       if (!canLeave && delta > 0) return
+      // Whatever the auto-fade had dimmed, hand back: from here the burn is
+      // the picture, and it cannot eat through a veil that is half see-through.
       if (!committed) {
         committed = true
-        burnedAt = performance.now() / 1000 - start
+        root.style.opacity = '1'
       }
       progressRef.current = clamp01(progressRef.current + delta / SCROLL_RANGE)
       if (progressRef.current > 0 && !calledCommit) {
