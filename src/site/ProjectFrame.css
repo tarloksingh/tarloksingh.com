@@ -10,7 +10,21 @@
    something pencilled around the exhibit. */
 .gl-frame {
   position: absolute;
-  inset: 8vh 7vw;
+  /* Held off all four edges, and held *in* on a wide one. The vertical inset
+     is the larger of the two on purpose: the crest rises above the line it is
+     hung on, so the drawing stands a little taller than this box does, and
+     what is left under it is the room the footer's date line needs. Capped in
+     px so a tall monitor does not push the frame into a letterbox.
+
+     Horizontally it is a rail rather than a percentage: past about 1080px a
+     frame that keeps growing with the window stops reading as a frame around
+     a piece and starts reading as a border around the browser — the same
+     reason the stage's chrome is pinned to a centred rail rather than to the
+     screen (see `--rail-inset` in Home.css). */
+  top: clamp(64px, 17vh, 190px);
+  bottom: clamp(64px, 17vh, 190px);
+  left: max(7vw, calc((100vw - 1080px) / 2));
+  right: max(7vw, calc((100vw - 1080px) / 2));
   z-index: 1;
   pointer-events: none;
   will-change: transform;

@@ -89,14 +89,16 @@ const WEIGHT_OF_VMIN = 0.003
 
 /** The corner is a fixed square; the crest is drawn this many times its width,
  *  which is what leaves the ornaments in proportion to each other however the
- *  window is shaped. */
-const CREST_SCALE = 1.6
+ *  window is shaped. It is also what decides how far the frame stands above
+ *  its own box: the crest is hung by its ends and its middle rises off them,
+ *  so a larger crest is a taller frame at the same inset. */
+const CREST_SCALE = 1.25
 /** The ornaments' share of the box: the corner is the smaller of these two
  *  fractions of it, so a wide window grows the ornament off its height and a
  *  tall one off its width, and there is always some edge left over for a rail
  *  to run along. */
 const CORNER_OF_W = 0.24
-const CORNER_OF_H = 0.4
+const CORNER_OF_H = 0.32
 
 const CORNERS = ['pf-c--tl', 'pf-c--tr', 'pf-c--br', 'pf-c--bl']
 const CRESTS = ['pf-k--t', 'pf-k--b']
