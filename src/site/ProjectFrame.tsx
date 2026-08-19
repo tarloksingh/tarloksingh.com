@@ -26,12 +26,16 @@ import './ProjectFrame.css'
  *
  * Both of its clocks are wall-clock, quantised to 12fps — the same trick the
  * opening's film is on, and the reason the line lays itself down in bites
- * rather than gliding. On that same clock every stroke is *redrawn*: its
- * coordinates are nudged, and a second, looser copy of it is nudged further,
- * so where the two lie together the line reads heavy and where they part it
- * reads light. That is the whole of the thick-and-thin — no stroke is ever
- * two widths at once, but a pair of them at twelve a second is a line with a
- * pen's pressure in it, and it never stops moving.
+ * rather than gliding.
+ *
+ * The stroke weight is written by the component in each drawing's own units
+ * rather than asked for in pixels through `vector-effect: non-scaling-stroke`.
+ * That is not a preference. The draw is a dash walked along a path normalised
+ * with `pathLength="1"`, and a non-scaling stroke is measured after the
+ * drawing has been scaled, so the dash and the path it is walking along stop
+ * agreeing about how long the path is the moment that scale is not 1 — which
+ * is a line broken into ticks, worse the larger the frame is drawn. Sizing
+ * the pen instead keeps every measurement in the one space.
  *
  * The drawing used to be a readout of scroll position, on the reasoning that a
  * pure function of the scroll answers a reversal with nothing to cancel. That
@@ -65,10 +69,10 @@ interface ProjectFrameProps {
 const DRAW_IN = 3.2
 const DRAW_OUT = 0.4
 
-/** Wall-clock frames per second for the hand. The opening runs its film at
+/** Wall-clock frames per second for the weave. The opening runs its film at
  *  24; this is half that on purpose — a frame is a held drawing, not a moving
- *  picture, and at 24 the redrawing reads as a shiver rather than as the line
- *  having been put down again. */
+ *  picture, and at 24 the weave reads as a shiver rather than as the drawing
+ *  having been set down again. */
 const FPS = 12
 /** How far the whole drawing may drift between frames, in px, and how far it
  *  may turn, in degrees. Small, and smaller than they first were: the effect
@@ -76,13 +80,12 @@ const FPS = 12
  *  actually measure by eye reads as the page shaking instead. */
 const JITTER_PX = 0.55
 const JITTER_DEG = 0.09
-/** How far a coordinate may move when a stroke is redrawn, in the ornament's
- *  own units (its box is 160 of them across) — and how much further the loose
- *  second copy of that stroke may go. The gap between the two is what the
- *  line's weight is made of, so the second number is the one that decides how
- *  much pressure the pen appears to have. */
-const INK_WOBBLE = 0.7
-const GHOST_WOBBLE = 2.1
+/** The pen, in px on the screen. A hairline is a hairline at any size, but a
+ *  frame a metre across drawn in a phone's 1.4px reads as thin rather than as
+ *  fine, so it is allowed a little of the screen and held between two ends. */
+const WEIGHT_MIN = 1.4
+const WEIGHT_MAX = 2.6
+const WEIGHT_OF_VMIN = 0.003
 
 /** The corner is a fixed square; the crest is drawn this many times its width,
  *  which is what leaves the ornaments in proportion to each other however the
@@ -113,38 +116,19 @@ const RAILS_V = ['pf-r--l', 'pf-r--r']
 const railH = (y: number) => `M0 ${y} C33 ${y - 0.5} 67 ${y + 0.5} 100 ${y}`
 const railV = (y: number) => `M${y} 0 C${y - 0.5} 33 ${y + 0.5} 67 ${y} 100`
 
-/** Every coordinate in a path, moved. `d` is only ever M/L/C here, so the
- *  numbers are strictly x, y pairs and no command needs to be understood —
- *  which is what keeps this a few lines rather than a path parser. The two
- *  amplitudes are separate because a rail's box is stretched along the edge
- *  and square across it: moving it along its own length by a unit is a dozen
- *  pixels, and across it is one. */
-const redraw = (d: string, ax: number, ay: number) => {
-  let even = true
-  return d.replace(/-?\d+(?:\.\d+)?/g, (n) => {
-    const amp = even ? ax : ay
-    even = !even
-    return (parseFloat(n) + (Math.random() * 2 - 1) * amp).toFixed(2)
-  })
-}
-
 /** Strokes are drawn in order, each starting a little after the one before.
- *  `--pf-i` carries the position; ProjectFrame.css does the arithmetic.
- *
- *  Two paths, not one: the same line laid down twice, and redrawn apart every
- *  frame. See the note at the top of the file. */
-const stroke = (d: string, i: number) => {
-  const style = { '--pf-i': i } as CSSProperties
-  return (
-    <g key={d}>
-      {/* Normalised, so the dash pattern is written in fractions of the
-          stroke's own length and nothing has to measure a path to animate
-          it. */}
-      <path className="pf-ink" d={d} pathLength="1" strokeDasharray="1" style={style} />
-      <path className="pf-ghost" d={d} pathLength="1" strokeDasharray="1" style={style} />
-    </g>
-  )
-}
+ *  `--pf-i` carries the position; ProjectFrame.css does the arithmetic. */
+const stroke = (d: string, i: number) => (
+  <path
+    key={d}
+    d={d}
+    /* Normalised, so the dash pattern is written in fractions of the stroke's
+       own length and nothing has to measure a path to animate it. */
+    pathLength="1"
+    strokeDasharray="1"
+    style={{ '--pf-i': i } as CSSProperties}
+  />
+)
 
 export default function ProjectFrame({ index, active }: ProjectFrameProps) {
   const rootRef = useRef<HTMLDivElement>(null)
@@ -170,6 +154,20 @@ export default function ProjectFrame({ index, active }: ProjectFrameProps) {
       const corner = Math.min(width * CORNER_OF_W, height * CORNER_OF_H) * variant.reach
       root.style.setProperty('--pf-corner', `${corner.toFixed(1)}px`)
       root.style.setProperty('--pf-crest', `${(corner * CREST_SCALE).toFixed(1)}px`)
+      /* The pen, converted out of pixels into each drawing's own units — see
+         the note at the top of the file on why it is not left in pixels. One
+         corner unit is `corner / 160` px, and a rail's short axis is drawn at
+         that same scale, so the two share a weight; the crest is drawn larger
+         and needs a proportionally finer one to come out the same on screen.
+         A hairline is only allowed once the box has a size to divide by. */
+      const vmin = Math.min(window.innerWidth, window.innerHeight)
+      const pen = Math.min(WEIGHT_MAX, Math.max(WEIGHT_MIN, vmin * WEIGHT_OF_VMIN))
+      const unit = corner / 160
+      root.style.setProperty('--pf-w', unit > 0 ? (pen / unit).toFixed(3) : '0')
+      root.style.setProperty(
+        '--pf-w-k',
+        unit > 0 ? (pen / (unit * CREST_SCALE)).toFixed(3) : '0'
+      )
     }
     size()
     const observer = new ResizeObserver(size)
@@ -181,27 +179,9 @@ export default function ProjectFrame({ index, active }: ProjectFrameProps) {
     const root = rootRef.current
     if (!root) return
 
-    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    /* Every stroke on the frame, with the line it was drawn from and how far
-       each of its two axes may be moved when it is drawn again. A rail is
-       stretched along its length, so it is only ever moved across itself. */
-    const inks = Array.from(root.querySelectorAll<SVGPathElement>('path')).map((el) => {
-      const d = el.getAttribute('d') ?? ''
-      const wobble = el.classList.contains('pf-ghost') ? GHOST_WOBBLE : INK_WOBBLE
-      const rail = el.closest('.pf-r')
-      const along = rail ? 0 : wobble
-      const across = wobble
-      const vertical = !!rail?.classList.contains('pf-r--v')
-      return { el, d, ax: vertical ? across : along, ay: vertical ? along : across }
-    })
-
     let raf = 0
     let frame = -1
     let draw = 0
-    /** Whether the strokes are currently sitting on their redrawn coordinates,
-     *  so the originals are put back exactly once on the way out rather than
-     *  every frame the frame is not on screen. */
-    let inked = false
     const start = performance.now()
     let previous = start
 
@@ -237,19 +217,6 @@ export default function ProjectFrame({ index, active }: ProjectFrameProps) {
       root.style.setProperty('--pf-x', `${(r() * JITTER_PX).toFixed(2)}px`)
       root.style.setProperty('--pf-y', `${(r() * JITTER_PX).toFixed(2)}px`)
       root.style.setProperty('--pf-r', `${(r() * JITTER_DEG).toFixed(3)}deg`)
-
-      /* The hand, and the only expensive thing here — so it is only paid for
-         while there is something on screen to redraw. Every other frame on the
-         row is at `draw: 0` and writes nothing. */
-      if (still) return
-      if (draw < 0.002) {
-        if (!inked) return
-        inked = false
-        for (const ink of inks) ink.el.setAttribute('d', ink.d)
-        return
-      }
-      inked = true
-      for (const ink of inks) ink.el.setAttribute('d', redraw(ink.d, ink.ax, ink.ay))
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)

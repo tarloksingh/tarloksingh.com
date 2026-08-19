@@ -142,12 +142,13 @@
   stroke: var(--ink);
   /* A constant weight on screen however large the ornament is drawn — a
      flourish that thickens with the viewport stops reading as a pen. */
-  vector-effect: non-scaling-stroke;
-  /* A hairline is a hairline at any size, which is the point — but a frame a
-     metre across drawn in the same 1.4px as one on a phone reads as thin
-     rather than as fine, so the weight is allowed to grow a little with the
-     screen and is held between two ends it may not pass. */
-  stroke-width: clamp(1.4px, 0.3vmin, 2.6px);
+  /* Written by the component, in this drawing's own units rather than in
+     pixels: the draw is a dash walked along a path normalised to a length of
+     1, and a stroke measured in pixels after the drawing has been scaled puts
+     the dash and the path into two different spaces — which comes out as a
+     line broken into ticks, and worse the larger the frame is drawn. See the
+     note at the top of ProjectFrame.tsx. */
+  stroke-width: var(--pf-w, 1.4);
   stroke-linecap: round;
   stroke-linejoin: round;
   /* `pathLength="1"` on the element normalises every path, so this is in
@@ -177,12 +178,10 @@
   opacity: clamp(0, calc(var(--pf-draw, 0) * 4), 1);
 }
 
-/* The looser of the two copies of every stroke. Held well back on its own —
-   `stroke-opacity`, so it composes with the draw's `opacity` rather than
-   fighting it — because what it is for is the gap between itself and the line
-   it shadows, not for being seen as a line of its own. */
-.pf .pf-ghost {
-  stroke-opacity: 0.4;
+/* The crest is drawn larger than the corners are — see `CREST_SCALE` — so it
+   needs a proportionally finer pen to come out the same weight on screen. */
+.pf-k path {
+  stroke-width: var(--pf-w-k, 1.4);
 }
 
 /* Ink is ink on a dark stage too — the film experiment inverts the room, so
