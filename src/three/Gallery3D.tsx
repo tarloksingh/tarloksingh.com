@@ -567,13 +567,13 @@ const LAYOUT_SCHEMA = {
  *  the single source of truth for "default" rather than duplicated as bare
  *  literals in the schema below. */
 const LIGHT_DEFAULTS = {
-  envIntensity: 5.6,
+  envIntensity: 3.4,
   ambientIntensity: 0,
-  keyIntensity: 25,
+  keyIntensity: 30,
   keyX: -3.78,
   keyY: 0.2,
   keyZ: 9,
-  fillIntensity: 11.1,
+  fillIntensity: 12.3,
   fillX: 2.1,
   fillY: -0.2,
   fillZ: -1

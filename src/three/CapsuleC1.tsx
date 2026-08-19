@@ -9,11 +9,11 @@ const MODEL_URL = '/models/capsule-c1.glb'
  *  source" button (Gallery3D.tsx) diffs the live panel against it — one
  *  object rather than the same numbers written out twice. */
 const CAPSULE_DEFAULTS = {
-  metalnessBoost: 0,
-  roughnessBoost: 0,
-  liftBoost: 1,
-  tiltX: 0,
-  tiltZ: 0
+  metalnessBoost: 0.24,
+  roughnessBoost: -0.24,
+  liftBoost: 1.3,
+  tiltX: -7,
+  tiltZ: -6
 }
 
 /**

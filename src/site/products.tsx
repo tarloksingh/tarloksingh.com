@@ -141,29 +141,38 @@ const DEFAULTS = {
 const SPECS: Record<string, ProductSpec> = {
   'capsule-c1': {
     node: (scale) => <CapsuleC1 scale={scale} />,
-    turn: 42
+    scale: 1.581,
+    turn: -291.1,
+    offsetX: 0.315,
+    offsetY: -0.16
   },
   'mr-takahashi': {
     node: (scale, ctx) => (
       <AdamFace scale={scale} progressRef={ctx.progressRef} slot={ctx.slot} count={ctx.count} />
     ),
-    scale: 1.52,
-    turn: 24,
+    scale: 2.219,
+    turn: -22.2,
+    offsetX: 0.295,
+    offsetY: -0.08,
     // The one piece that still breathes — see the note on DEFAULTS.
     floatIntensity: 0.85
   },
   'slider-engine': {
     node: (scale) => <SpriteFlipbook frames={FISH_MAN_FRAMES} fps={12} scale={scale} />,
-    scale: 1.75,
+    scale: 2.52,
     // A billboard drawn with `toneMapped={false}` is outside the room's
     // exposure entirely, so there is nothing here for a lift to do.
-    turn: 0
+    turn: 4.4,
+    offsetX: 0.27,
+    offsetY: -0.09
   },
   'mecha-station': {
     node: (scale) => <PosStation videoUrl="/videos/mecha-station-hero.mp4" scale={scale} />,
-    scale: 1.6,
+    scale: 2.848,
     lift: lift(0.6, 2.2),
-    turn: 32
+    turn: -20,
+    offsetX: 0.145,
+    offsetY: -0.07
   },
   openup: {
     node: (scale) => {
@@ -197,21 +206,27 @@ const SPECS: Record<string, ProductSpec> = {
   },
   'wyte-card': {
     node: (scale) => <WyteCard scale={scale} />,
-    scale: 1.52,
+    scale: 2.25,
     lift: lift(0.42, 3),
-    turn: 38
+    turn: 38,
+    offsetX: 0.295,
+    offsetY: -0.085
   },
   'block-builder': {
     node: (scale) => <BlockBuilder scale={scale} />,
-    scale: 1.75,
+    scale: 1.505,
     lift: lift(0.75, 2),
-    turn: 30
+    turn: 131.1,
+    offsetX: 0.325,
+    offsetY: -0.105
   },
   visa: {
     node: clay(<VisaKiosk3D accent="#1434cb" hovered={false} />, 0.62),
-    scale: 1.52,
+    scale: 2.219,
     lift: lift(0.7, 1.8),
-    turn: 22
+    turn: -73.3,
+    offsetX: 0.31,
+    offsetY: -0.105
   },
   '3d-printing': {
     node: clay(<Printer3D accent="#9c3524" hovered={false} />, 0.7),

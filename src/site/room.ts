@@ -97,13 +97,13 @@ export interface RoomTuning {
 
 /** Wide: the case is centred with the label beside it, and the next project
  *  waits two thirds of a window away, just off-frame. */
-export const WIDE = { stepW: 0.66, caseH: 0.46, caseY: 0 }
+export const WIDE = { stepW: 0.937, caseH: 0.46, caseY: 0 }
 /** Narrow: there is no *beside*, so a project takes the whole window, the case
  *  shrinks and rises into the top half, and the label goes underneath it.
  *  These are only the resting defaults now — `narrowCaseH`/`narrowCaseY` in
  *  the tuning panel are the live values, same relationship `STAGE_SHIFT` has
  *  to `shift` below. */
-export const NARROW = { stepW: 1, caseH: 0.3, caseY: 0.15 }
+export const NARROW = { stepW: 1.1, caseH: 0.3, caseY: 0.15 }
 /** Default `narrowPanelMaxCh` — the cap `.gl-panel` used on narrow before it
  *  was tunable. */
 export const NARROW_PANEL_MAX_CH = 38
@@ -117,12 +117,12 @@ export const PATTERN_DRIFT = 90
 /** Below this the label cannot stand beside the case. Adjustable live from the
  *  tuning panel, because where a two-column layout actually gives out is
  *  something you find by dragging a window edge, not by reasoning. */
-export const NARROW_AT = 900
+export const NARROW_AT = 880
 /** Default `shiftW`, as a percentage. Roughly half the label's own width. */
-export const STAGE_SHIFT = 7
+export const STAGE_SHIFT = -4
 /** Default `panelW`, in viewport widths — the cap `.gl-panel` used before it
  *  was tunable. */
-export const PANEL_W = 22
+export const PANEL_W = 25.5
 /** Default `panelH`, in viewport heights. Zero: no minimum, the panel is
  *  exactly as tall as its copy. */
 export const PANEL_H = 0
