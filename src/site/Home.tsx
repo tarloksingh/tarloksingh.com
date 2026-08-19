@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import type { CSSProperties, MouseEvent as ReactMouseEvent } from 'react'
-import BlurText, { reveal } from '../components/BlurText'
+import type { MouseEvent as ReactMouseEvent } from 'react'
 import Helix from './Helix'
 import type { HelixCard } from './Helix'
 import Gallery from './Gallery'
@@ -23,78 +22,20 @@ import './Home.css'
    flag to get out of step, and scrolling back up genuinely reverses rather
    than replaying an exit animation. */
 
-/** No cards ride the field any more — the name stands alone in it. Kept as a
- *  stable reference so `Helix` doesn't get a fresh array identity every
- *  render. */
+/** Nothing rides the field any more: no cards, and the name has come out of
+ *  it too — it is chrome now, travelling between the middle of the screen and
+ *  the menu bar, which is a journey across the *window* and cannot be made
+ *  from inside a perspective space. Kept as a stable reference so `Helix`
+ *  doesn't get a fresh array identity every render. */
 const NO_CARDS: HelixCard[] = []
 
-/** Where the name has completely gone. */
-const NAME_OUT = 0.62
 /** Where the drum has taken over — what the menu calls being in the work. */
 const IN_WORK_AT = 0.75
 
-/* The wall of disciplines printed behind everything.
-
-   Every one of these used to be a single line under the name reading
-   "Product · 3D · Motion · Film · Music · AI", which is a caption: it tells
-   you the list and asks you to read it. Set enormous, tracked wide, stacked
-   up the whole page and pulled back almost to the paper, the same words stop
-   being a list and become the ground the name stands on — you take them in
-   without ever deciding to read them.
-
-   Each line is specified by the fraction of the window it should *span*, not
-   by a font size — `fitWall` below sets the size that actually achieves it.
-   A wall this size is only right when its ragged edges are composed, and one
-   line running off both sides while the next stops short is the difference
-   between a set page and an accident. No `vw` size can hold a line to a given
-   width, because how wide a word sets depends on which letters are in it:
-   MUSICIAN and MOTION are eight and six characters, and at the same size the
-   six-character one is nearly as wide.
-
-   `ink` is how far each line comes up off the paper; the spread is what stops
-   the block reading as one flat watermark. */
-const DISCIPLINES = [
-  { text: '3D DESIGN', fill: 0.6, track: 0.42, ink: 0.05 },
-  { text: 'PRODUCT DESIGN', fill: 0.84, track: 0.3, ink: 0.075 },
-  { text: 'ENGINEERING', fill: 0.7, track: 0.36, ink: 0.045 },
-  { text: 'CINEMATOGRAPHY', fill: 0.96, track: 0.22, ink: 0.09 },
-  { text: 'MUSICIAN', fill: 0.64, track: 0.44, ink: 0.06 },
-  { text: 'MOTION', fill: 0.48, track: 0.5, ink: 0.04 },
-  { text: 'ARTIFICIAL INTELLIGENCE', fill: 0.88, track: 0.18, ink: 0.07 }
-]
-
-/** Size the wall is measured at before being scaled to fit. Arbitrary, but
- *  large enough that hinting and subpixel rounding do not skew the ratio. */
-const WALL_PROBE = 200
-
-/**
- * Set every wall line to the size at which it spans the fraction of the
- * window it asked for.
- *
- * Measured rather than derived from a per-character metric, because the
- * metric is a property of whichever serif the machine actually resolved
- * `--font-times` to — Times New Roman here, Liberation Serif on a Linux box,
- * something else again where neither is installed — and a wall composed
- * against the wrong one is a wall that overhangs the window.
- *
- * Written in two passes rather than one loop, so the seven size writes and
- * the seven width reads are two layout flushes rather than fourteen.
- */
-function fitWall(wall: HTMLElement) {
-  const lines = Array.from(wall.querySelectorAll<HTMLElement>('.hm-wall-line'))
-  for (const el of lines) el.style.fontSize = `${WALL_PROBE}px`
-  const widths = lines.map((el, i) => {
-    // The box carries a trailing letter-space that the type does not; the
-    // same air `.hm-wall-line`'s negative margin takes back off for centring.
-    const track = DISCIPLINES[i]?.track ?? 0
-    return el.getBoundingClientRect().width - WALL_PROBE * track
-  })
-  lines.forEach((el, i) => {
-    const natural = widths[i]
-    const fill = DISCIPLINES[i]?.fill ?? 0
-    el.style.fontSize = natural > 0 ? `${(WALL_PROBE * fill * window.innerWidth) / natural}px` : ''
-  })
-}
+/** How far up the scroll the signature has finished travelling to its slot
+ *  in the menu bar. Before this it is somewhere between the middle of the
+ *  screen and the corner; after it, parked. */
+const NAME_DOCK = 0.62
 
 interface HomeProps {
   /** Navigates, with the shell's curtain over the top. */
@@ -126,9 +67,8 @@ export default function Home({ onOpen, locked, onIndex, arriveAt, noir }: HomePr
     max: workProjects.length,
     detentFrom: 1
   })
-  const nameRef = useRef<HTMLDivElement>(null)
-  const wallRef = useRef<HTMLDivElement>(null)
-  const markRef = useRef<HTMLDivElement>(null)
+  const sigRef = useRef<HTMLDivElement>(null)
+  const artistRef = useRef<HTMLParagraphElement>(null)
   const cueRef = useRef<HTMLDivElement>(null)
   const footRef = useRef<HTMLElement>(null)
   const trackRef = useRef<HTMLSpanElement>(null)
@@ -149,16 +89,64 @@ export default function Home({ onOpen, locked, onIndex, arriveAt, noir }: HomePr
     engine.setLocked(locked)
   }, [engine, locked])
 
-  // Layout, not effect: the wall is set at a probe size in the markup and
-  // would paint at it for one frame otherwise.
-  useLayoutEffect(() => {
-    const wall = wallRef.current
-    if (!wall) return
-    const fit = () => fitWall(wall)
-    fit()
-    window.addEventListener('resize', fit)
-    return () => window.removeEventListener('resize', fit)
+  /* The signature's two poses, and how to blend them.
+     
+     Only one of the two is measured: the element is *laid out* parked in the
+     menu bar, so that pose is whatever the stylesheet says and needs no
+     arithmetic — which is what keeps it landing exactly on the bar's baseline
+     grid at every width instead of near it. The middle-of-the-screen pose is
+     then described as a transform away from it, and every position in between
+     is that transform scaled down. Nothing measures the big pose, so nothing
+     can disagree about where it is.
+     
+     Measured with the transform off, or it would measure its own last frame. */
+  const poseRef = useRef({ x: 0, y: 0, w: 0, h: 0, grow: 1 })
+
+  const placeSign = useCallback((p: number) => {
+    const sig = sigRef.current
+    if (!sig) return
+    const { x, y, w, h, grow } = poseRef.current
+    if (w <= 0) return
+    // 1 in the middle of the screen, 0 parked in the bar.
+    const out = 1 - ease(p, 0, NAME_DOCK)
+    const scale = 1 + (grow - 1) * out
+    const tx = ((window.innerWidth - w * grow) / 2 - x) * out
+    const ty = ((window.innerHeight - h * grow) / 2 - y) * out
+    sig.style.transform = `translate3d(${tx.toFixed(1)}px, ${ty.toFixed(1)}px, 0) scale(${scale.toFixed(4)})`
+    // The rubric belongs to the big pose only: parked, it would be a caption
+    // on something the size of a caption.
+    const artist = artistRef.current
+    if (artist) artist.style.opacity = (1 - ease(p, 0, NAME_DOCK * 0.45)).toFixed(3)
   }, [])
+
+  // Layout, not effect: unmeasured, the signature would paint parked for one
+  // frame before jumping to the middle of the screen.
+  useLayoutEffect(() => {
+    const sig = sigRef.current
+    if (!sig) return
+    const measure = () => {
+      sig.style.transform = 'none'
+      const box = sig.getBoundingClientRect()
+      const style = getComputedStyle(sig)
+      const num = (name: string, fallback: number) =>
+        Number.parseFloat(style.getPropertyValue(name)) || fallback
+      const hero = Math.max(
+        num('--sig-hero-min', 240),
+        Math.min((window.innerWidth * num('--sig-hero-vw', 19)) / 100, num('--sig-hero-max', 416))
+      )
+      poseRef.current = {
+        x: box.x,
+        y: box.y,
+        w: box.width,
+        h: box.height,
+        grow: box.width > 0 ? hero / box.width : 1
+      }
+      placeSign(engine.state.value)
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [engine, placeSign])
 
   // Returning from a case study lands on that project rather than at the top:
   // going back should put you where you left, not make you scroll there again.
@@ -180,34 +168,13 @@ export default function Home({ onOpen, locked, onIndex, arriveAt, noir }: HomePr
     return engine.subscribe((state) => {
       const p = state.value
 
-      // The name recedes *through* the viewer rather than fading in place —
-      // it is inside the field's 3D space, so pushing it toward the camera as
-      // the field opens out reads as flying past it.
-      const leaving = ease(p, 0, NAME_OUT)
-      const name = nameRef.current
-      if (name) {
-        name.style.transform = `translate3d(-50%, -50%, ${(leaving * 430).toFixed(1)}px)`
-        name.style.opacity = (1 - leaving).toFixed(3)
-      }
-
-      // The wall goes with the name, but a beat behind and travelling less —
-      // it is further away, so it should not leave at the same rate as the
-      // thing standing in front of it.
-      const wall = wallRef.current
-      if (wall) {
-        const off = ease(p, 0.08, NAME_OUT + 0.16)
-        wall.style.transform = `scale(${(1 + off * 0.12).toFixed(4)})`
-        wall.style.opacity = (1 - off).toFixed(3)
-      }
-
-      // The small mark takes over as the big name goes: the identity is never
-      // absent from the page, it just changes size.
-      const mark = markRef.current
-      if (mark) {
-        const on = ease(p, 0.22, 0.7)
-        mark.style.opacity = on.toFixed(3)
-        mark.style.transform = `translateY(${((1 - on) * 8).toFixed(1)}px)`
-      }
+      /* The signature walks to the menu bar rather than fading out and a
+         second, smaller copy fading in where it lands. It used to recede
+         through the viewer while a second mark came up in the corner, which
+         works as an exit but reads as two marks; one that travels reads as
+         the same mark finding its place, and — because it is a pure function
+         of `p` — it walks straight back to the middle when you scroll up. */
+      placeSign(p)
 
       // The scroll cue is for someone who hasn't scrolled. It goes on the
       // first input and does not come back.
@@ -297,46 +264,24 @@ export default function Home({ onOpen, locked, onIndex, arriveAt, noir }: HomePr
 
   return (
     <main className="hm">
-      {/* Behind the field, not inside it: this is the paper, not something
-          standing on it. */}
-      <div className="hm-wall" ref={wallRef} aria-hidden="true">
-        {DISCIPLINES.map((line) => (
-          <span
-            key={line.text}
-            className="hm-wall-line"
-            style={
-              {
-                '--tr': `${line.track}em`,
-                '--ink': line.ink
-              } as CSSProperties
-            }
-          >
-            {line.text}
-          </span>
-        ))}
-      </div>
-
-      <Helix cards={NO_CARDS} engine={engine} onOpen={goToProject}>
-        {/* Inside the field's 3D space, at depth zero. */}
-        <div className="hm-name" ref={nameRef}>
-          <h1 className="u-sr">Tarlok Singh — artist, engineer, filmmaker</h1>
-          {/* The rubric over the name. One word, in Times, because a date and
-              the word "portfolio" describe the *document*; this describes the
-              person, which is the only thing the page is about. */}
-          <BlurText text="ARTIST" className="hm-name-label" {...reveal(0.1)} />
-          <div className="hm-name-lines" aria-hidden="true">
-            <BlurText text="TARLOK" className="hm-name-line" {...reveal(0.26)} />
-            <BlurText text="SINGH" className="hm-name-line" {...reveal(0.36)} />
-          </div>
-        </div>
-      </Helix>
+      <Helix cards={NO_CARDS} engine={engine} onOpen={goToProject} />
 
       <Gallery engine={engine} onOpen={onOpen} onFocus={setFocus} noir={noir} />
 
       {/* ---- chrome. Fixed above both stages, present the whole way through. ---- */}
 
-      <div className="hm-mark" ref={markRef}>
-        <Wordmark className="hm-mark-name" />
+      {/* The one mark on the page. Laid out parked in the menu bar and
+          transformed out to the middle of the screen — see `placeSign`. */}
+      <div className="hm-sig" ref={sigRef}>
+        <h1 className="u-sr">Tarlok Singh — artist, engineer, filmmaker</h1>
+        {/* The rubric, set exactly as the opening sets it (`.in-artist`,
+            Intro.css): lowercase, in the display serif, small over a very
+            large signature. It named the person there and it names them
+            here. */}
+        <p className="hm-sig-artist" ref={artistRef} aria-hidden="true">
+          artist
+        </p>
+        <Wordmark className="hm-sig-name" />
       </div>
 
       {/* Two of these three are places on this one scroll, so the menu marks

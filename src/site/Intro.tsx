@@ -65,11 +65,18 @@ const OUT_NAME_AT = 0.14
 const OUT_ARTIST_AT = 0.3
 const OUT_SPAN = 0.4
 /** Where the hole in the veil is centred, and the biggest it ever grows. */
-const BURN_X = '50%'
-const BURN_Y = '56%'
-const BURN_MAX = 165
+const BURN_X = 0.5
+const BURN_Y = 0.56
+const BURN_MAX = 1.65
 /** Cumulative wheel/touch travel, in pixels, to burn all the way through. */
 const SCROLL_RANGE = 1400
+/** Seconds the finished signature is held before the black starts to lift.
+ *  Long enough to read as a title card that has landed, short enough that it
+ *  never reads as the page having stalled. */
+const AUTO_LEAVE = 0.9
+/** Seconds the burn takes on its own. A scroll still drives it faster — this
+ *  is the pace for someone who does nothing. */
+const AUTO_BURN = 1.5
 /** Longest the invitation waits on images that are not arriving. */
 const PATIENCE = 6
 
@@ -100,6 +107,10 @@ interface IntroProps {
    while and then is gone, and dust is one frame and never the same twice. */
 const SCRATCHES = 3
 const DUST = 7
+/** Sparks thrown off the burning edge, each living this long before the next
+ *  one takes its place. */
+const EMBERS = 14
+const EMBER_LIFE = 1.05
 
 export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProps) {
   const rootRef = useRef<HTMLDivElement>(null)
@@ -113,6 +124,8 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
   const vignetteRef = useRef<HTMLDivElement>(null)
   const veilRef = useRef<HTMLDivElement>(null)
   const burnRef = useRef<HTMLDivElement>(null)
+  const burnCircleRef = useRef<SVGCircleElement>(null)
+  const burnNoiseRef = useRef<SVGFETurbulenceElement>(null)
   const marksRef = useRef<HTMLDivElement>(null)
 
   /** How far through leaving the room the visitor has scrolled: 0..1, and
@@ -160,9 +173,11 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
     const vignette = vignetteRef.current
     const veil = veilRef.current
     const burn = burnRef.current
+    const burnCircle = burnCircleRef.current
+    const burnNoise = burnNoiseRef.current
     const marks = marksRef.current
     if (!root || !stack || !artist || !name || !settledInk || !enter) return
-    if (!grain || !vignette || !veil || !burn || !marks) return
+    if (!grain || !vignette || !veil || !burn || !burnCircle || !burnNoise || !marks) return
     if (strokes.length !== NAME_PEN.length) return
 
     const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -190,6 +205,11 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
 
     const scratches = Array.from(marks.querySelectorAll<HTMLElement>('.in-scratch'))
     const dust = Array.from(marks.querySelectorAll<HTMLElement>('.in-dust'))
+    const embers = Array.from(marks.querySelectorAll<HTMLElement>('.in-ember'))
+    /** One ember's whole life: the angle it left the edge at, when it was
+     *  born, and how it wanders — mutated in place rather than reallocated,
+     *  since a new one is only ever due when the old one has fully faded. */
+    const emberState = embers.map(() => ({ angle: 0, born: -Infinity, wobble: 0, drift: 0 }))
 
     /* One origin for the whole screen. Every time below is seconds since it,
        including the ref the preloader writes — it records `performance.now()`
@@ -198,6 +218,7 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
     const start = performance.now() / 1000
     let frame = -1
     let raf = 0
+    let seedTick = 0
 
     /** Whether scrolling is allowed to do anything yet — the writing has
      *  finished and the stills are in. Set inside `paint`, read by the wheel
@@ -207,6 +228,9 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
      *  quantiser drops for good, even if they scroll straight back to 0. */
     let committed = false
     let calledCommit = false
+    /** When the signature settled, and when the auto-burn last stepped. */
+    let settledAt = 0
+    let burnedAt = 0
     let revealed = false
 
     /** Everything that is a function of the film clock, sampled on the 24s. */
@@ -247,6 +271,39 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
         speck.style.opacity = (
           alive * (Math.random() < 0.4 ? Math.random() * 0.4 * boost : 0)
         ).toFixed(3)
+      })
+    }
+
+    /** Sparks thrown off wherever the fire currently is: each is born at the
+     *  burning edge, rises and drifts outward as it ages, and fades in and
+     *  back out over its life rather than blinking on and off. Nothing here
+     *  is random per frame — a spark's whole arc is fixed the moment it is
+     *  born, so it reads as a trajectory rather than as static. */
+    const paintEmbers = (t: number, cx: number, cy: number, r: number, heat: number) => {
+      if (heat < 0.015) {
+        embers.forEach((el) => {
+          el.style.opacity = '0'
+        })
+        return
+      }
+      embers.forEach((el, i) => {
+        const st = emberState[i]
+        let age = t - st.born
+        if (age > EMBER_LIFE) {
+          st.born = t - Math.random() * EMBER_LIFE * 0.3
+          st.angle = Math.random() * Math.PI * 2
+          st.wobble = Math.random() * 10 - 5
+          st.drift = 0.6 + Math.random() * 0.5
+          age = t - st.born
+        }
+        const k = clamp01(age / EMBER_LIFE)
+        const rise = k * k * 60 * st.drift
+        const outward = r * (0.92 + k * 0.22)
+        const x = cx + Math.cos(st.angle) * outward + Math.sin(k * 7 + st.angle) * st.wobble
+        const y = cy + Math.sin(st.angle) * outward * 0.62 - rise
+        const fade = k < 0.2 ? k / 0.2 : (1 - k) / 0.8
+        el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) scale(${(0.5 + fade * 0.7).toFixed(2)})`
+        el.style.opacity = (clamp01(fade) * heat).toFixed(3)
       })
     }
 
@@ -293,26 +350,34 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
       // ---- the burn ----
       // The veil is not fading, it is being eaten through: a hole grows from
       // one point until nothing of it is left. `reveal` is that hole's
-      // radius, eased, as a fraction of `BURN_MAX`; the page is usable the
-      // instant it reaches 1.
+      // radius, eased, as a fraction of the screen's own size — the same
+      // number the mask's circle and the glow ring both read, so neither can
+      // drift out of sync with the other.
       const reveal = out(progress)
-      const r = reveal * BURN_MAX
-      // The feather scales with the hole itself, so at rest (`r` at or near
-      // 0) the ramp collapses to nothing instead of leaving a soft halo of
-      // premature transparency sitting over the room.
-      const feather = Math.max(0.4, r * 0.22)
-      const radius = `${r.toFixed(1)}vmax`
-      const mask = `radial-gradient(circle at ${BURN_X} ${BURN_Y}, transparent ${radius}, #000 ${(r + feather).toFixed(1)}vmax)`
-      veil.style.maskImage = mask
-      veil.style.webkitMaskImage = mask
-      veil.style.setProperty('--burn-r', radius)
+      const vmax = Math.max(window.innerWidth, window.innerHeight)
+      const cx = window.innerWidth * BURN_X
+      const cy = window.innerHeight * BURN_Y
+      const rVmax = reveal * BURN_MAX * 100
+      const r = rVmax * vmax * 0.01
+      burnCircle.setAttribute('cx', cx.toFixed(1))
+      burnCircle.setAttribute('cy', cy.toFixed(1))
+      burnCircle.setAttribute('r', r.toFixed(1))
+      burn.style.setProperty('--burn-r', `${rVmax.toFixed(1)}vmax`)
       // The glow at the burning edge: a bump that rises as the hole opens and
       // falls away again once the room is fully lit, not a fade that only
       // ever goes one way.
       const heat = still ? 0 : Math.sin(clamp01(progress) * Math.PI)
       burn.style.opacity = (heat * 0.95).toFixed(3)
+      // The edge is not a clean circle — turbulence bends it into the ragged,
+      // uneven line an actual burn leaves, and reseeding it every few frames
+      // while it is alight keeps that line alive rather than frozen.
+      if (!still && heat > 0.02) {
+        seedTick++
+        if (seedTick % 3 === 0) burnNoise.setAttribute('seed', String(2 + Math.floor(Math.random() * 60)))
+      }
 
       paintFilm(t, 1 - reveal, heat)
+      paintEmbers(t, cx, cy, r, heat)
 
       // Once the veil is gone this element has nothing left to hide and
       // should not still be catching wheel and clicks meant for the page now
@@ -335,8 +400,32 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
         if (next === frame) return
         frame = next
         paint(next / FPS, 0)
+        /* The black lifts on its own once the name has finished writing.
+           The signature settling *is* the cue — it is the thing the opening
+           was for — and making someone scroll to get past a title card they
+           have just watched land is a toll rather than a moment. Scrolling
+           still works and still burns through faster; it is no longer the
+           only way out. `canLeave` is already the "the name is done" flag,
+           set from the same `enterOn` that raises the scroll cue. */
+        if (canLeave) {
+          if (!settledAt) settledAt = now
+          else if (now - settledAt > AUTO_LEAVE) {
+            committed = true
+            burnedAt = now
+            if (!calledCommit) {
+              calledCommit = true
+              onCommit()
+            }
+          }
+        }
         return
       }
+
+      // Real seconds, capped so a backgrounded tab returning does not burn
+      // the whole opening off in one frame.
+      const step = Math.min(0.05, now - burnedAt)
+      burnedAt = now
+      progressRef.current = clamp01(progressRef.current + step / AUTO_BURN)
 
       const { reveal } = paint(now, progressRef.current)
       if (!revealed && reveal >= 1) {
@@ -353,7 +442,10 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
     const nudge = (delta: number) => {
       if (revealed) return
       if (!canLeave && delta > 0) return
-      committed = true
+      if (!committed) {
+        committed = true
+        burnedAt = performance.now() / 1000 - start
+      }
       progressRef.current = clamp01(progressRef.current + delta / SCROLL_RANGE)
       if (progressRef.current > 0 && !calledCommit) {
         calledCommit = true
@@ -418,6 +510,32 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
 
   return (
     <div className="in" ref={rootRef}>
+      {/* Nothing here paints on its own — it only defines the ragged edge the
+          veil's hole and the glow ring both borrow, so a turbulence field
+          that displaces one displaces the other identically. Sized to the
+          viewport rather than left at 0×0, since percentages inside it (the
+          mask's rect and circle) resolve against its own box. */}
+      <svg className="in-burn-defs" aria-hidden="true" focusable="false">
+        <defs>
+          <filter id="in-burn-edge" x="-30%" y="-30%" width="160%" height="160%">
+            <feTurbulence
+              ref={burnNoiseRef}
+              type="fractalNoise"
+              baseFrequency="0.012 0.017"
+              numOctaves={4}
+              seed={7}
+              result="noise"
+            />
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale={130} xChannelSelector="R" yChannelSelector="G" />
+            <feGaussianBlur stdDeviation={2.5} />
+          </filter>
+          <mask id="in-burn-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="100%" height="100%">
+            <rect width="100%" height="100%" fill="#fff" />
+            <circle ref={burnCircleRef} cx="50%" cy="56%" r={0} fill="#000" filter="url(#in-burn-edge)" />
+          </mask>
+        </defs>
+      </svg>
+
       {/* The dark. A hole burns through it on the site's own clock — see
           `paint` in the effect above — and it is what actually hides the
           page. */}

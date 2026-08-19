@@ -25,101 +25,9 @@
   --rail-inset: max(var(--gutter), calc((100vw - 1200px) / 2));
 }
 
-/* ---- the wall of disciplines ----
-   Printed into the paper behind everything: the field, the name, the chrome.
-   See DISCIPLINES in Home.tsx for why this is the ground rather than a line
-   of caption under the name.
-
-   It sits below `--z-stage` and takes no pointer events, so as far as the
-   rest of the page is concerned it is part of the background. */
-
-.hm-wall {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4vw;
-  overflow: hidden;
-  pointer-events: none;
-  user-select: none;
-  will-change: transform, opacity;
-}
-
-/* No `font-size` here: `fitWall` in Home.tsx writes it, measured. */
-.hm-wall-line {
-  font-family: var(--font-times);
-  letter-spacing: var(--tr);
-  line-height: 1.02;
-  text-transform: uppercase;
-  white-space: nowrap;
-  /* Letter-spacing is applied after the last glyph too, so a tracked line's
-     box is wider than its type and centring the box leaves the words sitting
-     left of centre — badly, at half an em of tracking. Taking that trailing
-     air off the box is what lines all seven up on one axis. */
-  margin-right: calc(-1 * var(--tr));
-  color: rgba(20, 18, 14, var(--ink));
-}
-
-/* ---- the name ----
-   Lives inside the field's `preserve-3d` space, so it sorts against the cards
-   by depth. Positioned from the space's origin, which is the screen centre. */
-
-.hm-name {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: max-content;
-  transform: translate3d(-50%, -50%, 0);
-  text-align: center;
-  pointer-events: none;
-  will-change: transform, opacity;
-  /* Big transformed type is the one thing on this page that can rasterise
-     soft; asking for the sharpest pass is cheap insurance. */
-  -webkit-font-smoothing: antialiased;
-  text-rendering: geometricPrecision;
-}
-
-/* The rubric over the name. Times, not the display serif — see `--font-times`
-   for why the small type on this page is deliberately a different voice from
-   the name it sits above. */
-.hm-name-label {
-  margin-bottom: clamp(10px, 1.6vh, 20px);
-  font-family: var(--font-times);
-  font-size: clamp(0.75rem, 1.05vw, 1rem);
-  line-height: 1;
-  letter-spacing: 0.52em;
-  /* Half a millimetre of the same problem the wall has, and a different fix
-     because this line is centred by `text-align` rather than by flex: an
-     indent participates in the centring, so it moves the glyphs by half of
-     itself. A full tracking's worth of indent cancels a full tracking's
-     worth of trailing air. */
-  text-indent: 0.52em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-}
-
-.hm-name-lines {
-  font-family: var(--font-display);
-  font-size: var(--size-hero);
-  font-weight: 400;
-  line-height: 0.82;
-  letter-spacing: var(--track-hero);
-  color: var(--ink);
-}
-
-/* Each line is clipped by its own box (BlurText does that when `blur` is
-   off), so the characters climb into view from under the cut rather than
-   fading in place. */
-.hm-name-line {
-  display: block;
-}
-
 /* ---- chrome ---- */
 
-.hm-mark,
+.hm-sig,
 .hm-menu,
 .hm-cue,
 .hm-foot {
@@ -127,15 +35,61 @@
   z-index: var(--z-chrome);
 }
 
-.hm-mark {
+/* The signature, and the only mark on the page.
+ 
+   Laid out *parked* — exactly where it belongs in the menu bar, from the same
+   two edges every other piece of chrome is pinned to — and transformed out to
+   the middle of the screen from there. Home.tsx writes that transform; see
+   `placeSign` for why this pose is the one that is real and the big one is
+   the derived one.
+ 
+   `transform-origin` is the top-left corner because the parked pose is what
+   the transform is measured *from*: scaling about the centre would move the
+   parked corner off the gutter it is aligned to, which is the one thing about
+   this element that has to be exact. */
+.hm-sig {
   top: var(--gutter);
   left: var(--rail-inset);
-  opacity: 0;
+  transform-origin: 0 0;
   pointer-events: none;
+  will-change: transform;
+  /* A signature is a drawn path scaled across a five-fold range on this page.
+     Asking for the sharpest rasterisation is cheap insurance. */
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+  /* How wide the signature sits in the middle of the screen, read by
+     `placeSign` as plain numbers — `getPropertyValue` hands back a `clamp()`
+     unevaluated, so the clamp is done in JS instead and these are its three
+     terms. Matched to `.in-name` in Intro.css on purpose: the opening draws
+     this same signature at this same size, and the handover from the film to
+     the page should be the black lifting off it, not the mark resizing. */
+  --sig-hero-vw: 19;
+  --sig-hero-min: 240;
+  --sig-hero-max: 416;
 }
 
-.hm-mark-name {
-  display: block;
+/* Out of flow, so the box `placeSign` measures is the signature alone and the
+   parked pose lands on the menu bar's line rather than a rubric's height
+   above it. */
+.hm-sig-artist {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  margin-bottom: 0.7em;
+  text-align: center;
+  font-family: var(--font-display);
+  /* Tied to the mark's own width rather than to a root size, so it holds the
+     proportion the opening sets between the rubric and the signature at every
+     breakpoint — and so it grows with the mark, since the whole element is
+     scaled by one transform. */
+  font-size: calc(var(--wordmark-w, 8.2rem) * 0.062);
+  line-height: 1;
+  letter-spacing: 0.01em;
+  color: var(--ink-soft);
+}
+
+.hm-sig-name {
   color: var(--ink);
 }
 
@@ -308,15 +262,11 @@
 /* ---- narrow ---- */
 
 @media (max-width: 760px) {
-  .hm-name-lines {
-    line-height: 0.86;
-  }
-
-  /* Nothing here for `.hm-wall-line`: every line is solved to a fraction of
-     the window (see DISCIPLINES), so the wall is already the same
-     composition on a phone as on a desktop, only smaller. */
-  .hm-mark-name {
+  .hm-sig {
     --wordmark-w: 6.4rem;
+    --sig-hero-vw: 62;
+    --sig-hero-min: 180;
+    --sig-hero-max: 300;
   }
 
   .hm-menu {
