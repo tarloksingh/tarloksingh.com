@@ -73,11 +73,6 @@ interface ProjectFrameProps {
    *  project's frame is only clearing the way for the next one; where the
    *  retreat is itself something to watch, it is worth slowing down. */
   drawOut?: number
-  /** Called with this frame's own weave every time it is written, so
-   *  something else can be given the same wobble instead of generating a
-   *  second, disagreeing one — `VineHalo` (Home.tsx) is the one caller today,
-   *  so its runners shake with the ring they grow out of. */
-  onJitter?: (x: number, y: number, r: number) => void
 }
 
 /** Seconds the frame takes to draw itself in once its project is stood at,
@@ -155,8 +150,7 @@ export default function ProjectFrame({
   active,
   variant: given,
   drawIn = DRAW_IN,
-  drawOut = DRAW_OUT,
-  onJitter
+  drawOut = DRAW_OUT
 }: ProjectFrameProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const variant = given ?? frameFor(index)
@@ -165,8 +159,6 @@ export default function ProjectFrame({
      every time the visitor moved. */
   const activeRef = useRef(active)
   activeRef.current = active
-  const onJitterRef = useRef(onJitter)
-  onJitterRef.current = onJitter
 
   /* The ornaments are sized off the box they are drawn around, not off the
      viewport: `vmin` is the window's short edge, which on a wide monitor is
@@ -249,7 +241,6 @@ export default function ProjectFrame({
       root.style.setProperty('--pf-x', `${x.toFixed(2)}px`)
       root.style.setProperty('--pf-y', `${y.toFixed(2)}px`)
       root.style.setProperty('--pf-r', `${rot.toFixed(3)}deg`)
-      onJitterRef.current?.(x, y, rot)
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)

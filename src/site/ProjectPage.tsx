@@ -3,43 +3,10 @@ import BlurText from '../components/BlurText'
 import Reveal from './Reveal'
 import Wordmark from './Wordmark'
 import Menu from './Menu'
-import { HALO_CLUSTER } from './frames'
 import { clearPatternShift, readPatternSettings, setPatternShift } from './pattern'
 import MediaFigure, { shapeOf, spanFor } from './MediaFigure'
 import { projectById, projects } from '../data/projects'
 import './ProjectPage.css'
-
-/** How much of the read the margin's own tangle takes to finish assembling —
- *  well short of the end, so it isn't visibly still arriving right as the
- *  piece closes. The same eight strokes `VineHalo` grows at each corner of
- *  the ring around the name (`HALO_CLUSTER`, frames.ts): the request was for
- *  that effect, not a second drawing invented to match it. */
-const CLUSTER_SPAN = 0.55
-/** The share of that span one stroke takes to draw, against the strokes
- *  spreading out across the rest — the same split `--pf-hold` makes for a
- *  project's own frame (ProjectFrame.css), done by hand here since this is
- *  a direct readout of scroll rather than something with a clock of its
- *  own to write a custom property from. */
-const CLUSTER_HOLD = 0.5
-
-/** Writes `at` (0 at the top of the read, 1 at the bottom) onto one corner
- *  tangle's eight strokes, assembling them in the order they were drawn in —
- *  and, scrolling back up, exactly reversing, since this is a pure function
- *  of `at` and nothing here eases toward a target the way the vine around
- *  the name does. */
-const updateCluster = (svg: SVGSVGElement | null, at: number) => {
-  if (!svg) return
-  const paths = svg.querySelectorAll('path')
-  const n = paths.length
-  const draw = Math.min(1, at / CLUSTER_SPAN)
-  const stagger = n > 1 ? (1 - CLUSTER_HOLD) / (n - 1) : 0
-  paths.forEach((path, i) => {
-    const local = Math.min(1, Math.max(0, (draw - i * stagger) / CLUSTER_HOLD))
-    path.style.strokeDashoffset = (1 - local).toFixed(4)
-  })
-}
-
-const clusterStroke = (d: string) => <path key={d} d={d} pathLength="1" strokeDasharray="1" />
 
 /* A case study. An ordinary long document, deliberately — the stage is the
    place for spectacle, and a page you are meant to *read* should not fight
@@ -62,8 +29,6 @@ interface ProjectPageProps {
 export default function ProjectPage({ id, onBack, onOpen, onIndex, noir }: ProjectPageProps) {
   const project = projectById(id)
   const progressRef = useRef<HTMLSpanElement>(null)
-  const clusterLRef = useRef<SVGSVGElement>(null)
-  const clusterRRef = useRef<SVGSVGElement>(null)
 
   const next = useMemo(() => {
     const at = projects.findIndex((p) => p.id === id)
@@ -97,8 +62,6 @@ export default function ProjectPage({ id, onBack, onOpen, onIndex, noir }: Proje
       const span = document.body.scrollHeight - window.innerHeight
       const at = span > 0 ? Math.min(1, window.scrollY / span) : 0
       el.style.transform = `scaleX(${at.toFixed(4)})`
-      updateCluster(clusterLRef.current, at)
-      updateCluster(clusterRRef.current, at)
     }
     const onScroll = () => {
       if (queued) return
@@ -131,18 +94,6 @@ export default function ProjectPage({ id, onBack, onOpen, onIndex, noir }: Proje
       <div className="pp-progress" aria-hidden="true">
         <span className="pp-progress-fill" ref={progressRef} />
       </div>
-
-      {/* The same tangle `VineHalo` grows at each corner of the ring around
-          the name (Home.tsx), out in the margin here instead — a direct
-          readout of how far into the piece you are (`updateCluster` above),
-          so scrolling down grows it and scrolling back up takes it apart
-          again, in step with the reading rather than on its own clock. */}
-      <svg ref={clusterLRef} className="pp-cluster pp-cluster-l" viewBox="0 0 100 100" fill="none" aria-hidden="true">
-        {HALO_CLUSTER.map(clusterStroke)}
-      </svg>
-      <svg ref={clusterRRef} className="pp-cluster pp-cluster-r" viewBox="0 0 100 100" fill="none" aria-hidden="true">
-        {HALO_CLUSTER.map(clusterStroke)}
-      </svg>
 
       <header className="pp-bar">
         <button type="button" className="pp-mark-name" onClick={onBack}>

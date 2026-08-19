@@ -1,5 +1,4 @@
 import type { CSSProperties } from 'react'
-import Sprig from './Sprig'
 import { MINI_BLOOM } from './frames'
 import './Menu.css'
 
@@ -11,11 +10,10 @@ import './Menu.css'
  *
  * No `.u-link` here, and no plain bar under the current item — `MenuBloom`
  * below is the underline, a small flower rather than a ruled line, and it
- * sits close enough under the word to read as one mark with it. `Sprig`
- * still grows further out on hover, and a current item keeps it grown
- * permanently (`u-vine[data-on]`, Sprig.css) — the two used to occupy the
- * same few pixels and collide; the bloom is deliberately tight to the
- * baseline and the sprig's own gap starts well past it, so now they don't.
+ * sits close enough under the word to read as one mark with it. It is the
+ * only thing a menu item draws: a `Sprig` used to grow above and below the
+ * word as well, and two flowers over and under a three-letter word read as
+ * clutter round it rather than as a mark on it.
  *
  * `current` is the whole of what tells the two live sections apart; a case
  * study always answers `'work'`, since reading one is being in the work the
@@ -48,29 +46,26 @@ export default function Menu({ current, onHome, onWork, className }: MenuProps) 
     <nav className={className ? `mn ${className}` : 'mn'} aria-label="Main">
       <button
         type="button"
-        className="mn-item u-vine"
+        className="mn-item"
         data-on={current === 'home'}
         aria-current={current === 'home' ? 'true' : undefined}
         onClick={onHome}
       >
-        <Sprig vertical />
         home
         <MenuBloom />
       </button>
       <button
         type="button"
-        className="mn-item u-vine"
+        className="mn-item"
         data-on={current === 'work'}
         aria-current={current === 'work' ? 'true' : undefined}
         onClick={onWork}
       >
-        <Sprig vertical />
         work
         <MenuBloom />
       </button>
       {/* Never marked: see the note above. */}
-      <a className="mn-item u-vine" href="mailto:tarloksinghfilms@gmail.com">
-        <Sprig vertical />
+      <a className="mn-item" href="mailto:tarloksinghfilms@gmail.com">
         contact
         <MenuBloom />
       </a>

@@ -6,7 +6,6 @@ import Gallery from './Gallery'
 import Wordmark from './Wordmark'
 import ProjectFrame from './ProjectFrame'
 import Sprig from './Sprig'
-import VineHalo from './VineHalo'
 import Menu from './Menu'
 import { VINE_FRAME } from './frames'
 import { workProjects, sideProjects } from '../data/projects'
@@ -158,7 +157,6 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
   const sigRef = useRef<HTMLDivElement>(null)
   const artistRef = useRef<HTMLParagraphElement>(null)
   const vineRef = useRef<HTMLDivElement>(null)
-  const haloRef = useRef<HTMLDivElement>(null)
   const cueRef = useRef<HTMLDivElement>(null)
   const footRef = useRef<HTMLElement>(null)
   const trackRef = useRef<HTMLSpanElement>(null)
@@ -175,32 +173,7 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
      moment you start to leave, which is a different thing from the opacity the
      rubric beside it is given — that one dims, this one is taken back. */
   const [atName, setAtName] = useState(true)
-  /* The halo's own switch, separate from the ring's — see `VineHalo` in the
-     markup below. It only ever turns on after the ring has had the full
-     `VINE_DRAW` seconds to finish, so the tangle at each corner reads as
-     growing out of a frame that is already there rather than racing it.
-     Turns off the instant the ring does; there is nothing to wait for on the
-     way out. */
-  const [haloOn, setHaloOn] = useState(false)
   const vineActive = unveiling && atName
-  useEffect(() => {
-    if (!vineActive) {
-      setHaloOn(false)
-      return
-    }
-    const timer = window.setTimeout(() => setHaloOn(true), VINE_DRAW * 1000)
-    return () => window.clearTimeout(timer)
-  }, [vineActive])
-  /* Handed to `ProjectFrame` below and passed straight through to the halo's
-     own root — see the note on `rootRef` in VineHalo.tsx — so the two shake
-     with one weave instead of two that happen to disagree. */
-  const onVineJitter = useCallback((x: number, y: number, r: number) => {
-    const halo = haloRef.current
-    if (!halo) return
-    halo.style.setProperty('--pf-x', `${x.toFixed(2)}px`)
-    halo.style.setProperty('--pf-y', `${y.toFixed(2)}px`)
-    halo.style.setProperty('--pf-r', `${r.toFixed(3)}deg`)
-  }, [])
   // Read by the hover-scrub below, which runs outside the scroll loop and so
   // cannot close over `inWork` without going stale.
   const inWorkRef = useRef(false)
@@ -444,19 +417,11 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
       {/* ---- chrome. Fixed above both stages, present the whole way through. ---- */}
 
       {/* The vine. The same drawing machinery the projects' frames are made of
-          (ProjectFrame.tsx) around a very much smaller box: a close ring
-          around the name itself, not the whole window. It starts the moment
-          the film starts to lift, and it keeps going for as long as you stand
-          here — see `VINE_DRAW`.
-
-          `VineHalo` is the experiment sitting on top of it: a tangle at each
-          corner and a few tendrils along the edges, growing out past the
-          ring's own edge into the room around the name rather than staying
-          inside the shape the frame is drawn to. It waits for `haloOn` —
-          which is `active` again, only later — so it reads as coming out of
-          a frame that has already arrived, not racing to keep up with one
-          still being drawn. `onJitter` hands it the ring's own weave, so the
-          two shake together rather than each rolling their own.
+          (ProjectFrame.tsx), held off the window's own edges the way a
+          project's frame is held off its exhibit: this is the frame for the
+          whole first screen, not a ring cinched round the name in the middle
+          of it. It starts the moment the film starts to lift, and it keeps
+          going for as long as you stand here — see `VINE_DRAW`.
 
           `active` is the two conditions together, which is the whole of the
           frame's own behaviour: it grows while the page is yours and the name
@@ -473,16 +438,14 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
           drawIn={VINE_DRAW}
           drawOut={VINE_UNDRAW}
           active={vineActive}
-          onJitter={onVineJitter}
         />
-        <VineHalo active={haloOn} rootRef={haloRef} />
       </div>
 
       {/* The one mark on the page. Laid out parked in the menu bar and
           transformed out to the middle of the screen — see `placeSign`.
 
-          `u-vine` puts a sprig either side of it, the same one the menu beside
-          it and the button on a case get. It can only ever be seen parked:
+          `u-vine` puts a sprig either side of it, the same one the button on
+          an exhibit gets. It can only ever be seen parked:
           `placeSign` hands the element back its pointer events at the end of
           the journey and takes them away again on the way out, because at the
           hero pose this is already standing inside a drawn frame. */}

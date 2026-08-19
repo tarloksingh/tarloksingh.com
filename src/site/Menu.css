@@ -1,5 +1,5 @@
 /* See Menu.tsx. The internal look of a menu item — type, hover colour, the
-   sprig standing in for an underline — every screen that uses this component
+   flower standing in for an underline — every screen that uses this component
    gets for free; where the nav itself sits on the page is left to that
    screen's own stylesheet, via `className`. */
 
@@ -36,18 +36,9 @@
   color: var(--ink);
 }
 
-/* Three items in a row eighteen pixels apart, each with a drawing hanging
-   off it top and bottom — held back in colour, since the sprig belongs to
-   the word and at full ink competes with it. */
-.mn .sp {
-  color: var(--ink-faint);
-  --sp-w: 2.3em;
-  --sp-gap: 0.4em;
-}
-
-/* The underline — a small flower sitting close under the word, well above
-   where the sprig's own gap begins (`--sp-gap: 0.4em`), so the two never
-   share the same few pixels. */
+/* The underline, and the only mark a menu item makes: a small flower sitting
+   close under the word, near enough the baseline to read as that word's rule
+   rather than as a second thing under it. */
 .mn-bloom {
   position: absolute;
   left: 50%;
