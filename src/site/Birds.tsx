@@ -80,12 +80,18 @@ const FIDGET = [0.4, 1.9]
 const FLAP_FOR = 0.5
 const TURN_FOR = 0.833
 
-/** One frame, at the twelve a second everything drawn on this site moves at.
- *  Its twin is `--bd-frame` in Birds.css, which is what the wingbeat and the
- *  fidgets are cut to; this is what the flight across the window is cut to,
- *  and the two have to be the same number or a bird flaps on one clock while
- *  it travels on another. */
-const FRAME = 1 / 12
+/** How often a bird's position is painted while it is in the air: twice for
+ *  every frame it is drawn on.
+ *
+ *  The wings and the fidgets stay at twelve — `--bd-frame` in Birds.css, the
+ *  rate everything else drawn on this site moves at. Travel is the one thing
+ *  that wants more. A wingbeat is two poses and the eye filling in the rest,
+ *  so stepping it is what makes it read as a wingbeat at all; a body crossing
+ *  the window is not a sequence of poses but one thing going somewhere, and
+ *  at twelve the going somewhere comes apart into a stutter. Twenty-four is
+ *  the old answer to exactly this: hold the drawing at twelve and move it on
+ *  every frame. */
+const FRAME = 1 / 24
 
 const rand = (lo: number, hi: number) => lo + Math.random() * (hi - lo)
 
@@ -396,10 +402,10 @@ export default function Birds({ perch: selector, active }: BirdsProps) {
        * The flight itself is worked out every frame the display offers, so
        * that the timing of a landing is exact and the swoop is computed off
        * real elapsed time rather than off a frame count. What is *painted* is
-       * a twelfth of a second apart, because a bird whose wings cut at twelve
-       * frames a second while its body slides along at a hundred and twenty
-       * is two different drawings at once — and the sliding one wins, which is
-       * why it read as smooth however the wings were stepped.
+       * `FRAME` apart, because a bird whose wings cut on a clock while its
+       * body slides along at whatever the display happens to run at is two
+       * different drawings at once — and the sliding one wins, which is why
+       * it read as smooth however the wings were stepped.
        *
        * The pose goes with the position, in the same block: they have to agree
        * about which frame this is, or a bird arrives in its perched drawing an
