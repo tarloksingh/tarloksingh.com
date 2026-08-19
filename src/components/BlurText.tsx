@@ -195,7 +195,18 @@ export default function BlurText({
         // Without blur, the reveal is a rise-out-of-its-container: clipping
         // the block hides the segment's travel distance until it climbs
         // back above this box's own edge, like it's emerging from the floor.
-        overflow: blur ? 'visible' : 'hidden'
+        overflow: blur ? 'visible' : 'hidden',
+        // A tight display `line-height` (a case study's title is set at
+        // 0.86, see `.pp-title`) makes a one-line box shorter than the font's
+        // own descenders reach — with the block clipped above, that cuts the
+        // bottom off any letter that has one. A sliver of padding gives them
+        // room without moving anything: the matching negative margin takes
+        // the added box size back out, so a sibling below this one lands
+        // exactly where it did before. Harmless when overflow is visible too
+        // — there is nothing to clip either way, it just briefly changes when
+        // in the entrance a character crosses into view.
+        paddingBottom: '0.22em',
+        marginBottom: '-0.22em'
       }}
     >
       {lines.map((line, lineIndex) => {

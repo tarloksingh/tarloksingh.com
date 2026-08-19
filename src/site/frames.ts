@@ -280,3 +280,64 @@ export const VSPRIG: string[] = [
   'M12 86 C10 77 2 72 -6 76 C-3 84 4 89 12 86',
   'M12 86 C10 95 2 100 -6 96 C-3 88 4 83 12 86'
 ]
+
+/* Runners off the ring around the name — `VineHalo.tsx` scatters copies of
+ * these around `VINE_FRAME`'s own box, each growing outward past its edge
+ * rather than staying inside it, which is the "spreading" experiment: the
+ * ring itself is a frame with an edge to keep to, and this is what it looks
+ * like once something growing stops respecting that edge. Not a bare ray —
+ * every runner is a small stem carrying the same leaf-and-bloom vocabulary
+ * the ring itself is drawn in, so a runner reads as one more thing the vine
+ * put out rather than a separate mark laid over it.
+ *
+ * Both are drawn in a 40 x 90 box with the anchor at the bottom, (20, 90) —
+ * on the frame's own rail when placed. `RUNNER` is the ordinary one: a stem,
+ * a leaf part way up it, and the same three-petal bloom the crest opens into
+ * (`VINE_FRAME.crest`, the last three strokes) at its own smaller scale.
+ * `CURL` is rarer and used sparingly — a longer stem that loses its way and
+ * turns back on itself before it closes in a bud, the way the corner's own
+ * second bloom does. */
+export const HALO_RUNNER: string[] = [
+  'M20 90 C19 68 22 48 19 28 C19 25 19 22 20 20',
+  'M17 55 C23 53 27 57 24 62 C19 64 14 60 17 55',
+  'M20 20 C15 19 12 15 13 10 C17 12 20 16 20 20',
+  'M20 20 C25 19 28 15 27 10 C23 12 20 16 20 20',
+  'M20 18 C17 15 17 10 20 6 C23 10 23 15 20 18'
+]
+
+/* The same three-petal bloom `HALO_RUNNER` opens into, and the crest's own
+ * flower (`VINE_FRAME.crest`, the last three strokes) at its own scale —
+ * cropped down to just the flower and re-centred in a small box of its own,
+ * for anything that wants only the bloom and not the stem it usually sits
+ * on. `Menu.tsx` is the one caller: the current item's underline is this,
+ * not a ruled line. */
+export const MINI_BLOOM: string[] = [
+  'M20 20 C15 19 12 15 13 10 C17 12 20 16 20 20',
+  'M20 20 C25 19 28 15 27 10 C23 12 20 16 20 20',
+  'M20 18 C17 15 17 10 20 6 C23 10 23 15 20 18'
+]
+
+export const HALO_CURL: string[] = [
+  'M20 90 C18 66 24 50 14 40 C6 32 10 20 20 16 C26 13 24 6 18 4',
+  'M18 4 C22 2 26 4 25 8 C24 12 19 12 17 9 C15 6 15 3 18 4'
+]
+
+/* The tangle at each corner — several of the above, sharing one anchor and
+ * crossing over each other rather than standing apart, the way a real
+ * corner's growth does when nothing has thinned it out. Two long scrolls
+ * curl off in opposite directions and double back on themselves; two short
+ * tendrils cross back over those on their way out; a straight one splits the
+ * middle and closes in a bud; and a pair of unopened buds sit loose in the
+ * gaps between, the way real growth leaves a few behind unopened. Eight
+ * strokes, drawn in a 100 x 100 box off the same bottom-centre anchor, (50,
+ * 95), everything else in this file uses. */
+export const HALO_CLUSTER: string[] = [
+  'M50 95 C48 70 20 65 15 40 C11 20 30 8 48 18 C40 25 32 35 38 45 C42 52 50 50 48 42',
+  'M50 95 C53 68 82 64 86 42 C90 22 68 9 51 20 C60 27 68 36 62 46 C58 53 50 51 52 43',
+  'M50 95 C44 78 55 68 46 58 C40 52 47 45 54 47',
+  'M50 95 C56 78 45 68 54 58 C60 52 53 45 46 47',
+  'M50 95 C49 70 51 45 50 22 C50 15 53 9 58 6',
+  'M58 6 C63 4 67 7 65 11 C62 14 57 12 58 6',
+  'M30 55 C33 53 36 55 35 58 C33 60 29 59 30 55',
+  'M70 55 C67 53 64 55 65 58 C67 60 71 59 70 55'
+]

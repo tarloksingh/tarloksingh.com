@@ -6,6 +6,8 @@ import Gallery from './Gallery'
 import Wordmark from './Wordmark'
 import ProjectFrame from './ProjectFrame'
 import Sprig from './Sprig'
+import VineHalo from './VineHalo'
+import Menu from './Menu'
 import { VINE_FRAME } from './frames'
 import { workProjects, sideProjects } from '../data/projects'
 import { SCROLL_BOX, SCROLL_OUTLINE } from './cueGlyphs'
@@ -43,18 +45,16 @@ const NAME_DOCK = 0.62
 
 /** Seconds the vine around the name takes to grow in, and to pull back off.
  *
- *  The growth is deliberately longer than anyone will watch — most visitors
- *  will scroll a few seconds in and see a third of it, which is the intended
- *  picture. With `--pf-hold` down at a sixth (Home.css) one thing opens at a
- *  time, about every quarter second at this pace, so at any moment it is
- *  visibly still going.
+ *  Most visitors will scroll in well before it finishes, and see a third or
+ *  half of it — which is the intended picture. With `--pf-hold` down at a
+ *  sixth (Home.css) one thing opens at a time rather than the whole line
+ *  unrolling at once, so at any moment it is visibly still going.
  *
  *  Leaving un-draws it rather than fading it: the retreat runs the same list
- *  backwards. Quick, unlike a project's own frame turning to face the next
- *  piece — leaving the name is the one gesture on this screen that has to
- *  keep up with a visitor who has already decided to move on. */
-const VINE_DRAW = 6
-const VINE_UNDRAW = 0.9
+ *  backwards, quickly — leaving the name is the one gesture on this screen
+ *  that has to keep up with a visitor who has already decided to move on. */
+const VINE_DRAW = 4
+const VINE_UNDRAW = 0.5
 
 /** How far up the scroll the name stops being the thing you are looking at.
  *  Past this the vine starts pulling back off. Small on purpose — the entrance
@@ -158,6 +158,7 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
   const sigRef = useRef<HTMLDivElement>(null)
   const artistRef = useRef<HTMLParagraphElement>(null)
   const vineRef = useRef<HTMLDivElement>(null)
+  const haloRef = useRef<HTMLDivElement>(null)
   const cueRef = useRef<HTMLDivElement>(null)
   const footRef = useRef<HTMLElement>(null)
   const trackRef = useRef<HTMLSpanElement>(null)
@@ -174,6 +175,32 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
      moment you start to leave, which is a different thing from the opacity the
      rubric beside it is given — that one dims, this one is taken back. */
   const [atName, setAtName] = useState(true)
+  /* The halo's own switch, separate from the ring's — see `VineHalo` in the
+     markup below. It only ever turns on after the ring has had the full
+     `VINE_DRAW` seconds to finish, so the tangle at each corner reads as
+     growing out of a frame that is already there rather than racing it.
+     Turns off the instant the ring does; there is nothing to wait for on the
+     way out. */
+  const [haloOn, setHaloOn] = useState(false)
+  const vineActive = unveiling && atName
+  useEffect(() => {
+    if (!vineActive) {
+      setHaloOn(false)
+      return
+    }
+    const timer = window.setTimeout(() => setHaloOn(true), VINE_DRAW * 1000)
+    return () => window.clearTimeout(timer)
+  }, [vineActive])
+  /* Handed to `ProjectFrame` below and passed straight through to the halo's
+     own root — see the note on `rootRef` in VineHalo.tsx — so the two shake
+     with one weave instead of two that happen to disagree. */
+  const onVineJitter = useCallback((x: number, y: number, r: number) => {
+    const halo = haloRef.current
+    if (!halo) return
+    halo.style.setProperty('--pf-x', `${x.toFixed(2)}px`)
+    halo.style.setProperty('--pf-y', `${y.toFixed(2)}px`)
+    halo.style.setProperty('--pf-r', `${r.toFixed(3)}deg`)
+  }, [])
   // Read by the hover-scrub below, which runs outside the scroll loop and so
   // cannot close over `inWork` without going stale.
   const inWorkRef = useRef(false)
@@ -417,18 +444,25 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
       {/* ---- chrome. Fixed above both stages, present the whole way through. ---- */}
 
       {/* The vine. The same drawing machinery the projects' frames are made of
-          (ProjectFrame.tsx), around the same size of box those stand in too —
-          held off all four edges of the window rather than close around the
-          name, now that this is the frame for the whole first screen and not
-          a ring cinched tight around one word in the middle of it. It starts
-          the moment the film starts to lift, and it keeps going for as long as
-          you stand here — see `VINE_DRAW`.
+          (ProjectFrame.tsx) around a very much smaller box: a close ring
+          around the name itself, not the whole window. It starts the moment
+          the film starts to lift, and it keeps going for as long as you stand
+          here — see `VINE_DRAW`.
 
-          `active` is the two conditions together, which is the whole of its
-          behaviour: it grows while the page is yours and the name is what you
-          are looking at, and the instant you begin to leave it goes back the
-          way it came, quickly — see `VINE_UNDRAW`. Not faded — un-drawn,
-          stroke by stroke in reverse.
+          `VineHalo` is the experiment sitting on top of it: a tangle at each
+          corner and a few tendrils along the edges, growing out past the
+          ring's own edge into the room around the name rather than staying
+          inside the shape the frame is drawn to. It waits for `haloOn` —
+          which is `active` again, only later — so it reads as coming out of
+          a frame that has already arrived, not racing to keep up with one
+          still being drawn. `onJitter` hands it the ring's own weave, so the
+          two shake together rather than each rolling their own.
+
+          `active` is the two conditions together, which is the whole of the
+          frame's own behaviour: it grows while the page is yours and the name
+          is what you are looking at, and the instant you begin to leave it
+          goes back the way it came, quickly — see `VINE_UNDRAW`. Not faded —
+          un-drawn, stroke by stroke in reverse.
 
           Before the signature, so the name is drawn over the line rather than
           under it — they share `--z-chrome`, and at equal z-index the later
@@ -438,8 +472,10 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
           variant={VINE_FRAME}
           drawIn={VINE_DRAW}
           drawOut={VINE_UNDRAW}
-          active={unveiling && atName}
+          active={vineActive}
+          onJitter={onVineJitter}
         />
+        <VineHalo active={haloOn} rootRef={haloRef} />
       </div>
 
       {/* The one mark on the page. Laid out parked in the menu bar and
@@ -463,51 +499,20 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
         <Wordmark className="hm-sig-name" />
       </div>
 
-      {/* Two of these three are places on this one scroll, so the menu marks
-          which one you are standing in rather than merely offering links.
-          `aria-current` is the real signal; `data-on` is what draws the rule
-          under it, and is the same underline every link on the site uses — and
-          now also what holds each item's sprigs out, so the place you are
-          standing in keeps them and the other two only borrow them while the
-          pointer is on them.
-
-          `vertical`: the three items sit eighteen pixels apart, and a sprig
-          reaching sideways off one at this size reaches straight into the
-          word next to it. Grown up and down instead, there is nothing beside
-          any of them to run into — see `vertical` on Sprig.tsx. */}
-      <nav className="hm-menu" aria-label="Main">
-        <button
-          type="button"
-          className="u-link u-vine"
-          data-on={!inWork}
-          aria-current={!inWork ? 'true' : undefined}
-          onClick={() => engine.goTo(0)}
-        >
-          <Sprig vertical />
-          Home
-        </button>
-        {/* Does two things, because there are only three items and the index
-            overlay would otherwise be unreachable from this page: from the
-            name it turns the drum to the first project, and once you are
-            already in the work it opens the contents. Pressing the section
-            you are standing in to see all of it is the ordinary reading. */}
-        <button
-          type="button"
-          className="u-link u-vine"
-          data-on={inWork}
-          aria-current={inWork ? 'true' : undefined}
-          onClick={() => (inWork ? onIndex() : engine.goTo(1))}
-        >
-          <Sprig vertical />
-          Work
-        </button>
-        {/* Never marked: it leaves the page rather than being a third place
-            on it. */}
-        <a className="u-link u-vine" href="mailto:tarloksinghfilms@gmail.com">
-          <Sprig vertical />
-          Contact
-        </a>
-      </nav>
+      {/* Two of these three are places on this one scroll — see Menu.tsx,
+          which also carries a case study's own copy of this nav, so the two
+          screens never disagree about what it looks like. */}
+      <Menu
+        className="hm-menu"
+        current={inWork ? 'work' : 'home'}
+        onHome={() => engine.goTo(0)}
+        /* Does two things, because there are only three items and the index
+           overlay would otherwise be unreachable from this page: from the
+           name it turns the drum to the first project, and once you are
+           already in the work it opens the contents. Pressing the section
+           you are standing in to see all of it is the ordinary reading. */
+        onWork={() => (inWork ? onIndex() : engine.goTo(1))}
+      />
 
       {/* The invitation, in the same hand as the name and drawn on the same
           way — the opening writes the signature, and this is the first thing

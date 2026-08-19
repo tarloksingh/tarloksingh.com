@@ -37,6 +37,59 @@
   will-change: transform;
 }
 
+/* ---- the margin's own tangle ----
+   See the note on `updateCluster` in ProjectPage.tsx. Fixed rather than
+   travelling with the page, and vertically centred rather than tied to any
+   one point in it — what moves is how much of the drawing is there, not
+   where it sits. */
+.pp-cluster {
+  position: fixed;
+  top: 50%;
+  width: clamp(64px, 9vw, 150px);
+  height: auto;
+  transform: translateY(-50%);
+  pointer-events: none;
+  z-index: var(--z-chrome);
+  color: var(--ink);
+  overflow: visible;
+}
+
+.pp-cluster-l {
+  left: max(10px, calc((100vw - var(--page)) / 4 - 20px));
+}
+
+.pp-cluster-r {
+  right: max(10px, calc((100vw - var(--page)) / 4 - 20px));
+  transform: translateY(-50%) scaleX(-1);
+}
+
+.pp-cluster path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  /* Written every scroll frame by `updateCluster` — nothing here transitions,
+     for the same reason `.pp-progress-fill` doesn't: this is a readout of
+     where you are, and easing it would put a lag between the page and the
+     drawing. */
+  stroke-dashoffset: 1;
+}
+
+@media (max-width: 900px) {
+  /* The margin outside `--page` is too thin at this width to hold a drawing
+     without it landing on the text it stands beside. */
+  .pp-cluster {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pp-cluster {
+    display: none;
+  }
+}
+
 /* ---- top bar ---- */
 
 /* Mirrors `.hm-sig`/`.hm-menu` in Home.css — the same wordmark-left,
@@ -66,28 +119,9 @@
   color: var(--ink);
 }
 
-.pp-menu {
-  display: flex;
-  flex-direction: row;
-  align-items: baseline;
-  gap: 18px;
-  font-family: var(--font-display);
-  font-size: 1.05rem;
-  letter-spacing: 0.01em;
-  line-height: 1;
-  color: var(--ink-faint);
-}
-
-.pp-menu .u-link {
-  font-family: inherit;
-  letter-spacing: inherit;
-  text-transform: lowercase;
-  color: inherit;
-}
-
-.pp-menu .u-link:hover {
-  color: var(--ink);
-}
+/* Everything about what the nav itself looks like is Menu.css's now — see the
+   note on `.hm-menu` in Home.css, which shares it. `.pp-menu` only ever needed
+   to exist for the narrow override below. */
 
 /* ---- masthead ---- */
 
