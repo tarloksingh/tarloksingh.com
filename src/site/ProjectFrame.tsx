@@ -14,23 +14,40 @@ import './ProjectFrame.css'
  * flipped onto the top and bottom edges. Written once and mirrored so a frame
  * can never disagree with itself edge to edge. See frames.ts.
  *
- * It runs on two clocks that are deliberately not the same one:
+ * Both of its clocks are wall-clock, quantised to 12fps — the same trick the
+ * opening's film is on, and the reason the line lays itself down in bites
+ * rather than gliding.
  *
- *   - **Drawing** is scroll position. Gallery.tsx writes `--pf-draw` from how
- *     far this project is from the front of the room, so the frame draws
- *     itself in as its piece arrives and pulls back off as it leaves — and,
- *     being a readout of where the scroll actually is rather than an animation
- *     fired at it, it answers a reversal immediately with nothing to cancel.
- *   - **Jitter** is wall-clock, quantised to 12fps, the same trick the
- *     opening's film is on. It has to be its own rAF: it is at its most
- *     visible when the visitor is doing nothing, which is exactly when the
- *     scroll engine has stopped ticking and there are no frames to hang it on.
+ * The drawing used to be a readout of scroll position, on the reasoning that a
+ * pure function of the scroll answers a reversal with nothing to cancel. That
+ * is true and it was still wrong: past the first project the track is
+ * *detented*, so there is no slow approach to read from — one gesture sends
+ * the target a whole project and `value` eases after it in a few hundred
+ * milliseconds. The frame was drawing during that flight and was finished
+ * before the piece had settled, so it was never seen being drawn at all.
+ *
+ * So Gallery.tsx says only whether this project is the one being stood at, and
+ * the drawing is timed from there: a slow attack once you have landed, a
+ * quicker release when you leave. It is still interruptible — leaving halfway
+ * through retracts from wherever it had got to rather than restarting — which
+ * was the part of the old approach worth keeping.
  */
 
 interface ProjectFrameProps {
   /** Which project's frame to draw — an index into the row. */
   index: number
+  /** Whether the visitor is standing at this project. The frame draws itself
+   *  in while this is true and pulls back off while it is not; Gallery.tsx
+   *  decides it, since it is the one that knows where the row is. */
+  active: boolean
 }
+
+/** Seconds the frame takes to draw itself in once its project is stood at,
+ *  and to pull back off once it isn't. Drawing is much the slower of the two:
+ *  it is the thing you are meant to watch, while an exit is only clearing the
+ *  way for the next one. */
+const DRAW_IN = 1.6
+const DRAW_OUT = 0.4
 
 /** Wall-clock frames per second for the wobble. The opening runs its film at
  *  24; this is half that on purpose — a frame is a held drawing, not a moving
@@ -61,25 +78,52 @@ const stroke = (d: string, i: number) => (
   />
 )
 
-export default function ProjectFrame({ index }: ProjectFrameProps) {
+export default function ProjectFrame({ index, active }: ProjectFrameProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const variant = frameFor(index)
+  /* Read inside the loop rather than closed over, so changing it does not tear
+     the loop down and restart it — which would drop the drawing back to zero
+     every time the visitor moved. */
+  const activeRef = useRef(active)
+  activeRef.current = active
 
   useEffect(() => {
     const root = rootRef.current
     if (!root) return
     let raf = 0
     let frame = -1
+    let draw = 0
     const start = performance.now()
+    let previous = start
 
     const tick = () => {
       raf = requestAnimationFrame(tick)
-      const next = Math.floor(((performance.now() - start) / 1000) * FPS)
+      const now = performance.now()
+      const next = Math.floor(((now - start) / 1000) * FPS)
       // Two or three display frames in a row are identical, which is what a
-      // projected frame does — and what stops this costing a style write at
+      // projected frame does — and what stops this costing style writes at
       // 120Hz for a wobble nobody can see at that rate.
       if (next === frame) return
+      // Real elapsed time, not a fixed step, so a dropped frame costs the
+      // drawing nothing; capped so a backgrounded tab coming back does not
+      // finish the whole line in one bite.
+      const step = Math.min(0.25, (now - previous) / 1000)
+      previous = now
       frame = next
+
+      /* Advanced at a steady rate rather than eased toward the target. A pen
+         travels at roughly one speed, and an exponential — which is what the
+         rest of the site moves on — would spend the whole back half of the
+         drawing creeping through the last stroke and never quite close the
+         frame. Still interruptible: leaving halfway retracts from where it had
+         got to, it just retreats at the exit's own faster rate. */
+      const target = activeRef.current ? 1 : 0
+      draw =
+        target > draw
+          ? Math.min(target, draw + step / DRAW_IN)
+          : Math.max(target, draw - step / DRAW_OUT)
+      root.style.setProperty('--pf-draw', draw.toFixed(4))
+
       const r = () => Math.random() * 2 - 1
       root.style.setProperty('--pf-x', `${(r() * JITTER_PX).toFixed(2)}px`)
       root.style.setProperty('--pf-y', `${(r() * JITTER_PX).toFixed(2)}px`)

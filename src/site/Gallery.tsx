@@ -110,6 +110,11 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
      for it against the opening, which is four seconds of film with nothing
      else to spend them on. */
   const [awake, setAwake] = useState(false)
+  /* Whether the room has arrived at all. The frames hang off it: without it
+     the first project's frame would draw itself round the empty room at the
+     top of the page, since it is the project being stood at from the very
+     first frame whether or not the row has come in yet. */
+  const [landed, setLanded] = useState(false)
   const count = workProjects.length
   /* What the tuning panel has set. It lives inside the 3D chunk (leva is that
      chunk's dependency, not the initial bundle's) and reports back up here,
@@ -270,6 +275,7 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
 
   useEffect(() => {
     let lastFocus = -1
+    let lastLanded = false
     /** Which 12th-of-a-second the DOM was last actually written on, in noir —
      *  see below. */
     let lastFrame = -1
@@ -321,6 +327,12 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
       const arrival = ease(state.value, ARRIVE_FROM, ARRIVE_AT)
       root.style.opacity = state.value > 0.0005 ? '1' : '0'
 
+      const hasLanded = arrival > 0.995
+      if (hasLanded !== lastLanded) {
+        lastLanded = hasLanded
+        setLanded(hasLanded)
+      }
+
       root.style.pointerEvents = arrival > 0.85 ? 'auto' : 'none'
 
       // Each mounted panel is placed along the row and faded by how far off
@@ -367,16 +379,10 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
            window while the row passes underneath it — which is what a single
            frame fixed to the viewport did.
 
-           How far it is drawn is its own distance from the front of the room:
-           1 standing square-on, 0 a half-step away. Multiplied by `arrival` so
-           the first project's frame draws on with the project rather than
-           being already round the empty room at the top of the page. */
+           Whether it is *drawn* is not written here — see `landed` below and
+           `active` in ProjectFrame.tsx. */
         const frame = frameRefs.current.get(panelIndex)
-        if (frame) {
-          frame.style.transform = `translate3d(${x.toFixed(1)}px, 0, 0)`
-          const draw = arrival * (1 - clamp(Math.abs(delta) * 2, 0, 1))
-          frame.style.setProperty('--pf-draw', draw.toFixed(3))
-        }
+        if (frame) frame.style.transform = `translate3d(${x.toFixed(1)}px, 0, 0)`
       })
     })
   }, [engine, count])
@@ -412,7 +418,11 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
             else frameRefs.current.delete(index)
           }}
         >
-          <ProjectFrame index={index} />
+          {/* `focus` is the project the row has rounded to, which flips at the
+              midpoint of a move — so the outgoing frame starts retracting and
+              the incoming one starts drawing at the same moment, and most of
+              the drawing happens after the piece has settled. */}
+          <ProjectFrame index={index} active={landed && index === focus} />
         </div>
       ))}
 

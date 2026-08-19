@@ -429,18 +429,27 @@ across the other half, solved from the variant's own stroke count — fixed, the
 sparse variants would finish long before the visitor arrived and the ornate
 ones would still be drawing after they had.
 
-It runs on two clocks that are deliberately not the same one. **Drawing** is
-scroll position — each frame's own distance from the front of the room, 1
-square-on and 0 a half-step away — so it draws in as its piece arrives and
-pulls back off as it leaves, and answers a reversal immediately rather than
-having to be cancelled. **The wobble** is wall-clock, quantised to 12fps, the
-same trick the opening's film is on. That has to be its own `rAF`: it is at its
-most visible when the visitor is doing nothing, which is exactly when the
-scroll engine has stopped ticking and there are no frames to hang it on. 12
-rather than the opening's 24 on purpose — a frame is a held drawing, and at 24
-the wobble reads as a shiver rather than as the line having been redrawn. The
+**Both of its clocks are wall-clock, quantised to 12fps**, which is what makes
+the line lay itself down in bites and the drawing wobble as though redrawn. Its
+own `rAF`, not the scroll engine's: it is at its most visible when the visitor
+is doing nothing, which is exactly when that engine has stopped ticking and
+there are no frames to hang it on. 12 rather than the opening's 24 on purpose —
+a frame is a held drawing, and at 24 the wobble reads as a shiver. The
 amplitude is well under a pixel for the same reason: anything you can measure
 by eye reads as the page shaking.
+
+The drawing used to be a readout of scroll position, on the reasoning that a
+pure function of the scroll answers a reversal with nothing to cancel. True,
+and still wrong: **past the first project the track is detented, so there is no
+slow approach to read from.** One gesture sends the target a whole project and
+`value` eases after it in a few hundred milliseconds, so the frame was drawing
+during the flight and was finished before the piece had settled — it was never
+actually seen being drawn. Gallery.tsx now says only whether this project is
+the one being stood at, and the frame times the drawing from there: 1.6s to
+draw in, 0.4s to pull off. It advances at a steady rate rather than easing,
+because a pen travels at one speed and an exponential spends the whole back
+half creeping through the last stroke. It stays interruptible — leaving halfway
+retracts from where it had got to.
 
 **The camera walks around the room.** A quarter turn of orbit per project
 (`ORBIT`), which has to be a quarter turn: the cases are square, so at 90° every
