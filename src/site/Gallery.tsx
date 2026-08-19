@@ -70,6 +70,11 @@ const ProductStage = lazy(() => import('./ProductStage'))
 const ARRIVE_AT = 1
 /** ...and where it starts arriving, overlapping the field's departure. */
 const ARRIVE_FROM = 0.5
+/** How near a whole project counts as having come to rest there — see the
+ *  note where it is used. Small enough that the row has visibly stopped, and
+ *  not so small that the frame waits on the last hair of an exponential that
+ *  is never going to close. */
+const SETTLED = 0.08
 /** Panels either side of the one in front of you that are mounted at all.
  *  One: at this step, two away is entirely off-frame, and every mounted
  *  project is a glTF or a playing video behind the scenes. */
@@ -110,11 +115,15 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
      for it against the opening, which is four seconds of film with nothing
      else to spend them on. */
   const [awake, setAwake] = useState(false)
-  /* Whether the room has arrived at all. The frames hang off it: without it
-     the first project's frame would draw itself round the empty room at the
-     top of the page, since it is the project being stood at from the very
-     first frame whether or not the row has come in yet. */
-  const [landed, setLanded] = useState(false)
+  /* Which project the row has actually come to rest at, or -1 while it is
+     moving. The frames hang off this rather than off `focus`: `focus` flips at
+     the *midpoint* of a move, so a frame keyed to it starts drawing while the
+     row is still flying and you can see it going before you have got anywhere.
+     Standing still is the cue.
+
+     It is also what keeps the first project's frame off the opening screen —
+     the row is nowhere near rest there, whatever `focus` says. */
+  const [settledAt, setSettledAt] = useState(-1)
   const count = workProjects.length
   /* What the tuning panel has set. It lives inside the 3D chunk (leva is that
      chunk's dependency, not the initial bundle's) and reports back up here,
@@ -275,7 +284,7 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
 
   useEffect(() => {
     let lastFocus = -1
-    let lastLanded = false
+    let lastSettled = -1
     /** Which 12th-of-a-second the DOM was last actually written on, in noir —
      *  see below. */
     let lastFrame = -1
@@ -327,10 +336,18 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
       const arrival = ease(state.value, ARRIVE_FROM, ARRIVE_AT)
       root.style.opacity = state.value > 0.0005 ? '1' : '0'
 
-      const hasLanded = arrival > 0.995
-      if (hasLanded !== lastLanded) {
-        lastLanded = hasLanded
-        setLanded(hasLanded)
+      /* Come to rest. `value` chases `target` on an exponential, so it never
+         arrives exactly and there is no moment to test for — SETTLED is how
+         close counts as standing still. At the engine's 0.42s it works out at
+         about a second after the gesture, which is roughly when the movement
+         stops being visible. */
+      const settled =
+        arrival > 0.995 && Math.abs(progress - Math.round(progress)) < SETTLED
+          ? wrap(Math.round(progress), count)
+          : -1
+      if (settled !== lastSettled) {
+        lastSettled = settled
+        setSettledAt(settled)
       }
 
       root.style.pointerEvents = arrival > 0.85 ? 'auto' : 'none'
@@ -418,11 +435,7 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
             else frameRefs.current.delete(index)
           }}
         >
-          {/* `focus` is the project the row has rounded to, which flips at the
-              midpoint of a move — so the outgoing frame starts retracting and
-              the incoming one starts drawing at the same moment, and most of
-              the drawing happens after the piece has settled. */}
-          <ProjectFrame index={index} active={landed && index === focus} />
+          <ProjectFrame index={index} active={index === settledAt} />
         </div>
       ))}
 

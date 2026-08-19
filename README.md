@@ -444,12 +444,21 @@ and still wrong: **past the first project the track is detented, so there is no
 slow approach to read from.** One gesture sends the target a whole project and
 `value` eases after it in a few hundred milliseconds, so the frame was drawing
 during the flight and was finished before the piece had settled — it was never
-actually seen being drawn. Gallery.tsx now says only whether this project is
-the one being stood at, and the frame times the drawing from there: 1.6s to
-draw in, 0.4s to pull off. It advances at a steady rate rather than easing,
-because a pen travels at one speed and an exponential spends the whole back
-half creeping through the last stroke. It stays interruptible — leaving halfway
-retracts from where it had got to.
+actually seen being drawn.
+
+So the cue is **standing still**, not heading somewhere. `settledAt` in
+Gallery.tsx is the project the row has come to rest at, or -1 while it is
+moving; deliberately not `focus`, which flips at the *midpoint* of a move and
+would have a frame drawing while the row was still flying. `value` chases
+`target` on an exponential and so never arrives exactly, so `SETTLED` is how
+close counts as stopped — about a second after the gesture at the engine's
+0.42s, which is roughly when the movement stops being visible.
+
+From there the frame times itself: **3.2s to draw in, 0.4s to pull off.** It
+advances at a steady rate rather than easing, because a pen travels at one
+speed and an exponential spends the whole back half creeping through the last
+stroke. It stays interruptible — leaving halfway retracts from where it had got
+to.
 
 **The camera walks around the room.** A quarter turn of orbit per project
 (`ORBIT`), which has to be a quarter turn: the cases are square, so at 90° every

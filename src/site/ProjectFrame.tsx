@@ -26,11 +26,12 @@ import './ProjectFrame.css'
  * milliseconds. The frame was drawing during that flight and was finished
  * before the piece had settled, so it was never seen being drawn at all.
  *
- * So Gallery.tsx says only whether this project is the one being stood at, and
- * the drawing is timed from there: a slow attack once you have landed, a
- * quicker release when you leave. It is still interruptible — leaving halfway
- * through retracts from wherever it had got to rather than restarting — which
- * was the part of the old approach worth keeping.
+ * So Gallery.tsx says only whether the row has come to *rest* at this project
+ * — not whether it is heading for it, which is a different thing and half a
+ * move earlier — and the drawing is timed from there: a long attack once you
+ * have landed, a quick release when you leave. It is still interruptible:
+ * leaving halfway through retracts from wherever it had got to rather than
+ * restarting, which was the part of the old approach worth keeping.
  */
 
 interface ProjectFrameProps {
@@ -46,7 +47,7 @@ interface ProjectFrameProps {
  *  and to pull back off once it isn't. Drawing is much the slower of the two:
  *  it is the thing you are meant to watch, while an exit is only clearing the
  *  way for the next one. */
-const DRAW_IN = 1.6
+const DRAW_IN = 3.2
 const DRAW_OUT = 0.4
 
 /** Wall-clock frames per second for the wobble. The opening runs its film at
