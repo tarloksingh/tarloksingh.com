@@ -70,11 +70,11 @@ const ProductStage = lazy(() => import('./ProductStage'))
 const ARRIVE_AT = 1
 /** ...and where it starts arriving, overlapping the field's departure. */
 const ARRIVE_FROM = 0.5
-/** How near a whole project counts as having come to rest there — see the
- *  note where it is used. Small enough that the row has visibly stopped, and
- *  not so small that the frame waits on the last hair of an exponential that
- *  is never going to close. */
-const SETTLED = 0.08
+/** How close to the front a project has to be, in steps, before its frame
+ *  starts drawing itself. A whole step away is the next piece along, waiting
+ *  in the wing; at this it has come far enough round that its edge is on the
+ *  screen, which is the moment the line should start. */
+const NEAR = 0.8
 /** Panels either side of the one in front of you that are mounted at all.
  *  One: at this step, two away is entirely off-frame, and every mounted
  *  project is a glTF or a playing video behind the scenes. */
@@ -115,15 +115,22 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
      for it against the opening, which is four seconds of film with nothing
      else to spend them on. */
   const [awake, setAwake] = useState(false)
-  /* Which project the row has actually come to rest at, or -1 while it is
-     moving. The frames hang off this rather than off `focus`: `focus` flips at
-     the *midpoint* of a move, so a frame keyed to it starts drawing while the
-     row is still flying and you can see it going before you have got anywhere.
-     Standing still is the cue.
+  /* Which projects are near enough the front to be worth framing — the one
+     you are standing at and whichever is coming in beside it.
 
-     It is also what keeps the first project's frame off the opening screen —
-     the row is nowhere near rest there, whatever `focus` says. */
-  const [settledAt, setSettledAt] = useState(-1)
+     The cue is arriving, not having arrived. A frame keyed to the row having
+     come to *rest* could only ever start drawing at a piece already sitting
+     square-on in front of you, so the line arrived at a settled picture
+     instead of coming in with it; keyed to entering the screen, the drawing
+     and the piece travel together, which is the whole of what a frame is for.
+     It is still slow enough (`DRAW_IN` in ProjectFrame.tsx) that it is not
+     finished by the time the row lands.
+
+     A list rather than an index, since two are on screen through a move. It
+     is React state and not a per-frame write because it changes twice a
+     project — once on the way in and once on the way out — and everything
+     downstream of it wants to be told, not polled. */
+  const [near, setNear] = useState<number[]>([])
   const count = workProjects.length
   /* What the tuning panel has set. It lives inside the 3D chunk (leva is that
      chunk's dependency, not the initial bundle's) and reports back up here,
@@ -284,7 +291,9 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
 
   useEffect(() => {
     let lastFocus = -1
-    let lastSettled = -1
+    /** The set of on-screen projects last handed to React, as a string, so an
+     *  unchanged set costs a comparison rather than a render. */
+    let lastNear = ''
     /** Which 12th-of-a-second the DOM was last actually written on, in noir —
      *  see below. */
     let lastFrame = -1
@@ -336,20 +345,6 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
       const arrival = ease(state.value, ARRIVE_FROM, ARRIVE_AT)
       root.style.opacity = state.value > 0.0005 ? '1' : '0'
 
-      /* Come to rest. `value` chases `target` on an exponential, so it never
-         arrives exactly and there is no moment to test for — SETTLED is how
-         close counts as standing still. At the engine's 0.42s it works out at
-         about a second after the gesture, which is roughly when the movement
-         stops being visible. */
-      const settled =
-        arrival > 0.995 && Math.abs(progress - Math.round(progress)) < SETTLED
-          ? wrap(Math.round(progress), count)
-          : -1
-      if (settled !== lastSettled) {
-        lastSettled = settled
-        setSettledAt(settled)
-      }
-
       root.style.pointerEvents = arrival > 0.85 ? 'auto' : 'none'
 
       // Each mounted panel is placed along the row and faded by how far off
@@ -366,6 +361,13 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
       // left to the stylesheet: this writes `transform` every frame and would
       // overwrite whatever a media query had put there.
       const stacked = narrowRef.current
+      /* Which of them are on screen, collected as the row is placed since
+         that is where each one's distance from the front is already known.
+         Nothing at all while the row is still behind the name: `value` is the
+         same test the row's own opacity is switched on, and a frame drawing
+         itself onto a page the row has not reached yet is a frame around
+         nothing. */
+      const onScreen: number[] = []
       panelRefs.current.forEach((el, panelIndex) => {
         // Shortest signed distance, so passing the last project walks onward
         // into the first instead of unwinding all the way back.
@@ -379,6 +381,7 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
            project is one step out in the wing and the rest queue up behind it
            where they belong. */
         if (progress > 0) delta = delta - Math.round(delta / count) * count
+        if (state.value > 0.0005 && Math.abs(delta) < NEAR) onScreen.push(panelIndex)
         const x = delta * step
         el.style.transform = stacked
           ? `translate3d(calc(${x.toFixed(1)}px - 50%), 0, 0)`
@@ -401,6 +404,14 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
         const frame = frameRefs.current.get(panelIndex)
         if (frame) frame.style.transform = `translate3d(${x.toFixed(1)}px, 0, 0)`
       })
+
+      // Sorted, so the same set is always the same string and a set that has
+      // not changed never re-renders the row.
+      const key = onScreen.sort((a, b) => a - b).join(',')
+      if (key !== lastNear) {
+        lastNear = key
+        setNear(onScreen)
+      }
     })
   }, [engine, count])
 
@@ -435,7 +446,7 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
             else frameRefs.current.delete(index)
           }}
         >
-          <ProjectFrame index={index} active={index === settledAt} />
+          <ProjectFrame index={index} active={near.includes(index)} />
         </div>
       ))}
 
