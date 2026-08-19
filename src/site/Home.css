@@ -76,14 +76,17 @@
   bottom: 100%;
   left: 0;
   right: 0;
-  margin-bottom: 0.7em;
   text-align: center;
   font-family: var(--font-display);
   /* Tied to the mark's own width rather than to a root size, so it holds the
      proportion the opening sets between the rubric and the signature at every
      breakpoint — and so it grows with the mark, since the whole element is
-     scaled by one transform. */
-  font-size: calc(var(--wordmark-w, 8.2rem) * 0.062);
+     scaled by one transform. The two factors are solved against `.in-artist`
+     in Intro.css: at the hero size they come out at the same pixel size and
+     the same gap it uses, so the rubric does not resize across the handover
+     any more than the signature does. */
+  font-size: calc(var(--wordmark-w, 8.2rem) * 0.048);
+  margin-bottom: 0.845em;
   line-height: 1;
   letter-spacing: 0.01em;
   color: var(--ink-soft);
@@ -262,11 +265,15 @@
 /* ---- narrow ---- */
 
 @media (max-width: 760px) {
+  /* Only the parked size changes on a phone. The hero size is deliberately
+     left alone: it is the opening's `--sig-w`, and the two have to agree at
+     every width or the mark resizes at the handover. Its own clamp already
+     does the right thing here — the 15rem floor works out at about 62% of a
+     small phone's width, which is where a hand-tuned mobile value had landed
+     anyway, and it keeps agreeing on the wider ones where that value did
+     not. */
   .hm-sig {
     --wordmark-w: 6.4rem;
-    --sig-hero-vw: 62;
-    --sig-hero-min: 180;
-    --sig-hero-max: 300;
   }
 
   .hm-menu {

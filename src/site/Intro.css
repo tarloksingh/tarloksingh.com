@@ -63,26 +63,43 @@
   justify-content: center;
   gap: 0;
   text-align: center;
+  /* Shared with `.in-artist`, which has to know it to hang the right distance
+     above a signature it is no longer laid out against. Matched by
+     `--sig-hero-*` on `.hm-sig` in Home.css — the page draws this same mark
+     at this same size, and the handover has to be the black lifting off it. */
+  --sig-w: clamp(15rem, 19vw, 26rem);
   /* The gate weave and the lamp, both written per film frame. */
   --weave: 0px, 0px;
   transform: translate3d(var(--weave), 0);
   filter: brightness(var(--flicker));
 }
 
+/* Out of flow, so what this column centres is the signature by itself.
+ 
+   In flow it was one of two items in a centred stack, which put the *pair* on
+   the screen's middle and the signature a little below it — and the page this
+   hands to centres the signature alone, so the mark stepped down by half a
+   rubric at the handover. Hung off the middle instead: half the signature's
+   own height (its viewBox is 4839 x 1137, so half of that is width / 8.512)
+   plus the gap it used to sit at. */
 .in-artist {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 50%;
+  margin-bottom: calc(var(--sig-w) / 8.512 + 0.7rem);
   font-family: var(--font-display);
   font-size: clamp(0.8rem, 0.92vw, 1.05rem);
   letter-spacing: 0.01em;
   line-height: 1;
   color: rgba(255, 255, 255, 0.92);
   opacity: 0;
-  margin-bottom: 0.7rem;
 }
 
 .in-name {
   /* The signature is geometry, not type — sized by how wide it should sit on
      the screen, which is the only measurement that matters for a mark. */
-  width: clamp(15rem, 19vw, 26rem);
+  width: var(--sig-w);
   /* The halo in the design is a blurred copy of the letterforms, so it has to
      be taken off the drawn result rather than laid behind it: a drop-shadow
      of the masked path glows only where the pen has already been, which means

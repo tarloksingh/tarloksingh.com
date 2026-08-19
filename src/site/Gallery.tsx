@@ -95,9 +95,18 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
   // the row is not a React render per frame.
   const progressRef = useRef(0)
   const [focus, setFocus] = useState(0)
-  // Held back until the gallery is genuinely on its way: building the WebGL
-  // context and its glTFs while the visitor is still looking at the name
-  // competes with the entrance for exactly the frames it needs.
+  /* The room is built while the visitor is still looking at the name, and
+     kept built.
+
+     It used to wait until the scroll was a sixth of the way in, on the
+     reasoning that a WebGL context and its glTFs compete with the entrance
+     for exactly the frames it needs. True, but it bought those frames by
+     spending the thing they were for: mounting is asynchronous — React
+     renders, then the models load — and the entrance is one gesture now, so
+     the row was still arriving on screen after the scroll had already
+     finished. The first project did not move in, it appeared. Better to pay
+     for it against the opening, which is four seconds of film with nothing
+     else to spend them on. */
   const [awake, setAwake] = useState(false)
   const count = workProjects.length
   /* What the tuning panel has set. It lives inside the 3D chunk (leva is that
@@ -250,9 +259,15 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
     }
   }, [engine, tuning.patternParallax, tuning.patternDrift])
 
+  // A frame after mount, not during it: the first paint of the page belongs
+  // to the name.
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setAwake(true))
+    return () => cancelAnimationFrame(id)
+  }, [])
+
   useEffect(() => {
     let lastFocus = -1
-    let lastAwake = false
     /** Which 12th-of-a-second the DOM was last actually written on, in noir —
      *  see below. */
     let lastFrame = -1
@@ -271,11 +286,6 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
         onFocusRef.current?.(index)
       }
 
-      const shouldWake = state.value > ARRIVE_FROM - 0.35
-      if (shouldWake !== lastAwake) {
-        lastAwake = shouldWake
-        setAwake(shouldWake)
-      }
 
       /* Only the grain steps to a real wall-clock 12fps in noir — an ambient
          flicker, not something anyone is tracking with their eye or their
@@ -299,19 +309,15 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
         }
       }
 
-      /* The room does not fade in. It was already sliding in — `progress` is
-         -1 at the top of the scroll, so the row sits a full step to the
-         right, off-frame, and walks on as you travel — and ramping opacity
-         over the same stretch put a dissolve on top of a move, which read as
-         the first project *appearing* rather than arriving. Switched, not
-         ramped: the instant the scroll leaves the top the room is fully lit
-         and the piece drives in from the wing. Off again at rest, so nothing
-         hangs at the edge of the opening frame. */
+      /* The room does not fade in. It slides: with the wrap held off until
+         arrival (see below) the row is a straight line, so at the top of the
+         scroll the first project sits one step out in the wing and drives in
+         as you travel. Ramping opacity across the same stretch put a dissolve
+         on top of that move, which read as the project appearing rather than
+         arriving. Switched, not ramped — and only off at the very top, so
+         nothing hangs at the edge of the opening frame. */
       const arrival = ease(state.value, ARRIVE_FROM, ARRIVE_AT)
-      // Lit exactly when there is something in it to light — `shouldWake` is
-      // what mounts the pieces, and switching on any earlier would only mean
-      // an empty room standing lit for a third of the entrance.
-      root.style.opacity = shouldWake ? '1' : '0'
+      root.style.opacity = state.value > 0.0005 ? '1' : '0'
       root.style.pointerEvents = arrival > 0.85 ? 'auto' : 'none'
 
       // Each mounted panel is placed along the row and faded by how far off
@@ -346,8 +352,12 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
           ? `translate3d(calc(${x.toFixed(1)}px - 50%), 0, 0)`
           : `translate3d(${x.toFixed(1)}px, -50%, 0)`
         // Held back rather than hidden: the next label should be legible as
-        // it comes, which is most of what makes the row read as a row.
-        el.style.opacity = clamp(1 - Math.abs(delta) * 0.45, 0, 1).toFixed(3)
+        // it comes, which is most of what makes the row read as a row. Not
+        // during the entrance, though — there it would be a fade on the one
+        // arrival that is supposed to be a move, and there is no row to read
+        // yet anyway.
+        el.style.opacity =
+          progress > 0 ? clamp(1 - Math.abs(delta) * 0.45, 0, 1).toFixed(3) : '1'
       })
     })
   }, [engine, count])
