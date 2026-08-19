@@ -45,6 +45,16 @@ interface Options {
   /** Touch travel is scaled against this instead of `pixelsPerUnit` — a
    *  finger crossing the screen should mean more than a wheel notch. */
   touchPixelsPerUnit?: number
+  /** Multiplies input on the free-scrub stretch *below* the first detent.
+   *  Above 1 makes the entrance shorter than a project step, which is what
+   *  lets one swipe or one deliberate scroll carry the whole way through it.
+   *
+   *  It is a separate number because the two stretches are separate gestures.
+   *  A detent is a step through a list and wants a deliberate push — the
+   *  distance is the deliberation. The entrance is one continuous move with
+   *  nothing to choose between, and asking for a project's worth of travel to
+   *  get through it reads as the page being stuck, not as care. */
+  entranceGain?: number
   /** Whole units at and above this are **detents**: one gesture moves exactly
    *  one, and the track never comes to rest between two of them. Below it the
    *  track is a free scrub. Omit for a free track throughout.
@@ -128,6 +138,7 @@ export function useScrollEngine({
   min = 0,
   max,
   touchPixelsPerUnit = 620,
+  entranceGain = 1,
   detentFrom
 }: Options = {}): ScrollEngine {
   const stateRef = useRef<ScrollState>({ target: 0, value: 0, velocity: 0, speed: 0 })
@@ -140,8 +151,24 @@ export function useScrollEngine({
   const movedRef = useRef(false)
   // Read live in the loop and in the handlers, so retuning any of them takes
   // effect without tearing down the listeners mid-scroll.
-  const optsRef = useRef({ pixelsPerUnit, smoothing, min, max, touchPixelsPerUnit, detentFrom })
-  optsRef.current = { pixelsPerUnit, smoothing, min, max, touchPixelsPerUnit, detentFrom }
+  const optsRef = useRef({
+    pixelsPerUnit,
+    smoothing,
+    min,
+    max,
+    touchPixelsPerUnit,
+    entranceGain,
+    detentFrom
+  })
+  optsRef.current = {
+    pixelsPerUnit,
+    smoothing,
+    min,
+    max,
+    touchPixelsPerUnit,
+    entranceGain,
+    detentFrom
+  }
 
   const engine = useMemo<ScrollEngine>(
     () => ({
@@ -245,8 +272,10 @@ export function useScrollEngine({
       if (state.target < from - 1e-3) {
         // Free scrub below the first detent — and it *stops* there rather
         // than sliding on through, so arriving in the work is itself a
-        // detent rather than something a long flick overshoots.
-        const next = state.target + units
+        // detent rather than something a long flick overshoots. `entranceGain`
+        // is applied only here, so shortening the entrance cannot shorten a
+        // step through the work.
+        const next = state.target + units * optsRef.current.entranceGain
         if (next >= from) {
           state.target = from
           travel = 0

@@ -769,7 +769,10 @@ function Row({
       const group = slots.current.get(piece.id)
       if (!group) continue
       let delta = piece.slot - progress
-      delta = delta - Math.round(delta / count) * count
+      // Straight line until the row has arrived, a loop after — see the note
+      // on the same guard in Gallery.tsx. Wrapping at a negative `progress`
+      // brings the last piece round to the middle of the opening frame.
+      if (progress > 0) delta = delta - Math.round(delta / count) * count
 
       /* The piece is bolted to the world.
 

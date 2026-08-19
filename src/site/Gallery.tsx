@@ -332,7 +332,15 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
         // Shortest signed distance, so passing the last project walks onward
         // into the first instead of unwinding all the way back.
         let delta = panelIndex - progress
-        delta = delta - Math.round(delta / count) * count
+        /* ...but only once the row is actually in the room. The wrap is what
+           makes the row a loop, and a loop has no off-stage: at `progress` of
+           -1, which is where the scroll rests at the top of the page, the
+           shortest way round puts the *last* project at delta 0 — dead centre
+           of the opening frame. That is what was standing behind the name.
+           Before arrival the row is a straight line instead, so the first
+           project is one step out in the wing and the rest queue up behind it
+           where they belong. */
+        if (progress > 0) delta = delta - Math.round(delta / count) * count
         const x = delta * step
         el.style.transform = stacked
           ? `translate3d(calc(${x.toFixed(1)}px - 50%), 0, 0)`
