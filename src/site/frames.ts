@@ -26,6 +26,21 @@ export interface FrameVariant {
   corner: string[]
   /** The centre ornament for the top and bottom edges, in a 160 x 56 box. */
   crest: string[]
+  /** Where the lines that carry on along the edge sit, in corner units: the y
+   *  of every arm that reaches the corner box's own edge rather than stopping
+   *  inside it. One rail is one line run between this corner and the next
+   *  ornament along — see `rail` in ProjectFrame.tsx, which draws them.
+   *
+   *  The rails are what make the frame a frame at any shape of window. The
+   *  ornaments are square and fixed, so on a wide screen they cannot meet in
+   *  the middle however large they are drawn; the rails are the part that
+   *  stretches, and they are generated rather than authored because a run
+   *  along an edge is the one piece of this drawing with nothing to say. */
+  rails: number[]
+  /** The y, in the crest's own units, of the line its two outer ends sit on.
+   *  The crest is hung so that this lands on the rail — the ornament rises
+   *  above the edge, it does not float over it. */
+  crestArm: number
   /** How far the drawing sits from the piece, as a fraction of the default
    *  inset. Above 1 gives a wider variant the room it needs. */
   reach: number
@@ -47,7 +62,9 @@ export const FRAMES: FrameVariant[] = [
       'M158 40 C124 40 102 34 86 20',
       'M74 20 C78 8 82 8 86 20 C82 30 78 30 74 20',
       'M80 30 L80 44'
-    ]
+    ],
+    rails: [8, 22],
+    crestArm: 40
   },
   // Two lines running together the whole way — the ruled, quiet one.
   {
@@ -62,7 +79,9 @@ export const FRAMES: FrameVariant[] = [
       'M4 34 C40 34 62 28 76 14',
       'M156 34 C120 34 98 28 84 14',
       'M76 14 C80 6 80 6 84 14'
-    ]
+    ],
+    rails: [5, 17],
+    crestArm: 34
   },
   // Ruled corner with a scallop set along each arm, where the arms have room
   // for one — two curls hung on the turn itself just collide into a blot.
@@ -79,7 +98,9 @@ export const FRAMES: FrameVariant[] = [
       'M6 30 L62 30',
       'M154 30 L98 30',
       'M62 30 C70 30 74 22 80 12 C86 22 90 30 98 30'
-    ]
+    ],
+    rails: [5],
+    crestArm: 30
   },
   // A wave running the length of each edge, the way the reference frame does.
   {
@@ -94,7 +115,9 @@ export const FRAMES: FrameVariant[] = [
       'M2 26 C26 26 44 32 60 40 C68 44 74 40 78 30',
       'M158 26 C134 26 116 32 100 40 C92 44 86 40 82 30',
       'M78 30 C79 22 81 22 82 30'
-    ]
+    ],
+    rails: [9],
+    crestArm: 26
   },
   // The sparse one: a single unhurried line, and two flicks off it.
   {
@@ -108,7 +131,9 @@ export const FRAMES: FrameVariant[] = [
     crest: [
       'M8 32 C44 32 66 26 80 12',
       'M152 32 C116 32 94 26 80 12'
-    ]
+    ],
+    rails: [10],
+    crestArm: 32
   },
   // The most ornamental: a double curl at each end and a leaf off the sweep.
   {
@@ -125,7 +150,9 @@ export const FRAMES: FrameVariant[] = [
       'M158 42 C126 42 104 36 88 22',
       'M72 22 C76 10 84 10 88 22 C84 32 76 32 72 22',
       'M66 34 C72 40 88 40 94 34'
-    ]
+    ],
+    rails: [7],
+    crestArm: 42
   }
 ]
 

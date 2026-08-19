@@ -25,17 +25,20 @@
 }
 
 .pf-c,
-.pf-k {
+.pf-k,
+.pf-r {
   position: absolute;
   overflow: visible;
 }
 
-/* `vmin`, so an ornament is the same size relative to the smaller edge on a
-   phone as on a desktop, and `--pf-reach` lets a wider variant claim the room
-   it needs. */
+/* `--pf-corner` and `--pf-crest` are written by the component off the box
+   this frame is drawn around, not off the viewport — see the note on `size`
+   in ProjectFrame.tsx. Everything below is laid out in corner units: one unit
+   is `--pf-corner / 160`, the ornaments' own scale, which is what lets an
+   arm's y and a rail's y be the same number and land on the same line. */
 .pf-c {
-  width: calc(var(--pf-reach, 1) * 20vmin);
-  height: calc(var(--pf-reach, 1) * 20vmin);
+  width: var(--pf-corner);
+  height: var(--pf-corner);
 }
 
 /* One drawing, flipped. Top-left is the one the paths are written for. */
@@ -59,19 +62,80 @@
   transform: scaleY(-1);
 }
 
-/* The crest runs between the two corners on its edge, centred. */
+/* The crest sits in the middle of its edge, hung so that its two outer ends
+   land on the rail rather than somewhere above or below it: `--pf-arm` is
+   where the line runs in corner units and `--pf-crest-arm` is where the crest
+   meets it in its own, and the offset is the difference between the two once
+   both are in pixels. Which is why the ornament pushes up out of the box —
+   the crest rises off the edge line, it does not float over it. */
 .pf-k {
   left: 50%;
-  width: calc(var(--pf-reach, 1) * 34vmin);
-  height: calc(var(--pf-reach, 1) * 12vmin);
+  width: var(--pf-crest);
+  height: calc(var(--pf-crest) * 0.35);
+  --pf-hang: calc(
+    (var(--pf-arm, 8) * var(--pf-corner) - var(--pf-crest-arm, 40) * var(--pf-crest)) / 160
+  );
 }
 .pf-k--t {
-  top: 0;
+  top: var(--pf-hang);
   transform: translateX(-50%);
 }
 .pf-k--b {
-  bottom: 0;
+  bottom: var(--pf-hang);
   transform: translateX(-50%) scaleY(-1);
+}
+
+/* The rails: the plain run of each edge, from where the corner's arm ends to
+   where the crest begins — and, down the sides, from one corner to the other.
+   Their long axis is whatever is left over, which is the reason they are
+   stretched rather than scaled; their short axis is 32 corner units, so the
+   line inside sits at exactly the y its arm does. */
+.pf-r svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.pf-r--h {
+  height: calc(var(--pf-corner) * 0.2);
+}
+.pf-r--v {
+  width: calc(var(--pf-corner) * 0.2);
+}
+/* 0.95 is where an arm reaches the corner box's own edge. */
+.pf-r--tl {
+  top: 0;
+  left: calc(var(--pf-corner) * 0.95);
+  right: calc(50% + var(--pf-crest) / 2);
+}
+.pf-r--tr {
+  top: 0;
+  right: calc(var(--pf-corner) * 0.95);
+  left: calc(50% + var(--pf-crest) / 2);
+  transform: scaleX(-1);
+}
+.pf-r--bl {
+  bottom: 0;
+  left: calc(var(--pf-corner) * 0.95);
+  right: calc(50% + var(--pf-crest) / 2);
+  transform: scaleY(-1);
+}
+.pf-r--br {
+  bottom: 0;
+  right: calc(var(--pf-corner) * 0.95);
+  left: calc(50% + var(--pf-crest) / 2);
+  transform: scale(-1);
+}
+.pf-r--l {
+  left: 0;
+  top: calc(var(--pf-corner) * 0.95);
+  bottom: calc(var(--pf-corner) * 0.95);
+}
+.pf-r--r {
+  right: 0;
+  top: calc(var(--pf-corner) * 0.95);
+  bottom: calc(var(--pf-corner) * 0.95);
+  transform: scaleX(-1);
 }
 
 .pf path {
@@ -79,7 +143,11 @@
   /* A constant weight on screen however large the ornament is drawn — a
      flourish that thickens with the viewport stops reading as a pen. */
   vector-effect: non-scaling-stroke;
-  stroke-width: 1.4;
+  /* A hairline is a hairline at any size, which is the point — but a frame a
+     metre across drawn in the same 1.4px as one on a phone reads as thin
+     rather than as fine, so the weight is allowed to grow a little with the
+     screen and is held between two ends it may not pass. */
+  stroke-width: clamp(1.4px, 0.3vmin, 2.6px);
   stroke-linecap: round;
   stroke-linejoin: round;
   /* `pathLength="1"` on the element normalises every path, so this is in
@@ -107,6 +175,14 @@
      frame barely begun is a scatter of faint stubs, which reads as a rendering
      fault rather than as a drawing in progress. */
   opacity: clamp(0, calc(var(--pf-draw, 0) * 4), 1);
+}
+
+/* The looser of the two copies of every stroke. Held well back on its own —
+   `stroke-opacity`, so it composes with the draw's `opacity` rather than
+   fighting it — because what it is for is the gap between itself and the line
+   it shadows, not for being seen as a line of its own. */
+.pf .pf-ghost {
+  stroke-opacity: 0.4;
 }
 
 /* Ink is ink on a dark stage too — the film experiment inverts the room, so
