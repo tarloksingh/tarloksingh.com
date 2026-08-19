@@ -1,0 +1,75 @@
+/* See ProjectFrame.tsx. Nothing here transitions: the draw is a readout of
+   scroll position and the wobble is on its own 12fps clock, and a CSS
+   transition on either would interpolate on the display's clock instead and
+   put a lag between the scroll and the line. */
+
+.pf {
+  position: absolute;
+  /* Inside the room's edges, not on them — a frame drawn hard against the
+     window reads as a browser chrome rather than as something pencilled
+     around the piece. */
+  inset: 7vh 6vw;
+  z-index: 1;
+  pointer-events: none;
+  /* The gate weave, held for two or three display frames at a time — the
+     component writes these on its own clock. */
+  transform: translate3d(var(--pf-x, 0px), var(--pf-y, 0px), 0) rotate(var(--pf-r, 0deg));
+}
+
+.pf-c {
+  position: absolute;
+  /* `vmin`, so a corner is the same size relative to the smaller edge on a
+     phone as on a desktop, and `--pf-reach` lets a variant with a wider
+     drawing claim the room it needs. */
+  width: calc(var(--pf-reach, 1) * 13vmin);
+  height: calc(var(--pf-reach, 1) * 13vmin);
+  overflow: visible;
+}
+
+/* One drawing, flipped. Top-left is the one the paths are written for. */
+.pf-c--tl {
+  top: 0;
+  left: 0;
+}
+.pf-c--tr {
+  top: 0;
+  right: 0;
+  transform: scaleX(-1);
+}
+.pf-c--br {
+  right: 0;
+  bottom: 0;
+  transform: scale(-1);
+}
+.pf-c--bl {
+  bottom: 0;
+  left: 0;
+  transform: scaleY(-1);
+}
+
+.pf path {
+  stroke: var(--ink);
+  /* Kept a constant weight on screen however large the corner is drawn — a
+     flourish that thickens with the viewport stops reading as a pen. */
+  vector-effect: non-scaling-stroke;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  /* `pathLength="1"` on the element normalises every path, so this is in
+     fractions of each stroke's own length and nothing has to be measured.
+     The `1.6` overshoot and the `0.2` per stroke are the stagger: the first
+     stroke has finished by 0.63 of the draw and each one after it lands a
+     fifth later, so the ornament assembles corner-outward instead of
+     unrolling as a single line. */
+  stroke-dashoffset: clamp(0, calc(1 - (var(--pf-draw, 0) * 1.6 - var(--pf-i, 0) * 0.2)), 1);
+  /* The last of the ink arrives a moment after the line does. Without this a
+     frame at a tenth drawn is four faint stubs, which reads as a rendering
+     fault rather than as a drawing in progress. */
+  opacity: clamp(0, calc(var(--pf-draw, 0) * 3), 1);
+}
+
+/* Ink is ink on a dark stage too — the film experiment inverts the room, so
+   the frame has to follow it or it disappears into the floor. */
+.gl[data-noir='true'] .pf path {
+  stroke: rgba(255, 255, 255, 0.82);
+}

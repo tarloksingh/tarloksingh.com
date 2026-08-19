@@ -65,11 +65,14 @@ export default function Home({ onOpen, locked, onIndex, arriveAt, noir }: HomePr
     smoothing: 0.4,
     min: 0,
     max: workProjects.length,
-    // The entrance is one move: the name goes up and the first project comes
-    // in, and it should take one swipe or one deliberate scroll — about 480px
-    // of wheel against the 1250 a project step asks for, and a little under
-    // half a phone screen of thumb.
-    entranceGain: 2.6,
+    /* The entrance is one move: the name goes up and the first project comes
+       in, and it should cost one gesture. 2.6 was still five mouse notches,
+       which is where "the name is already parked and the project still isn't
+       here" came from — a notch is only ~100px, so a stretch quoted in a
+       project's worth of travel is a stretch nobody arrives at. At 6 the whole
+       entrance is about 210px of wheel: two notches, a short trackpad push, or
+       a third of a phone screen of thumb. */
+    entranceGain: 6,
     detentFrom: 1
   })
   const sigRef = useRef<HTMLDivElement>(null)

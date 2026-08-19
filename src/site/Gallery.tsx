@@ -24,6 +24,7 @@ import {
 } from './room'
 import type { RoomLayout, RoomTuning } from './room'
 import { clearPatternShift, setPatternShift } from './pattern'
+import ProjectFrame from './ProjectFrame'
 import { clamp, ease } from './useScrollEngine'
 import type { ScrollEngine } from './useScrollEngine'
 import './Gallery.css'
@@ -318,6 +319,16 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
          nothing hangs at the edge of the opening frame. */
       const arrival = ease(state.value, ARRIVE_FROM, ARRIVE_AT)
       root.style.opacity = state.value > 0.0005 ? '1' : '0'
+
+      /* How far the frame is drawn. 1 parked in front of a project, 0 halfway
+         between two, so it draws itself in as a piece arrives and pulls back
+         off as it leaves — and, being a readout of where the scroll is rather
+         than an animation fired at it, it answers a reversal immediately
+         instead of having to be cancelled. Multiplied by `arrival` so it
+         draws on with the first project rather than being already round the
+         empty room at the top of the page. */
+      const settle = 1 - clamp(Math.abs(progress - Math.round(progress)) * 2, 0, 1)
+      root.style.setProperty('--pf-draw', (arrival * settle).toFixed(3))
       root.style.pointerEvents = arrival > 0.85 ? 'auto' : 'none'
 
       // Each mounted panel is placed along the row and faded by how far off
@@ -367,6 +378,12 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
       {/* One canvas, holding the whole row of cases. It is *not* inside the
           track: the row slides in world units inside the scene, so the canvas
           itself never moves and the WebGL context is built exactly once. */}
+      {/* Keyed on the project, so walking to the next one gets that project's
+          own drawing rather than the last one morphing into it. The swap
+          happens at the halfway point, where `--pf-draw` is 0 and there is
+          nothing on screen to swap. */}
+      <ProjectFrame key={focus} index={focus} />
+
       <div className="gl-room" aria-hidden="true">
         {awake ? (
           <Suspense fallback={null}>

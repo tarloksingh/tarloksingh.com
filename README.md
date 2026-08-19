@@ -48,13 +48,16 @@ src/
 | File | What it does |
 |---|---|
 | `Site.tsx` | The shell: route, page transition, index overlay, music, grain |
-| `Intro.tsx` | The opening — the name written in, then the veil and the flock give way to the stage |
-| `flock.ts` | The butterfly flock: `threejs-toys`, patched, and the take-off it doesn't know how to do on its own |
+| `Intro.tsx` | The opening — the name written in, then the black lifts off the stage |
 | `nameGlyphs.ts` | The signature's outline and its hand-authored pen strokes |
+| `Wordmark.tsx` | That same signature standing still — the one mark on the site |
 | `useScrollEngine.ts` | The one clock — wheel/touch/keyboard into a single damped number |
-| `Home.tsx` | The stage: the name, the wall of disciplines, the chrome, composes the field and the gallery |
+| `Home.tsx` | The stage: the signature walking between the middle of the screen and the menu bar, the chrome, composes the field and the gallery |
 | `Helix.tsx` | The vortex of media, in CSS 3D |
 | `Gallery.tsx` | The row of vitrines, and each project's wall label |
+| `ProjectFrame.tsx` | The corner flourishes drawn around whichever project you are standing at |
+| `frames.ts` | The flourishes themselves — one corner per variant, flipped four ways |
+| `pattern.ts` | The background wallpaper's drift, driven by whichever screen is mounted |
 | `room.ts` | The gallery's proportions — the one copy both sides of the chunk boundary read |
 | `ProductStage.tsx` | The only door to three.js — a lazy chunk boundary |
 | `products.tsx` | Which piece stands for which project, how it is lit, and where it sits |
@@ -75,14 +78,19 @@ src/
 page:
 
 ```
-0        the name, the field turning slowly around it
-0 → 1    the field opens outward and streams past; the gallery arrives
+0        the signature in the middle of the screen
+0 → 1    it walks to the menu bar while the first project drives in from the wing
 1        the first project, square-on
 n        the nth project
 ```
 
-Everything visible is a pure function of it — the field's speed and radius, the
-name's depth and opacity, the row's position, which project is named. That is why
+That stretch from 0 to 1 is short on purpose — `entranceGain` in
+`useScrollEngine` multiplies input there and only there, so the entrance costs
+about one gesture while a step through the work still costs a deliberate one.
+
+Everything visible is a pure function of it — the signature's position and
+size, the row's position, how far each project's frame is drawn, which project
+is named. That is why
 the two halves never disagree about where the page is: there is no phase flag to
 get out of step, and scrolling back up genuinely reverses rather than playing an
 exit animation.
@@ -235,27 +243,43 @@ exists to get away from. Now `travel` only advances from `state.speed` and
 
 ---
 
-## The wall
+## The mark
 
-`DISCIPLINES` in `Home.tsx`. Seven words — 3D design, product design,
-engineering, cinematography, musician, motion, AI — set enormous in Times,
-tracked wide, stacked up the whole page and pulled back almost to the paper.
+One drawing does the whole job of identity on this site: the signature in
+`nameGlyphs.ts`. The opening writes it out stroke by stroke; `Wordmark.tsx`
+stands it still; `Home.tsx` walks it from the middle of the screen to its slot
+in the menu bar as you scroll, and straight back when you scroll up.
 
-They used to be one line under the name reading "Product · 3D · Motion · Film ·
-Music · AI", which is a caption: it tells you the list and asks you to read it.
-At this size the same words stop being a list and become the ground the name
-stands on — taken in without ever deciding to read them.
+It replaced two things. One was a wall of seven disciplines set enormous behind
+the name — 3D design, product design, engineering, cinematography, musician,
+motion, AI — and the typeset TARLOK / SINGH standing in front of it. Words that
+large stop being a list and become ground, which was the idea, but they were
+ground under a name that is already a drawing, and the page was arguing with
+itself about which of the two you were meant to look at.
 
-**Each line is specified by the fraction of the window it should span, and the
-size is measured, not calculated.** A wall this size is only right when its
-ragged edges are composed, and one line running off both sides while the next
-stops short is the difference between a set page and an accident. No `vw` size
-can hold a line to a given width, because how wide a word sets depends on which
-letters are in it — MUSICIAN and MOTION are eight characters and six, and at the
-same size the six-character one is nearly as wide. A per-character metric is no
-better: it would be a property of whichever serif the machine actually resolved
-`--font-times` to. So `fitWall` sets every line to a probe size, reads its true
-width, and scales — two layout flushes, on mount and on resize only.
+The other was a second, smaller copy of the mark in the corner. The big name
+used to recede through the viewer while that one faded up where it landed,
+which works as an exit and reads as two marks. One that travels reads as the
+same mark finding its place — and because its position is a pure function of
+scroll rather than an animation fired at a threshold, it walks back to the
+middle on the way up with nothing to reverse.
+
+**Only the parked pose is measured.** The element is laid out where it belongs
+in the menu bar, pinned to the same two edges as every other piece of chrome,
+and the middle-of-the-screen pose is expressed as a transform away from it,
+with every position in between that transform scaled down. So the docked
+landing is exact at every width instead of approximately right, and nothing can
+disagree about where the big pose is because nothing measures it. `--sig-hero-*`
+on `.hm-sig` is the one size involved, and it is deliberately the same clamp as
+`--sig-w` on `.in-stack` in `Intro.css`: the handover from the film to the page
+has to be the black lifting off the mark, not the mark resizing under it. For
+the same reason the rubric above it hangs out of flow on both screens — in flow
+it makes the column centre the *pair*, which puts the signature half a rubric
+below where the other screen puts it.
+
+That also took the name out of the field's `preserve-3d` space, which it had to
+leave: the journey is across the window, and it cannot be made from inside a
+perspective space with its own idea of where the middle is.
 
 ---
 
@@ -382,6 +406,28 @@ fade costs a material traversal, so `transparent` — which recompiles the shade
 — is toggled exactly twice per arrival and never left on; these pieces are
 single objects with a screen inside a body, and a permanently transparent body
 sorts its own screen behind it.
+
+**A frame is drawn around it.** `ProjectFrame.tsx`, with the flourishes
+themselves in `frames.ts` — four corners rather than a closed border, because a
+rectangle around a piece reads as a card and the eye closes the corners by
+itself, which lets the drawing stay sparse. Each project gets its own variant,
+and each variant is *one* corner, written for the top-left and flipped onto the
+other three, so a frame can never disagree with itself corner to corner. The
+strokes are normalised with `pathLength="1"`, so the dash pattern is written in
+fractions of each stroke's own length and nothing has to be measured to animate
+it; they are staggered so the ornament assembles corner-outward rather than
+unrolling as a single line.
+
+It runs on two clocks that are deliberately not the same one. **Drawing** is
+scroll position — 1 parked in front of a project, 0 halfway between two — so it
+draws in as a piece arrives and pulls back off as it leaves, and answers a
+reversal immediately rather than having to be cancelled. **The wobble** is
+wall-clock, quantised to 12fps, the same trick the opening's film is on. That
+has to be its own `rAF`: it is at its most visible when the visitor is doing
+nothing, which is exactly when the scroll engine has stopped ticking and there
+are no frames to hang it on. 12 rather than the opening's 24 on purpose — a
+frame is a held drawing, and at 24 the wobble reads as a shiver rather than as
+the line having been redrawn.
 
 **The camera walks around the room.** A quarter turn of orbit per project
 (`ORBIT`), which has to be a quarter turn: the cases are square, so at 90° every
@@ -650,17 +696,24 @@ exists. It never plays uninvited.
 
 `Intro.tsx`, home route only. A dark room; the name writes itself in, in a
 cursive that follows an actual pen trajectory rather than wiping across a mask;
-`artist` and `See my work` fade in once it is done. It also stands in for the
-loading screen on the way to the stage — it is already covering the page while
-the field's posters decode, and making someone watch a progress bar and *then*
-an entrance is two waits where the design only has room for one.
+`artist` fades in above it once it is done. It also stands in for the loading
+screen on the way to the stage — it is already covering the page while the
+field's posters decode, and making someone watch a progress bar and *then* an
+entrance is two waits where the design only has room for one.
+
+**There is no cue to scroll**, because there is nothing to ask for: about a
+second after the signature settles the black fades off by itself
+(`AUTO_LEAVE`, `AUTO_FADE`), with the film still running on its 24ths the whole
+way down, so the black and the crackle go together as one picture dimming. The
+page it hands to raises its own cue — that is the first screen where scrolling
+is a choice.
 
 **It runs at 24fps, for real.** Every visible value is sampled from a clock
 quantised to `1/24s`; nothing moves between samples. That is the whole reason it
 reads as film rather than as a web page with a grain overlay on it — the strobe
 on a moving edge, the flicker holding for two display frames and then jumping,
-the pen advancing in discrete bites. The quantiser drops the instant the visitor
-clicks through, because a curtain that stutters just looks broken.
+the pen advancing in discrete bites. The quantiser drops the instant the burn
+is committed to, because a curtain that stutters just looks broken.
 
 **The signature is geometry, not a webfont.** `scripts/name-path.mjs` walks
 Great Vibes with `opentype.js` and writes `nameGlyphs.ts`: the filled outline,
@@ -670,27 +723,27 @@ clock. Thirteen separate `<path>` elements, not thirteen subpaths of one: a dash
 pattern restarts at every subpath boundary, so one path would draw all thirteen
 strokes at once instead of one at a time with a pause where the pen lifts.
 
-**Clicking through fades everything out bottom to top** — button, then name,
-then `artist` — and lets go of the flock: a GPGPU butterfly simulation
-(`flock.ts`, wrapping `threejs-toys`) standing in for the dark itself. The veil
-underneath is a flat sheet that simply fades — no wipe, no ring, no erosion —
-and the page is interactive the instant it is gone, on `onReveal`, which fires
-well before the sequence finishes unmounting. The flock is on its own, much
-longer clock (`FLOCK_LINGER`, fifteen seconds): invisible until the moment it is
-let go, then it takes off, turns from a near-black tint to the photographs'
-actual colour as it goes (same `material.color` lerp that drives the physics),
-and fades out over the whole fifteen seconds so the wings have room to actually
-clear the frame rather than cutting off mid-flight. `Intro.tsx`'s root goes
-`pointer-events: none` the moment the veil is gone, so the stage underneath
-scrolls and clicks normally while the flock finishes on top of it.
+**Scrolling burns through instead of fading.** The veil is not faded away, it
+is eaten: a hole grows out of a `mask-image`, sized by how far the wheel has
+travelled (`progress`, `SCROLL_RANGE`), with a glow at its edge and a
+turbulence filter reseeding every few frames so the burning line is uneven the
+way a real one is. Everything on top of it lifts bottom to top as the hole
+opens. Being a readout of scroll rather than a tween, it burns backwards if you
+scroll back.
 
-Two compatibility fixes live in `flock.ts` and are easy to lose in an upgrade:
-the library never requests an alpha-enabled WebGL context, so its canvas has to
-have one asked for on its behalf before the library gets it (a canvas only ever
-honours the first `getContext` call); and `threejs-toys` 0.0.7 splices a
-strip-lookup into the fragment shader that assumes three's old `vUv` varying,
-which current three renamed to `vMapUv` — silently, with a dropped shader
-program and zero butterflies drawn, not a thrown error.
+The two exits are deliberately different gestures. A burn answers the wheel and
+wants a hand on it; run off a timer it reads as a rip, which is why the
+automatic way out is the plain fade above. Taking the burn over mid-fade hands
+the veil back to full opacity first — a hole cannot be eaten through something
+already half see-through.
+
+Only the scrolled exit calls `onCommit`, which is what tells the shell to put
+the stage on the first project. On the timer nobody asked to go anywhere, so
+the page underneath is its own opening frame with the signature still in the
+middle of the screen.
+
+The page is interactive the instant the veil is gone, on `onReveal`, which
+fires before the sequence finishes unmounting.
 
 ---
 
@@ -759,7 +812,6 @@ degrade the layout when there is no connection.
 | Chunk | gzip | When |
 |---|---|---|
 | `index` | ~106 KB | First paint: shell, field, gallery, loader |
-| `flock` | ~12 KB | Home route only, after the name starts writing — see "The opening" |
 | `ProductStage` | ~494 KB | First time the gallery wakes — three, R3F, drei, leva |
 | `ProjectPage` | ~3 KB | First time a case study opens |
 
