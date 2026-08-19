@@ -408,26 +408,39 @@ single objects with a screen inside a body, and a permanently transparent body
 sorts its own screen behind it.
 
 **A frame is drawn around it.** `ProjectFrame.tsx`, with the flourishes
-themselves in `frames.ts` — four corners rather than a closed border, because a
-rectangle around a piece reads as a card and the eye closes the corners by
-itself, which lets the drawing stay sparse. Each project gets its own variant,
-and each variant is *one* corner, written for the top-left and flipped onto the
-other three, so a frame can never disagree with itself corner to corner. The
-strokes are normalised with `pathLength="1"`, so the dash pattern is written in
+themselves in `frames.ts`. Two drawings shown six times: a corner, written for
+the top-left and flipped onto the other three, and a crest, written for the top
+edge and flipped onto the bottom — written once and mirrored so a frame can
+never disagree with itself edge to edge. The corners run a long way down each
+arm on purpose; kept short they read as crop marks, which is a printer's
+instruction rather than an ornament, and it is the length of the sweep meeting
+the crest that makes the six of them read as one frame around the piece rather
+than six decorations near it.
+
+**There is one per project and it travels with it**, on the same step along the
+row that its wall label rides. A single frame fixed to the window hung over
+everything as the row passed underneath, which belongs to the page rather than
+to any of the work on it.
+
+The strokes are normalised with `pathLength="1"`, so the dash pattern is in
 fractions of each stroke's own length and nothing has to be measured to animate
-it; they are staggered so the ornament assembles corner-outward rather than
-unrolling as a single line.
+it. Each takes half the draw to put itself down and their starts are spread
+across the other half, solved from the variant's own stroke count — fixed, the
+sparse variants would finish long before the visitor arrived and the ornate
+ones would still be drawing after they had.
 
 It runs on two clocks that are deliberately not the same one. **Drawing** is
-scroll position — 1 parked in front of a project, 0 halfway between two — so it
-draws in as a piece arrives and pulls back off as it leaves, and answers a
-reversal immediately rather than having to be cancelled. **The wobble** is
-wall-clock, quantised to 12fps, the same trick the opening's film is on. That
-has to be its own `rAF`: it is at its most visible when the visitor is doing
-nothing, which is exactly when the scroll engine has stopped ticking and there
-are no frames to hang it on. 12 rather than the opening's 24 on purpose — a
-frame is a held drawing, and at 24 the wobble reads as a shiver rather than as
-the line having been redrawn.
+scroll position — each frame's own distance from the front of the room, 1
+square-on and 0 a half-step away — so it draws in as its piece arrives and
+pulls back off as it leaves, and answers a reversal immediately rather than
+having to be cancelled. **The wobble** is wall-clock, quantised to 12fps, the
+same trick the opening's film is on. That has to be its own `rAF`: it is at its
+most visible when the visitor is doing nothing, which is exactly when the
+scroll engine has stopped ticking and there are no frames to hang it on. 12
+rather than the opening's 24 on purpose — a frame is a held drawing, and at 24
+the wobble reads as a shiver rather than as the line having been redrawn. The
+amplitude is well under a pixel for the same reason: anything you can measure
+by eye reads as the page shaking.
 
 **The camera walks around the room.** A quarter turn of orbit per project
 (`ORBIT`), which has to be a quarter turn: the cases are square, so at 90° every

@@ -1,25 +1,26 @@
 import { useEffect, useRef } from 'react'
+import type { CSSProperties } from 'react'
 import { frameFor } from './frames'
 import './ProjectFrame.css'
 
-/* The frame drawn around whatever the room is standing in front of.
+/* The frame drawn around one project's exhibit.
  *
- * Four corners rather than a border: a closed rectangle around a piece reads
- * as a card, and this is meant to read as something pencilled around the
- * exhibit — which is what the corners alone do, because the eye closes the
- * rectangle itself and the drawing gets to stay sparse.
+ * One per project, and it travels with its project — Gallery.tsx writes the
+ * same step along the row onto it that it writes onto that project's wall
+ * label, so a frame arrives and leaves with the piece it belongs to rather
+ * than sitting over the window while the row passes underneath it.
  *
- * One drawing, shown four times. The variant is written for the top-left
- * corner and the other three are the same paths flipped on one or both axes,
- * so a frame can never disagree with itself corner to corner. See frames.ts.
+ * Two drawings, shown six times: a corner, flipped onto all four; and a crest,
+ * flipped onto the top and bottom edges. Written once and mirrored so a frame
+ * can never disagree with itself edge to edge. See frames.ts.
  *
  * It runs on two clocks that are deliberately not the same one:
  *
- *   - **Drawing** is scroll position. `settle` is 1 when the row is parked on
- *     a project and 0 halfway between two, so the frame draws itself in as a
- *     piece arrives and pulls back off as it leaves, and — being a readout of
- *     where the scroll actually is, not an animation fired at it — it answers the
- *     wheel both ways without anything to cancel or catch up.
+ *   - **Drawing** is scroll position. Gallery.tsx writes `--pf-draw` from how
+ *     far this project is from the front of the room, so the frame draws
+ *     itself in as its piece arrives and pulls back off as it leaves — and,
+ *     being a readout of where the scroll actually is rather than an animation
+ *     fired at it, it answers a reversal immediately with nothing to cancel.
  *   - **Jitter** is wall-clock, quantised to 12fps, the same trick the
  *     opening's film is on. It has to be its own rAF: it is at its most
  *     visible when the visitor is doing nothing, which is exactly when the
@@ -36,18 +37,29 @@ interface ProjectFrameProps {
  *  picture, and at 24 the wobble reads as a shiver rather than as the line
  *  having been redrawn. */
 const FPS = 12
-/** How far the drawing is allowed to move between frames, in px, and how far
- *  it may turn, in degrees. Small: this is meant to look like the same hand
- *  drew it again, not like the page is shaking. */
-const JITTER_PX = 1.6
-const JITTER_DEG = 0.28
+/** How far the drawing may move between frames, in px, and how far it may
+ *  turn, in degrees. Small, and smaller than they first were: the effect
+ *  wanted is the same hand having drawn it again, and anything you can
+ *  actually measure by eye reads as the page shaking instead. */
+const JITTER_PX = 0.55
+const JITTER_DEG = 0.09
 
-const CORNERS = [
-  { className: 'pf-c pf-c--tl' },
-  { className: 'pf-c pf-c--tr' },
-  { className: 'pf-c pf-c--br' },
-  { className: 'pf-c pf-c--bl' }
-]
+const CORNERS = ['pf-c--tl', 'pf-c--tr', 'pf-c--br', 'pf-c--bl']
+const CRESTS = ['pf-k--t', 'pf-k--b']
+
+/** Strokes are drawn in order, each starting a little after the one before.
+ *  `--pf-i` carries the position; ProjectFrame.css does the arithmetic. */
+const stroke = (d: string, i: number) => (
+  <path
+    key={d}
+    d={d}
+    /* Normalised, so the dash pattern is written in fractions of the stroke's
+       own length and nothing has to measure a path to animate it. */
+    pathLength="1"
+    strokeDasharray="1"
+    style={{ '--pf-i': i } as CSSProperties}
+  />
+)
 
 export default function ProjectFrame({ index }: ProjectFrameProps) {
   const rootRef = useRef<HTMLDivElement>(null)
@@ -82,26 +94,29 @@ export default function ProjectFrame({ index }: ProjectFrameProps) {
       className="pf"
       ref={rootRef}
       aria-hidden="true"
-      style={{ '--pf-reach': variant.reach } as React.CSSProperties}
+      style={
+        {
+          '--pf-reach': variant.reach,
+          /* How many strokes there are to get through. ProjectFrame.css
+             spreads their start times across the draw from it, so every
+             variant finishes at exactly the same point however many lines it
+             is made of — a fixed stagger would leave the nine-stroke ones
+             still drawing at a project the visitor is already standing at. */
+          '--pf-n': variant.corner.length + variant.crest.length
+        } as CSSProperties
+      }
     >
-      {CORNERS.map((corner) => (
-        <svg key={corner.className} className={corner.className} viewBox="0 0 100 100" fill="none">
-          {variant.strokes.map((d, i) => (
-            <path
-              key={d}
-              d={d}
-              /* Normalised, so the dash pattern is written in fractions of the
-                 stroke's own length and nothing has to measure a path to
-                 animate it. */
-              pathLength="1"
-              strokeDasharray="1"
-              /* Each stroke starts a little after the one before it and takes
-                 a little longer, so the ornament assembles rather than
-                 unrolling as one line. Held in a variable so the whole set can
-                 be driven from `--pf-draw` alone. */
-              style={{ '--pf-i': i } as React.CSSProperties}
-            />
-          ))}
+      {CORNERS.map((className) => (
+        <svg key={className} className={`pf-c ${className}`} viewBox="0 0 160 160" fill="none">
+          {variant.corner.map(stroke)}
+        </svg>
+      ))}
+      {CRESTS.map((className) => (
+        <svg key={className} className={`pf-k ${className}`} viewBox="0 0 160 56" fill="none">
+          {/* Offset past the corners, so the crest is the last thing to
+              arrive — the frame closes along the edges after its corners have
+              been set down. */}
+          {variant.crest.map((d, i) => stroke(d, i + variant.corner.length))}
         </svg>
       ))}
     </div>
