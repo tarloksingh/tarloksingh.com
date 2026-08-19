@@ -143,6 +143,46 @@
   transition: opacity var(--t-mid) var(--ease-out);
 }
 
+/* The word, in the signature's hand, written on rather than faded in.
+
+   The reveal is one mask sweeping along the writing direction: a hard black
+   region with a short ramp at its leading edge, three times the width of the
+   word so that at the start it is entirely off to the left and at the end it
+   covers everything. Sliding `mask-position` moves it — the size and the
+   stops never change, so the ramp keeps its width for the whole sweep and
+   the edge reads as a nib rather than as a fade.
+
+   Linear on purpose: a hand does not accelerate into the middle of a word.
+   The delay is the beat after the page has settled from the opening. */
+.hm-cue-word {
+  display: block;
+  width: 6.2rem;
+  color: var(--ink-soft);
+  -webkit-mask-image: linear-gradient(90deg, #000 38%, transparent 45%);
+  mask-image: linear-gradient(90deg, #000 38%, transparent 45%);
+  -webkit-mask-size: 300% 100%;
+  mask-size: 300% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: 100% 0;
+  mask-position: 100% 0;
+  animation: hm-cue-write 1.5s linear 0.5s forwards;
+}
+
+.hm-cue-word svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+@keyframes hm-cue-write {
+  to {
+    -webkit-mask-position: 0 0;
+    mask-position: 0 0;
+  }
+}
+
 .hm-cue-rule {
   display: block;
   width: 1px;
@@ -166,6 +206,22 @@
   70%,
   100% {
     transform: scaleY(1) translateY(46px);
+    opacity: 0;
+  }
+}
+
+@keyframes hm-cue-draw-left {
+  0% {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+  35% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+  70%,
+  100% {
+    transform: scaleX(1) translateX(-46px);
     opacity: 0;
   }
 }
@@ -285,7 +341,34 @@
     bottom: calc(var(--gutter) + 62px);
   }
 
+  /* A phone's opening travels right to left, so the line under the word has
+     to point that way: the same stroke and the same rhythm, turned on its
+     side and drawn from the right-hand end, since the direction it is drawn
+     in is the whole of what it says. */
+  .hm-cue-rule {
+    width: 46px;
+    height: 1px;
+    background: linear-gradient(270deg, var(--ink-faint), transparent);
+    transform-origin: right center;
+    animation-name: hm-cue-draw-left;
+  }
+
   .hm-foot-title {
     font-size: 1.1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The word is hidden until its sweep uncovers it, so with the sweep gone
+     it has to start uncovered — a cue nobody can read is worse than a cue
+     that does not move. The rule simply stands still. */
+  .hm-cue-word {
+    -webkit-mask-position: 0 0;
+    mask-position: 0 0;
+    animation: none;
+  }
+
+  .hm-cue-rule {
+    animation: none;
   }
 }

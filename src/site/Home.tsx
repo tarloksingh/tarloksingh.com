@@ -5,6 +5,7 @@ import type { HelixCard } from './Helix'
 import Gallery from './Gallery'
 import Wordmark from './Wordmark'
 import { workProjects, sideProjects } from '../data/projects'
+import { SCROLL_BOX, SCROLL_OUTLINE } from './cueGlyphs'
 import { useScrollEngine, clamp, ease, range } from './useScrollEngine'
 import './Home.css'
 
@@ -270,6 +271,10 @@ export default function Home({ onOpen, locked, onIndex, arriveAt, noir }: HomePr
     [engine]
   )
 
+  /* The cue's viewBox is the ink and nothing else, so the sweep that reveals
+     it and the box it is laid out in are the same rectangle. */
+  const [cx, cy, cw, ch] = SCROLL_BOX
+
   return (
     <main className="hm">
       <Helix cards={NO_CARDS} engine={engine} onOpen={goToProject} />
@@ -327,8 +332,20 @@ export default function Home({ onOpen, locked, onIndex, arriveAt, noir }: HomePr
         </a>
       </nav>
 
+      {/* The invitation, in the same hand as the name and drawn on the same
+          way — the opening writes the signature, and this is the first thing
+          the page says after it, so it should be the same voice. The reveal
+          is a sweep along the writing direction rather than a pen (see
+          `cueGlyphs.ts`), and the rule under it points the way the stage
+          actually travels, which is not the same way on a phone (Home.css).
+          The word itself is drawing, so the readable one is the label. */}
       <div className="hm-cue" ref={cueRef}>
-        <span className="u-label">Scroll</span>
+        <span className="u-sr">Scroll</span>
+        <span className="hm-cue-word" aria-hidden="true">
+          <svg viewBox={`${cx} ${cy} ${cw} ${ch}`} focusable="false">
+            <path d={SCROLL_OUTLINE} fill="currentColor" />
+          </svg>
+        </span>
         <span className="hm-cue-rule" />
       </div>
 

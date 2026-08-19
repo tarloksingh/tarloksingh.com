@@ -26,8 +26,22 @@
   width: 100%;
   height: 100%;
   background: #1a1a1a;
-  -webkit-mask-image: radial-gradient(circle at 50% 56%, transparent 0, #000 0.4vmax);
-  mask-image: radial-gradient(circle at 50% 56%, transparent 0, #000 0.4vmax);
+  /* The hole, at the same radius the glow ring reads and written by the same
+     loop. The transparent stop sits a little inside the edge so that at rest
+     — `--burn-r: 0` — it is behind the screen's own corner and the veil is
+     unbroken black: a gradient that went transparent *at* the centre would
+     leave a permanent speck of the page showing through under the name. */
+  --burn-r: 0vmax;
+  -webkit-mask-image: radial-gradient(
+    circle at 50% 56%,
+    transparent calc(var(--burn-r) - 1.2vmax),
+    #000 var(--burn-r)
+  );
+  mask-image: radial-gradient(
+    circle at 50% 56%,
+    transparent calc(var(--burn-r) - 1.2vmax),
+    #000 var(--burn-r)
+  );
   will-change: mask-image;
 }
 

@@ -69,10 +69,6 @@ const BURN_Y = 0.56
 const BURN_MAX = 1.65
 /** Cumulative wheel/touch travel, in pixels, to burn all the way through. */
 const SCROLL_RANGE = 1400
-/** Seconds the finished signature is held before the black starts to lift.
- *  Long enough to read as a title card that has landed, short enough that it
- *  never reads as the page having stalled. */
-const AUTO_LEAVE = 0.9
 /** Seconds the black takes to fade off on its own. */
 const AUTO_FADE = 1.2
 /** Longest the invitation waits on images that are not arriving. */
@@ -224,8 +220,10 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
      *  quantiser drops for good, even if they scroll straight back to 0. */
     let committed = false
     let calledCommit = false
-    /** When the signature settled — the auto-fade is timed from it. */
-    let settledAt = 0
+    /** When the word above the name starts arriving — the auto-fade is timed
+     *  from it, so the two are one movement rather than two waits. Written by
+     *  `paint`, which is where the opening's clock is resolved. */
+    let leaveFrom = 0
     let revealed = false
 
     /** Everything that is a function of the film clock, sampled on the 24s. */
@@ -325,6 +323,7 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
       const ready = readyAtRef.current
       const openedAt = Math.max(HOLD + WRITE, ready == null ? Infinity : ready - start)
       const artistOn = still ? 1 : out(span(t, openedAt + ARTIST_AT, ARTIST_IN))
+      if (Number.isFinite(openedAt)) leaveFrom = openedAt + ARTIST_AT
       /* `settledOn` is only a clock now — the cue it used to raise is gone
          (see the markup), but the moment it marked is still the one that
          matters: the signature has finished writing and the opening has said
@@ -360,6 +359,7 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
       burnCircle.setAttribute('cy', cy.toFixed(1))
       burnCircle.setAttribute('r', r.toFixed(1))
       burn.style.setProperty('--burn-r', `${rVmax.toFixed(1)}vmax`)
+      veil.style.setProperty('--burn-r', `${rVmax.toFixed(1)}vmax`)
       // The glow at the burning edge: a bump that rises as the hole opens and
       // falls away again once the room is fully lit, not a fade that only
       // ever goes one way.
@@ -401,11 +401,12 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
 
         /* Leaving without being asked to.
 
-           The black lifts on its own once the name has finished writing —
-           `canLeave` is already that flag, raised off the same `enterOn` that
-           puts up the scroll cue. It *fades*, and the film keeps running on
-           its 24ths underneath the whole way down, so what goes is the black
-           and the crackle together, as one picture dimming.
+           The black lifts on its own from the moment the word above the name
+           starts to arrive: the rubric fading up and the room fading off are
+           the same beat, rather than the opening saying its last word and
+           then waiting to be let out. It *fades*, and the film keeps running
+           on its 24ths underneath the whole way down, so what goes is the
+           black and the crackle together, as one picture dimming.
 
            Deliberately not the burn. The burn is a hole eaten through the
            veil from a point, which is a thing a gesture does — it answers the
@@ -420,12 +421,8 @@ export default function Intro({ preload, onCommit, onReveal, onDone }: IntroProp
            anything, so the page underneath should be its own opening frame,
            with the name still in the middle of the screen. Calling it was
            what sent the opening straight into the work. */
-        if (!canLeave) return
-        if (!settledAt) {
-          settledAt = now
-          return
-        }
-        const k = clamp01((now - settledAt - AUTO_LEAVE) / AUTO_FADE)
+        if (!leaveFrom) return
+        const k = clamp01((now - leaveFrom) / AUTO_FADE)
         if (k <= 0) return
         root.style.opacity = (1 - k).toFixed(3)
         // Half-faded, this is a sheet of glass over a live page. The wheel
