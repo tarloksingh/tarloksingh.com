@@ -257,13 +257,44 @@ export const SPRIG: string[] = [
   'M86 12 C95 10 100 2 96 -6 C88 -3 83 4 86 12'
 ]
 
-/* The crest's own flower (`VINE_FRAME.crest`, the last three strokes) at its
- * own scale — cropped down to just the three petals and re-centred in a small
- * box of its own, for anything that wants the bloom and not the stem it
- * usually sits on. `Menu.tsx` is the one caller: the current item's underline
- * is this, not a ruled line. */
-export const MINI_BLOOM: string[] = [
-  'M20 20 C15 19 12 15 13 10 C17 12 20 16 20 20',
-  'M20 20 C25 19 28 15 27 10 C23 12 20 16 20 20',
-  'M20 18 C17 15 17 10 20 6 C23 10 23 15 20 18'
+/* The underline for a menu item — `SPRIG`'s vocabulary laid flat and run the
+ * width of a word instead of hung off the end of one. A runner leaving the
+ * word's left edge and travelling under it, a leaf above and a leaf below,
+ * and the same two-petal bud at the tip, opened rightward here because that
+ * is the direction of travel.
+ *
+ * Drawn in a 100 x 26 box that is stretched to the item's own width, so the
+ * vine is as long as the word it belongs to rather than a fixed drawing
+ * parked under words of three different lengths. Five strokes, in the order
+ * they grow, which is what `--sp-n: 5` in Menu.css counts.
+ *
+ * Flat on purpose. The runner drops eight units over its whole length, which
+ * at a menu item's size is a couple of pixels: enough that it reads as drawn
+ * rather than ruled, not so much that three of them in a row look crooked. */
+/* The mark on the date line — the year is a label standing over one point on
+ * a rule, so what grows out of it grows *downward*, onto the point it names:
+ * a stem out of the label's baseline, a leaf either side of it, and the same
+ * two-petal bud at the tip, which lands on the rule.
+ *
+ * Deliberately not `SPRIG`. That one reaches out to either side of a word,
+ * which says "this word", and the footer's label is not making a claim about
+ * itself — it is pointing at somewhere on a line eight pixels below it. The
+ * button on an exhibit keeps the sprig; this is the other gesture.
+ *
+ * Drawn in a 20 x 44 box off a top-centre anchor, (10, 0). Five strokes, in
+ * the order they grow — the count `.hm-foot-pin` in Home.css staggers on. */
+export const DATE_PIN: string[] = [
+  'M10 0 C10 8 9 16 10 24 C10 28 10 31 10 34',
+  'M10 12 C6 11 3 7 4 2 C8 4 11 8 10 12',
+  'M10 22 C14 21 17 17 16 12 C12 14 9 18 10 22',
+  'M10 34 C5 35 2 39 4 44 C8 42 11 38 10 34',
+  'M10 34 C15 35 18 39 16 44 C12 42 9 38 10 34'
+]
+
+export const MENU_VINE: string[] = [
+  'M0 8 C18 8 34 12 52 13 C68 14 82 15 92 17',
+  'M26 10 C28 4 35 1 42 3 C39 9 33 12 26 10',
+  'M58 13 C61 19 59 25 52 26 C50 20 53 14 58 13',
+  'M92 17 C93 10 99 6 105 8 C104 14 98 18 92 17',
+  'M92 17 C93 24 99 28 105 26 C104 20 98 16 92 17'
 ]

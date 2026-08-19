@@ -215,11 +215,22 @@ export default function ProjectFrame({
       // 120Hz for a movement nobody can see at that rate.
       if (next === frame) return
       // Real elapsed time, not a fixed step, so a dropped frame costs the
-      // drawing nothing; capped so a backgrounded tab coming back does not
-      // finish the whole line in one bite.
-      const step = Math.min(0.25, (now - previous) / 1000)
+      // drawing nothing.
+      const step = (now - previous) / 1000
       previous = now
       frame = next
+      /* A gap this long is not jank, it is a tab that was somewhere else (or
+         a phone that suspended rAF mid-scroll), and paying it into the
+         drawing would finish half the line in one bite. Resync and lose the
+         one tick instead.
+
+         Deliberately not the old quarter-second cap. That capped *ordinary*
+         hitches too, and on a phone loading the room behind this there are
+         plenty of them — so the vine quietly took longer to grow there than
+         it does on a desktop, off the same four seconds. Every hitch short
+         of this is now paid in full, which is what makes the draw take the
+         same wall-clock time on both. */
+      if (step > 0.6) return
 
       /* Advanced at a steady rate rather than eased toward the target. A pen
          travels at roughly one speed, and an exponential — which is what the

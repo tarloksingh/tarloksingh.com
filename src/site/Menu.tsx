@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { MINI_BLOOM } from './frames'
+import { MENU_VINE } from './frames'
 import './Menu.css'
 
 /* The three words every screen on the site answers to: Home, Work, Contact.
@@ -8,22 +8,28 @@ import './Menu.css'
  * were two hand-written copies of the same three links, and only one of them
  * had the vine's sprigs on it.
  *
- * No `.u-link` here, and no plain bar under the current item — `MenuBloom`
- * below is the underline, a small flower rather than a ruled line, and it
- * sits close enough under the word to read as one mark with it. It is the
- * only thing a menu item draws: a `Sprig` used to grow above and below the
- * word as well, and two flowers over and under a three-letter word read as
- * clutter round it rather than as a mark on it.
+ * No `.u-link` here, and no plain bar under the current item — `MenuVine`
+ * below is the underline: a vine as long as the word, growing out from under
+ * its left edge and closing in a bud past its right, in the same hand as the
+ * frames and the sprigs. It is the only thing a menu item draws. A `Sprig`
+ * used to grow above and below the word as well and a single flower stood in
+ * for the rule, and both read as clutter round the word rather than as a mark
+ * under it.
  *
  * `current` is the whole of what tells the two live sections apart; a case
  * study always answers `'work'`, since reading one is being in the work the
  * same way standing at the drum is. Contact never marks — it leaves the page
  * rather than being a third place on it, on every screen this appears on. */
 
-function MenuBloom() {
+function MenuVine() {
   return (
-    <svg className="mn-bloom" viewBox="0 0 40 24" fill="none" focusable="false" aria-hidden="true">
-      {MINI_BLOOM.map((d, i) => (
+    /* The box keeps its ratio and takes the word's own width (`.mn-vine`,
+       Menu.css), so the vine is as long as the word it belongs to and a
+       longer word gets a proportionally larger drawing rather than a
+       stretched one. `preserveAspectRatio="none"` would fit any width
+       exactly, and squash the bud and the leaves doing it. */
+    <svg className="mn-vine" viewBox="0 0 100 26" fill="none" focusable="false" aria-hidden="true">
+      {MENU_VINE.map((d, i) => (
         <path key={d} d={d} pathLength="1" strokeDasharray="1" style={{ '--sp-i': i } as CSSProperties} />
       ))}
     </svg>
@@ -52,7 +58,7 @@ export default function Menu({ current, onHome, onWork, className }: MenuProps) 
         onClick={onHome}
       >
         home
-        <MenuBloom />
+        <MenuVine />
       </button>
       <button
         type="button"
@@ -62,12 +68,12 @@ export default function Menu({ current, onHome, onWork, className }: MenuProps) 
         onClick={onWork}
       >
         work
-        <MenuBloom />
+        <MenuVine />
       </button>
       {/* Never marked: see the note above. */}
       <a className="mn-item" href="mailto:tarloksinghfilms@gmail.com">
         contact
-        <MenuBloom />
+        <MenuVine />
       </a>
     </nav>
   )

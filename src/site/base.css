@@ -19,14 +19,16 @@ html {
 
 body {
   min-height: 100%;
-  /* The page's ground, under `.site-pattern`. A case study used to paint its
-     own on `.pp`, which put an opaque surface *over* the wash and hid it —
-     the same problem the stage had. `fixed` keeps the highlight anchored to
-     the window rather than to the top of a very long document, which is
-     where `.pp` had it and how it read. */
+  /* The page's ground, under `.site-pattern` — one ground for the whole site,
+     not one per screen. The stage used to have its own on `body.is-fixed` and
+     a case study a paler one here, and walking through the door changed the
+     colour of the paper under you; they are the same sheet, so it is written
+     once. `fixed` keeps the highlight anchored to the window rather than to
+     the top of a very long document, which is what makes the stage's version
+     of it work on a page you actually scroll. */
   background:
-    radial-gradient(120% 60% at 50% 0%, var(--paper-raised) 0%, transparent 46%),
-    var(--paper);
+    radial-gradient(120% 90% at 50% 0%, var(--paper-raised) 0%, transparent 58%),
+    linear-gradient(180deg, var(--paper) 0%, var(--paper-deep) 100%);
   background-attachment: fixed;
   color: var(--ink);
   font-family: var(--font-ui);
@@ -44,15 +46,12 @@ body {
 body.is-fixed {
   overflow: hidden;
   height: 100%;
-  /* The stage's ground. Painted here rather than on `.hm`, which is what
-     used to carry it: `.hm` is fixed, so it is a stacking context, and the
-     background pattern — which has to lie *between* this gradient and the
-     stage — cannot be slotted inside one from outside. Putting the ground
-     on the body is what leaves room for it. See `.site-pattern` and
-     `--z-screen` in tokens.css. */
-  background:
-    radial-gradient(120% 90% at 50% 0%, var(--paper-raised) 0%, transparent 58%),
-    linear-gradient(180deg, var(--paper) 0%, var(--paper-deep) 100%);
+  /* No ground of its own any more — see `body` above, which now carries the
+     one both screens share. It is painted on the body rather than on `.hm`
+     because `.hm` is fixed, so it is a stacking context, and the background
+     pattern — which has to lie *between* the ground and the stage — cannot be
+     slotted inside one from outside. See `.site-pattern` and `--z-screen` in
+     tokens.css. */
 }
 
 #app {

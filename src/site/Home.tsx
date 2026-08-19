@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import type { MouseEvent as ReactMouseEvent } from 'react'
+import type { CSSProperties, MouseEvent as ReactMouseEvent } from 'react'
 import Helix from './Helix'
 import type { HelixCard } from './Helix'
 import Gallery from './Gallery'
@@ -7,7 +7,7 @@ import Wordmark from './Wordmark'
 import ProjectFrame from './ProjectFrame'
 import Sprig from './Sprig'
 import Menu from './Menu'
-import { VINE_FRAME } from './frames'
+import { DATE_PIN, VINE_FRAME } from './frames'
 import { workProjects, sideProjects } from '../data/projects'
 import { SCROLL_BOX, SCROLL_OUTLINE } from './cueGlyphs'
 import { useScrollEngine, clamp, ease, range } from './useScrollEngine'
@@ -49,17 +49,17 @@ const NAME_DOCK = 0.62
  *  sixth (Home.css) one thing opens at a time rather than the whole line
  *  unrolling at once, so at any moment it is visibly still going.
  *
- *  Leaving un-draws it rather than fading it: the retreat runs the same list
- *  backwards, quickly — leaving the name is the one gesture on this screen
- *  that has to keep up with a visitor who has already decided to move on. */
+ *  Leaving no longer un-draws it: the vine belongs to the name, and it now
+ *  travels with the name instead — see `placeSign`. Un-drawing only happens
+ *  if the whole screen is taken away underneath it. */
 const VINE_DRAW = 4
 const VINE_UNDRAW = 0.5
 
-/** How far up the scroll the name stops being the thing you are looking at.
- *  Past this the vine starts pulling back off. Small on purpose — the entrance
- *  is about two notches of a wheel end to end (see `entranceGain`), so
- *  anything larger would not have begun before the name had gone. */
-const AT_NAME_UNTIL = 0.03
+/** How much of the whole journey to the menu bar the vine is still visible
+ *  for. It is a frame around the first screen, and a frame the size of a
+ *  postage stamp sitting in the corner is not one — so it is gone well before
+ *  the mark it shrank with has finished parking. */
+const VINE_GONE_BY = 0.62
 
 /** The one year a piece of work goes under, for the date line.
  *
@@ -78,9 +78,8 @@ const oneYear = (timeline: string) => {
    one flag because there are three places that do it — the scroll-driven
    readout, the hover scrubber, and the scrubber letting go — and every one of
    them has to set the same three things. `data-on` is the one worth naming: it
-   is what grows the sprigs either side of the label, and it is the same
-   attribute the menu marks its current item with, so a single rule in
-   Sprig.css covers both. */
+   is what grows the pin down out of the label onto the rule — see
+   `.hm-foot-pin` in Home.css. */
 const showYear = (year: HTMLElement, text: HTMLElement, timeline: string) => {
   text.textContent = oneYear(timeline)
   year.style.opacity = '1'
@@ -168,12 +167,11 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
   // reads which project is focused.
   const [, setFocus] = useState(0)
   const [inWork, setInWork] = useState(false)
-  /* Whether the name is still the thing on screen. The vine reads this and
-     nothing else: it grows while you are standing here and un-draws itself the
-     moment you start to leave, which is a different thing from the opacity the
-     rubric beside it is given — that one dims, this one is taken back. */
-  const [atName, setAtName] = useState(true)
-  const vineActive = unveiling && atName
+  /* The vine grows for as long as the screen is yours. Leaving is not its
+     business any more: it shrinks onto the mark and fades with it, in
+     `placeSign`, so the exit is a pure function of the scroll and reverses
+     exactly on the way back up. */
+  const vineActive = unveiling
   // Read by the hover-scrub below, which runs outside the scroll loop and so
   // cannot close over `inWork` without going stale.
   const inWorkRef = useRef(false)
@@ -210,6 +208,26 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
     const tx = ((window.innerWidth - w * grow) / 2 - x) * out
     const ty = ((window.innerHeight - h * grow) / 2 - y) * out
     sig.style.transform = `translate3d(${tx.toFixed(1)}px, ${ty.toFixed(1)}px, 0) scale(${scale.toFixed(4)})`
+
+    /* The vine goes with it. It is the frame around the name, so it collapses
+       onto the name rather than staying the size of the window while the
+       thing it is drawn around walks out of it: the same `out`, and a
+       transform-origin sitting on the parked mark's own centre (written in
+       `measure` below), so shrinking it is shrinking it *toward* where the
+       mark is going.
+
+       `1 / grow` is the ratio the mark itself shrinks by over the journey —
+       reading it off the same number is what keeps the two in step at any
+       width rather than at the one this was tuned on. It fades out over the
+       first two thirds of the trip, because a frame does not survive being
+       drawn at a quarter of its size; by the time the mark parks there is
+       nothing left of it to see. */
+    const vine = vineRef.current
+    if (vine) {
+      const vs = 1 / grow + (1 - 1 / grow) * out
+      vine.style.transform = `scale(${vs.toFixed(4)})`
+      vine.style.opacity = (1 - ease(p, 0, NAME_DOCK * VINE_GONE_BY)).toFixed(3)
+    }
     // The rubric belongs to the big pose only: parked, it would be a caption
     // on something the size of a caption.
     const artist = artistRef.current
@@ -245,6 +263,22 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
         h: box.height,
         grow: box.width > 0 ? hero / box.width : 1
       }
+      /* Where the vine has to shrink to: the parked mark's own centre, in the
+         vine's coordinates, since a transform-origin is written against the
+         element's own box. Measured here rather than guessed at from the two
+         insets, and re-measured on resize with everything else, because both
+         boxes are pinned to rails that move at their own breakpoints and a
+         hard-coded corner would drift off the mark on any width but one.
+         Its transform is cleared first for the same reason the signature's
+         is: otherwise it measures its own last frame. */
+      const vine = vineRef.current
+      if (vine) {
+        vine.style.transform = 'none'
+        const vbox = vine.getBoundingClientRect()
+        const ox = box.x + box.width / 2 - vbox.x
+        const oy = box.y + box.height / 2 - vbox.y
+        vine.style.transformOrigin = `${ox.toFixed(1)}px ${oy.toFixed(1)}px`
+      }
       placeSign(engine.state.value)
     }
     measure()
@@ -268,7 +302,6 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
 
   useEffect(() => {
     let lastInWork = false
-    let lastAtName = true
 
     return engine.subscribe((state) => {
       const p = state.value
@@ -329,12 +362,6 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
       if (nowInWork !== lastInWork) {
         lastInWork = nowInWork
         setInWork(nowInWork)
-      }
-
-      const nowAtName = p < AT_NAME_UNTIL
-      if (nowAtName !== lastAtName) {
-        lastAtName = nowAtName
-        setAtName(nowAtName)
       }
     })
   }, [engine])
@@ -423,11 +450,10 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
           of it. It starts the moment the film starts to lift, and it keeps
           going for as long as you stand here — see `VINE_DRAW`.
 
-          `active` is the two conditions together, which is the whole of the
-          frame's own behaviour: it grows while the page is yours and the name
-          is what you are looking at, and the instant you begin to leave it
-          goes back the way it came, quickly — see `VINE_UNDRAW`. Not faded —
-          un-drawn, stroke by stroke in reverse.
+          Leaving is not handled here. `placeSign` shrinks this box onto the
+          parked mark and fades it as the name walks there, so the vine goes
+          the way the thing it is drawn around goes — `drawOut` is only what
+          happens if the whole screen is taken out from under it.
 
           Before the signature, so the name is drawn over the line rather than
           under it — they share `--z-chrome`, and at equal z-index the later
@@ -524,11 +550,20 @@ export default function Home({ onOpen, locked, unveiling, onIndex, arriveAt, noi
           affordance on top of it, not the only door. */}
       <footer className="hm-foot" data-in-work={inWork} ref={footRef}>
         {/* One date, and one year of it — see `oneYear`. Its own span inside
-            the label, because the label also carries the two sprigs that grow
-            with it and writing text onto the whole thing would remove them. */}
-        <span className="hm-foot-year u-vine" ref={yearRef}>
+            the label, because the label also carries the drawing that grows
+            with it and writing text onto the whole thing would remove it.
+
+            The drawing is `DATE_PIN`, not the sprig every other pressable
+            thing on the site gets: this label is pointing at a place on the
+            rule under it, so its mark grows down onto that place. Same
+            `data-on` the label is shown with — see `showYear`. */}
+        <span className="hm-foot-year" ref={yearRef}>
           <span ref={yearTextRef} />
-          <Sprig />
+          <svg className="hm-foot-pin" viewBox="0 0 20 44" fill="none" focusable="false" aria-hidden="true">
+            {DATE_PIN.map((d, i) => (
+              <path key={d} d={d} pathLength="1" strokeDasharray="1" style={{ '--sp-i': i } as CSSProperties} />
+            ))}
+          </svg>
         </span>
         <div className="hm-foot-tracks">
           <div
