@@ -15,6 +15,7 @@ import {
   NARROW_PANEL_MAX_CH,
   PATTERN_DRIFT,
   PATTERN_PARALLAX,
+  TOUCH_PER_UNIT,
   PANEL_H,
   PANEL_W,
   REF_ASPECT,
@@ -114,9 +115,18 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
     narrowCaseY: NARROW.caseY,
     narrowPanelMaxCh: NARROW_PANEL_MAX_CH,
     narrowPanelH: PANEL_H,
+    touchPerUnit: TOUCH_PER_UNIT,
     patternParallax: PATTERN_PARALLAX,
     patternDrift: PATTERN_DRIFT
   })
+
+  /* Handed straight to the engine rather than held here: it is the engine's
+     own input scaling, and this component only has it because the tuning
+     panel it comes from lives inside the 3D chunk. */
+  useEffect(() => {
+    engine.setTouchPixelsPerUnit(tuning.touchPerUnit)
+    return () => engine.setTouchPixelsPerUnit(null)
+  }, [engine, tuning.touchPerUnit])
   const onTune = useCallback((next: RoomTuning) => setTuning(next), [])
 
   /* The old-film experiment. `noir` arrives as a prop now — Site.tsx owns the
@@ -232,7 +242,8 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
       clearPatternShift()
       return
     }
-    const stop = engine.subscribe((state) => setPatternShift(-state.value * tuning.patternDrift))
+    // X, not Y: the row travels sideways, so the wallpaper drifts with it.
+    const stop = engine.subscribe((state) => setPatternShift(-state.value * tuning.patternDrift, 0))
     return () => {
       stop()
       clearPatternShift()

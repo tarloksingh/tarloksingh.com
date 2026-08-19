@@ -14,6 +14,7 @@ import {
   NARROW_PANEL_MAX_CH,
   PATTERN_DRIFT,
   PATTERN_PARALLAX,
+  TOUCH_PER_UNIT,
   PANEL_H,
   PANEL_W,
   REF_ASPECT,
@@ -526,6 +527,13 @@ const LAYOUT_SCHEMA = {
         max: 60,
         step: 1,
         label: 'Panel min-height vh'
+      },
+      touchPerUnit: {
+        value: saved.touchPerUnit ?? TOUCH_PER_UNIT,
+        min: 400,
+        max: 2600,
+        step: 50,
+        label: 'Swipe px / project'
       }
     },
     { collapsed: true }
@@ -906,6 +914,7 @@ export default function Gallery3D(props: Gallery3DProps) {
     narrowCaseY,
     narrowPanelMaxCh,
     narrowPanelH,
+    touchPerUnit,
     patternParallax,
     patternDrift
   } = useControls('Layout', LAYOUT_SCHEMA) as unknown as RoomTuning
@@ -947,6 +956,7 @@ export default function Gallery3D(props: Gallery3DProps) {
       narrowCaseY,
       narrowPanelMaxCh,
       narrowPanelH,
+      touchPerUnit,
       patternParallax,
       patternDrift,
       envIntensity,
@@ -978,6 +988,7 @@ export default function Gallery3D(props: Gallery3DProps) {
     narrowCaseY,
     narrowPanelMaxCh,
     narrowPanelH,
+    touchPerUnit,
     patternParallax,
     patternDrift,
     envIntensity,
@@ -1015,6 +1026,7 @@ export default function Gallery3D(props: Gallery3DProps) {
       narrowCaseY,
       narrowPanelMaxCh,
       narrowPanelH,
+      touchPerUnit,
       patternParallax,
       patternDrift
     })
@@ -1030,6 +1042,7 @@ export default function Gallery3D(props: Gallery3DProps) {
     narrowCaseY,
     narrowPanelMaxCh,
     narrowPanelH,
+    touchPerUnit,
     patternParallax,
     patternDrift
   ])

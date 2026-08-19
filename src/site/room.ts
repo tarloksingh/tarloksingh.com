@@ -80,6 +80,11 @@ export interface RoomTuning {
   narrowPanelMaxCh: number
   /** The wall label's minimum height, in viewport heights, narrow only. */
   narrowPanelH: number
+  /** How far a finger travels, in px, for one project. Higher is slower.
+   *  Touch only, so it is a narrow number in practice even though nothing
+   *  stops a touchscreen laptop from using it — a swipe is the one input
+   *  that cannot be judged from a desk. See `ScrollEngine.setTouchPixelsPerUnit`. */
+  touchPerUnit: number
   /** Whether the background wallpaper drifts against the page as it scrolls.
    *  Off by default — this is a look being tried, not a decided one. See
    *  pattern.ts. */
@@ -102,6 +107,10 @@ export const NARROW = { stepW: 1, caseH: 0.3, caseY: 0.15 }
 /** Default `narrowPanelMaxCh` — the cap `.gl-panel` used on narrow before it
  *  was tunable. */
 export const NARROW_PANEL_MAX_CH = 38
+/** Default `touchPerUnit`. Well above the engine's own 620: that was set
+ *  against a trackpad's idea of a gesture, and a thumb crossing a phone
+ *  screen covers most of it in one go. */
+export const TOUCH_PER_UNIT = 1100
 /** Resting defaults for the wallpaper drift — see `RoomTuning` above. */
 export const PATTERN_PARALLAX = false
 export const PATTERN_DRIFT = 90

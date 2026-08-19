@@ -227,8 +227,9 @@
      pattern.ts, and `Background` in the gallery's tuning panel. Sliding the
      position rather than transforming the layer keeps `repeat` doing the
      work: the tile wraps for free, so there is nothing to reset and no edge
-     to run off however far it travels. */
-  background-position: 0 var(--pattern-shift, 0px);
+     to run off however far it travels. Both axes, because the two screens
+     travel on different ones — the stage sideways, a case study down. */
+  background-position: var(--pattern-shift-x, 0px) var(--pattern-shift-y, 0px);
 }
 
 @media (prefers-reduced-motion: reduce) {

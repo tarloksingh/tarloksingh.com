@@ -115,6 +115,11 @@ export interface ScrollEngine {
   setLocked: (locked: boolean) => void
   /** True once the visitor has scrolled at all — the entrance cue hides on it. */
   hasMoved: () => boolean
+  /** Override how far a finger has to travel for one unit, live. The tuning
+   *  panel drives this (see `touchPerUnit` in room.ts) — a swipe is the one
+   *  input that cannot be judged from a desk, so it has to be adjustable on
+   *  the phone it is being judged on. `null` restores the prop. */
+  setTouchPixelsPerUnit: (px: number | null) => void
 }
 
 export function useScrollEngine({
@@ -128,6 +133,10 @@ export function useScrollEngine({
   const stateRef = useRef<ScrollState>({ target: 0, value: 0, velocity: 0, speed: 0 })
   const subsRef = useRef(new Set<Subscriber>())
   const lockedRef = useRef(false)
+  /** Set by the tuning panel; takes precedence over the prop while it is not
+   *  null. See `setTouchPixelsPerUnit`. */
+  const touchOverrideRef = useRef<number | null>(null)
+  const touchPerUnit = () => touchOverrideRef.current ?? optsRef.current.touchPixelsPerUnit
   const movedRef = useRef(false)
   // Read live in the loop and in the handlers, so retuning any of them takes
   // effect without tearing down the listeners mid-scroll.
@@ -150,6 +159,9 @@ export function useScrollEngine({
       nudge: (units) => {
         stateRef.current.target += units
         movedRef.current = true
+      },
+      setTouchPixelsPerUnit: (px) => {
+        touchOverrideRef.current = px
       },
       setLocked: (locked) => {
         lockedRef.current = locked
@@ -313,7 +325,7 @@ export function useScrollEngine({
     const onTouchMove = (e: TouchEvent) => {
       if (touchY === null || lockedRef.current || withinLeva(e)) return
       const y = e.touches[0]?.clientY ?? touchY
-      push((touchY - y) / optsRef.current.touchPixelsPerUnit)
+      push((touchY - y) / touchPerUnit())
       touchY = y
       samples.push({ t: performance.now(), y })
       if (samples.length > 6) samples.shift()
@@ -328,8 +340,27 @@ export function useScrollEngine({
       if (!first || !last) return
       const dt = (last.t - first.t) / 1000
       if (dt <= 0) return
+
+      /* No momentum inside the detents. Below the first one the track is a
+         free scrub — you are flying through the field, every position in
+         between is a real picture, and a flick that coasts is the whole
+         feel of it. At and above it the track is a *list*, where one gesture
+         is meant to mean exactly one project.
+
+         A fling could not honour that. It keeps pushing for well over a
+         second after the finger has gone, and `push` reads a tail that long
+         as a fresh gesture — `held` in the detent block below fires at
+         DETENT_HOLD_MAX and reopens, then again, then again, so a single
+         hard swipe walked through five projects. The touchmoves have already
+         committed the one step by this point; there is nothing left for the
+         momentum to do except overshoot it. (A wheel is unaffected: a
+         trackpad's tail arrives as real events and the same code reads it
+         correctly, which is why this is only about touch.) */
+      const from = optsRef.current.detentFrom
+      if (from !== undefined && state.target >= from - 1e-3) return
+
       // px/s at release, converted to units/s, then decayed.
-      let fling = ((first.y - last.y) / dt / optsRef.current.touchPixelsPerUnit) * 0.34
+      let fling = ((first.y - last.y) / dt / touchPerUnit()) * 0.34
       if (Math.abs(fling) < 0.05) return
 
       let previous = performance.now()

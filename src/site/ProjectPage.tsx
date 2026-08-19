@@ -53,7 +53,8 @@ export default function ProjectPage({ id, onBack, onOpen, onIndex, noir }: Proje
     const draw = () => {
       queued = false
       if (pattern.parallax) {
-        setPatternShift((-window.scrollY / window.innerHeight) * pattern.drift)
+        // Y here, where the stage uses X — this page travels down, not across.
+        setPatternShift(0, (-window.scrollY / window.innerHeight) * pattern.drift)
       }
       const el = progressRef.current
       if (!el) return

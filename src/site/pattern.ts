@@ -10,17 +10,27 @@
  * neither owns it: the stage scrolls a virtual scroll (Gallery.tsx) and a
  * case study scrolls the document (ProjectPage.tsx). Both express their
  * position in *screens travelled*, so one drift number means the same thing
- * on either. */
+ * on either.
+ *
+ * The axis is the caller's to pick, and the two screens do not agree on it —
+ * the stage travels sideways along a row of cases, a case study runs down a
+ * page. Drift across the direction of travel reads as a mistake rather than
+ * as depth, so each drives the axis it actually moves on. */
 
-/** How far the wallpaper has drifted, in px. Screens call this per frame. */
-export function setPatternShift(px: number) {
-  document.documentElement.style.setProperty('--pattern-shift', `${px.toFixed(1)}px`)
+/** How far the wallpaper has drifted, in px, on each axis. Screens call this
+ *  per frame and pass 0 for the axis they do not move on. */
+export function setPatternShift(x: number, y: number) {
+  const root = document.documentElement.style
+  root.setProperty('--pattern-shift-x', `${x.toFixed(1)}px`)
+  root.setProperty('--pattern-shift-y', `${y.toFixed(1)}px`)
 }
 
 /** Park it. Called when a screen that drives the drift unmounts, so the next
  *  one doesn't inherit a stale offset it never set. */
 export function clearPatternShift() {
-  document.documentElement.style.removeProperty('--pattern-shift')
+  const root = document.documentElement.style
+  root.removeProperty('--pattern-shift-x')
+  root.removeProperty('--pattern-shift-y')
 }
 
 /* Where the tuning panel writes its settings — the gallery's store, because
