@@ -97,7 +97,7 @@ export interface RoomTuning {
 
 /** Wide: the case is centred with the label beside it, and the next project
  *  waits two thirds of a window away, just off-frame. */
-export const WIDE = { stepW: 0.937, caseH: 0.46, caseY: 0 }
+export const WIDE = { stepW: 0.768, caseH: 0.46, caseY: 0 }
 /** Narrow: there is no *beside*, so a project takes the whole window, the case
  *  shrinks and rises into the top half, and the label goes underneath it.
  *  These are only the resting defaults now — `narrowCaseH`/`narrowCaseY` in
@@ -119,13 +119,13 @@ export const PATTERN_DRIFT = 90
  *  something you find by dragging a window edge, not by reasoning. */
 export const NARROW_AT = 880
 /** Default `shiftW`, as a percentage. Roughly half the label's own width. */
-export const STAGE_SHIFT = -4
+export const STAGE_SHIFT = -3
 /** Default `panelW`, in viewport widths — the cap `.gl-panel` used before it
  *  was tunable. */
-export const PANEL_W = 25.5
+export const PANEL_W = 21.5
 /** Default `panelH`, in viewport heights. Zero: no minimum, the panel is
  *  exactly as tall as its copy. */
-export const PANEL_H = 0
+export const PANEL_H = 6
 
 /** A fixed reference viewport, in pixels — not a real breakpoint, just the
  *  ratio the row's horizontal spacing and the wall label's size and position

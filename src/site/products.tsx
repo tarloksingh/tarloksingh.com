@@ -141,38 +141,42 @@ const DEFAULTS = {
 const SPECS: Record<string, ProductSpec> = {
   'capsule-c1': {
     node: (scale) => <CapsuleC1 scale={scale} />,
-    scale: 1.581,
-    turn: -291.1,
-    offsetX: 0.315,
-    offsetY: -0.16
+    scale: 2.213,
+    turn: -311.1,
+    offsetX: 0.15,
+    offsetY: -0.145,
+    narrow: { turn: 42.2, offsetX: 0, offsetY: 0 }
   },
   'mr-takahashi': {
     node: (scale, ctx) => (
       <AdamFace scale={scale} progressRef={ctx.progressRef} slot={ctx.slot} count={ctx.count} />
     ),
-    scale: 2.219,
-    turn: -22.2,
-    offsetX: 0.295,
+    scale: 3.417,
+    turn: -26.7,
+    offsetX: 0.11,
     offsetY: -0.08,
     // The one piece that still breathes — see the note on DEFAULTS.
-    floatIntensity: 0.85
+    floatIntensity: 0.85,
+    narrow: { turn: 24.4, offsetX: 0, offsetY: 0 }
   },
   'slider-engine': {
     node: (scale) => <SpriteFlipbook frames={FISH_MAN_FRAMES} fps={12} scale={scale} />,
-    scale: 2.52,
+    scale: 3.629,
     // A billboard drawn with `toneMapped={false}` is outside the room's
     // exposure entirely, so there is nothing here for a lift to do.
     turn: 4.4,
-    offsetX: 0.27,
-    offsetY: -0.09
+    offsetX: 0.105,
+    offsetY: -0.09,
+    narrow: { turn: 0, offsetX: 0, offsetY: 0 }
   },
   'mecha-station': {
     node: (scale) => <PosStation videoUrl="/videos/mecha-station-hero.mp4" scale={scale} />,
-    scale: 2.848,
+    scale: 5.069,
     lift: lift(0.6, 2.2),
     turn: -20,
     offsetX: 0.145,
-    offsetY: -0.07
+    offsetY: -0.07,
+    narrow: { turn: 31.1, offsetX: 0, offsetY: 0 }
   },
   openup: {
     node: (scale) => {
@@ -209,24 +213,27 @@ const SPECS: Record<string, ProductSpec> = {
     scale: 2.25,
     lift: lift(0.42, 3),
     turn: 38,
-    offsetX: 0.295,
-    offsetY: -0.085
+    offsetX: 0,
+    offsetY: 0,
+    narrow: { offsetX: 0, offsetY: 0 }
   },
   'block-builder': {
     node: (scale) => <BlockBuilder scale={scale} />,
-    scale: 1.505,
+    scale: 1.355,
     lift: lift(0.75, 2),
     turn: 131.1,
-    offsetX: 0.325,
-    offsetY: -0.105
+    offsetX: 0.27,
+    offsetY: -0.1,
+    narrow: { turn: 31.1, offsetX: 0, offsetY: 0 }
   },
   visa: {
     node: clay(<VisaKiosk3D accent="#1434cb" hovered={false} />, 0.62),
     scale: 2.219,
     lift: lift(0.7, 1.8),
-    turn: -73.3,
-    offsetX: 0.31,
-    offsetY: -0.105
+    turn: 22.2,
+    offsetX: 0,
+    offsetY: 0,
+    narrow: { turn: 22.2, offsetX: 0, offsetY: 0 }
   },
   '3d-printing': {
     node: clay(<Printer3D accent="#9c3524" hovered={false} />, 0.7),
