@@ -93,6 +93,26 @@ export interface RoomTuning {
    *  sends it the other way. Both screens measure their position in screens
    *  travelled, so this one number reads the same on either. */
   patternDrift: number
+  /** Renders the whole site into a phone-width column down the left of the
+   *  window instead of filling it — see `--preview-w` and the
+   *  `[data-mobile-preview]` block in Site.css.
+   *
+   *  Chrome's own device mode already emulates a phone, but the tuning panel
+   *  is part of the page, so device mode shrinks *it* too: the sliders end up
+   *  crushed into a 390px column and sitting on top of the very layout being
+   *  tuned. Doing it in CSS instead keeps the panel on the real desktop
+   *  viewport — it is portalled to `body`, outside the box this constrains —
+   *  so the phone layout and the controls for it are side by side and neither
+   *  is covering the other.
+   *
+   *  Dev-only, and applied only under `import.meta.env.DEV` (Gallery.tsx): the
+   *  toggle is persisted like every other panel value, and a stale `true` must
+   *  not be able to letterbox the real site for a visitor. */
+  mobilePreview: boolean
+  /** How wide that column is, in px. Also what `narrowAt` is compared against
+   *  while the preview is on, so the breakpoint is decided by the phone being
+   *  simulated rather than by the desktop window around it. */
+  previewW: number
 }
 
 /** Wide: the case is centred with the label beside it, and the next project
@@ -114,6 +134,11 @@ export const TOUCH_PER_UNIT = 1100
 /** Resting defaults for the wallpaper drift — see `RoomTuning` above. */
 export const PATTERN_PARALLAX = false
 export const PATTERN_DRIFT = 90
+/** Resting defaults for the phone preview — see `RoomTuning` above. Off, and
+ *  390px wide when switched on: an iPhone 15's CSS width, and narrow enough
+ *  that the panel beside it still has most of a laptop screen to sit in. */
+export const MOBILE_PREVIEW = false
+export const PREVIEW_W = 390
 /** Below this the label cannot stand beside the case. Adjustable live from the
  *  tuning panel, because where a two-column layout actually gives out is
  *  something you find by dragging a window edge, not by reasoning. */

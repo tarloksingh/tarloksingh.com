@@ -1,9 +1,19 @@
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Edges } from '@react-three/drei'
 import { folder, useControls } from 'leva'
 import { Color, MathUtils } from 'three'
 import type { Group } from 'three'
+import { EXTRA_CONTROLS } from './Gallery3D'
+
+/** The schema's `value:` fields are seeded from this, and the "Copy for
+ *  source" button (Gallery3D.tsx) diffs the live panel against it — one
+ *  object rather than the same numbers written out twice. */
+const BLOCK_DEFAULTS = {
+  brightness: 0.55,
+  spread: 1.4,
+  speed: 1
+}
 
 // A LEGO-style kids' game reads better in candy colours than the site's
 // usual white/black product language — this is the one product that's
@@ -171,13 +181,33 @@ export default function BlockBuilder({ scale = 1 }: BlockBuilderProps) {
   const { brightness, spread, speed } = useControls('Objects', {
     'Block Builder': folder(
       {
-        brightness: { value: 0.55, min: 0.1, max: 1.5, step: 0.05, label: 'Brightness' },
-        spread: { value: 1.4, min: 0.3, max: 3, step: 0.05, label: 'Spread' },
-        speed: { value: 1, min: 0.3, max: 3, step: 0.1, label: 'Speed ×' }
+        brightness: {
+          value: BLOCK_DEFAULTS.brightness,
+          min: 0.1,
+          max: 1.5,
+          step: 0.05,
+          label: 'Brightness'
+        },
+        spread: { value: BLOCK_DEFAULTS.spread, min: 0.3, max: 3, step: 0.05, label: 'Spread' },
+        speed: { value: BLOCK_DEFAULTS.speed, min: 0.3, max: 3, step: 0.1, label: 'Speed ×' }
       },
       { collapsed: true }
     )
   }) as unknown as { brightness: number; spread: number; speed: number }
+
+  // Registers this folder's live values into the panel-wide registry the
+  // single "Copy for source" button (Gallery3D.tsx) reads from — the same way
+  // CapsuleC1 and AdamFace do. Without this the three sliders above moved the
+  // piece on screen and then reported nothing when the panel was copied, so
+  // an afternoon of tuning them left no trace in the copied text and looked,
+  // from the outside, exactly like the button ignoring what you had changed.
+  useEffect(() => {
+    Object.assign(EXTRA_CONTROLS, {
+      'Block Builder › Brightness': { value: brightness, defaultValue: BLOCK_DEFAULTS.brightness },
+      'Block Builder › Spread': { value: spread, defaultValue: BLOCK_DEFAULTS.spread },
+      'Block Builder › Speed ×': { value: speed, defaultValue: BLOCK_DEFAULTS.speed }
+    })
+  }, [brightness, spread, speed])
 
   // The ground the cascade rests on: level with the bottom of the finished
   // tower, so the stack reads as rising up off the same floor the blocks

@@ -13,8 +13,10 @@ import {
   NARROW,
   NARROW_AT,
   NARROW_PANEL_MAX_CH,
+  MOBILE_PREVIEW,
   PATTERN_DRIFT,
   PATTERN_PARALLAX,
+  PREVIEW_W,
   TOUCH_PER_UNIT,
   PANEL_H,
   PANEL_W,
@@ -151,7 +153,9 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
     narrowPanelH: PANEL_H,
     touchPerUnit: TOUCH_PER_UNIT,
     patternParallax: PATTERN_PARALLAX,
-    patternDrift: PATTERN_DRIFT
+    patternDrift: PATTERN_DRIFT,
+    mobilePreview: MOBILE_PREVIEW,
+    previewW: PREVIEW_W
   })
 
   /* Handed straight to the engine rather than held here: it is the engine's
@@ -170,6 +174,13 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
      and must not be torn down every toggle. */
   const noirRef = useRef(noir)
   noirRef.current = noir
+
+  /* The phone preview, gated on DEV here rather than at the control: the
+     toggle is persisted like every other panel value (Gallery3D.tsx), and a
+     stale `true` in someone's localStorage must not be able to letterbox the
+     real site — the panel that would switch it back off isn't even rendered
+     in a production build. */
+  const preview = import.meta.env.DEV && tuning.mobilePreview
 
   const [narrow, setNarrow] = useState(
     () => typeof window !== 'undefined' && window.innerWidth <= NARROW_AT
@@ -219,11 +230,34 @@ export default function Gallery({ engine, onOpen, onFocus, noir = false }: Galle
   // the breakpoint has to take effect at the window's current width, not at
   // whatever width it is next dragged to.
   useEffect(() => {
-    const check = () => setNarrow(window.innerWidth <= tuning.narrowAt)
+    // `stageW` and not `window.innerWidth`: with the phone preview on, the
+    // site is laid out in a column of its own and the desktop window around
+    // it is not the width anything on screen is answering to. Reading the
+    // window here would leave the preview showing the *wide* layout inside a
+    // 390px box, which is the one thing it exists not to do.
+    const check = () =>
+      setNarrow((preview ? tuning.previewW : window.innerWidth) <= tuning.narrowAt)
     check()
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
-  }, [tuning.narrowAt])
+  }, [tuning.narrowAt, preview, tuning.previewW])
+
+  /* Puts the site in a phone-width column with the tuning panel beside it —
+     see `mobilePreview` in room.ts for why this exists rather than leaning on
+     Chrome's device mode. The flag goes on `<html>`, above `#app`, because
+     `#app` is what the rule resizes; `--preview-w` rides along so the width
+     slider is live. Removed on unmount so navigating out of the gallery
+     cannot strand the rest of the site inside the box. */
+  useEffect(() => {
+    const root = document.documentElement
+    if (!preview) {
+      root.removeAttribute('data-mobile-preview')
+      return
+    }
+    root.setAttribute('data-mobile-preview', 'true')
+    root.style.setProperty('--preview-w', `${tuning.previewW}px`)
+    return () => root.removeAttribute('data-mobile-preview')
+  }, [preview, tuning.previewW])
 
   /* The stage shift reaches the wall label through a custom property, because
      the label is placed by `left` in the stylesheet and by `transform` from

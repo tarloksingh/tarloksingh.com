@@ -30,6 +30,16 @@
   /* Narrow-only — the cap `.gl[data-narrow='true'] .gl-panel` uses below,
      also written by Gallery.tsx from the tuning panel's Mobile group. */
   --panel-max-ch: 38ch;
+  /* The width the room is actually being laid out in. `100vw` everywhere
+     except under the phone preview, where the site is in a column of its own
+     and `vw` still reports the desktop window around it — see the
+     `[data-mobile-preview]` block in Site.css. The gallery is otherwise sized
+     in `vh` throughout and so needs this in exactly one place, below. */
+  --stage-w: 100vw;
+}
+
+html[data-mobile-preview='true'] .gl {
+  --stage-w: var(--preview-w, 390px);
 }
 
 /* The room: one canvas, the full window, holding every case in the row. It
@@ -202,7 +212,7 @@
   left: 50%;
   top: auto;
   bottom: calc(var(--gutter) + 64px);
-  width: min(var(--panel-max-ch), calc(100vw - var(--gutter) * 2));
+  width: min(var(--panel-max-ch), calc(var(--stage-w) - var(--gutter) * 2));
   align-items: center;
   text-align: center;
   /* No `transform` here — Gallery.tsx writes it every frame and knows about

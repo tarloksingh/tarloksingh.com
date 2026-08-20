@@ -6,7 +6,7 @@ import { folder, useControls } from 'leva'
 import { Box3, MathUtils, Vector3 } from 'three'
 import type { Group, Mesh, MeshStandardMaterial } from 'three'
 import { TARGET_SIZE } from './CapsuleStage'
-import { EXTRA_CONTROLS } from './Gallery3D'
+import { EXTRA_CONTROLS, folderName } from './Gallery3D'
 
 const MODEL_URL = '/models/adam-face.glb'
 
@@ -150,11 +150,14 @@ export default function AdamFace({ scale, progressRef, slot, count }: AdamFacePr
     roughnessBoost,
     metalnessScale
   } = useControls('Objects', {
-    // Nested into the same 'Mr. Takahashi' folder Gallery3D already builds
-    // his turn/scale/x/y into (see OBJECT_SCHEMA there) — Leva merges
-    // controls registered under matching folder paths from different
-    // components, so this doesn't open a separate panel section of its own.
-    'Mr. Takahashi': folder(
+    // Nested into the same folder Gallery3D already builds his turn/scale/x/y
+    // into (see OBJECT_SCHEMA there) — Leva merges controls registered under
+    // matching folder paths from different components, so this doesn't open a
+    // separate panel section of its own. Named through `folderName` and not
+    // written out as a literal precisely so that stays true: the period in his
+    // title is a path separator to Leva, and the two sides have to drop it the
+    // same way or they stop matching.
+    [folderName('Mr. Takahashi')]: folder(
       {
         Face: folder(
           {
