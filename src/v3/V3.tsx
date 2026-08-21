@@ -88,49 +88,60 @@ export default function V3() {
               ))}
             </div>
 
-            {showCompanies && (
-              <div className="v3-sub v3-small">
-                <button className="v3-chip v3-small" aria-pressed={company === null} onClick={() => setCompany(null)}>
-                  everywhere
-                </button>
-                {companies.map((name) => (
-                  <button
-                    key={name}
-                    className="v3-chip v3-small"
-                    aria-pressed={company === name}
-                    onClick={() => {
-                      setCompany(name)
-                      setPinned(null)
-                      setDrift({ entry: 0, frame: 0 })
-                    }}
-                  >
-                    {name}
+            {/* Always rendered, so its height is held whether or not it has
+                anything in it — the page does not scroll, and a row that
+                appears would push everything below it down. */}
+            <div className="v3-sub v3-small">
+              {showCompanies && (
+                <>
+                  <button className="v3-chip v3-small" aria-pressed={company === null} onClick={() => setCompany(null)}>
+                    everywhere
                   </button>
-                ))}
-              </div>
-            )}
+                  {companies.map((name) => (
+                    <button
+                      key={name}
+                      className="v3-chip v3-small"
+                      aria-pressed={company === name}
+                      onClick={() => {
+                        setCompany(name)
+                        setPinned(null)
+                        setDrift({ entry: 0, frame: 0 })
+                      }}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </>
+              )}
+            </div>
           </div>
 
           <div className="v3-group">
             <h1 className="v3-title">Timeline</h1>
             <div className="v3-timeline-row">
-              {byYear(visible).map(({ year, frames }) => (
+              {byYear(visible).map(({ year, entries: group }) => (
                 <div className="v3-year" key={year}>
                   <span className="v3-small">{year}</span>
                   <div className="v3-thumbs">
-                    {frames.map(({ entry, frame }, i) => {
+                    {group.map((entry) => {
+                      /* One square per project — its first frame. The
+                         timeline reaches a project; the carousel is what
+                         goes through it. */
+                      const frame = entry.frames[0]
                       const thumb = thumbOf(frame)
-                      const isActive = active?.project.id === entry.project.id && frameIndex === entry.frames.indexOf(frame)
                       return (
                         <button
-                          key={frame.id}
+                          key={entry.project.id}
                           className={`v3-thumb${thumb ? '' : ' v3-thumb-model'}`}
-                          style={thumb ? { backgroundImage: `url(${thumb})` } : undefined}
-                          aria-pressed={isActive}
-                          aria-label={`${entry.project.title} — ${frame.label ?? `frame ${i + 1}`}`}
-                          title={`${entry.project.title} — ${frame.label ?? ''}`}
+                          style={{
+                            ...(thumb ? { backgroundImage: `url(${thumb})` } : {}),
+                            ['--a' as string]: frame.aspect
+                          }}
+                          aria-pressed={active?.project.id === entry.project.id}
+                          aria-label={entry.project.title}
+                          title={entry.project.title}
                           onClick={() => {
-                            setPinned({ id: entry.project.id, frame: entry.frames.indexOf(frame) })
+                            setPinned({ id: entry.project.id, frame: 0 })
                             setOpen('overview')
                           }}
                         >
@@ -146,7 +157,17 @@ export default function V3() {
         </section>
 
         <section className="v3-block v3-project">
-          <Detail entry={active} open={open} onToggle={(id) => setOpen((current) => (current === id ? null : id))} />
+          {/* Opening a fold is someone settling in to read, so it pins the
+              project too — drifting off mid-paragraph is the one thing the
+              idle behaviour must never do. */}
+          <Detail
+            entry={active}
+            open={open}
+            onToggle={(id) => {
+              setOpen((current) => (current === id ? null : id))
+              if (active) setPinned({ id: active.project.id, frame: frameIndex })
+            }}
+          />
           <StagePane entry={active} index={frameIndex} onStep={step} />
         </section>
       </div>

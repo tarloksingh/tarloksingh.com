@@ -24,7 +24,7 @@ const MODELS: Record<string, { file: string; label: string }> = {
 /** A media item, plus the model case the base `MediaItem` has no room for. */
 export type Frame =
   | (MediaItem & { kind: 'flat' })
-  | { kind: 'model'; id: string; src: string; label: string; type: 'model' }
+  | { kind: 'model'; id: string; src: string; label: string; type: 'model'; aspect: number }
 
 /** One project, flattened into what the three panes actually draw. */
 export interface Entry {
@@ -39,7 +39,7 @@ const framesOf = (project: Project): Frame[] => {
   if (!model) return flat
   return [
     ...flat,
-    { kind: 'model', id: `${project.id}/model`, src: model.file, label: model.label, type: 'model' }
+    { kind: 'model', id: `${project.id}/model`, src: model.file, label: model.label, type: 'model', aspect: 1 }
   ]
 }
 
@@ -68,15 +68,15 @@ export const companiesIn = (visible: Entry[]): string[] => {
   return [...seen.entries()].sort((a, b) => b[1] - a[1]).map(([company]) => company)
 }
 
-/** Timeline rows: the visible projects bucketed by year, newest year first. */
-export const byYear = (visible: Entry[]): Array<{ year: number; frames: Array<{ entry: Entry; frame: Frame }> }> => {
-  const buckets = new Map<number, Array<{ entry: Entry; frame: Frame }>>()
+/** Timeline rows: the visible projects bucketed by year, newest year first.
+ *  One square per project — its first frame — not one per image. The timeline
+ *  is a way to reach a project, and the carousel is how you go through it. */
+export const byYear = (visible: Entry[]): Array<{ year: number; entries: Entry[] }> => {
+  const buckets = new Map<number, Entry[]>()
   for (const entry of visible) {
-    const row = buckets.get(entry.year) ?? []
-    for (const frame of entry.frames) row.push({ entry, frame })
-    buckets.set(entry.year, row)
+    buckets.set(entry.year, [...(buckets.get(entry.year) ?? []), entry])
   }
-  return [...buckets.entries()].sort((a, b) => b[0] - a[0]).map(([year, frames]) => ({ year, frames }))
+  return [...buckets.entries()].sort((a, b) => b[0] - a[0]).map(([year, group]) => ({ year, entries: group }))
 }
 
 /** A poster for a 36px timeline square. Videos already have a still pulled at
