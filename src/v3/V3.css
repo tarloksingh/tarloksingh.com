@@ -1,0 +1,415 @@
+/* v3. Numbers here come straight from the Figma frame (1920×1080) —
+   the column is 952 wide and centred, blocks are 22 padded and 10 rounded. */
+
+.v3 {
+  --bg: #000000;
+  --white: #ffffff;
+  --secondary: #5a5a5a;
+  --accent: #ff9e02;
+  --arrow: #e3e3e3;
+
+  --col: 952px;
+
+  position: relative;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--white);
+  font-family: Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- type ---- */
+
+.v3-wordmark {
+  font-size: 20px;
+  line-height: 23px;
+  letter-spacing: -0.07em;
+}
+
+.v3-email {
+  font-size: 15px;
+  line-height: 17px;
+  letter-spacing: -0.07em;
+  color: var(--white);
+  text-decoration: none;
+}
+
+.v3-title {
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 18px;
+  letter-spacing: -0.03em;
+}
+
+/* The Figma calls this "Small Text" — it is most of the page. */
+.v3-small {
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: 12px;
+  line-height: 14px;
+  letter-spacing: -0.03em;
+}
+
+/* "Secondary text Italized" — the role line and the frame caption. */
+.v3-italic {
+  font-style: italic;
+  font-weight: 300;
+  font-size: 11px;
+  line-height: 13px;
+  letter-spacing: -0.03em;
+}
+
+/* ---- shell ---- */
+
+.v3-head,
+.v3-foot {
+  width: var(--col);
+  margin: 0 auto;
+  display: flex;
+}
+
+.v3-head {
+  padding-top: 30px;
+}
+
+.v3-foot {
+  justify-content: flex-end;
+  padding: 40px 0 30px;
+}
+
+.v3-column {
+  width: var(--col);
+  margin: 0 auto;
+  padding-top: 17px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.v3-block {
+  padding: 22px;
+  border-radius: 10px;
+}
+
+/* ---- filters + timeline ---- */
+
+.v3-browse {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.v3-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.v3-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.v3-chip {
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  color: var(--secondary);
+  transition: color 120ms linear;
+}
+
+.v3-chip:hover {
+  color: var(--white);
+}
+
+.v3-chip[aria-pressed='true'] {
+  color: var(--accent);
+}
+
+/* The company row only exists while `work` is the filter, so it animates in
+   rather than snapping the timeline down the page. */
+.v3-sub {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 2px;
+}
+
+.v3-timeline-row {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 30px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: #222 transparent;
+}
+
+.v3-year {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: none;
+}
+
+.v3-year > span {
+  color: var(--secondary);
+}
+
+.v3-thumbs {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 11px 5.29px;
+  flex-wrap: wrap;
+  /* Eight squares per row before wrapping, so a long year stacks instead of
+     pushing every later year off the right edge. */
+  max-width: 335px;
+}
+
+.v3-thumb {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0.48px solid transparent;
+  border-radius: 2.36px;
+  background-color: #111;
+  background-size: cover;
+  background-position: center;
+  cursor: pointer;
+  flex: none;
+  position: relative;
+  transition: border-color 120ms linear;
+}
+
+.v3-thumb:hover {
+  border-color: #666;
+}
+
+.v3-thumb[aria-pressed='true'] {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 36px rgba(255, 158, 2, 0.31);
+}
+
+/* A model has no still, so its square says so rather than sitting empty. */
+.v3-thumb-model {
+  display: grid;
+  place-items: center;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: 9px;
+  letter-spacing: -0.03em;
+  color: var(--secondary);
+}
+
+/* ---- project ---- */
+
+.v3-project {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 53px;
+}
+
+.v3-detail {
+  width: 247px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 19px;
+}
+
+.v3-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.v3-role {
+  color: var(--white);
+}
+
+.v3-accordion {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.v3-fold > button {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  color: var(--secondary);
+  text-align: left;
+  transition: color 120ms linear;
+}
+
+.v3-fold > button:hover {
+  color: var(--white);
+}
+
+.v3-fold[data-open='true'] > button {
+  color: var(--accent);
+  gap: 5px;
+}
+
+/* The little triangle: right when closed, down when open. */
+.v3-caret {
+  width: 5px;
+  height: 7px;
+  flex: none;
+  background: var(--arrow);
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+  transition: transform 140ms ease, background-color 120ms linear;
+}
+
+.v3-fold[data-open='true'] .v3-caret {
+  background: var(--accent);
+  transform: rotate(90deg);
+}
+
+.v3-fold-body {
+  padding: 0 0 8px 23px;
+  color: var(--white);
+  white-space: pre-line;
+}
+
+.v3-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  color: var(--white);
+}
+
+/* ---- stage ---- */
+
+.v3-stage {
+  width: 629px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.v3-caption {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  height: 14px;
+}
+
+.v3-caption > span:last-child {
+  color: var(--secondary);
+}
+
+.v3-frame {
+  position: relative;
+  width: 629px;
+  height: 630px;
+  border-radius: 7px;
+  overflow: hidden;
+  background: #0b0b0b;
+}
+
+.v3-frame img,
+.v3-frame video,
+.v3-frame canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+/* One slide per frame, cross-fading in place — the carousel never moves the
+   box, only what is inside it. */
+.v3-slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 420ms ease;
+  pointer-events: none;
+}
+
+.v3-slide[data-active='true'] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.v3-arrow {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 88px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 160ms linear;
+  z-index: 2;
+  color: var(--white);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.v3-frame:hover .v3-arrow {
+  opacity: 0.55;
+}
+
+.v3-arrow:hover {
+  opacity: 1 !important;
+}
+
+.v3-arrow[data-side='prev'] {
+  left: 0;
+}
+
+.v3-arrow[data-side='next'] {
+  right: 0;
+}
+
+/* Position within the project, bottom-centre, only while there is more than
+   one frame to be at. */
+.v3-dots {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 12px;
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  z-index: 2;
+}
+
+.v3-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  border: 0;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  transition: background-color 120ms linear;
+}
+
+.v3-dot[aria-current='true'] {
+  background: var(--accent);
+}
+
+.v3-empty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--secondary);
+}

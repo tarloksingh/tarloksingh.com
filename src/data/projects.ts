@@ -14,6 +14,43 @@ type Ref =
   | { v: string; label?: string; sound?: boolean }
   | { i: string; label?: string }
 
+/** The filter row, in the order it is drawn. */
+export const TAGS = ['work', 'video games', 'hardware', 'tools', '3d', 'motion', 'film', 'music'] as const
+export type Tag = (typeof TAGS)[number]
+
+/* Which filters each project answers to. A project belongs to as many as it
+   earns — the overlap is the point. The row narrows one flat set rather than
+   sorting projects into bins, so nothing has to pick a single home.
+
+   This lives as one table rather than a field on each entry so the whole
+   tagging can be read, and re-cut, in one screen. */
+const PROJECT_TAGS: Record<string, Tag[]> = {
+  '3d-printing': ['3d', 'hardware'],
+  'a-game': ['video games', '3d'],
+  'mr-grocery': ['tools'],
+  visa: ['work', 'tools', 'motion'],
+  'slider-engine': ['work', 'video games'],
+  'wyte-card': ['work', 'hardware'],
+  'block-builder': ['work', '3d'],
+  'capsule-c1': ['work', 'hardware', '3d', 'film'],
+  'mr-takahashi': ['work', '3d'],
+  stitchfam: ['work'],
+  'mecha-station': ['work', '3d'],
+  openup: ['work'],
+  'red-dead-redemption-2': ['work', 'video games', 'film', '3d'],
+  'grand-theft-auto-v': ['work', 'video games', 'film', '3d']
+}
+
+/* The timeline groups by year, and `timeline` is prose ("2024 — 2025",
+   "Jan — Jul 2026", "2015 — Present"). The last year it names is the one a
+   project files under; "Present" means this year. */
+const THIS_YEAR = new Date().getFullYear()
+const yearOf = (timeline: string): number => {
+  const years = timeline.match(/\d{4}/g)?.map(Number) ?? []
+  if (/present/i.test(timeline)) return THIS_YEAR
+  return years.length ? Math.max(...years) : THIS_YEAR
+}
+
 export interface Section {
   id: string
   title: string
@@ -44,6 +81,11 @@ export interface Project {
    *  smaller side-projects timeline beside it. Still a full case study
    *  either way — this only decides whether it gets a case in the gallery. */
   category?: 'work' | 'side'
+  /** Which filters this project answers to, from `PROJECT_TAGS`. Read by the
+   *  v3 filter row; the current site ignores it. */
+  tags: Tag[]
+  /** The last year `timeline` names — what the v3 timeline groups by. */
+  year: number
   /** Every clip and still in the project, hero first, deduped — what the home
    *  page draws its cards from. */
   media: MediaItem[]
@@ -718,6 +760,8 @@ const build = (draft: Draft): Project => {
     accent: draft.accent,
     restricted: draft.restricted,
     category: draft.category ?? 'work',
+    tags: PROJECT_TAGS[draft.id] ?? [],
+    year: yearOf(draft.timeline),
     hero,
     sections,
     media
