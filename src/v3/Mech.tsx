@@ -101,32 +101,36 @@ const derive = (entry: Entry, frame: Frame): Note[] => {
 }
 
 /** How long the frame on screen takes to be eaten before the next is mounted.
- *  Matches the dissolve's cover time in Mech.css. */
-const EXIT_MS = 260
+ *  Matches the cover time the cell delays below add up to. */
+const EXIT_MS = 340
 
-/* ---- the dissolve ----
+/* ---- disintegration ----
 
-   Swapping frames is not a fade. A grid of cells fills in over whatever is on
-   screen, the frame changes underneath while the cover is complete, and the
-   cells clear again — so the picture is eaten and rebuilt in blocks rather
-   than dipped. Each cell carries its own delay, biased across the frame and
-   jittered, which is what stops it reading as a wipe. */
-const DISSOLVE = { columns: 30, rows: 17 }
+   Swapping frames is not a fade and not a wipe. A grid of cells grows over
+   whatever is on screen until the picture has been eaten block by block, the
+   frame changes underneath at full cover, and the cells shrink away again in
+   a *different* order — so it rebuilds rather than un-wipes. Some of them
+   flare accent as they land, which is what makes it read as something being
+   written rather than something being hidden.
 
-/** Fixed at module scope rather than per mount: the same scatter every time
- *  is a texture, and a fresh one on every swap is noise. */
+   Every cell's timing is decided once at module scope. The same scatter every
+   time is a texture; a fresh one on every swap is noise. */
+const DISSOLVE = { columns: 44, rows: 25 }
+
 const CELLS = Array.from({ length: DISSOLVE.columns * DISSOLVE.rows }, (_, i) => {
   const column = i % DISSOLVE.columns
   const row = Math.floor(i / DISSOLVE.columns)
-  // Sweeps left to right, but loosely — the jitter is worth more than the
-  // sweep, and a cell near the trailing edge can still go first.
-  const bias = column / DISSOLVE.columns
+  // Out sweeps loosely left to right, in comes back from the middle outward.
+  // Neither is tidy — the jitter is worth more than the direction, and a cell
+  // at the trailing edge can still go first.
+  const across = column / (DISSOLVE.columns - 1)
+  const fromMiddle = Math.hypot(across - 0.5, row / (DISSOLVE.rows - 1) - 0.5) / 0.707
   return {
-    delay: Math.round((bias * 0.45 + Math.random() * 0.55) * 150),
-    // A few cells flash the accent on their way in rather than going straight
-    // to black, which is what makes it read as a signal and not a curtain.
-    lit: Math.random() < 0.16,
-    row
+    out: Math.round((across * 0.5 + Math.random() * 0.5) * 170),
+    in: Math.round((fromMiddle * 0.55 + Math.random() * 0.45) * 260),
+    // A tenth of them flare on the way in. Enough to read as static across
+    // the frame; more than that and it is a light show.
+    lit: Math.random() < 0.1
   }
 })
 
@@ -307,7 +311,7 @@ export default function Mech({ id, onHome }: Props) {
               <span
                 key={i}
                 data-lit={cell.lit}
-                style={{ animationDelay: `${cell.delay}ms`, transitionDelay: `${cell.delay}ms` }}
+                style={{ ['--out' as string]: `${cell.out}ms`, ['--in' as string]: `${cell.in}ms` }}
               />
             ))}
           </div>

@@ -3,6 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Float, useAnimations, useGLTF } from '@react-three/drei'
 import { ACESFilmicToneMapping, Box3, MathUtils, PMREMGenerator, SRGBColorSpace, Vector3 } from 'three'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
+import { gaze } from './gaze'
 import { MODEL_DEFAULTS, type ModelTuning } from './modelTuning'
 import type { Group, Mesh, MeshStandardMaterial, PerspectiveCamera } from 'three'
 
@@ -39,13 +40,48 @@ const distanceFor = (focalLength: number, fill: number) =>
 
    Without this the model is a very well lit mannequin. */
 const IDLE = ['EmotionSearching', 'EmotionListening']
-const BLINK = { gap: [2.5, 9.5], length: 0.28 }
-const LOOK = { sensitivity: [0.8, 0.5], max: [0.6, 0.4], speed: 4 }
+const BLINK_LENGTH = 0.28
 const THINK = { gap: [4, 12], hold: [1.2, 3.8], intensity: 0.6, fade: 2.5 }
 
 const between = (min: number, max: number) => min + Math.random() * (max - min)
 
-function Model({ src, tuning }: { src: string; tuning: ModelTuning }) {
+/** Where to look, in normalised device coordinates: -1..1 with +1 at the right
+ *  and +1 at the top.
+ *
+ *  Tracked off `window` rather than read from the Canvas's own pointer, which
+ *  is the bug this replaces — R3F only updates that on events that reach the
+ *  canvas, so the eyes went dead the moment the cursor crossed the project
+ *  copy or the rail, which is most of where a cursor actually is.
+ *
+ *  A bird in the air wins over the pointer. Something crossing the room is
+ *  more interesting than a mouse sitting still, and it is the one moment the
+ *  face has anything to react to. */
+function useGaze(watchBird: boolean) {
+  const ndc = useRef({ x: 0, y: 0 })
+
+  useEffect(() => {
+    const onMove = (event: PointerEvent) => {
+      ndc.current.x = (event.clientX / window.innerWidth) * 2 - 1
+      ndc.current.y = -((event.clientY / window.innerHeight) * 2 - 1)
+    }
+    window.addEventListener('pointermove', onMove)
+    return () => window.removeEventListener('pointermove', onMove)
+  }, [])
+
+  return () => {
+    if (watchBird && gaze.bird.active) {
+      return {
+        x: (gaze.bird.x / window.innerWidth) * 2 - 1,
+        y: -((gaze.bird.y / window.innerHeight) * 2 - 1)
+      }
+    }
+    return ndc.current
+  }
+}
+
+type Look = () => { x: number; y: number }
+
+function Model({ src, tuning, look }: { src: string; tuning: ModelTuning; look: Look }) {
   const { scene, animations } = useGLTF(src)
   const group = useRef<Group>(null)
   const { actions } = useAnimations(animations, group)
@@ -98,7 +134,7 @@ function Model({ src, tuning }: { src: string; tuning: ModelTuning }) {
     return { scale, morphed, surfaces, offset: box.getCenter(new Vector3()).multiplyScalar(-scale) }
   }, [scene])
 
-  const blink = useRef({ at: performance.now() / 1000 + between(BLINK.gap[0], BLINK.gap[1]) })
+  const blink = useRef({ at: performance.now() / 1000 + between(tuning.blinkMin, tuning.blinkMax) })
   const eyes = useRef({ h: 0, v: 0 })
   // `phase` is what makes the gap a real rest rather than a fixed pause: it
   // only leaves 'gap' once the timer is up *and* the outgoing expression has
@@ -118,7 +154,7 @@ function Model({ src, tuning }: { src: string; tuning: ModelTuning }) {
     }
   }
 
-  useFrame(({ pointer }, delta) => {
+  useFrame((_, delta) => {
     for (const surface of fit.surfaces) {
       surface.material.envMapIntensity = tuning.envMapIntensity
       surface.material.roughness = MathUtils.clamp(surface.roughness + tuning.roughnessBoost, 0, 1)
@@ -129,25 +165,30 @@ function Model({ src, tuning }: { src: string; tuning: ModelTuning }) {
     // triangle rather than a snap.
     const now = performance.now() / 1000
     const since = now - blink.current.at
-    if (since >= 0 && since < BLINK.length) {
-      setMorph('Eyes Closed', 1 - Math.abs(since / BLINK.length - 0.5) * 2)
-    } else if (since >= BLINK.length) {
+    if (since >= 0 && since < BLINK_LENGTH) {
+      setMorph('Eyes Closed', 1 - Math.abs(since / BLINK_LENGTH - 0.5) * 2)
+    } else if (since >= BLINK_LENGTH) {
       setMorph('Eyes Closed', 0)
-      blink.current.at = now + between(BLINK.gap[0], BLINK.gap[1])
+      blink.current.at = now + between(tuning.blinkMin, tuning.blinkMax)
     }
 
     // The eyes go where you are. Sensitivity decides how eagerly they react;
     // the cap decides how far they are ever allowed to travel, so a cursor
     // flicked into a corner cannot drive them past a natural rotation.
-    const k = 1 - Math.exp(-LOOK.speed * delta)
+    //
+    // The vertical is negated. `VerticalLook` rises as the eyes go *down*,
+    // which is the other half of why this read wrong — pointing above the
+    // face sent them looking at the floor.
+    const target = look()
+    const k = 1 - Math.exp(-tuning.lookSpeed * delta)
     eyes.current.h = MathUtils.lerp(
       eyes.current.h,
-      MathUtils.clamp(pointer.x * LOOK.sensitivity[0], -LOOK.max[0], LOOK.max[0]),
+      MathUtils.clamp(target.x * tuning.lookH, -tuning.lookMaxH, tuning.lookMaxH),
       k
     )
     eyes.current.v = MathUtils.lerp(
       eyes.current.v,
-      MathUtils.clamp(pointer.y * LOOK.sensitivity[1], -LOOK.max[1], LOOK.max[1]),
+      MathUtils.clamp(-target.y * tuning.lookV, -tuning.lookMaxV, tuning.lookMaxV),
       k
     )
     setMorph('HorizontalLook', eyes.current.h)
@@ -186,16 +227,17 @@ function Model({ src, tuning }: { src: string; tuning: ModelTuning }) {
 /** Leans the whole subject a few degrees toward the pointer. Damped against
  *  the frame clock rather than snapped, so a flick of the mouse is a turn of
  *  the head and not a jump. */
-function Lean({ degrees, children }: { degrees: number; children: React.ReactNode }) {
+function Lean({ degrees, look, children }: { degrees: number; look: Look; children: React.ReactNode }) {
   const ref = useRef<Group>(null)
   const limit = MathUtils.degToRad(degrees)
 
-  useFrame(({ pointer }, delta) => {
+  useFrame((_, delta) => {
     const group = ref.current
     if (!group) return
+    const target = look()
     const k = 1 - Math.pow(0.002, delta)
-    group.rotation.y = MathUtils.lerp(group.rotation.y, pointer.x * limit, k)
-    group.rotation.x = MathUtils.lerp(group.rotation.x, -pointer.y * limit * 0.55, k)
+    group.rotation.y = MathUtils.lerp(group.rotation.y, target.x * limit, k)
+    group.rotation.x = MathUtils.lerp(group.rotation.x, -target.y * limit * 0.55, k)
   })
 
   return <group ref={ref}>{children}</group>
@@ -249,6 +291,7 @@ function Lens({ focalLength, fill }: { focalLength: number; fill: number }) {
 
 export default function MechModel({ src, tuning = MODEL_DEFAULTS }: { src: string; tuning?: ModelTuning }) {
   const distance = distanceFor(MODEL_DEFAULTS.focalLength, MODEL_DEFAULTS.fill)
+  const look = useGaze(tuning.watchBird)
 
   return (
     <Canvas
@@ -263,14 +306,14 @@ export default function MechModel({ src, tuning = MODEL_DEFAULTS }: { src: strin
       <directionalLight position={[tuning.fillX, tuning.fillY, tuning.fillZ]} intensity={tuning.fillIntensity} />
 
       <Suspense fallback={null}>
-        <Lean degrees={tuning.lean}>
+        <Lean degrees={tuning.lean} look={look}>
           <Float
             speed={tuning.floatSpeed}
             rotationIntensity={tuning.floatRotation}
             floatIntensity={0.5}
             floatingRange={[-tuning.floatRange, tuning.floatRange]}
           >
-            <Model src={src} tuning={tuning} />
+            <Model src={src} tuning={tuning} look={look} />
           </Float>
         </Lean>
       </Suspense>

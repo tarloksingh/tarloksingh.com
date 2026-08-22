@@ -39,30 +39,52 @@ export interface ModelTuning {
   envMapIntensity: number
   roughnessBoost: number
   metalnessScale: number
+
+  /** How eagerly the eyes react, and how far they are ever allowed to go —
+   *  a twitchy cursor at the edge of the screen should not be able to roll
+   *  them past a rotation a face could actually make. */
+  lookH: number
+  lookV: number
+  lookMaxH: number
+  lookMaxV: number
+  lookSpeed: number
+  /** Follow the bird over the pointer while it is in the air. */
+  watchBird: boolean
+  blinkMin: number
+  blinkMax: number
 }
 
 export const MODEL_DEFAULTS: ModelTuning = {
-  focalLength: 85,
-  fill: 0.52,
-  lean: 9,
-  floatSpeed: 1.15,
-  floatRange: 0.035,
-  floatRotation: 0.18,
+  focalLength: 200,
+  fill: 0.56,
+  lean: 11,
+  floatSpeed: 0.9,
+  floatRange: 0.14,
+  floatRotation: 1.5,
 
-  exposure: 0.1,
-  envIntensity: 3.4,
-  keyIntensity: 30,
-  keyX: -3.78,
-  keyY: 0.2,
-  keyZ: 9,
-  fillIntensity: 12.3,
-  fillX: 2.1,
-  fillY: -0.2,
-  fillZ: -1,
+  exposure: 0.05,
+  envIntensity: 3.1,
+  keyIntensity: 28.5,
+  keyX: 12,
+  keyY: 0.22,
+  keyZ: 12,
+  fillIntensity: 71.3,
+  fillX: -0.32,
+  fillY: 0.08,
+  fillZ: -0.66,
 
-  envMapIntensity: 0.6,
-  roughnessBoost: 0.2,
-  metalnessScale: 0.5
+  envMapIntensity: 0,
+  roughnessBoost: -0.93,
+  metalnessScale: 0,
+
+  lookH: 0.8,
+  lookV: 0.5,
+  lookMaxH: 0.6,
+  lookMaxV: 0.4,
+  lookSpeed: 4,
+  watchBird: true,
+  blinkMin: 2.5,
+  blinkMax: 9.5
 }
 
 const STORE_KEY = 'v3.model.tuning.v1'
@@ -84,8 +106,12 @@ const live: ModelTuning = { ...start }
 
 const keys = Object.keys(MODEL_DEFAULTS) as Array<keyof ModelTuning>
 
+/** Long float tails are what a slider's step arithmetic leaves behind, not a
+ *  value anyone chose; pasted back into source they are just noise. */
+const tidy = (value: number | boolean) => (typeof value === 'number' ? String(Number(value.toFixed(4))) : String(value))
+
 const asSource = (values: ModelTuning) =>
-  `export const MODEL_DEFAULTS: ModelTuning = {\n${keys.map((key) => `  ${key}: ${values[key]}`).join(',\n')}\n}`
+  `export const MODEL_DEFAULTS: ModelTuning = {\n${keys.map((key) => `  ${key}: ${tidy(values[key])}`).join(',\n')}\n}`
 
 export function useModelTuning(): ModelTuning {
   const values = useControls({
@@ -133,6 +159,20 @@ export function useModelTuning(): ModelTuning {
         fillX: { value: start.fillX, min: -12, max: 12, step: 0.01 },
         fillY: { value: start.fillY, min: -12, max: 12, step: 0.01 },
         fillZ: { value: start.fillZ, min: -12, max: 12, step: 0.01 }
+      },
+      { collapsed: false }
+    ),
+
+    Eyes: folder(
+      {
+        lookH: { value: start.lookH, min: 0, max: 2, step: 0.05, label: 'Sens H' },
+        lookV: { value: start.lookV, min: 0, max: 2, step: 0.05, label: 'Sens V' },
+        lookMaxH: { value: start.lookMaxH, min: 0.05, max: 1, step: 0.01, label: 'Max H' },
+        lookMaxV: { value: start.lookMaxV, min: 0.05, max: 1, step: 0.01, label: 'Max V' },
+        lookSpeed: { value: start.lookSpeed, min: 0.5, max: 14, step: 0.1, label: 'Follow' },
+        watchBird: { value: start.watchBird, label: 'Watch bird' },
+        blinkMin: { value: start.blinkMin, min: 0.5, max: 12, step: 0.1, label: 'Blink min' },
+        blinkMax: { value: start.blinkMax, min: 1, max: 24, step: 0.1, label: 'Blink max' }
       },
       { collapsed: false }
     ),

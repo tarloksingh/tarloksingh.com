@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { BIRD_BODY, BIRD_WING_DOWN, BIRD_WING_UP } from '../site/frames'
+import { gaze } from './gaze'
 
 /* A bird crosses the readout, and you can shoot it.
 
@@ -67,6 +68,7 @@ export default function MechBird() {
 
     const enter = (next: Mode) => {
       phase = next
+      gaze.bird.active = next !== 'away'
       setMode(next)
     }
 
@@ -91,6 +93,11 @@ export default function MechBird() {
       const el = wrap.current
       if (!el) return
       el.style.transform = `translate3d(${x}px, ${y}px, 0) rotate(${roll}deg) scaleX(${facing})`
+      // Published for the face to watch — see `gaze.ts`. A bird tumbling out
+      // of the sky is still worth following, so this keeps running through a
+      // hit and only stops once the bird is gone.
+      gaze.bird.x = x
+      gaze.bird.y = y
     }
 
     hit.current = () => {
@@ -145,7 +152,10 @@ export default function MechBird() {
     }
 
     raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
+    return () => {
+      gaze.bird.active = false
+      cancelAnimationFrame(raf)
+    }
   }, [])
 
   if (!enabled) return null

@@ -103,8 +103,9 @@ export default function MechHud() {
 
           {/* The marker and its readout do not move — the strip moves under
               them, the same way an artificial horizon works. */}
-          <path className="mech-marker" d="M -22 12 L -22 4 L 0 -4 L 22 4 L 22 12 Z" />
-          <text className="mech-heading" ref={heading} x="0" y="10" textAnchor="middle">
+          <rect className="mech-marker-pip" x="-4" y="-4" width="8" height="8" />
+          <rect className="mech-marker-box" x="-23" y="4" width="46" height="17" />
+          <text className="mech-heading" ref={heading} x="0" y="16.5" textAnchor="middle">
             000
           </text>
         </svg>

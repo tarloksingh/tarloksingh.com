@@ -34,6 +34,12 @@
   --px: min(0.0651rem, 0.0520833vw, 0.0925926vh);
   --accent: #2ee6c4;
   --accent-rgb: 46, 230, 196;
+  /* The two colours a green dashboard is actually seen against at night in
+     any of the films this is borrowing from: a magenta sign somewhere off to
+     one side and a sodium light on the other. Both stay under the readout,
+     never in it — the panel is one colour and the room around it is not. */
+  --neon-rose: 255, 45, 149;
+  --neon-amber: 255, 150, 45;
   --dim: #4b4b4b;
   --mid: #7c7c7c;
   --ease: cubic-bezier(0.22, 0.85, 0.25, 1);
@@ -296,65 +302,56 @@
   z-index: 1;
 }
 
-/* ---- the dissolve ----
+/* ---- disintegration ----
 
-   A grid of cells over the subject. On the way out they fill in on their own
-   staggered delays and the frame is swapped underneath at full cover; on the
-   way in they clear again. Blocks rather than a fade, so the picture is eaten
-   and rebuilt rather than dipped.
+   Cells that grow to eat the frame and shrink to give the next one back.
+   Scaling rather than fading, because a block that arrives at full size is a
+   pixel dying and a block that fades is a curtain. Out and in read from
+   different delays, so the frame rebuilds instead of un-wiping.
 
-   Cells are laid out by the grid and never measured, so this costs one layout
-   for five hundred spans at mount and nothing per swap. */
+   Laid out by the grid and never measured: one layout for eleven hundred
+   spans at mount, and nothing per swap. Transform and opacity only, so every
+   frame of it is on the compositor. */
 .mech-dissolve {
   position: absolute;
   inset: 0;
   z-index: 3;
   display: grid;
-  grid-template-columns: repeat(30, 1fr);
-  grid-template-rows: repeat(17, 1fr);
+  grid-template-columns: repeat(44, 1fr);
+  grid-template-rows: repeat(25, 1fr);
   pointer-events: none;
 }
 
 .mech-dissolve span {
   background: #000;
-  opacity: 0;
-  transition: opacity 120ms linear;
+  transform: scale(0);
+  /* No `will-change` here on purpose: eleven hundred cells asking for their
+     own compositor layer is a worse problem than the one it solves, and a
+     transform transition is promoted while it runs anyway. */
+  transition: transform 170ms cubic-bezier(0.3, 0, 0.7, 1);
+  transition-delay: var(--in);
 }
 
 .mech-dissolve[data-phase='out'] span {
-  opacity: 1;
+  /* Over one, so neighbours meet and the cover has no seams in it. */
+  transform: scale(1.04);
+  transition-delay: var(--out);
 }
 
-/* The lit ones flash the accent as they land, so it reads as a signal
-   rewriting the frame rather than as a curtain coming down. */
+/* The flare is a separate, shorter beat on the same cell — it lands accent
+   and is black by the time the cover completes. */
 .mech-dissolve[data-phase='out'] span[data-lit='true'] {
-  animation: mech-cell 260ms steps(2, end) both;
+  animation: mech-flare 300ms steps(3, end) both;
+  animation-delay: var(--out);
 }
 
-@keyframes mech-cell {
+@keyframes mech-flare {
   0% {
-    background: rgba(var(--accent-rgb), 0.85);
+    background: rgba(var(--accent-rgb), 0.9);
   }
   100% {
     background: #000;
   }
-}
-
-.mech-stage canvas {
-  display: block;
-}
-
-/* A still or a clip stands where the model does, at the exact size the
-   leaders were laid out against — `mediaBox()` in Mech.tsx does this same
-   sum, which is why the two can never drift apart. */
-.mech-flat {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  object-fit: cover;
-  border-radius: calc(4 * var(--px));
-  animation: mech-rise 520ms var(--ease) both;
 }
 
 /* ---- leaders ---- */
@@ -661,15 +658,31 @@
 /* Faded out toward the edges rather than drawn to them — a grid that reaches
    the corners of the window is a background, and this is meant to read as a
    panel lit from behind. */
+/* Two copies of the same grid. The sharp one is the line; the blurred one
+   underneath is the light coming off it, which is the whole difference
+   between a wireframe and a lit panel. Blurring a repeating gradient costs
+   one composited layer and no per-frame work. */
+.mech-grid,
+.mech-grid::after {
+  background-image:
+    linear-gradient(to right, rgba(var(--accent-rgb), 0.16) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(var(--accent-rgb), 0.16) 1px, transparent 1px);
+  background-size: calc(46 * var(--px)) calc(46 * var(--px));
+}
+
 .mech-grid {
   position: absolute;
   inset: 0;
-  background-image:
-    linear-gradient(to right, rgba(var(--accent-rgb), 0.055) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(var(--accent-rgb), 0.055) 1px, transparent 1px);
-  background-size: calc(46 * var(--px)) calc(46 * var(--px));
-  mask-image: radial-gradient(ellipse 78% 72% at 50% 48%, #000 20%, transparent 78%);
+  mask-image: radial-gradient(ellipse 80% 74% at 50% 48%, #000 22%, transparent 80%);
   animation: mech-grid-in 1400ms var(--ease) both;
+}
+
+.mech-grid::after {
+  content: '';
+  position: absolute;
+  inset: calc(-8 * var(--px));
+  filter: blur(calc(3 * var(--px)));
+  opacity: 0.85;
 }
 
 @keyframes mech-grid-in {
@@ -679,10 +692,28 @@
   }
 }
 
+/* The room the panel is in. A rose sign off to the left, sodium off the
+   right, and the panel's own green wash in the middle — all far enough under
+   the readout that no white text ever sits on a tint. */
 .mech-bloom {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse 60% 55% at 50% 50%, rgba(var(--accent-rgb), 0.05), transparent 70%);
+  background:
+    radial-gradient(ellipse 55% 50% at 50% 52%, rgba(var(--accent-rgb), 0.075), transparent 72%),
+    radial-gradient(ellipse 46% 60% at 6% 88%, rgba(var(--neon-rose), 0.1), transparent 70%),
+    radial-gradient(ellipse 42% 55% at 96% 12%, rgba(var(--neon-amber), 0.075), transparent 70%),
+    radial-gradient(ellipse 38% 44% at 88% 92%, rgba(var(--neon-rose), 0.055), transparent 70%);
+  animation: mech-bloom-drift 24s ease-in-out infinite alternate;
+}
+
+/* The room is never quite still either. */
+@keyframes mech-bloom-drift {
+  from {
+    transform: scale(1) translate(0, 0);
+  }
+  to {
+    transform: scale(1.06) translate(calc(-10 * var(--px)), calc(6 * var(--px)));
+  }
 }
 
 /* One line down the screen every so often. Long gap, short pass — a sweep you
@@ -749,20 +780,35 @@
   stroke-width: 1.6;
 }
 
-.mech-marker {
-  fill: none;
-  stroke: var(--accent);
-  stroke-width: 1.6;
-  filter: drop-shadow(0 0 5px rgba(var(--accent-rgb), 0.7));
+/* The marker is the one red thing on a green panel, which is the whole
+   reason it reads as a target and not as another gauge: a plain box with a
+   filled block sitting in the ticks above it. */
+.mech-marker-box {
+  fill: rgba(255, 42, 58, 0.08);
+  stroke: #ff2a3a;
+  stroke-width: 1.4;
+  filter: drop-shadow(0 0 6px rgba(255, 42, 58, 0.75));
+}
+
+.mech-marker-pip {
+  fill: #ff2a3a;
+  filter: drop-shadow(0 0 6px rgba(255, 42, 58, 0.9));
+  animation: mech-pip-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes mech-pip-pulse {
+  50% {
+    opacity: 0.35;
+  }
 }
 
 .mech-heading {
-  fill: var(--accent);
+  fill: #ff5560;
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  font-size: 13px;
-  letter-spacing: 1px;
+  font-size: 12px;
+  letter-spacing: 1.5px;
   font-variant-numeric: tabular-nums;
-  filter: drop-shadow(0 0 5px rgba(var(--accent-rgb), 0.7));
+  filter: drop-shadow(0 0 5px rgba(255, 42, 58, 0.8));
 }
 
 .mech-coords {
