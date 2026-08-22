@@ -1,5 +1,8 @@
+import { createPortal } from 'react-dom'
+import { Leva } from 'leva'
 import DriftWall from './DriftWall'
 import { wallItems } from './model'
+import { useWallTuning } from './wallTuning'
 
 /* The v3 home screen: the whole body of work drifting past, and two words of
    chrome over the top of it.
@@ -7,7 +10,11 @@ import { wallItems } from './model'
    Every clip plays, all the time. Nothing pauses on hover and the wall does
    not follow the pointer — it drifts at its own pace regardless of what the
    viewer is doing. Clicking a tile crosses to the browse screen with that
-   project already up. */
+   project already up.
+
+   Every one of those numbers is on a slider in development. What the sliders
+   set does not reach a visitor until it is pasted into `WALL_DEFAULTS` — see
+   `wallTuning.ts`. */
 
 interface Props {
   onOpen: (projectId: string) => void
@@ -15,34 +22,30 @@ interface Props {
 }
 
 export default function Home({ onOpen, onBrowse }: Props) {
+  const wall = useWallTuning()
+
   return (
     <div className="v3 v3-home">
+      {/* Development only, and portalled to `body` for the same reason the
+          gallery's panel is: rendered in place it would sit inside the
+          wall's stacking context and paint under the chrome. */}
+      {typeof document !== 'undefined'
+        ? createPortal(
+            <Leva
+              collapsed
+              hidden={!import.meta.env.DEV}
+              titleBar={{ title: 'Wall tuning' }}
+              theme={{
+                colors: { elevation1: '#161616', elevation2: '#1d1d1d', elevation3: '#292929' },
+                sizes: { rootWidth: 'min(340px, calc(100vw - 20px))' }
+              }}
+            />,
+            document.body
+          )
+        : null}
+
       <div className="v3-wall">
-        <DriftWall
-          items={wallItems}
-          columns={6}
-          tileWidth={210}
-          tileHeight={124}
-          gap={18}
-          radius={7}
-          tilt={34}
-          turn={-26}
-          roll={7}
-          perspective={700}
-          depth={110}
-          speed={16}
-          direction="up"
-          variance={0.4}
-          parallax={0}
-          pauseOnHover={false}
-          holdHoveredColumn={false}
-          play="always"
-          lift={34}
-          fade={0.2}
-          dim={0.62}
-          overlayColor="#000000"
-          onSelect={(item) => item.id && onOpen(item.id)}
-        />
+        <DriftWall items={wallItems} {...wall} onSelect={(item) => item.id && onOpen(item.id)} />
       </div>
 
       <header className="v3-head v3-over">
