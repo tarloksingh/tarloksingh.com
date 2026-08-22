@@ -400,19 +400,15 @@
   transition-delay: var(--out);
 }
 
-/* Mostly black, green through it, and a few pixels hot enough to read as
-   white. A cell keeps its tone for the whole of the uncover — the frame comes
-   back out of a field of green rather than out of a black rectangle. */
+/* Mostly black, green through it. A cell keeps its tone for the whole of the
+   uncover — the frame comes back out of a field of green rather than out of a
+   black rectangle. */
 .mech-dissolve span[data-tone='1'] {
   --tone: #0c2c25;
 }
 
 .mech-dissolve span[data-tone='2'] {
   --tone: rgba(var(--accent-rgb), 0.9);
-}
-
-.mech-dissolve span[data-tone='3'] {
-  --tone: #e6fff7;
 }
 
 /* Going out, the tinted cells settle to black behind the cover: the picture

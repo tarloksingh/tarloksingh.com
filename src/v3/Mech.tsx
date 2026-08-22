@@ -187,16 +187,19 @@ const gridFor = (box: { w: number; h: number }) => {
     // and a cell at the trailing edge can still go first.
     const fromMiddle = Math.hypot(across - 0.5, down - 0.5) / 0.707
 
-    /* Four tones, weighted heavily toward black — a readout losing signal,
+    /* Three tones, weighted heavily toward black — a readout losing signal,
        not a screen of confetti — and thinned out toward the edges so the
-       green fades off into the black instead of stopping at a ruled line. */
+       green fades off into the black instead of stopping at a ruled line.
+
+       No white. Against a black page a black cell is not a square at all,
+       which is what the hot pixels were being asked to stop being. */
     const edge = Math.min(across, 1 - across, down, 1 - down) * 2
     const roll = Math.random() / Math.max(Math.pow(Math.min(edge, 1), 0.9), 0.001)
 
     return {
       out: Math.round((across * 0.5 + Math.random() * 0.5) * 170),
       in: Math.round((fromMiddle * 0.55 + Math.random() * 0.45) * 260),
-      tone: roll < 0.7 ? 0 : roll < 0.9 ? 1 : roll < 0.975 ? 2 : 3,
+      tone: roll < 0.725 ? 0 : roll < 0.925 ? 1 : 2,
       /* Every cell lands at its own size and a few degrees off square. The
          overlap is what hides the lattice: a grid of identical squares all
          arriving at exactly 1.0 is a grid, however you time it. A square
