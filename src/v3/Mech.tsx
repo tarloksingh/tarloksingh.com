@@ -187,19 +187,21 @@ const gridFor = (box: { w: number; h: number }) => {
     // and a cell at the trailing edge can still go first.
     const fromMiddle = Math.hypot(across - 0.5, down - 0.5) / 0.707
 
-    /* Three tones, weighted heavily toward black — a readout losing signal,
-       not a screen of confetti — and thinned out toward the edges so the
+    /* Three tones, weighted hard toward black — a readout losing signal, not
+       a screen of confetti — and thinned further toward the edges so the
        green fades off into the black instead of stopping at a ruled line.
 
-       No white. Against a black page a black cell is not a square at all,
-       which is what the hot pixels were being asked to stop being. */
-    const edge = Math.min(across, 1 - across, down, 1 - down) * 2
-    const roll = Math.random() / Math.max(Math.pow(Math.min(edge, 1), 0.9), 0.001)
+       The weight *multiplies* the roll. Dividing by it, which is what this
+       did, sent every cell near an edge to a roll far above every threshold:
+       the border came out brightest and the cover was a solid mint
+       rectangle. Low rolls are the dark end, so damping has to scale down. */
+    const inset = Math.min(across, 1 - across, down, 1 - down)
+    const roll = Math.random() * Math.min(inset / 0.16, 1)
 
     return {
       out: Math.round((across * 0.5 + Math.random() * 0.5) * 170),
       in: Math.round((fromMiddle * 0.55 + Math.random() * 0.45) * 260),
-      tone: roll < 0.725 ? 0 : roll < 0.925 ? 1 : 2,
+      tone: roll < 0.87 ? 0 : roll < 0.97 ? 1 : 2,
       /* Every cell lands at its own size and a few degrees off square. The
          overlap is what hides the lattice: a grid of identical squares all
          arriving at exactly 1.0 is a grid, however you time it. A square
@@ -357,52 +359,165 @@ function Disintegration({ frame, phase }: { frame: Frame; phase: 'out' | 'in' })
   )
 }
 
-function Flat({ frame, onReady }: { frame: Extract<Frame, { kind: 'flat' }>; onReady: () => void }) {
+const clock = (seconds: number) => {
+  if (!Number.isFinite(seconds)) return '0:00'
+  return `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`
+}
+
+/* ---- the housing ----
+
+   The subject sits in something, the way every readout on a dashboard does:
+   corner brackets, a label strip naming what you are looking at, and a scale
+   of ticks along the bottom edge. Without it a still is a picture floating in
+   a void, and the rest of the screen is instruments.
+
+   Positioned in frame coordinates off the same `mediaBox()` the leaders are
+   laid out against, so the housing, the labels and the lines cannot disagree
+   about where the picture is. */
+
+interface FrameProps {
+  frame: Extract<Frame, { kind: 'flat' }>
+  index: number
+  count: number
+  onReady: () => void
+}
+
+function Flat({ frame, index, count, onReady }: FrameProps) {
   const box = mediaBox(frame.aspect)
-  const size = { width: `calc(${box.w} * var(--px))`, height: `calc(${box.h} * var(--px))` }
+  const shell = useRef<HTMLDivElement>(null)
+  const video = useRef<HTMLVideoElement>(null)
 
-  if (frame.type === 'video') {
-    /* No `poster`. The cover is held until `loadeddata`, so a poster has
-       nothing left to do except be the thing that flashes if the clip is
-       slower than the cap.
+  const [playing, setPlaying] = useState(true)
+  const [muted, setMuted] = useState(true)
+  const [at, setAt] = useState(0)
+  const [length, setLength] = useState(0)
+  const [full, setFull] = useState(false)
 
-       Muted whether or not the clip carries audio: this screen has no player
-       chrome, and an unmuted clip is one a browser refuses to start — which
-       reads as a broken frame rather than as a considered silence. */
-    return (
-      <video
-        className="mech-flat"
-        style={size}
-        src={frame.src}
-        muted
-        loop
-        autoPlay
-        playsInline
-        onLoadedData={onReady}
-      />
-    )
+  useEffect(() => {
+    const onChange = () => setFull(document.fullscreenElement === shell.current)
+    document.addEventListener('fullscreenchange', onChange)
+    return () => document.removeEventListener('fullscreenchange', onChange)
+  }, [])
+
+  const place = {
+    left: `calc(${box.x} * var(--px))`,
+    top: `calc(${box.y} * var(--px))`,
+    width: `calc(${box.w} * var(--px))`,
+    height: `calc(${box.h} * var(--px))`
+  }
+
+  const toggleFull = () => {
+    sound.select()
+    if (document.fullscreenElement) void document.exitFullscreen()
+    else void shell.current?.requestFullscreen().catch(() => {})
+  }
+
+  const togglePlay = () => {
+    const el = video.current
+    if (!el) return
+    sound.select()
+    if (el.paused) void el.play().catch(() => {})
+    else el.pause()
   }
 
   return (
-    <img
-      className="mech-flat"
-      style={size}
-      src={frame.src}
-      alt={frame.label ?? ''}
-      // A cached image can finish loading before React attaches the handler,
-      // and then `onLoad` never fires and the cover sits there until the cap.
-      ref={(el) => {
-        if (el?.complete) onReady()
-      }}
-      onLoad={onReady}
-    />
+    <div className="mech-housing" data-full={full} style={place} ref={shell}>
+      <div className="mech-housing-label">
+        <span>{frame.type === 'video' ? 'clip' : 'still'}</span>
+        <span className="mech-housing-count">
+          {String(index + 1).padStart(2, '0')} / {String(count).padStart(2, '0')}
+        </span>
+      </div>
+
+      {frame.type === 'video' ? (
+        /* No `poster`. The cover is held until `loadeddata`, so a poster has
+           nothing left to do except be the thing that flashes if the clip is
+           slower than the cap. Muted on arrival because a clip that starts
+           talking on its own is a hostile thing for a page to do — the
+           transport is how you ask for the sound. */
+        <video
+          className="mech-media"
+          ref={video}
+          src={frame.src}
+          muted={muted}
+          loop
+          autoPlay
+          playsInline
+          onClick={togglePlay}
+          onLoadedData={onReady}
+          onPlay={() => setPlaying(true)}
+          onPause={() => setPlaying(false)}
+          onTimeUpdate={(event) => setAt(event.currentTarget.currentTime)}
+          onLoadedMetadata={(event) => setLength(event.currentTarget.duration)}
+        />
+      ) : (
+        <img
+          className="mech-media"
+          src={frame.src}
+          alt={frame.label ?? ''}
+          // A cached image can finish loading before React attaches the
+          // handler, and then `onLoad` never fires and the cover sits there
+          // until the cap.
+          ref={(el) => {
+            if (el?.complete) onReady()
+          }}
+          onLoad={onReady}
+        />
+      )}
+
+      <i className="mech-corner" data-at="tl" />
+      <i className="mech-corner" data-at="tr" />
+      <i className="mech-corner" data-at="bl" />
+      <i className="mech-corner" data-at="br" />
+
+      <div className="mech-transport">
+        {frame.type === 'video' ? (
+          <>
+            <button onClick={togglePlay} aria-label={playing ? 'Pause' : 'Play'}>
+              {playing ? '❙❙' : '▶'}
+            </button>
+            <input
+              type="range"
+              min={0}
+              max={length || 0}
+              step={0.01}
+              value={at}
+              onChange={(event) => {
+                const to = Number(event.target.value)
+                if (video.current) video.current.currentTime = to
+                setAt(to)
+              }}
+              aria-label="Seek"
+            />
+            <span className="mech-time">
+              {clock(at)} / {clock(length)}
+            </span>
+            <button
+              data-off={muted}
+              onClick={() => {
+                sound.select()
+                setMuted((was) => !was)
+              }}
+              aria-label={muted ? 'Unmute' : 'Mute'}
+            >
+              {muted ? '⊘' : '≋'}
+            </button>
+          </>
+        ) : (
+          <span className="mech-time">{frame.label ?? ''}</span>
+        )}
+
+        <button onClick={toggleFull} aria-label={full ? 'Exit full screen' : 'Full screen'}>
+          {full ? '⤡' : '⤢'}
+        </button>
+      </div>
+    </div>
   )
 }
 
 /** How long the machine takes to come up: the grid strikes on, the compass
  *  spins and settles, and only then do the leaders extend. */
 const BOOT_MS = 1500
-
 
 interface Props {
   id: string
@@ -605,7 +720,12 @@ export default function Mech({ id, onProject, onHome }: Props) {
               <MechModel src={current.src} tuning={tuning} />
             </Suspense>
           ) : (
-            <Flat frame={current} onReady={() => setPhase((at) => (at === 'hold' ? 'in' : at))} />
+            <Flat
+              frame={current}
+              index={shown}
+              count={frames.length}
+              onReady={() => setPhase((at) => (at === 'hold' ? 'in' : at))}
+            />
           )}
           {/* Keyed on the frame, so stepping the rail draws the leaders out
               again rather than revealing them already extended. */}

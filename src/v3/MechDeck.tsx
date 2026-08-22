@@ -203,6 +203,10 @@ export default function MechDeck() {
         </button>
       </div>
 
+      {tracks.length === 0 && import.meta.env.DEV && (
+        <span className="mech-deck-hint">drop audio into src/assets/audio/</span>
+      )}
+
       {open && tracks.length > 0 && (
         <ul className="mech-deck-list">
           {tracks.map((item, i) => (
