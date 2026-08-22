@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Detail from './Detail'
 import StagePane from './Stage'
-import { byYear, companiesIn, entries, FILTERS, matches, thumbOf, type Entry, type Filter } from './model'
+import { byYear, entries, thumbOf, type Entry } from './model'
 
 /* Idle drift. With nothing picked the page walks itself: a few frames of a
    project, then on to the next one. Long enough to read a frame, short
@@ -16,8 +16,6 @@ interface Props {
 }
 
 export default function Browse({ initial = null, onHome }: Props) {
-  const [filter, setFilter] = useState<Filter>('all')
-  const [company, setCompany] = useState<string | null>(null)
   /** Set the moment anything is clicked; `null` means the page is drifting. */
   const [pinned, setPinned] = useState<{ id: string; frame: number } | null>(
     initial ? { id: initial, frame: 0 } : null
@@ -25,15 +23,13 @@ export default function Browse({ initial = null, onHome }: Props) {
   const [drift, setDrift] = useState({ entry: 0, frame: 0 })
   const [open, setOpen] = useState<string | null>('overview')
 
-  /* The tag row narrows first; the company row is drawn from what survives,
-     so it can never offer a company with nothing behind it. */
-  const tagged = useMemo(() => entries.filter((entry) => matches(entry, filter, null)), [filter])
-  const companies = useMemo(() => companiesIn(tagged), [tagged])
-  const visible = useMemo(
-    () => tagged.filter((entry) => !company || entry.project.company === company),
-    [tagged, company]
-  )
-  const showCompanies = filter === 'work' && companies.length > 1
+  /* No filtering: every project that has media is on the timeline. Ten
+     projects is a row someone scans in a glance, not a set that needs
+     narrowing — and a chip that returns nothing (`tools`, `motion`, `music`
+     all currently do) reads as a hiring manager finding a gap, not as an
+     empty state. Each project's tags print on its own card instead, in
+     `Detail`, where they can never come back empty. */
+  const visible = entries
 
   const active: Entry | null = pinned
     ? (visible.find((entry) => entry.project.id === pinned.id) ?? null)
@@ -55,15 +51,6 @@ export default function Browse({ initial = null, onHome }: Props) {
     return () => window.clearInterval(timer)
   }, [pinned, visible])
 
-  // A filter change re-cuts the set, so anything pinned inside the old one is
-  // no longer necessarily in it. Start over rather than show a stale project.
-  const changeFilter = (next: Filter) => {
-    setFilter(next)
-    setCompany(null)
-    setPinned(null)
-    setDrift({ entry: 0, frame: 0 })
-  }
-
   const step = useCallback(
     (index: number) => {
       if (!active) return
@@ -82,49 +69,6 @@ export default function Browse({ initial = null, onHome }: Props) {
 
       <div className="v3-column">
         <section className="v3-block v3-browse">
-          <div className="v3-group">
-            <h1 className="v3-title">Filters</h1>
-            <div className="v3-row v3-small">
-              {FILTERS.map((name) => (
-                <button
-                  key={name}
-                  className="v3-chip v3-small"
-                  aria-pressed={filter === name}
-                  onClick={() => changeFilter(name)}
-                >
-                  {name}
-                </button>
-              ))}
-            </div>
-
-            {/* Always rendered, so its height is held whether or not it has
-                anything in it — the page does not scroll, and a row that
-                appears would push everything below it down. */}
-            <div className="v3-sub v3-small">
-              {showCompanies && (
-                <>
-                  <button className="v3-chip v3-small" aria-pressed={company === null} onClick={() => setCompany(null)}>
-                    everywhere
-                  </button>
-                  {companies.map((name) => (
-                    <button
-                      key={name}
-                      className="v3-chip v3-small"
-                      aria-pressed={company === name}
-                      onClick={() => {
-                        setCompany(name)
-                        setPinned(null)
-                        setDrift({ entry: 0, frame: 0 })
-                      }}
-                    >
-                      {name}
-                    </button>
-                  ))}
-                </>
-              )}
-            </div>
-          </div>
-
           <div className="v3-group">
             <h1 className="v3-title">Timeline</h1>
             <div className="v3-timeline-row">

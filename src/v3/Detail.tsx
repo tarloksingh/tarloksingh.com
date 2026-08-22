@@ -31,6 +31,13 @@ export default function Detail({ entry, open, onToggle }: Props) {
       <div className="v3-heading">
         <h2 className="v3-title">{project.title}</h2>
         {roles.length > 0 && <p className="v3-italic v3-role">{roles.join(', ').toLowerCase()}</p>}
+        {project.tags.length > 0 && (
+          <div className="v3-tags v3-small">
+            {project.tags.map((tag) => (
+              <span key={tag}>{tag}</span>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="v3-accordion">

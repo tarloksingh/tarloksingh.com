@@ -4,11 +4,8 @@
    source of truth the current site reads. Nothing is duplicated: re-tag a
    project there and this whole view re-cuts itself. */
 
-import { projects, TAGS, type Project, type Tag } from '../data/projects'
+import { projects, type Project } from '../data/projects'
 import type { MediaItem } from '../data/media'
-
-export type Filter = 'all' | Tag
-export const FILTERS: Filter[] = ['all', ...TAGS]
 
 /* ---- 3D ----
 
@@ -50,23 +47,6 @@ export const entries: Entry[] = projects
   .map((project) => ({ project, year: project.year, frames: framesOf(project) }))
   .filter((entry) => entry.frames.length > 0)
   .sort((a, b) => b.year - a.year || a.project.title.localeCompare(b.project.title))
-
-export const matches = (entry: Entry, filter: Filter, company: string | null): boolean => {
-  if (filter !== 'all' && !entry.project.tags.includes(filter)) return false
-  if (company && entry.project.company !== company) return false
-  return true
-}
-
-/** The companies present in a filtered set, newest first — the second filter
- *  row. It only earns its space when there is more than one to choose. */
-export const companiesIn = (visible: Entry[]): string[] => {
-  const seen = new Map<string, number>()
-  for (const entry of visible) {
-    const year = seen.get(entry.project.company)
-    if (year === undefined || entry.year > year) seen.set(entry.project.company, entry.year)
-  }
-  return [...seen.entries()].sort((a, b) => b[1] - a[1]).map(([company]) => company)
-}
 
 /** Timeline rows: the visible projects bucketed by year, newest year first.
  *  One square per project — its first frame — not one per image. The timeline

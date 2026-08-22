@@ -166,13 +166,6 @@
   gap: 3px;
 }
 
-.v3-row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 10px;
-}
-
 .v3-chip {
   background: none;
   border: 0;
@@ -190,16 +183,6 @@
 
 .v3-chip[aria-pressed='true'] {
   color: var(--accent);
-}
-
-/* The company row is only populated under `work`, but its height is always
-   reserved — on a page that does not scroll, a row appearing would shove
-   everything below it down by its own height. */
-.v3-sub {
-  display: flex;
-  gap: 10px;
-  height: 14px;
-  margin-top: 3px;
 }
 
 /* One row, always. It scrolls sideways rather than wrapping onto a second
