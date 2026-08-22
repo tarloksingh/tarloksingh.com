@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { BIRD_BODY, BIRD_WING_DOWN, BIRD_WING_UP } from '../site/frames'
-import { gaze } from './gaze'
+import { gaze } from './subject'
 
 /* A bird crosses the readout, and you can shoot it.
 

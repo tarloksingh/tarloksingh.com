@@ -6,6 +6,7 @@ import MechBird from './MechBird'
 import MechCursor from './MechCursor'
 import MechHud from './MechHud'
 import { useModelTuning } from './modelTuning'
+import { drift } from './subject'
 import { entries, thumbOf, type Entry, type Frame } from './model'
 import './Mech.css'
 
@@ -104,6 +105,11 @@ const derive = (entry: Entry, frame: Frame): Note[] => {
  *  Matches the cover time the cell delays below add up to. */
 const EXIT_MS = 340
 
+/** How long the cover will wait for the incoming frame to be ready to paint
+ *  before giving up and uncovering anyway. A still that is slow to decode is
+ *  better than a stage that stays black. */
+const HOLD_CAP = 900
+
 /* ---- disintegration ----
 
    Swapping frames is not a fade and not a wipe. A grid of cells grows over
@@ -141,7 +147,7 @@ const dissolveBox = (frame: Frame) => {
  *  time is a texture; a fresh one on every swap is noise — and generating two
  *  thousand random numbers at the moment a frame changes is the one moment
  *  not to be doing it. */
-const grids = new Map<string, { columns: number; rows: number; cells: Array<{ out: number; in: number; lit: boolean }> }>()
+const grids = new Map<string, { columns: number; rows: number; cells: Array<{ out: number; in: number; tone: number }> }>()
 
 const gridFor = (box: { w: number; h: number }) => {
   // Whichever is larger: the cell we want, or the cell the budget allows.
@@ -160,10 +166,14 @@ const gridFor = (box: { w: number; h: number }) => {
     // outward. Neither is tidy — the jitter is worth more than the direction,
     // and a cell at the trailing edge can still go first.
     const fromMiddle = Math.hypot(across - 0.5, down - 0.5) / 0.707
+    /* Four tones, weighted heavily toward black. The field a frame breaks up
+       into is mostly dark with green through it and the odd hot pixel — a
+       readout losing signal, not a screen of confetti. */
+    const roll = Math.random()
     return {
       out: Math.round((across * 0.5 + Math.random() * 0.5) * 170),
       in: Math.round((fromMiddle * 0.55 + Math.random() * 0.45) * 260),
-      lit: Math.random() < 0.1
+      tone: roll < 0.7 ? 0 : roll < 0.9 ? 1 : roll < 0.975 ? 2 : 3
     }
   })
 
@@ -180,9 +190,35 @@ const modelFirst = (entry: Entry): Frame[] => [
   ...entry.frames.filter((frame) => frame.kind !== 'model')
 ]
 
-function Leaders({ notes, box }: { notes: Note[]; box: ReturnType<typeof boxOf> }) {
+function Leaders({ notes, box, floats }: { notes: Note[]; box: ReturnType<typeof boxOf>; floats: boolean }) {
+  const group = useRef<SVGGElement>(null)
+
+  /* The labels ride the same bob the subject is on, read from what the float
+     actually did this frame rather than from an animation timed to look like
+     it — two clocks that agree at the start and not a minute later is exactly
+     the sort of thing nobody can name and everybody notices.
+
+     Damped a little, so the lines lag the head by a hair. Chasing it exactly
+     makes the whole assembly feel welded together; trailing it makes the
+     labels feel pinned *to* something. */
+  useEffect(() => {
+    if (!floats) return
+    let raf = 0
+    let x = 0
+    let y = 0
+    const tick = () => {
+      raf = requestAnimationFrame(tick)
+      x += (drift.x - x) * 0.18
+      y += (drift.y - y) * 0.18
+      group.current?.setAttribute('transform', `translate(${x} ${y})`)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [floats])
+
   return (
     <svg className="mech-leaders" viewBox="0 0 1920 1080" preserveAspectRatio="none" aria-hidden>
+      <g ref={group}>
       {leadersFor(notes, box).map((leader, i) => {
         const y = leader.elbow[1]
         const length =
@@ -218,6 +254,7 @@ function Leaders({ notes, box }: { notes: Note[]; box: ReturnType<typeof boxOf> 
           </g>
         )
       })}
+      </g>
     </svg>
   )
 }
@@ -242,7 +279,7 @@ function Disintegration({ frame, phase }: { frame: Frame; phase: 'out' | 'in' })
       {cells.map((cell, i) => (
         <span
           key={i}
-          data-lit={cell.lit}
+          data-tone={cell.tone}
           style={{ ['--out' as string]: `${cell.out}ms`, ['--in' as string]: `${cell.in}ms` }}
         />
       ))}
@@ -250,17 +287,46 @@ function Disintegration({ frame, phase }: { frame: Frame; phase: 'out' | 'in' })
   )
 }
 
-function Flat({ frame }: { frame: Extract<Frame, { kind: 'flat' }> }) {
+function Flat({ frame, onReady }: { frame: Extract<Frame, { kind: 'flat' }>; onReady: () => void }) {
   const box = mediaBox(frame.aspect)
   const size = { width: `calc(${box.w} * var(--px))`, height: `calc(${box.h} * var(--px))` }
 
   if (frame.type === 'video') {
-    // Muted whether or not the clip carries audio: this screen has no player
-    // chrome, and an unmuted clip is one a browser refuses to start — which
-    // reads as a broken frame rather than as a considered silence.
-    return <video className="mech-flat" style={size} src={frame.src} poster={frame.poster} muted loop autoPlay playsInline />
+    /* No `poster`. The cover is held until `loadeddata`, so a poster has
+       nothing left to do except be the thing that flashes if the clip is
+       slower than the cap.
+
+       Muted whether or not the clip carries audio: this screen has no player
+       chrome, and an unmuted clip is one a browser refuses to start — which
+       reads as a broken frame rather than as a considered silence. */
+    return (
+      <video
+        className="mech-flat"
+        style={size}
+        src={frame.src}
+        muted
+        loop
+        autoPlay
+        playsInline
+        onLoadedData={onReady}
+      />
+    )
   }
-  return <img className="mech-flat" style={size} src={frame.src} alt={frame.label ?? ''} />
+
+  return (
+    <img
+      className="mech-flat"
+      style={size}
+      src={frame.src}
+      alt={frame.label ?? ''}
+      // A cached image can finish loading before React attaches the handler,
+      // and then `onLoad` never fires and the cover sits there until the cap.
+      ref={(el) => {
+        if (el?.complete) onReady()
+      }}
+      onLoad={onReady}
+    />
+  )
 }
 
 interface Props {
@@ -273,21 +339,43 @@ export default function Mech({ id, onHome }: Props) {
   const entry = entries.find((item) => item.project.id === id) ?? null
   const frames = useMemo(() => (entry ? modelFirst(entry) : []), [entry])
   const [index, setIndex] = useState(0)
-  // What is actually on the stage, which trails `index` by one exit
-  // animation. Picking a tile lights it immediately — the feedback is
-  // instant — while the frame it points at falls away and the next arrives.
+  /* What is actually on the stage, which trails `index` by the swap. Picking
+     a tile lights it immediately — the feedback is instant — while the frame
+     it points at is eaten and the next one arrives.
+
+     Three phases, not two. `hold` is the frame after the cover completes and
+     before it lifts: the incoming still or clip is mounted but has not
+     necessarily painted, and uncovering onto an undecoded video is what was
+     showing its poster for a beat and then cutting to the real thing. */
   const [shown, setShown] = useState(0)
+  const [phase, setPhase] = useState<'in' | 'out' | 'hold'>('in')
   const [open, setOpen] = useState<string | null>('overview')
   const rail = useRef<HTMLDivElement>(null)
 
   const current = frames[shown]
-  const swapping = index !== shown
+  const covered = phase !== 'in'
 
   useEffect(() => {
-    if (!swapping) return
-    const timer = window.setTimeout(() => setShown(index), EXIT_MS)
+    if (index === shown) return
+    setPhase('out')
+    const timer = window.setTimeout(() => {
+      setShown(index)
+      setPhase('hold')
+    }, EXIT_MS)
     return () => window.clearTimeout(timer)
-  }, [swapping, index])
+  }, [index, shown])
+
+  // A model is its own Suspense boundary and has nothing to decode; anything
+  // else lifts the cover when it says it is ready, or when the cap runs out.
+  useEffect(() => {
+    if (phase !== 'hold') return
+    if (frames[shown]?.kind === 'model') {
+      setPhase('in')
+      return
+    }
+    const cap = window.setTimeout(() => setPhase('in'), HOLD_CAP)
+    return () => window.clearTimeout(cap)
+  }, [phase, shown, frames])
 
   // A project with a dozen frames outruns the rail's height, so stepping with
   // the arrow keys has to bring the tile back into view.
@@ -366,13 +454,13 @@ export default function Mech({ id, onHome }: Props) {
               <MechModel src={current.src} tuning={tuning} />
             </Suspense>
           ) : (
-            <Flat frame={current} />
+            <Flat frame={current} onReady={() => setPhase((at) => (at === 'hold' ? 'in' : at))} />
           )}
           {/* Keyed on the frame, so stepping the rail draws the leaders out
               again rather than revealing them already extended. */}
-          <Leaders key={current.id} notes={notes} box={boxOf(current)} />
+          <Leaders key={current.id} notes={notes} box={boxOf(current)} floats={current.kind === 'model'} />
 
-          <Disintegration frame={current} phase={swapping ? 'out' : 'in'} />
+          <Disintegration frame={current} phase={covered ? 'out' : 'in'} />
         </div>
 
         <section className="mech-side">

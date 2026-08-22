@@ -34,12 +34,13 @@
   --px: min(0.0651rem, 0.0520833vw, 0.0925926vh);
   --accent: #2ee6c4;
   --accent-rgb: 46, 230, 196;
-  /* The two colours a green dashboard is actually seen against at night in
-     any of the films this is borrowing from: a magenta sign somewhere off to
-     one side and a sodium light on the other. Both stay under the readout,
-     never in it — the panel is one colour and the room around it is not. */
-  --neon-rose: 255, 45, 149;
-  --neon-amber: 255, 150, 45;
+  /* The room the panel is lit in: a cold blue off one side and a lime sign
+     off the other. Both stay under the readout, never in it. Kept off the
+     warm half of the wheel on purpose — red down here reads as a warning,
+     and the only thing on this screen allowed to say that is the target
+     marker on the compass. */
+  --wash-blue: 60, 150, 255;
+  --wash-lime: 140, 255, 170;
   --dim: #4b4b4b;
   --mid: #7c7c7c;
   --ease: cubic-bezier(0.22, 0.85, 0.25, 1);
@@ -336,7 +337,8 @@
 }
 
 .mech-dissolve span {
-  background: #000;
+  background: var(--tone);
+  --tone: #000;
   transform: scale(0);
   /* No `will-change` here on purpose: eleven hundred cells asking for their
      own compositor layer is a worse problem than the one it solves, and a
@@ -351,18 +353,34 @@
   transition-delay: var(--out);
 }
 
-/* The flare is a separate, shorter beat on the same cell — it lands accent
-   and is black by the time the cover completes. */
-.mech-dissolve[data-phase='out'] span[data-lit='true'] {
-  animation: mech-flare 300ms steps(3, end) both;
+/* Mostly black, green through it, and a few pixels hot enough to read as
+   white. A cell keeps its tone for the whole of the uncover — the frame comes
+   back out of a field of green rather than out of a black rectangle. */
+.mech-dissolve span[data-tone='1'] {
+  --tone: #0c2c25;
+}
+
+.mech-dissolve span[data-tone='2'] {
+  --tone: rgba(var(--accent-rgb), 0.9);
+}
+
+.mech-dissolve span[data-tone='3'] {
+  --tone: #e6fff7;
+}
+
+/* Going out, the tinted cells settle to black behind the cover: the picture
+   is eaten by something bright and what is left is dark. Stepped, because a
+   pixel resolving through a smooth gradient is not a pixel. */
+.mech-dissolve[data-phase='out'] span:not([data-tone='0']) {
+  animation: mech-settle 420ms steps(4, end) both;
   animation-delay: var(--out);
 }
 
-@keyframes mech-flare {
-  0% {
-    background: rgba(var(--accent-rgb), 0.9);
+@keyframes mech-settle {
+  from {
+    background: var(--tone);
   }
-  100% {
+  to {
     background: #000;
   }
 }
@@ -638,12 +656,15 @@
   letter-spacing: calc(0.6 * var(--px));
   color: var(--mid);
   opacity: 0.55;
-  transition: opacity 200ms linear, border-color 200ms linear, box-shadow 200ms linear, transform 260ms var(--ease);
+  transition: opacity 200ms linear, border-color 200ms linear, box-shadow 200ms linear;
 }
 
+/* Lit, not moved. A tile that slides out from under the pointer is a tile you
+   have to chase, and the reticle's lock box is already measuring it. */
 .mech-tile:hover {
-  opacity: 0.9;
-  transform: translateX(calc(-4 * var(--px)));
+  opacity: 1;
+  border-color: rgba(var(--accent-rgb), 0.55);
+  box-shadow: 0 0 calc(14 * var(--px)) rgba(var(--accent-rgb), 0.28);
 }
 
 .mech-tile[aria-pressed='true'] {
@@ -713,9 +734,9 @@
   inset: 0;
   background:
     radial-gradient(ellipse 55% 50% at 50% 52%, rgba(var(--accent-rgb), 0.075), transparent 72%),
-    radial-gradient(ellipse 46% 60% at 6% 88%, rgba(var(--neon-rose), 0.1), transparent 70%),
-    radial-gradient(ellipse 42% 55% at 96% 12%, rgba(var(--neon-amber), 0.075), transparent 70%),
-    radial-gradient(ellipse 38% 44% at 88% 92%, rgba(var(--neon-rose), 0.055), transparent 70%);
+    radial-gradient(ellipse 46% 60% at 6% 88%, rgba(var(--wash-blue), 0.11), transparent 70%),
+    radial-gradient(ellipse 42% 55% at 96% 12%, rgba(var(--wash-lime), 0.07), transparent 70%),
+    radial-gradient(ellipse 38% 44% at 88% 92%, rgba(var(--wash-blue), 0.06), transparent 70%);
   animation: mech-bloom-drift 24s ease-in-out infinite alternate;
 }
 

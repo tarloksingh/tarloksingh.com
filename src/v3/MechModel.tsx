@@ -3,7 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Float, useAnimations, useGLTF } from '@react-three/drei'
 import { ACESFilmicToneMapping, Box3, MathUtils, PMREMGenerator, SRGBColorSpace, Vector3 } from 'three'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
-import { gaze } from './gaze'
+import { drift, gaze } from './subject'
 import { MODEL_DEFAULTS, type ModelTuning } from './modelTuning'
 import type { Group, Mesh, MeshStandardMaterial, PerspectiveCamera } from 'three'
 
@@ -82,7 +82,7 @@ function useGaze(watchBird: boolean) {
 type Look = () => { x: number; y: number }
 
 function Model({ src, tuning, look }: { src: string; tuning: ModelTuning; look: Look }) {
-  const { scene, animations } = useGLTF(src)
+  const { scene: source, animations } = useGLTF(src)
   const group = useRef<Group>(null)
   const { actions } = useAnimations(animations, group)
 
@@ -98,6 +98,11 @@ function Model({ src, tuning, look }: { src: string; tuning: ModelTuning; look: 
   }, [actions])
 
   const fit = useMemo(() => {
+    // Cloned rather than used in place. `useGLTF` hands back one cached scene
+    // for the whole app, and this component writes morph influences straight
+    // onto its meshes — unmounting mid-blink left `Eyes Closed` at 1 on the
+    // shared object, so coming back from a still found him with his eyes shut.
+    const scene = source.clone(true)
     const box = new Box3()
     const morphed: Mesh[] = []
     const surfaces: Array<{ material: MeshStandardMaterial; roughness: number; metalness: number }> = []
@@ -131,8 +136,8 @@ function Model({ src, tuning, look }: { src: string; tuning: ModelTuning; look: 
 
     const size = box.getSize(new Vector3())
     const scale = TARGET_HEIGHT / (size.y || 1)
-    return { scale, morphed, surfaces, offset: box.getCenter(new Vector3()).multiplyScalar(-scale) }
-  }, [scene])
+    return { scene, scale, morphed, surfaces, offset: box.getCenter(new Vector3()).multiplyScalar(-scale) }
+  }, [source])
 
   const blink = useRef({ at: performance.now() / 1000 + between(tuning.blinkMin, tuning.blinkMax) })
   const eyes = useRef({ h: 0, v: 0 })
@@ -153,6 +158,15 @@ function Model({ src, tuning, look }: { src: string; tuning: ModelTuning; look: 
       if (index !== undefined) mesh.morphTargetInfluences![index] = value
     }
   }
+
+  // The blink only writes `Eyes Closed` while a blink is running or has just
+  // finished — in the gap before the first one there is nothing to hold it
+  // down, so it has to start down.
+  useEffect(() => {
+    setMorph('Eyes Closed', 0)
+    for (const name of IDLE) setMorph(name, 0)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fit])
 
   useFrame((_, delta) => {
     for (const surface of fit.surfaces) {
@@ -224,10 +238,34 @@ function Model({ src, tuning, look }: { src: string; tuning: ModelTuning; look: 
   return (
     <group ref={group}>
       <group scale={fit.scale} position={fit.offset}>
-        <primitive object={scene} />
+        <primitive object={fit.scene} />
       </group>
     </group>
   )
+}
+
+/** Publishes the float's translation, converted out of world units into the
+ *  frame coordinates the leaders are drawn in, so the labels can ride the
+ *  same bob the model is on rather than approximating it with an animation
+ *  that would drift out of step within a minute.
+ *
+ *  Sits inside `Float` at the origin, so its world position *is* the offset.
+ *  The exchange rate falls out of the framing: the camera is placed so the
+ *  subject's one world unit of height covers `fill` of 1080 frame pixels. */
+function Drift({ fill }: { fill: number }) {
+  const ref = useRef<Group>(null)
+  const at = useMemo(() => new Vector3(), [])
+
+  useFrame(() => {
+    if (!ref.current) return
+    ref.current.getWorldPosition(at)
+    const perUnit = 1080 * fill
+    drift.x = at.x * perUnit
+    // Frame coordinates count downward and world units count up.
+    drift.y = -at.y * perUnit
+  })
+
+  return <group ref={ref} />
 }
 
 /** Leans the whole subject a few degrees toward the pointer. Damped against
@@ -319,6 +357,7 @@ export default function MechModel({ src, tuning = MODEL_DEFAULTS }: { src: strin
             floatIntensity={0.5}
             floatingRange={[-tuning.floatRange, tuning.floatRange]}
           >
+            <Drift fill={tuning.fill} />
             <Model src={src} tuning={tuning} look={look} />
           </Float>
         </Lean>
