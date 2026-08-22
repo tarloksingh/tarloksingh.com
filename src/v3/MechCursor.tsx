@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { sound } from './sound'
 
 /* The reticle.
 
@@ -78,6 +79,9 @@ export default function MechCursor() {
       // re-render this on every one of the hundred moves it reports.
       const over = (event.target as Element | null)?.closest?.('a, button') ?? null
       if (over !== target) {
+        // Only on acquiring, not on losing: a chirp every time the pointer
+        // slides off something is half again as much noise for nothing.
+        if (over) sound.lock()
         target = over
         setHot(Boolean(over))
       }
@@ -85,6 +89,8 @@ export default function MechCursor() {
 
     const onLeave = () => setLive(false)
 
+    // The first gesture is what a browser will let an AudioContext start on.
+    window.addEventListener('pointerdown', sound.wake, { once: true })
     window.addEventListener('pointermove', onMove)
     document.addEventListener('pointerleave', onLeave)
     raf = requestAnimationFrame(tick)

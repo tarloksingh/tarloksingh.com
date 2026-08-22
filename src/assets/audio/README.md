@@ -14,8 +14,9 @@ A leading track number is stripped, and underscores and dashes become spaces.
 If a filename can't carry the title you want, override it by filename in the
 `TITLES` map at the top of `src/data/tracks.ts`.
 
-With this folder empty the player hides itself, so the site is complete
-without it.
+With this folder empty the site is still complete: the old player hides
+itself, and v3's deck reads `audio — no signal`, which is a slot waiting for
+something rather than a feature nobody knows exists.
 
 **Keep files small.** They are bundled with the site and downloaded by every
 visitor who presses play. 128–192kbps mp3 is plenty for a background loop; a

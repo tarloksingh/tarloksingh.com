@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { orbit } from './subject'
 
 /* The dashboard the readout sits on.
 
@@ -28,17 +29,28 @@ const TRAVEL = 0.55
 
 const pad = (n: number, width = 4) => String(Math.round(n)).padStart(width, '0')
 
+const signed = (n: number) => (n < 0 ? '-' : '+') + pad(Math.abs(n), 3)
+
+/** Seconds the compass spends spinning up before it starts telling the truth.
+ *  A gauge that is simply correct the instant the page paints has never been
+ *  switched on; one that races and settles has. */
+const SPIN = 1.15
+
 export default function MechHud() {
   const strip = useRef<SVGGElement>(null)
   const heading = useRef<SVGTextElement>(null)
   const readX = useRef<HTMLSpanElement>(null)
   const readY = useRef<HTMLSpanElement>(null)
+  const readAz = useRef<HTMLSpanElement>(null)
+  const readEl = useRef<HTMLSpanElement>(null)
+  const attitude = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!window.matchMedia('(pointer: fine)').matches) return
 
     const to = { x: window.innerWidth / 2, y: window.innerHeight / 2 }
     const at = { ...to }
+    const started = performance.now()
     let raf = 0
 
     const onMove = (event: PointerEvent) => {
@@ -56,14 +68,33 @@ export default function MechHud() {
       const across = at.x / window.innerWidth - 0.5
       const degrees = across * 360
 
+      /* Spin-up. The strip races several turns and eases into where it should
+         have been all along, so the last frame of the boot is the needle
+         arriving rather than the needle appearing. Eased out of the cube, and
+         the readout races with it. */
+      const since = (performance.now() - started) / 1000
+      const spinning = since < SPIN
+      const settle = spinning ? Math.pow(1 - since / SPIN, 3) : 0
+
       if (strip.current) {
-        strip.current.setAttribute('transform', `translate(${-across * window.innerWidth * TRAVEL} 0)`)
+        const slide = -across * window.innerWidth * TRAVEL - settle * window.innerWidth * 2.2
+        strip.current.setAttribute('transform', `translate(${slide} 0)`)
       }
       if (heading.current) {
-        heading.current.textContent = pad((degrees + 360) % 360, 3)
+        const value = spinning ? Math.random() * 360 : (degrees + 360) % 360
+        heading.current.textContent = pad(value, 3)
       }
-      if (readX.current) readX.current.textContent = pad(at.x)
-      if (readY.current) readY.current.textContent = pad(at.y)
+      if (readX.current) readX.current.textContent = pad(spinning ? Math.random() * 4000 : at.x)
+      if (readY.current) readY.current.textContent = pad(spinning ? Math.random() * 4000 : at.y)
+
+      // Attitude only says anything once the subject has been turned, and
+      // fades back once it is let go. A gauge reading zero forever is a gauge
+      // nobody looks at twice.
+      if (readAz.current) readAz.current.textContent = signed(((orbit.az % 360) + 540) % 360 - 180)
+      if (readEl.current) readEl.current.textContent = signed(orbit.el)
+      if (attitude.current) {
+        attitude.current.dataset.on = String(orbit.active || Math.abs(orbit.az) > 0.5 || Math.abs(orbit.el) > 0.5)
+      }
     }
 
     window.addEventListener('pointermove', onMove)
@@ -117,6 +148,15 @@ export default function MechHud() {
         </span>
         <span>
           Y<span ref={readY}>0000</span>
+        </span>
+      </div>
+
+      <div className="mech-attitude" ref={attitude} data-on="false">
+        <span>
+          AZ<span ref={readAz}>+000</span>
+        </span>
+        <span>
+          EL<span ref={readEl}>+000</span>
         </span>
       </div>
     </div>

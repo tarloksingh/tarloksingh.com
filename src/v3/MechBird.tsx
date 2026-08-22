@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { BIRD_BODY, BIRD_WING_DOWN, BIRD_WING_UP } from '../site/frames'
+import { sound } from './sound'
 import { gaze } from './subject'
 
 /* A bird crosses the readout, and you can shoot it.
@@ -104,6 +105,7 @@ export default function MechBird() {
       if (phase !== 'flying') return
       fell = 0
       drop = rand(-120, -40)
+      sound.hit()
       enter('hit')
     }
 

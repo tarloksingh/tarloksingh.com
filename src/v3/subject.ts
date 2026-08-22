@@ -17,6 +17,16 @@ export const gaze = {
   bird: { x: 0, y: 0, active: false }
 }
 
+export const orbit = {
+  /** Degrees the visitor has turned the subject by hand, dragging the stage.
+   *  Kept rather than sprung back: turning the thing is something you did,
+   *  and undoing it the moment you let go says it was not really yours to
+   *  turn. `active` is only for the readout, which dims when nobody is. */
+  az: 0,
+  el: 0,
+  active: false
+}
+
 export const drift = {
   /** How far the subject has floated from where it is nominally framed, in
    *  frame coordinates — the same 1920×1080 the leaders are drawn in, so they

@@ -45,9 +45,16 @@ export default function V3() {
   }
 
   if (screen.name === 'project') {
-    // Keyed on the project so arriving at a different one replays the whole
-    // reveal — the leaders drawing out is the entrance, not a decoration.
-    return <Mech key={screen.project} id={screen.project} onHome={() => go({ name: 'home' })} />
+    // Deliberately not keyed on the project. Remounting would make every move
+    // between two projects a fresh boot; the readout retargets instead, and
+    // owns that transition itself.
+    return (
+      <Mech
+        id={screen.project}
+        onProject={(project) => go({ name: 'project', project })}
+        onHome={() => go({ name: 'home' })}
+      />
+    )
   }
 
   if (screen.name === 'browse') {

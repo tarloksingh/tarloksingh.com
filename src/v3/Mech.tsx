@@ -6,7 +6,9 @@ import MechBird from './MechBird'
 import MechCursor from './MechCursor'
 import MechHud from './MechHud'
 import { useModelTuning } from './modelTuning'
-import { drift } from './subject'
+import MechDeck from './MechDeck'
+import { sound } from './sound'
+import { drift, orbit } from './subject'
 import { entries, thumbOf, type Entry, type Frame } from './model'
 import './Mech.css'
 
@@ -30,6 +32,11 @@ const MechModel = lazy(() => import('./MechModel'))
 interface Note {
   label: string
   value: string
+  /** Which fold in the left column this line is evidence for. Hovering
+   *  either one lights the other, which is the only thing tying the two
+   *  halves of the screen together — without it they are two panels that
+   *  happen to be on at the same time. */
+  fold?: string
 }
 
 /** Where a leader leaves its subject and where its text ends up.
@@ -87,8 +94,8 @@ const leadersFor = (notes: Note[], box: { x: number; y: number; w: number; h: nu
 const NOTES: Record<string, Note[]> = {
   'mr-takahashi/model': [
     { label: 'name', value: 'mr.takahashi' },
-    { label: '3D model', value: 'blender' },
-    { label: 'animations', value: 'blender' }
+    { label: '3D model', value: 'blender', fold: 'design' },
+    { label: 'animations', value: 'blender', fold: 'design' }
   ]
 }
 
@@ -97,7 +104,7 @@ const derive = (entry: Entry, frame: Frame): Note[] => {
   const kind = frame.kind === 'model' ? 'model' : frame.type === 'video' ? 'clip' : 'still'
   return [
     { label: kind, value: (frame.label ?? entry.project.title).toLowerCase() },
-    ...(tools.length > 0 ? [{ label: 'made in', value: tools[0].toLowerCase() }] : [])
+    ...(tools.length > 0 ? [{ label: 'made in', value: tools[0].toLowerCase(), fold: 'tools' }] : [])
   ]
 }
 
@@ -190,7 +197,18 @@ const modelFirst = (entry: Entry): Frame[] => [
   ...entry.frames.filter((frame) => frame.kind !== 'model')
 ]
 
-function Leaders({ notes, box, floats }: { notes: Note[]; box: ReturnType<typeof boxOf>; floats: boolean }) {
+interface LeadersProps {
+  notes: Note[]
+  box: ReturnType<typeof boxOf>
+  floats: boolean
+  /** A fold the pointer is over, or a leader's own label. Anything named is
+   *  lit and everything else is dimmed — one at a time, so the link reads as
+   *  a link rather than as a colour scheme. */
+  lit: string | null
+  onLit: (key: string | null) => void
+}
+
+function Leaders({ notes, box, floats, lit, onLit }: LeadersProps) {
   const group = useRef<SVGGElement>(null)
 
   /* The labels ride the same bob the subject is on, read from what the float
@@ -217,7 +235,7 @@ function Leaders({ notes, box, floats }: { notes: Note[]; box: ReturnType<typeof
   }, [floats])
 
   return (
-    <svg className="mech-leaders" viewBox="0 0 1920 1080" preserveAspectRatio="none" aria-hidden>
+    <svg className="mech-leaders" viewBox="0 0 1920 1080" preserveAspectRatio="none" data-lit={lit !== null} aria-hidden>
       <g ref={group}>
       {leadersFor(notes, box).map((leader, i) => {
         const y = leader.elbow[1]
@@ -226,8 +244,15 @@ function Leaders({ notes, box, floats }: { notes: Note[]; box: ReturnType<typeof
           Math.hypot(leader.tip[0] - leader.elbow[0], leader.tip[1] - y)
         const delay = 200 + i * 130
 
+        const on = lit !== null && (lit === leader.label || lit === leader.fold)
+
         return (
-          <g key={leader.label}>
+          <g
+            key={leader.label}
+            data-on={on}
+            onPointerEnter={() => onLit(leader.label)}
+            onPointerLeave={() => onLit(null)}
+          >
             <polyline
               className="mech-leader"
               points={`${leader.end},${y} ${leader.elbow[0]},${y} ${leader.tip[0]},${leader.tip[1]}`}
@@ -329,14 +354,56 @@ function Flat({ frame, onReady }: { frame: Extract<Frame, { kind: 'flat' }>; onR
   )
 }
 
+/** How long the machine takes to come up: the grid strikes on, the compass
+ *  spins and settles, and only then do the leaders extend. */
+const BOOT_MS = 1500
+
+/** Degrees of turn per pixel dragged across the stage, and how far the
+ *  elevation is ever allowed to go — past this the subject is being looked at
+ *  from underneath, which is nobody's idea of a portrait. */
+const ORBIT = { perPixel: 0.42, maxEl: 32 }
+
 interface Props {
   id: string
+  /** Retarget to another project without unmounting: the readout swings over
+   *  rather than the page being replaced. */
+  onProject: (id: string) => void
   onHome: () => void
 }
 
-export default function Mech({ id, onHome }: Props) {
+/** Reveals its text a character at a time. Used once, on the title, because
+ *  the title is the one line that changes when the readout retargets. */
+function Typed({ text, run }: { text: string; run: string }) {
+  const [shown, setShown] = useState(text.length)
+
+  useEffect(() => {
+    setShown(0)
+    let at = 0
+    const timer = window.setInterval(() => {
+      at += 1
+      setShown(at)
+      if (at >= text.length) window.clearInterval(timer)
+    }, 26)
+    return () => window.clearInterval(timer)
+  }, [text, run])
+
+  return (
+    <>
+      {text.slice(0, shown)}
+      <span className="mech-caret" data-done={shown >= text.length} />
+    </>
+  )
+}
+
+export default function Mech({ id, onProject, onHome }: Props) {
   const tuning = useModelTuning()
-  const entry = entries.find((item) => item.project.id === id) ?? null
+  /* The project on screen trails the one in the URL by a transit, the same
+     way the frame trails the tile you picked. Retargeting is the readout
+     swinging over to something else, not a page being replaced. */
+  const [shownId, setShownId] = useState(id)
+  const [booting, setBooting] = useState(true)
+  const [lit, setLit] = useState<string | null>(null)
+  const entry = entries.find((item) => item.project.id === shownId) ?? null
   const frames = useMemo(() => (entry ? modelFirst(entry) : []), [entry])
   const [index, setIndex] = useState(0)
   /* What is actually on the stage, which trails `index` by the swap. Picking
@@ -353,10 +420,60 @@ export default function Mech({ id, onHome }: Props) {
   const rail = useRef<HTMLDivElement>(null)
 
   const current = frames[shown]
-  const covered = phase !== 'in'
+  const covered = phase !== 'in' || booting
+
+  // The machine coming up, once, on arrival.
+  useEffect(() => {
+    sound.boot()
+    const timer = window.setTimeout(() => setBooting(false), BOOT_MS)
+    return () => window.clearTimeout(timer)
+  }, [])
+
+  /* Retargeting. The subject comes apart, the project underneath changes, and
+     the rail goes back to the model — reusing the same cover the frame swap
+     uses, because it is the same gesture at a larger scale. */
+  useEffect(() => {
+    if (id === shownId) return
+    sound.dissolve()
+    setPhase('out')
+    const timer = window.setTimeout(() => {
+      setShownId(id)
+      setIndex(0)
+      setShown(0)
+      setOpen('overview')
+      setPhase('hold')
+    }, EXIT_MS)
+    return () => window.clearTimeout(timer)
+  }, [id, shownId])
+
+  /* Dragging the stage turns the subject. Pointer capture rather than
+     window listeners: a drag that leaves the element still belongs to it,
+     and releasing outside the window still ends it. */
+  const drag = useRef<{ x: number; y: number } | null>(null)
+
+  const onDragStart = (event: React.PointerEvent) => {
+    if ((event.target as Element).closest('button, a')) return
+    drag.current = { x: event.clientX, y: event.clientY }
+    orbit.active = true
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  const onDragMove = (event: React.PointerEvent) => {
+    const from = drag.current
+    if (!from) return
+    orbit.az += (event.clientX - from.x) * ORBIT.perPixel
+    orbit.el = Math.max(-ORBIT.maxEl, Math.min(ORBIT.maxEl, orbit.el + (event.clientY - from.y) * ORBIT.perPixel * 0.6))
+    drag.current = { x: event.clientX, y: event.clientY }
+  }
+
+  const onDragEnd = () => {
+    drag.current = null
+    orbit.active = false
+  }
 
   useEffect(() => {
     if (index === shown) return
+    sound.dissolve()
     setPhase('out')
     const timer = window.setTimeout(() => {
       setShown(index)
@@ -408,7 +525,7 @@ export default function Mech({ id, onHome }: Props) {
   ]
 
   return (
-    <div className="mech">
+    <div className="mech" data-boot={booting}>
       {/* Development only, and portalled to `body` for the same reason the
           gallery's panel is: rendered in place it would sit inside the
           readout's stacking context and paint under the chrome. */}
@@ -436,19 +553,43 @@ export default function Mech({ id, onHome }: Props) {
           <button className="mech-wordmark" onClick={onHome}>
             Tarlok Singh
           </button>
+          {/* Each tag steps to the next project carrying it, wrapping — the
+              row is a way through the work rather than a legend for it. A tag
+              nothing else answers to is left inert rather than looking
+              pressable and doing nothing. */}
           <nav className="mech-nav">
             <span className="mech-nav-here">{project.title.toLowerCase()}</span>
-            {TAGS.filter((tag) => tag !== 'work').map((tag) => (
-              <span key={tag} data-on={project.tags.includes(tag)}>
-                {tag}
-              </span>
-            ))}
+            {TAGS.filter((tag) => tag !== 'work').map((tag) => {
+              const along = entries.filter((item) => item.project.tags.includes(tag))
+              const next = along[(along.findIndex((item) => item.project.id === shownId) + 1) % Math.max(along.length, 1)]
+              return (
+                <button
+                  key={tag}
+                  data-on={project.tags.includes(tag)}
+                  disabled={along.length === 0 || (along.length === 1 && next?.project.id === shownId)}
+                  onClick={() => {
+                    if (!next) return
+                    sound.select()
+                    onProject(next.project.id)
+                  }}
+                >
+                  {tag}
+                </button>
+              )
+            })}
           </nav>
         </header>
 
         {/* The subject and its labels share one box so that scaling the window
             moves them together. */}
-        <div className="mech-stage">
+        <div
+          className="mech-stage"
+          data-grab={current.kind === 'model'}
+          onPointerDown={current.kind === 'model' ? onDragStart : undefined}
+          onPointerMove={current.kind === 'model' ? onDragMove : undefined}
+          onPointerUp={onDragEnd}
+          onPointerCancel={onDragEnd}
+        >
           {current.kind === 'model' ? (
             <Suspense fallback={null}>
               <MechModel src={current.src} tuning={tuning} />
@@ -458,13 +599,27 @@ export default function Mech({ id, onHome }: Props) {
           )}
           {/* Keyed on the frame, so stepping the rail draws the leaders out
               again rather than revealing them already extended. */}
-          <Leaders key={current.id} notes={notes} box={boxOf(current)} floats={current.kind === 'model'} />
+          {/* Held back until the machine is up: the leaders extending is the
+              last beat of the boot, not something already there when it
+              finishes. */}
+          {!booting && (
+            <Leaders
+              key={current.id}
+              notes={notes}
+              box={boxOf(current)}
+              floats={current.kind === 'model'}
+              lit={lit}
+              onLit={setLit}
+            />
+          )}
 
           <Disintegration frame={current} phase={covered ? 'out' : 'in'} />
         </div>
 
         <section className="mech-side">
-          <h1 className="mech-title">{project.title}</h1>
+          <h1 className="mech-title">
+            <Typed text={project.title} run={shownId} />
+          </h1>
           {roles.length > 0 && <p className="mech-roles">{roles.join(', ').toLowerCase()}</p>}
 
           <div className="mech-folds">
@@ -472,7 +627,15 @@ export default function Mech({ id, onHome }: Props) {
               const isOpen = open === fold.id
               return (
                 <div className="mech-fold" key={fold.id} data-open={isOpen}>
-                  <button onClick={() => setOpen(isOpen ? null : fold.id)} aria-expanded={isOpen}>
+                  <button
+                    onClick={() => {
+                      sound.select()
+                      setOpen(isOpen ? null : fold.id)
+                    }}
+                    onPointerEnter={() => setLit(fold.id)}
+                    onPointerLeave={() => setLit(null)}
+                    aria-expanded={isOpen}
+                  >
                     <span className="mech-pip" />
                     <span>{fold.title}</span>
                   </button>
@@ -503,7 +666,10 @@ export default function Mech({ id, onHome }: Props) {
                 aria-label={frame.label ?? project.title}
                 title={frame.label ?? project.title}
                 style={{ ...(thumb ? { backgroundImage: `url(${thumb})` } : {}), ['--i' as string]: i }}
-                onClick={() => setIndex(i)}
+                onClick={() => {
+                  sound.select()
+                  setIndex(i)
+                }}
               >
                 {thumb ? null : <span>3D</span>}
               </button>
@@ -512,7 +678,10 @@ export default function Mech({ id, onHome }: Props) {
         </div>
 
         <footer className="mech-foot">
-          <a href="mailto:hello@tarloksingh.com">hello@tarloksingh.com</a>
+          <MechDeck />
+          <a href="mailto:hello@tarloksingh.com">
+            hello@tarloksingh.com
+          </a>
         </footer>
       </div>
     </div>

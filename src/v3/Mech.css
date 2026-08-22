@@ -240,6 +240,33 @@
   border-top: 0;
 }
 
+/* ---- boot ----
+
+   The machine comes up rather than simply being on. The chrome holds off,
+   the grid strikes, the compass spins into place (MechHud.tsx), and the
+   leaders extend last. Everything is a delay on an entrance that was already
+   there, so nothing has a second code path for its first second. */
+
+.mech[data-boot='true'] .mech-head,
+.mech[data-boot='true'] .mech-rail,
+.mech[data-boot='true'] .mech-foot,
+.mech[data-boot='true'] .mech-coords {
+  opacity: 0;
+}
+
+.mech-head,
+.mech-rail,
+.mech-foot,
+.mech-coords {
+  transition: opacity 500ms var(--ease) 120ms;
+}
+
+/* The subject arrives out of nothing rather than out of a cover — on the
+   first paint there is no previous frame for the cells to eat. */
+/* The subject is not faded in separately. On the first paint the cells are
+   already covering it, so the boot's last beat is the same disintegration
+   lifting that every frame change uses. */
+
 /* ---- header ---- */
 
 .mech-head {
@@ -272,6 +299,7 @@
 
 .mech-nav {
   display: flex;
+  align-items: baseline;
   gap: calc(19 * var(--px));
   font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-weight: 400;
@@ -287,8 +315,26 @@
   text-shadow: 0 0 calc(8 * var(--px)) rgba(46, 230, 196, 0.5);
 }
 
-.mech-nav span[data-on='true'] {
+.mech-nav button {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--dim);
+  transition: color 160ms linear, text-shadow 160ms linear;
+}
+
+.mech-nav button[data-on='true'] {
   color: var(--mid);
+}
+
+.mech-nav button:hover:not(:disabled) {
+  color: var(--accent);
+  text-shadow: 0 0 calc(8 * var(--px)) rgba(var(--accent-rgb), 0.5);
+}
+
+.mech-nav button:disabled {
+  opacity: 0.45;
 }
 
 /* ---- the subject ---- */
@@ -301,6 +347,7 @@
   height: calc(1080 * var(--px));
   transform: translate(-50%, -50%);
   z-index: 1;
+  touch-action: none;
 }
 
 .mech-stage canvas {
@@ -397,6 +444,29 @@
   overflow: visible;
 }
 
+/* The labels are the only part that takes the pointer. The lines are a
+   hairline and nobody is going to hit one on purpose. */
+.mech-leaders text {
+  pointer-events: auto;
+}
+
+/* One lit at a time. Everything else steps back rather than the lit one
+   getting brighter — a readout that answers a question by dimming the rest
+   of itself reads as a machine following you. */
+.mech-leaders[data-lit='true'] g {
+  opacity: 0.28;
+  transition: opacity 200ms linear;
+}
+
+.mech-leaders[data-lit='true'] g[data-on='true'] {
+  opacity: 1;
+}
+
+.mech-leaders g[data-on='true'] .mech-leader {
+  stroke: var(--accent);
+  filter: drop-shadow(0 0 5px rgba(var(--accent-rgb), 0.8));
+}
+
 .mech-leader {
   fill: none;
   stroke: #fff;
@@ -490,6 +560,37 @@
   }
   35%, 63% {
     opacity: 0.93;
+  }
+}
+
+/* The cursor the title types behind. It blinks while there is more to come
+   and goes out when the line is finished, rather than sitting there flashing
+   at a title nobody is writing. */
+.mech-caret {
+  display: inline-block;
+  width: calc(15 * var(--px));
+  height: calc(30 * var(--px));
+  margin-left: calc(4 * var(--px));
+  vertical-align: calc(-3 * var(--px));
+  background: var(--accent);
+  box-shadow: 0 0 calc(12 * var(--px)) rgba(var(--accent-rgb), 0.6);
+  animation: mech-caret 0.5s steps(1, end) infinite;
+}
+
+.mech-caret[data-done='true'] {
+  animation: mech-caret-out 400ms var(--ease) forwards;
+}
+
+@keyframes mech-caret {
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes mech-caret-out {
+  to {
+    opacity: 0;
+    transform: scaleX(0);
   }
 }
 
@@ -859,9 +960,30 @@
   text-shadow: 0 0 calc(9 * var(--px)) rgba(var(--accent-rgb), 0.5);
 }
 
-.mech-coords span span {
+.mech-coords span span,
+.mech-attitude span span {
   color: #fff;
   margin-left: calc(6 * var(--px));
+}
+
+/* Only says anything once the subject has been turned by hand. */
+.mech-attitude {
+  position: absolute;
+  right: calc(138 * var(--px));
+  bottom: calc(48 * var(--px));
+  display: flex;
+  gap: calc(20 * var(--px));
+  font-size: calc(11 * var(--px));
+  letter-spacing: calc(1.4 * var(--px));
+  color: rgba(var(--accent-rgb), 0.7);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 calc(9 * var(--px)) rgba(var(--accent-rgb), 0.5);
+  opacity: 0;
+  transition: opacity 400ms linear;
+}
+
+.mech-attitude[data-on='true'] {
+  opacity: 1;
 }
 
 /* ---- the bird ----
@@ -998,6 +1120,172 @@
   }
 }
 
+/* ---- the deck ----
+
+   Bottom left, on the same line as the email. Reads as another gauge on the
+   panel rather than as a media player dropped onto one — no rounded pill, no
+   album art, a level meter instead of a progress bar. */
+
+.mech-deck {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.mech-deck-row {
+  display: flex;
+  align-items: center;
+  gap: calc(9 * var(--px));
+}
+
+.mech-deck-tag {
+  color: rgba(var(--accent-rgb), 0.7);
+  letter-spacing: calc(1.4 * var(--px));
+  text-shadow: 0 0 calc(8 * var(--px)) rgba(var(--accent-rgb), 0.45);
+}
+
+.mech-deck-empty {
+  color: var(--dim);
+  letter-spacing: calc(1.2 * var(--px));
+}
+
+.mech-meter {
+  display: flex;
+  align-items: flex-end;
+  gap: calc(1.6 * var(--px));
+  height: calc(13 * var(--px));
+  width: calc(58 * var(--px));
+}
+
+.mech-meter i {
+  flex: 1;
+  height: 100%;
+  transform: scaleY(0.06);
+  transform-origin: bottom;
+  background: linear-gradient(to top, rgba(var(--accent-rgb), 0.5), var(--accent));
+  /* Written every frame from the analyser, so the transition is only here to
+     stop a dropped frame reading as a stutter. */
+  transition: transform 60ms linear;
+}
+
+.mech-deck-key {
+  background: none;
+  border: 0;
+  padding: 0 calc(2 * var(--px));
+  font: inherit;
+  font-size: calc(10 * var(--px));
+  line-height: 1;
+  color: var(--mid);
+  transition: color 160ms linear, text-shadow 160ms linear;
+}
+
+.mech-deck-key:hover,
+.mech-deck-key[data-on='true'] {
+  color: var(--accent);
+  text-shadow: 0 0 calc(9 * var(--px)) rgba(var(--accent-rgb), 0.6);
+}
+
+.mech-deck-key[data-off='true'] {
+  color: #6a2b2b;
+}
+
+.mech-deck-name {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  max-width: calc(150 * var(--px));
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: #fff;
+  transition: color 160ms linear;
+}
+
+.mech-deck-name:hover {
+  color: var(--accent);
+}
+
+.mech-deck-level {
+  width: calc(52 * var(--px));
+  height: calc(2 * var(--px));
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(var(--accent-rgb), 0.25);
+}
+
+.mech-deck-level::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: calc(6 * var(--px));
+  height: calc(10 * var(--px));
+  background: var(--accent);
+  box-shadow: 0 0 calc(8 * var(--px)) rgba(var(--accent-rgb), 0.7);
+}
+
+.mech-deck-level::-moz-range-thumb {
+  width: calc(6 * var(--px));
+  height: calc(10 * var(--px));
+  border: 0;
+  background: var(--accent);
+}
+
+/* Opens upward: it lives on the bottom edge, and a list that opened downward
+   would be off the screen. */
+.mech-deck-list {
+  position: absolute;
+  left: 0;
+  bottom: calc(22 * var(--px));
+  min-width: calc(210 * var(--px));
+  max-height: calc(230 * var(--px));
+  overflow-y: auto;
+  scrollbar-width: none;
+  list-style: none;
+  padding: calc(7 * var(--px)) 0;
+  background: rgba(4, 10, 9, 0.92);
+  border: 1px solid rgba(var(--accent-rgb), 0.28);
+  box-shadow: 0 0 calc(26 * var(--px)) rgba(var(--accent-rgb), 0.16);
+  animation: mech-deck-open 220ms var(--ease) both;
+}
+
+.mech-deck-list::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes mech-deck-open {
+  from {
+    opacity: 0;
+    transform: translateY(calc(6 * var(--px)));
+  }
+}
+
+.mech-deck-list button {
+  display: flex;
+  gap: calc(10 * var(--px));
+  width: 100%;
+  background: none;
+  border: 0;
+  padding: calc(4 * var(--px)) calc(12 * var(--px));
+  font: inherit;
+  text-align: left;
+  color: var(--mid);
+  transition: color 140ms linear, background-color 140ms linear;
+}
+
+.mech-deck-list button span {
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.mech-deck-list button:hover {
+  color: #fff;
+  background: rgba(var(--accent-rgb), 0.08);
+}
+
+.mech-deck-list button[aria-current='true'] {
+  color: var(--accent);
+}
+
 /* ---- footer ---- */
 
 .mech-foot {
@@ -1008,9 +1296,13 @@
   z-index: 3;
   display: flex;
   align-items: baseline;
-  justify-content: flex-end;
+  justify-content: space-between;
   font-size: calc(11.5 * var(--px));
   color: var(--mid);
+}
+
+.mech-foot {
+  align-items: center;
 }
 
 .mech-foot a {
