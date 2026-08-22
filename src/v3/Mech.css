@@ -1,0 +1,369 @@
+/* The project screen.
+
+   One 1920×1080 frame, letterboxed into the window, and every number below in
+   those coordinates. `--px` is one frame pixel expressed in container query
+   units, so a value written as `calc(38 * var(--px))` is 38px at full size and
+   scales with the frame from there. That is what keeps the type, the model and
+   the leader lines locked to each other at any window size — the whole point
+   of a HUD is that the labels touch the thing they name. */
+
+@font-face {
+  font-family: 'Clash Display';
+  src: url('/fonts/clash-display/ClashDisplay-Variable.woff2') format('woff2-variations');
+  font-weight: 200 700;
+  font-display: swap;
+  font-style: normal;
+}
+
+.mech {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: #000;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+.mech-frame {
+  position: relative;
+  width: min(100vw, calc(100vh * 16 / 9));
+  height: min(100vh, calc(100vw * 9 / 16));
+  container-type: size;
+
+  --px: 0.0520833cqw;
+  --accent: #2ee6c4;
+  --dim: #4b4b4b;
+  --mid: #7c7c7c;
+
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  color: #fff;
+}
+
+/* ---- header ---- */
+
+.mech-head {
+  position: absolute;
+  left: calc(101 * var(--px));
+  right: calc(101 * var(--px));
+  top: calc(20 * var(--px));
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  z-index: 3;
+}
+
+.mech-wordmark {
+  font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-weight: 400;
+  font-size: calc(19 * var(--px));
+  letter-spacing: calc(3.4 * var(--px));
+  text-transform: uppercase;
+  color: var(--mid);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  transition: color 160ms linear;
+}
+
+.mech-wordmark:hover {
+  color: #fff;
+}
+
+.mech-nav {
+  display: flex;
+  gap: calc(19 * var(--px));
+  font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-weight: 400;
+  font-size: calc(14 * var(--px));
+  color: var(--dim);
+}
+
+/* The project you are in, first in the row and named rather than filtered —
+   the tags after it are the vocabulary it sits inside, and the ones it
+   actually carries are lit. */
+.mech-nav-here {
+  color: var(--accent);
+}
+
+.mech-nav span[data-on='true'] {
+  color: var(--mid);
+}
+
+/* ---- the object ---- */
+
+.mech-stage {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.mech-stage canvas {
+  display: block;
+}
+
+/* A still or a clip stands in the same place the model does, at its own shape
+   and never cropped. */
+.mech-flat {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  max-width: calc(760 * var(--px));
+  max-height: calc(720 * var(--px));
+  object-fit: contain;
+  border-radius: calc(4 * var(--px));
+  animation: mech-rise 520ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+/* ---- leaders ---- */
+
+.mech-leaders {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.mech-leader {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 1.15;
+  stroke-dasharray: var(--l);
+  stroke-dashoffset: var(--l);
+  animation: mech-draw 620ms cubic-bezier(0.3, 0.8, 0.3, 1) both;
+}
+
+.mech-leader-label,
+.mech-leader-value {
+  opacity: 0;
+  animation: mech-fade 380ms ease both;
+}
+
+.mech-leader-label {
+  font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-weight: 400;
+  font-size: 15px;
+  fill: var(--accent);
+}
+
+.mech-leader-value {
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  fill: #fff;
+}
+
+@keyframes mech-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes mech-fade {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes mech-rise {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 10px));
+  }
+}
+
+/* ---- left column ---- */
+
+.mech-side {
+  position: absolute;
+  left: calc(101 * var(--px));
+  top: calc(212 * var(--px));
+  width: calc(340 * var(--px));
+  bottom: calc(120 * var(--px));
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  animation: mech-in 620ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes mech-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(10 * var(--px)));
+  }
+}
+
+.mech-title {
+  font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-weight: 400;
+  font-size: calc(41 * var(--px));
+  line-height: 1;
+  letter-spacing: calc(-0.4 * var(--px));
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.mech-roles {
+  margin-top: calc(9 * var(--px));
+  font-size: calc(11.5 * var(--px));
+  line-height: calc(15 * var(--px));
+  color: #fff;
+}
+
+/* The folds start a fixed distance down the frame rather than following the
+   role line — two lines of roles or four, the overview opens in the same
+   place, which is what stops the column jumping between projects. */
+.mech-folds {
+  position: absolute;
+  top: calc(174 * var(--px));
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(4 * var(--px));
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.mech-folds::-webkit-scrollbar {
+  display: none;
+}
+
+.mech-fold > button {
+  display: flex;
+  align-items: center;
+  gap: calc(8 * var(--px));
+  width: 100%;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-weight: 400;
+  font-size: calc(14.5 * var(--px));
+  line-height: calc(22 * var(--px));
+  color: var(--dim);
+  transition: color 140ms linear;
+}
+
+.mech-fold > button:hover {
+  color: var(--mid);
+}
+
+.mech-fold[data-open='true'] > button {
+  color: var(--accent);
+}
+
+/* A square, not a triangle — this is a readout, not a disclosure widget. */
+.mech-pip {
+  width: calc(4 * var(--px));
+  height: calc(4 * var(--px));
+  flex: none;
+  background: currentColor;
+}
+
+.mech-fold-body {
+  padding: calc(4 * var(--px)) 0 calc(14 * var(--px)) calc(24 * var(--px));
+  font-size: calc(10.8 * var(--px));
+  line-height: calc(15.5 * var(--px));
+  color: #fff;
+  white-space: pre-line;
+  animation: mech-fade 300ms ease both;
+}
+
+/* ---- right rail ---- */
+
+.mech-rail {
+  position: absolute;
+  right: calc(138 * var(--px));
+  top: calc(210 * var(--px));
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: calc(21 * var(--px));
+  /* Five tiles is the Figma; a dozen is what several of the projects actually
+     have. The strip scrolls inside the frame rather than running off the
+     bottom of it. */
+  max-height: calc(690 * var(--px));
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.mech-rail::-webkit-scrollbar {
+  display: none;
+}
+
+.mech-tile {
+  width: calc(60 * var(--px));
+  height: calc(51 * var(--px));
+  padding: 0;
+  border: calc(1 * var(--px)) solid rgba(255, 255, 255, 0.14);
+  border-radius: calc(4 * var(--px));
+  background-color: #141414;
+  background-size: cover;
+  background-position: center;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-size: calc(9 * var(--px));
+  letter-spacing: calc(0.6 * var(--px));
+  color: var(--mid);
+  opacity: 0.55;
+  transition: opacity 160ms linear, border-color 160ms linear, box-shadow 160ms linear;
+}
+
+.mech-tile:hover {
+  opacity: 0.85;
+}
+
+.mech-tile[aria-pressed='true'] {
+  opacity: 1;
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 calc(60 * var(--px)) rgba(46, 230, 196, 0.22);
+  color: #fff;
+}
+
+/* ---- footer ---- */
+
+.mech-foot {
+  position: absolute;
+  left: calc(101 * var(--px));
+  right: calc(101 * var(--px));
+  bottom: calc(30 * var(--px));
+  z-index: 3;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: calc(11.5 * var(--px));
+  color: var(--mid);
+}
+
+.mech-caption {
+  font-style: italic;
+}
+
+.mech-foot a {
+  color: var(--mid);
+  text-decoration: none;
+  transition: color 160ms linear;
+}
+
+.mech-foot a:hover {
+  color: #fff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mech-leader,
+  .mech-leader-label,
+  .mech-leader-value,
+  .mech-side,
+  .mech-flat {
+    animation-duration: 1ms;
+  }
+}

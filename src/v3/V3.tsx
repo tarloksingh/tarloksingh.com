@@ -1,23 +1,33 @@
 import { useEffect, useState } from 'react'
 import Browse from './Browse'
 import Home from './Home'
+import Mech from './Mech'
 import './V3.css'
 
-/* Two screens, and forty lines of routing between them.
+/* Three screens, and fifty lines of routing between them.
 
-   `/v3` is the wall; `/v3/index` is the browse view. Real URLs rather than
-   component state, for the same reason the current site bothers: a portfolio
-   is made to be linked to, and the back button has to work. */
+   `/v3` is the wall, `/v3/index` is the browse view, and `/v3/p/<project>` is
+   a project. Real URLs rather than component state, for the same reason the
+   current site bothers: a portfolio is made to be linked to, and the back
+   button has to work. */
 
-type Screen = { name: 'home' } | { name: 'browse'; project: string | null }
+type Screen =
+  | { name: 'home' }
+  | { name: 'browse'; project: string | null }
+  | { name: 'project'; project: string }
 
 const parse = (pathname: string): Screen => {
-  const match = /^\/v3\/index(?:\/([a-z0-9-]+))?\/?$/i.exec(pathname)
-  return match ? { name: 'browse', project: match[1] ?? null } : { name: 'home' }
+  const project = /^\/v3\/p\/([a-z0-9-]+)\/?$/i.exec(pathname)
+  if (project) return { name: 'project', project: project[1] }
+  const browse = /^\/v3\/index(?:\/([a-z0-9-]+))?\/?$/i.exec(pathname)
+  return browse ? { name: 'browse', project: browse[1] ?? null } : { name: 'home' }
 }
 
-const href = (screen: Screen) =>
-  screen.name === 'home' ? '/v3' : screen.project ? `/v3/index/${screen.project}` : '/v3/index'
+const href = (screen: Screen) => {
+  if (screen.name === 'home') return '/v3'
+  if (screen.name === 'project') return `/v3/p/${screen.project}`
+  return screen.project ? `/v3/index/${screen.project}` : '/v3/index'
+}
 
 export default function V3() {
   const [screen, setScreen] = useState<Screen>(() => parse(window.location.pathname))
@@ -34,6 +44,12 @@ export default function V3() {
     setScreen(next)
   }
 
+  if (screen.name === 'project') {
+    // Keyed on the project so arriving at a different one replays the whole
+    // reveal — the leaders drawing out is the entrance, not a decoration.
+    return <Mech key={screen.project} id={screen.project} onHome={() => go({ name: 'home' })} />
+  }
+
   if (screen.name === 'browse') {
     // Keyed on the project so arriving from a tile mounts the browse view
     // already pinned, rather than opening on a drift and jumping.
@@ -42,7 +58,7 @@ export default function V3() {
 
   return (
     <Home
-      onOpen={(project) => go({ name: 'browse', project })}
+      onOpen={(project) => go({ name: 'project', project })}
       onBrowse={() => go({ name: 'browse', project: null })}
     />
   )
