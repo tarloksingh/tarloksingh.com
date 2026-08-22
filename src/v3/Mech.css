@@ -67,8 +67,8 @@
   }
 }
 
-.mech-cursor-outer,
-.mech-cursor-inner {
+.mech-cursor-ring,
+.mech-cursor-pin {
   position: absolute;
   left: 0;
   top: 0;
@@ -91,40 +91,38 @@
   stroke: var(--accent);
 }
 
-/* The arcs turn on their own; the ring they belong to is what closes in on a
-   target, so the two never fight over one transform. */
-.mech-ring {
+/* `fill-box` is what makes `center` mean the centre of the circle rather than
+   the centre of the SVG viewport — without it the arcs orbit a point off to
+   one side instead of turning on the spot. */
+.mech-ring,
+.mech-pin {
+  transform-box: fill-box;
   transform-origin: center;
   animation: mech-spin 14s linear infinite;
   transition: r 260ms var(--ease);
 }
 
-.mech-cursor[data-hot='true'] .mech-ring {
-  r: 24;
-  animation-duration: 4.5s;
-}
-
-.mech-brackets path {
-  transform-origin: center;
-  opacity: 0.45;
-  transition: transform 280ms var(--ease), opacity 200ms linear;
-}
-
-/* Off a target the brackets sit out wide and faint. Over one they snap in and
-   square up on it. */
-.mech-cursor[data-hot='true'] .mech-brackets path {
-  transform: scale(0.7);
-  opacity: 1;
-}
-
 .mech-pin {
-  transform-origin: center;
   animation: mech-spin 9s linear infinite reverse;
-  transition: r 260ms var(--ease);
+}
+
+.mech-cursor[data-hot='true'] .mech-ring {
+  r: 22;
+  animation-duration: 4.5s;
 }
 
 .mech-cursor[data-hot='true'] .mech-pin {
   r: 13;
+}
+
+/* Off a target the cursor wears its own brackets. Over one it hands them to
+   the target's box and lets its own fade out. */
+.mech-brackets {
+  transition: opacity 180ms linear;
+}
+
+.mech-cursor[data-hot='true'] .mech-brackets {
+  opacity: 0;
 }
 
 .mech-cross {
@@ -146,6 +144,69 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+/* ---- lock-on ----
+
+   Four corners on the target's own rectangle. Position and size are written
+   from JS every frame and eased by these transitions, so acquiring a new
+   target slides the box across to it rather than cutting. */
+
+.mech-lock {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  transform: scale(1.12);
+  transition:
+    left 220ms var(--ease),
+    top 220ms var(--ease),
+    width 220ms var(--ease),
+    height 220ms var(--ease),
+    opacity 160ms linear,
+    transform 220ms var(--ease);
+}
+
+.mech-cursor[data-hot='true'] .mech-lock {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.mech-lock i {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border: 1.4px solid var(--accent);
+}
+
+.mech-lock i:nth-child(1) {
+  left: 0;
+  top: 0;
+  border-right: 0;
+  border-bottom: 0;
+}
+
+.mech-lock i:nth-child(2) {
+  right: 0;
+  top: 0;
+  border-left: 0;
+  border-bottom: 0;
+}
+
+.mech-lock i:nth-child(3) {
+  left: 0;
+  bottom: 0;
+  border-right: 0;
+  border-top: 0;
+}
+
+.mech-lock i:nth-child(4) {
+  right: 0;
+  bottom: 0;
+  border-left: 0;
+  border-top: 0;
 }
 
 /* ---- header ---- */
@@ -208,6 +269,18 @@
   height: calc(1080 * var(--px));
   transform: translate(-50%, -50%);
   z-index: 1;
+  transition: opacity 260ms var(--ease), transform 260ms var(--ease), filter 260ms var(--ease);
+}
+
+/* Stepping the rail drops the old frame before the new one is mounted — a
+   short, sharp fall away, then the leaders draw themselves back out over the
+   thing that replaced it. */
+.mech-stage[data-phase='out'] {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.985) translateY(10px);
+  filter: blur(3px);
+  transition-duration: 165ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
 }
 
 .mech-stage canvas {
@@ -503,6 +576,12 @@
 
 .mech-caption {
   font-style: italic;
+  transition: opacity 200ms var(--ease);
+}
+
+.mech-caption[data-phase='out'] {
+  opacity: 0;
+  transition-duration: 140ms;
 }
 
 .mech-foot a {
@@ -527,5 +606,9 @@
   .mech-ring,
   .mech-pin {
     animation: none;
+  }
+
+  .mech-stage {
+    transition-duration: 1ms;
   }
 }

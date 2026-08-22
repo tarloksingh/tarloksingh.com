@@ -95,6 +95,10 @@ const derive = (entry: Entry, frame: Frame): Note[] => {
   ]
 }
 
+/** How long the frame on screen takes to fall away before the next is
+ *  mounted. Matches the exit transition in Mech.css. */
+const EXIT_MS = 165
+
 /** The model goes first. "Open a project" means the object, and the stills are
  *  what you step to afterwards — `model.ts` appends it because the index
  *  screen wants it last. */
@@ -167,10 +171,21 @@ export default function Mech({ id, onHome }: Props) {
   const entry = entries.find((item) => item.project.id === id) ?? null
   const frames = useMemo(() => (entry ? modelFirst(entry) : []), [entry])
   const [index, setIndex] = useState(0)
+  // What is actually on the stage, which trails `index` by one exit
+  // animation. Picking a tile lights it immediately — the feedback is
+  // instant — while the frame it points at falls away and the next arrives.
+  const [shown, setShown] = useState(0)
   const [open, setOpen] = useState<string | null>('overview')
   const rail = useRef<HTMLDivElement>(null)
 
-  const current = frames[index]
+  const current = frames[shown]
+  const swapping = index !== shown
+
+  useEffect(() => {
+    if (!swapping) return
+    const timer = window.setTimeout(() => setShown(index), EXIT_MS)
+    return () => window.clearTimeout(timer)
+  }, [swapping, index])
 
   // A project with a dozen frames outruns the rail's height, so stepping with
   // the arrow keys has to bring the tile back into view.
@@ -222,7 +237,7 @@ export default function Mech({ id, onHome }: Props) {
 
       {/* The subject and its labels share one box so that scaling the window
           moves them together. */}
-      <div className="mech-stage">
+      <div className="mech-stage" data-phase={swapping ? 'out' : 'in'}>
         {current.kind === 'model' ? (
           <Suspense fallback={null}>
             <MechModel src={current.src} />
@@ -284,7 +299,9 @@ export default function Mech({ id, onHome }: Props) {
       </div>
 
       <footer className="mech-foot">
-        <span className="mech-caption">{current.label ?? project.tagline}</span>
+        <span className="mech-caption" data-phase={swapping ? 'out' : 'in'}>
+          {current.label ?? project.tagline}
+        </span>
         <a href="mailto:hello@tarloksingh.com">hello@tarloksingh.com</a>
       </footer>
     </div>
