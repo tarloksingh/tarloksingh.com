@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { TAGS } from '../data/projects'
+import MechBird from './MechBird'
 import MechCursor from './MechCursor'
 import { entries, thumbOf, type Entry, type Frame } from './model'
 import './Mech.css'
@@ -220,6 +221,7 @@ export default function Mech({ id, onHome }: Props) {
   return (
     <div className="mech">
       <MechCursor />
+      <MechBird />
 
       <header className="mech-head">
         <button className="mech-wordmark" onClick={onHome}>

@@ -15,7 +15,7 @@ import type { MediaItem } from '../data/media'
    as a picture of it. */
 const MODELS: Record<string, { file: string; label: string }> = {
   'capsule-c1': { file: '/models/capsule-c1.glb', label: 'Capsule C1 — enclosure' },
-  'mr-takahashi': { file: '/models/mr-takahashi.glb', label: 'Mr. Takahashi — character' }
+  'mr-takahashi': { file: '/models/mr-takahashi-v2.glb', label: 'Mr. Takahashi — character' }
 }
 
 /** A media item, plus the model case the base `MediaItem` has no room for. */

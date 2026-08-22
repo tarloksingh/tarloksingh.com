@@ -253,6 +253,7 @@
    actually carries are lit. */
 .mech-nav-here {
   color: var(--accent);
+  text-shadow: 0 0 calc(8 * var(--px)) rgba(46, 230, 196, 0.5);
 }
 
 .mech-nav span[data-on='true'] {
@@ -332,6 +333,8 @@
   font-weight: 400;
   font-size: 15px;
   fill: var(--accent);
+  /* SVG text takes no text-shadow; a drop-shadow filter is the same halo. */
+  filter: drop-shadow(0 0 6px rgba(46, 230, 196, 0.55));
 }
 
 .mech-leader-value {
@@ -386,6 +389,11 @@
   letter-spacing: calc(-0.4 * var(--px));
   text-transform: uppercase;
   color: var(--accent);
+  /* Everything set in the accent carries a little of it into the black
+     around it. Two shadows rather than one: a tight halo that reads as the
+     ink itself being bright, and a wide, faint one that reads as the black
+     picking it up. */
+  text-shadow: 0 0 calc(9 * var(--px)) rgba(46, 230, 196, 0.55), 0 0 calc(34 * var(--px)) rgba(46, 230, 196, 0.25);
 }
 
 .mech-roles {
@@ -398,12 +406,16 @@
 /* The folds start a fixed distance down the column rather than following the
    role line — two lines of roles or four, the overview opens in the same
    place, which is what stops the column jumping between projects. */
+/* Inset by four and padded back out by four: a scroll box clips both axes
+   whatever `overflow-x` says, and the pip turning to a diamond reaches
+   outside the column's left edge. The content lands where it always did. */
 .mech-folds {
   position: absolute;
   top: calc(174 * var(--px));
-  left: 0;
-  right: 0;
+  left: calc(-5 * var(--px));
+  right: calc(-5 * var(--px));
   bottom: 0;
+  padding: 0 calc(5 * var(--px));
   overflow-y: auto;
   scrollbar-width: none;
 }
@@ -435,6 +447,7 @@
 
 .mech-fold[data-open='true'] > button {
   color: var(--accent);
+  text-shadow: 0 0 calc(8 * var(--px)) rgba(46, 230, 196, 0.45);
 }
 
 /* A square, not a triangle — this is a readout, not a disclosure widget. */
@@ -555,8 +568,136 @@
 .mech-tile[aria-pressed='true'] {
   opacity: 1;
   border-color: var(--accent);
+  outline: none;
   box-shadow: inset 0 0 0 calc(60 * var(--px)) rgba(46, 230, 196, 0.22);
   color: #fff;
+}
+
+/* ---- the bird ----
+
+   v2's drawing, in the accent, on its own layer above the readout and below
+   the reticle. Twelve frames a second like everything else drawn by hand on
+   this site: the two wing poses alternate on a stepped opacity, which is a
+   cheaper flipbook than swapping paths. */
+
+.mech-sky {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+
+  --beat: 0.08333s;
+}
+
+.mech-bird-wrap {
+  position: absolute;
+  left: 0;
+  top: 0;
+  will-change: transform;
+  transition: opacity 300ms linear;
+}
+
+/* Parked off screen between flights, and untouchable while it is: the button
+   is still somewhere in the layout, and an invisible one the reticle can lock
+   onto is a target you cannot see. */
+.mech-sky[data-mode='away'] .mech-bird-wrap {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.mech-bird {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  pointer-events: auto;
+  color: var(--accent);
+  transform: translate(-50%, -50%);
+}
+
+.mech-bird svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  filter: drop-shadow(0 0 5px rgba(46, 230, 196, 0.5));
+}
+
+.mech-bird path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mech-sky[data-mode='flying'] .mech-wing-up {
+  animation: mech-beat calc(var(--beat) * 2) steps(1, end) infinite;
+}
+
+/* Its own keyframes rather than the same ones reversed: `mech-beat` is
+   symmetric about its midpoint, so playing it backwards gives the identical
+   sequence and both wings would show at once. */
+.mech-sky[data-mode='flying'] .mech-wing-down {
+  animation: mech-beat-alt calc(var(--beat) * 2) steps(1, end) infinite;
+}
+
+@keyframes mech-beat {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes mech-beat-alt {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Hit. The bird goes white for a frame and the ring it was carrying blows
+   out through it; the tumble itself is gravity, in MechBird.tsx. */
+.mech-sky[data-mode='hit'] .mech-bird {
+  color: #fff;
+}
+
+.mech-sky[data-mode='hit'] .mech-bird svg {
+  opacity: 0;
+  transition: opacity 900ms 200ms linear;
+}
+
+.mech-burst {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border: 1.6px solid var(--accent);
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.mech-sky[data-mode='hit'] .mech-burst {
+  animation: mech-burst 520ms cubic-bezier(0.1, 0.7, 0.3, 1) forwards;
+}
+
+@keyframes mech-burst {
+  from {
+    opacity: 1;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 0;
+    transform: scale(7);
+  }
 }
 
 /* ---- footer ---- */
