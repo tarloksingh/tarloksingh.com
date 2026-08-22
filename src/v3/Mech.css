@@ -1,11 +1,15 @@
 /* The project screen.
 
-   One 1920×1080 frame, letterboxed into the window, and every number below in
-   those coordinates. `--px` is one frame pixel expressed in container query
-   units, so a value written as `calc(38 * var(--px))` is 38px at full size and
-   scales with the frame from there. That is what keeps the type, the model and
-   the leader lines locked to each other at any window size — the whole point
-   of a HUD is that the labels touch the thing they name. */
+   Every number below is a Figma coordinate in a 1920×1080 frame, and `--px`
+   is what one of those is worth in real pixels right now — the smaller of
+   what the width and the height allow, so the composition scales as one thing
+   and never crops.
+
+   What changed from a fixed frame: the chrome hangs off the true viewport
+   edges rather than the frame's, so there is no letterbox at any window
+   shape. Only the subject and its leader lines share a centred 16:9 box, and
+   they have to, because a label that does not touch what it names is not a
+   readout. A wider window buys the leaders more clearance, never less. */
 
 @font-face {
   font-family: 'Clash Display';
@@ -18,26 +22,130 @@
 .mech {
   position: fixed;
   inset: 0;
-  display: grid;
-  place-items: center;
-  background: #000;
   overflow: hidden;
-  -webkit-font-smoothing: antialiased;
-}
+  background: #000;
 
-.mech-frame {
-  position: relative;
-  width: min(100vw, calc(100vh * 16 / 9));
-  height: min(100vh, calc(100vw * 9 / 16));
-  container-type: size;
-
-  --px: 0.0520833cqw;
+  --px: min(0.0520833vw, 0.0925926vh);
   --accent: #2ee6c4;
   --dim: #4b4b4b;
   --mid: #7c7c7c;
+  --ease: cubic-bezier(0.22, 0.85, 0.25, 1);
 
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   color: #fff;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- the reticle ----
+
+   The native arrow is replaced outright, so every hit target on the page has
+   to be one the reticle can sit over — which the whole screen already is. */
+
+@media (pointer: fine) {
+  .mech,
+  .mech * {
+    cursor: none;
+  }
+}
+
+.mech-cursor {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 240ms linear;
+}
+
+.mech-cursor[data-live='true'] {
+  opacity: 1;
+}
+
+@media (pointer: coarse) {
+  .mech-cursor {
+    display: none;
+  }
+}
+
+.mech-cursor-outer,
+.mech-cursor-inner {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 68px;
+  height: 68px;
+  will-change: transform;
+}
+
+.mech-cursor svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.75);
+  stroke-width: 1.4;
+  transition: stroke 200ms linear;
+}
+
+.mech-cursor[data-hot='true'] svg {
+  stroke: var(--accent);
+}
+
+/* The arcs turn on their own; the ring they belong to is what closes in on a
+   target, so the two never fight over one transform. */
+.mech-ring {
+  transform-origin: center;
+  animation: mech-spin 14s linear infinite;
+  transition: r 260ms var(--ease);
+}
+
+.mech-cursor[data-hot='true'] .mech-ring {
+  r: 24;
+  animation-duration: 4.5s;
+}
+
+.mech-brackets path {
+  transform-origin: center;
+  opacity: 0.45;
+  transition: transform 280ms var(--ease), opacity 200ms linear;
+}
+
+/* Off a target the brackets sit out wide and faint. Over one they snap in and
+   square up on it. */
+.mech-cursor[data-hot='true'] .mech-brackets path {
+  transform: scale(0.7);
+  opacity: 1;
+}
+
+.mech-pin {
+  transform-origin: center;
+  animation: mech-spin 9s linear infinite reverse;
+  transition: r 260ms var(--ease);
+}
+
+.mech-cursor[data-hot='true'] .mech-pin {
+  r: 13;
+}
+
+.mech-cross {
+  stroke-width: 1;
+  opacity: 0.85;
+}
+
+.mech-dot {
+  fill: currentColor;
+  stroke: none;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.mech-cursor[data-hot='true'] .mech-dot {
+  color: var(--accent);
+}
+
+@keyframes mech-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ---- header ---- */
@@ -63,7 +171,6 @@
   background: none;
   border: 0;
   padding: 0;
-  cursor: pointer;
   transition: color 160ms linear;
 }
 
@@ -91,11 +198,15 @@
   color: var(--mid);
 }
 
-/* ---- the object ---- */
+/* ---- the subject ---- */
 
 .mech-stage {
   position: absolute;
-  inset: 0;
+  left: 50%;
+  top: 50%;
+  width: calc(1920 * var(--px));
+  height: calc(1080 * var(--px));
+  transform: translate(-50%, -50%);
   z-index: 1;
 }
 
@@ -103,18 +214,17 @@
   display: block;
 }
 
-/* A still or a clip stands in the same place the model does, at its own shape
-   and never cropped. */
+/* A still or a clip stands where the model does, at the exact size the
+   leaders were laid out against — `mediaBox()` in Mech.tsx does this same
+   sum, which is why the two can never drift apart. */
 .mech-flat {
   position: absolute;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  max-width: calc(760 * var(--px));
-  max-height: calc(720 * var(--px));
-  object-fit: contain;
+  object-fit: cover;
   border-radius: calc(4 * var(--px));
-  animation: mech-rise 520ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation: mech-rise 520ms var(--ease) both;
 }
 
 /* ---- leaders ---- */
@@ -185,9 +295,7 @@
   width: calc(340 * var(--px));
   bottom: calc(120 * var(--px));
   z-index: 3;
-  display: flex;
-  flex-direction: column;
-  animation: mech-in 620ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation: mech-in 620ms var(--ease) both;
 }
 
 @keyframes mech-in {
@@ -214,7 +322,7 @@
   color: #fff;
 }
 
-/* The folds start a fixed distance down the frame rather than following the
+/* The folds start a fixed distance down the column rather than following the
    role line — two lines of roles or four, the overview opens in the same
    place, which is what stops the column jumping between projects. */
 .mech-folds {
@@ -223,9 +331,6 @@
   left: 0;
   right: 0;
   bottom: 0;
-  display: flex;
-  flex-direction: column;
-  gap: calc(4 * var(--px));
   overflow-y: auto;
   scrollbar-width: none;
 }
@@ -242,14 +347,13 @@
   background: none;
   border: 0;
   padding: 0;
-  cursor: pointer;
   text-align: left;
   font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-weight: 400;
   font-size: calc(14.5 * var(--px));
-  line-height: calc(22 * var(--px));
+  line-height: calc(23 * var(--px));
   color: var(--dim);
-  transition: color 140ms linear;
+  transition: color 200ms linear;
 }
 
 .mech-fold > button:hover {
@@ -266,15 +370,68 @@
   height: calc(4 * var(--px));
   flex: none;
   background: currentColor;
+  transition: transform 320ms var(--ease);
 }
 
+.mech-fold[data-open='true'] .mech-pip {
+  transform: rotate(45deg) scale(1.3);
+}
+
+/* ---- the fold itself ----
+
+   A grid row grown from 0fr to 1fr. An unknown height cannot be transitioned
+   any other way, and unmounting the body would give the panel an opening but
+   never a close. Everything inside is staggered behind that: the rule draws
+   across, then the copy lifts in — and both run backwards on the way out. */
+
 .mech-fold-body {
-  padding: calc(4 * var(--px)) 0 calc(14 * var(--px)) calc(24 * var(--px));
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition: grid-template-rows 440ms var(--ease), visibility 0s linear 440ms;
+}
+
+.mech-fold-body > div {
+  overflow: hidden;
+  padding-left: calc(24 * var(--px));
+}
+
+.mech-fold[data-open='true'] .mech-fold-body {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  transition: grid-template-rows 440ms var(--ease), visibility 0s;
+}
+
+.mech-fold-rule {
+  display: block;
+  height: 1px;
+  margin: calc(6 * var(--px)) 0 calc(9 * var(--px));
+  background: linear-gradient(to right, var(--accent), rgba(46, 230, 196, 0));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 380ms var(--ease);
+}
+
+.mech-fold[data-open='true'] .mech-fold-rule {
+  transform: scaleX(1);
+  transition-delay: 90ms;
+}
+
+.mech-fold-body p {
   font-size: calc(10.8 * var(--px));
   line-height: calc(15.5 * var(--px));
   color: #fff;
   white-space: pre-line;
-  animation: mech-fade 300ms ease both;
+  padding-bottom: calc(14 * var(--px));
+  opacity: 0;
+  transform: translateY(calc(-6 * var(--px)));
+  transition: opacity 200ms linear, transform 420ms var(--ease);
+}
+
+.mech-fold[data-open='true'] .mech-fold-body p {
+  opacity: 1;
+  transform: none;
+  transition-delay: 130ms;
 }
 
 /* ---- right rail ---- */
@@ -288,8 +445,7 @@
   flex-direction: column;
   gap: calc(21 * var(--px));
   /* Five tiles is the Figma; a dozen is what several of the projects actually
-     have. The strip scrolls inside the frame rather than running off the
-     bottom of it. */
+     have. The strip scrolls rather than running off the bottom. */
   max-height: calc(690 * var(--px));
   overflow-y: auto;
   scrollbar-width: none;
@@ -302,24 +458,25 @@
 .mech-tile {
   width: calc(60 * var(--px));
   height: calc(51 * var(--px));
+  flex: none;
   padding: 0;
-  border: calc(1 * var(--px)) solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: calc(4 * var(--px));
   background-color: #141414;
   background-size: cover;
   background-position: center;
-  cursor: pointer;
   display: grid;
   place-items: center;
   font-size: calc(9 * var(--px));
   letter-spacing: calc(0.6 * var(--px));
   color: var(--mid);
   opacity: 0.55;
-  transition: opacity 160ms linear, border-color 160ms linear, box-shadow 160ms linear;
+  transition: opacity 200ms linear, border-color 200ms linear, box-shadow 200ms linear, transform 260ms var(--ease);
 }
 
 .mech-tile:hover {
-  opacity: 0.85;
+  opacity: 0.9;
+  transform: translateX(calc(-4 * var(--px)));
 }
 
 .mech-tile[aria-pressed='true'] {
@@ -365,5 +522,10 @@
   .mech-side,
   .mech-flat {
     animation-duration: 1ms;
+  }
+
+  .mech-ring,
+  .mech-pin {
+    animation: none;
   }
 }
