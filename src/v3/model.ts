@@ -85,3 +85,47 @@ export const thumbOf = (frame: Frame): string | null => {
   if (frame.kind === 'model') return null
   return frame.type === 'video' ? (frame.poster ?? null) : frame.src
 }
+
+/* ---- the wall ----
+
+   Every clip and still across every project, for the home screen. Clips ride
+   on their 400px proxies rather than the full files: `media.ts` generates
+   those precisely so a screen can play many at once.
+
+   Interleaved rather than listed project by project — consecutive tiles come
+   from different projects, so a column is a cross-section of the work instead
+   of a run of one case study. The stride is coprime-ish with most project
+   lengths, which is enough to break up the runs without needing to shuffle
+   (and without a different wall on every reload). */
+export interface WallItem {
+  image: string
+  video?: string
+  title: string
+  id: string
+}
+
+export const wallItems: WallItem[] = (() => {
+  const flat = entries.flatMap((entry) =>
+    entry.frames.flatMap((frame): WallItem[] => {
+      if (frame.kind === 'model') return []
+      const image = frame.type === 'video' ? frame.poster : frame.src
+      if (!image) return []
+      return [
+        {
+          image,
+          video: frame.type === 'video' ? frame.clip : undefined,
+          title: frame.label ? `${entry.project.title} — ${frame.label}` : entry.project.title,
+          id: entry.project.id
+        }
+      ]
+    })
+  )
+
+  if (flat.length < 3) return flat
+
+  // Walking by a stride coprime with the length visits every tile exactly
+  // once — an interleave, not a sample, so nothing is dropped or doubled.
+  const gcd = (a: number, b: number): number => (b ? gcd(b, a % b) : a)
+  const stride = [7, 5, 11, 13, 3].find((n) => gcd(n, flat.length) === 1) ?? 1
+  return flat.map((_, i) => flat[(i * stride) % flat.length])
+})()

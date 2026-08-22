@@ -103,6 +103,54 @@
   border-radius: 10px;
 }
 
+/* ---- home ----
+
+   The wall fills the screen and the chrome sits over it. The overlay layer
+   does not take the pointer, so the whole background stays hoverable right up
+   to the edges of the two words printed on it. */
+
+.v3-home {
+  position: relative;
+}
+
+.v3-wall {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.v3-over {
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.v3-over a,
+.v3-over button {
+  pointer-events: auto;
+}
+
+.v3-enter {
+  width: var(--col);
+  margin: 0 auto;
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: 6px;
+}
+
+/* A button that is really a link — the wordmark, and the way back home. */
+.v3-linkish {
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  color: var(--white);
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
 /* ---- filters + timeline ---- */
 
 .v3-browse {
