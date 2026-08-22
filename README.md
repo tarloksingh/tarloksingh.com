@@ -32,10 +32,12 @@ Two routes, and one continuous scroll.
 |---|---|
 | `/` | The stage: the name inside a field of work, which opens out into a gallery of projects |
 | `/work/<project-id>` | That project's case study |
+| `/v3`, `/v3/index`, `/v3/p/<project-id>` | The next version, being built alongside — see **v3** below |
 
 ```
 src/
   site/          the site — everything below is in here
+  v3/            the next version, standing beside this one rather than on top
   data/          projects, media resolution, generated dimensions, tracks
   three/         the products: glTF loaders and hand-built objects
   components/    BlurText, the per-character reveal everything arrives on
@@ -70,6 +72,141 @@ src/
 | `Reveal.tsx` | Reveal-on-scroll, one shared observer |
 | `router.ts` | Two routes, forty lines |
 | `tokens.css` | Every colour, size and easing on the site |
+
+---
+
+## v3
+
+Being built beside the current site rather than on top of it: `/` is still the
+working site and `/v3` is the new one, both in the same bundle, with `App.tsx`
+choosing on the path. Both read the same `src/data/projects.ts` — nothing about
+the work is duplicated, and re-tagging a project re-cuts both.
+
+| URL | What it is |
+|---|---|
+| `/v3` | The wall: every clip and still in the body of work, drifting |
+| `/v3/index` | The timeline — one square per project, by year |
+| `/v3/p/<project-id>` | A project, as a readout |
+
+| File | What it does |
+|---|---|
+| `V3.tsx` | Three screens and fifty lines of routing |
+| `model.ts` | The view model — projects flattened into what the panes draw |
+| `Home.tsx`, `DriftWall.tsx` | The wall, and its tuning panel's worth of numbers |
+| `Browse.tsx`, `Detail.tsx`, `Stage.tsx` | The timeline screen |
+| `Mech.tsx` | The project screen: layout, leaders, disintegration, transit |
+| `MechModel.tsx` | The subject — one GLB, lit, drifting, watching you |
+| `MechHud.tsx` | The dashboard under everything: grid, bloom, sweep, compass |
+| `MechCursor.tsx` | The reticle, and the lock box it hands to a target |
+| `MechBird.tsx` | v2's bird, in the accent, shootable |
+| `MechDeck.tsx` | The music deck |
+| `sound.ts` | Every sound the page makes, synthesised |
+| `subject.ts` | Two live facts about the thing on stage, shared across the Canvas |
+| `modelTuning.ts`, `wallTuning.ts` | Leva panels, and the source they paste back into |
+
+### One frame, scaled
+
+Every number in `Mech.css` is a coordinate in the Figma's 1920×1080 frame, and
+`--px` is what one of those is worth in real pixels:
+
+```css
+--px: min(0.0651rem, 0.0520833vw, 0.0925926vh);
+```
+
+Whichever is smallest wins. The two viewport terms keep the composition fitting
+at any window shape. The rem is what makes browser zoom mean something — a rem
+is a fixed count of CSS pixels and zoom magnifies those, so a page sized purely
+in viewport units is a page where zooming does nothing at all. At a 16px root
+that term is 1.0417px, which caps the frame's natural width at **2000**: past
+that this stops being a readout and becomes a billboard.
+
+The chrome hangs off a centred column of that width. Only the subject and its
+leader lines share a 16:9 box, and they have to, because a label that misses
+what it names is not a readout. A wider window buys the leaders clearance,
+never less.
+
+### The leaders
+
+The lines that fan out of the subject and name its parts. Geometry is computed
+rather than placed: three slots — upper right, mid left, lower left — traced off
+the Figma as *fractions of the subject's box*, so they reshape to whatever is on
+screen. A gutter either side keeps the text clear of the project copy and the
+rail when a wide still pushes the elbows outward.
+
+Text is a table keyed by media id (`mr-takahashi/hero.mp4`), two words a line
+and no geometry; anything unwritten gets a derived placeholder that reads like
+one. A note names the fold it is evidence for, and hovering either lights the
+pair — additively, because dimming the rest of the readout made hovering
+anything read as the labels going out.
+
+Over the model they ride its float, read from what the float actually did this
+frame rather than an animation timed to look like it. Two clocks that agree at
+the start and not a minute later is the sort of thing nobody can name and
+everybody notices.
+
+### Disintegration
+
+Frames do not cross-fade. A grid of cells grows over the subject until it has
+been eaten block by block, the frame changes underneath at full cover, and the
+cells shrink away in a *different* order, so the next one is rebuilt rather than
+un-wiped. Cells are eleven frame-pixels square, cut from the same box the
+leaders point at, and each lands at its own scale and a few degrees off square —
+a square turned by θ needs `cos θ + sin θ` of scale to still cover its cell,
+which is where the floor of 1.1 comes from. The field overspills the subject by
+three cells with its tint thinned toward the edges, so the green fades off into
+black instead of stopping at a ruled line.
+
+Three phases, not two. `hold` is after the cover completes and before it lifts:
+the incoming still or clip is mounted but has not necessarily painted, and
+uncovering onto an undecoded video is what shows a poster for a beat and then
+cuts to the real thing.
+
+### The face
+
+`adam-face.glb` **is** Mr. Takahashi — the head was modelled for Adam and kept
+its filename through the pivot. It carries no head animation, only
+`TeethAction`/`TongueAction`; all of its life is in morph targets driven from
+code, ported from v2's `AdamFace.tsx`: a blink on a loose timer, eyes tracking
+the pointer, an idle expression that rises and falls.
+
+Two things about those morphs that are not written down anywhere else:
+
+- **Influence zero is not a centred gaze.** `HorizontalLook` and `VerticalLook`
+  are single morphs that slide the whole eye mesh from one end of its travel to
+  the other — each accessor's `min` equals its `max`, so both are one rigid
+  translation, and the horizontal covers 65% of the eye's own width. Zero is
+  hard left. The gaze is measured out from **0.5**.
+- **The scene must be cloned per mount.** `useGLTF` hands one cached scene to
+  the whole app, and writing morph influences onto it means unmounting mid-blink
+  leaves `Eyes Closed` pinned at 1 — and the blink only writes that morph while
+  a blink is running, so nothing puts it back down.
+
+Its lighting is one setting, not several: exposure 0.1, `RoomEnvironment` at
+3.4, key 30 and fill 12.3 at the intensities that go with that exposure, and
+`envMapIntensity` 0.6 with roughness +0.2 and metalness ×0.5 on every material.
+Moving any part of it alone throws the face out. All of it is on the panel, and
+the copy button hands back `MODEL_DEFAULTS` to paste into `modelTuning.ts`.
+
+### Sound
+
+Everything is synthesised in `sound.ts` — oscillators, one noise buffer, a
+filter. No files, so a hover tick is not a network request and every sound can
+be tuned by reading it. Nothing plays before a gesture: browsers refuse, and
+audio arriving unasked on someone's speakers at work is a hostile thing for a
+page to do.
+
+The reticle sounds on *acquiring* a target and not on losing one, which covers
+every `a` and `button` on the page — anything that also ticked on its own hover
+was firing the same event twice. One switch on the deck covers the music and
+the chatter both.
+
+### Adding music
+
+Drop audio into **`src/assets/audio/`**. That is the whole procedure: `tracks.ts`
+globs the folder, orders by filename and titles from it, and the deck picks it
+up with no list to keep in sync. With the folder empty the deck reads
+`audio — no signal`, which is a slot waiting for something rather than a feature
+nobody knows exists.
 
 ---
 
@@ -1019,6 +1156,13 @@ correctly whatever scale its scene happened to use. Staging geometry named
 `Plane` is stripped — along with the animation tracks addressed to it, or the
 mixer walks the hierarchy looking for a node that is no longer there and warns
 once per track.
+
+**Three Takahashi exports exist and only one is current.** `adam-face.glb`
+(2.3MB, no textures) is what both v2 and v3 render — same face, the filename it
+was modelled under. `mr-takahashi.glb` (555KB) is an older export with baked
+clips and a backdrop plane, still referenced by `src/archive/` and nothing else.
+A third, textured at 21MB, exists outside the repo and is not worth its weight:
+it carries the same morph targets as the one an order of magnitude smaller.
 
 ## The archive
 
