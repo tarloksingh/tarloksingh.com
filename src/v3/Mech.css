@@ -25,8 +25,15 @@
   overflow: hidden;
   background: #000;
 
-  --px: min(0.0520833vw, 0.0925926vh);
+  /* One Figma pixel, in real ones. Three terms, and whichever is smallest
+     wins: a rem so browser zoom actually enlarges the readout (rem is a fixed
+     count of CSS pixels, and zoom magnifies those), and the two viewport
+     terms so the composition always fits. 0.0651rem is 1.0417px at a 16px
+     root, which puts the frame's natural width at 2000 — its cap. Past that
+     the page would be a poster seen from across a room. */
+  --px: min(0.0651rem, 0.0520833vw, 0.0925926vh);
   --accent: #2ee6c4;
+  --accent-rgb: 46, 230, 196;
   --dim: #4b4b4b;
   --mid: #7c7c7c;
   --ease: cubic-bezier(0.22, 0.85, 0.25, 1);
@@ -34,6 +41,17 @@
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   color: #fff;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Everything the project screen is made of hangs off this column rather than
+   off the window, so on a very wide screen the readout stays a readout
+   instead of stretching into a billboard. Full height, though — the dashboard
+   underneath it runs to all four edges. */
+.mech-frame {
+  position: relative;
+  width: calc(1920 * var(--px));
+  height: 100%;
+  margin: 0 auto;
 }
 
 /* ---- the reticle ----
@@ -72,8 +90,8 @@
   position: absolute;
   left: 0;
   top: 0;
-  width: 68px;
-  height: 68px;
+  width: 96px;
+  height: 96px;
   will-change: transform;
 }
 
@@ -82,9 +100,14 @@
   height: 100%;
   overflow: visible;
   fill: none;
-  stroke: rgba(255, 255, 255, 0.75);
-  stroke-width: 1.4;
-  transition: stroke 200ms linear;
+  stroke: rgba(255, 255, 255, 0.8);
+  stroke-width: 1.6;
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.45));
+  transition: stroke 200ms linear, filter 200ms linear;
+}
+
+.mech-cursor[data-hot='true'] svg {
+  filter: drop-shadow(0 0 7px rgba(var(--accent-rgb), 0.8));
 }
 
 .mech-cursor[data-hot='true'] svg {
@@ -176,9 +199,10 @@
 
 .mech-lock i {
   position: absolute;
-  width: 9px;
-  height: 9px;
-  border: 1.4px solid var(--accent);
+  width: 13px;
+  height: 13px;
+  border: 1.6px solid var(--accent);
+  filter: drop-shadow(0 0 5px rgba(var(--accent-rgb), 0.7));
 }
 
 .mech-lock i:nth-child(1) {
@@ -215,7 +239,7 @@
   position: absolute;
   left: calc(101 * var(--px));
   right: calc(101 * var(--px));
-  top: calc(20 * var(--px));
+  top: calc(24 * var(--px));
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -270,18 +294,50 @@
   height: calc(1080 * var(--px));
   transform: translate(-50%, -50%);
   z-index: 1;
-  transition: opacity 260ms var(--ease), transform 260ms var(--ease), filter 260ms var(--ease);
 }
 
-/* Stepping the rail drops the old frame before the new one is mounted — a
-   short, sharp fall away, then the leaders draw themselves back out over the
-   thing that replaced it. */
-.mech-stage[data-phase='out'] {
+/* ---- the dissolve ----
+
+   A grid of cells over the subject. On the way out they fill in on their own
+   staggered delays and the frame is swapped underneath at full cover; on the
+   way in they clear again. Blocks rather than a fade, so the picture is eaten
+   and rebuilt rather than dipped.
+
+   Cells are laid out by the grid and never measured, so this costs one layout
+   for five hundred spans at mount and nothing per swap. */
+.mech-dissolve {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: repeat(30, 1fr);
+  grid-template-rows: repeat(17, 1fr);
+  pointer-events: none;
+}
+
+.mech-dissolve span {
+  background: #000;
   opacity: 0;
-  transform: translate(-50%, -50%) scale(0.985) translateY(10px);
-  filter: blur(3px);
-  transition-duration: 165ms;
-  transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
+  transition: opacity 120ms linear;
+}
+
+.mech-dissolve[data-phase='out'] span {
+  opacity: 1;
+}
+
+/* The lit ones flash the accent as they land, so it reads as a signal
+   rewriting the frame rather than as a curtain coming down. */
+.mech-dissolve[data-phase='out'] span[data-lit='true'] {
+  animation: mech-cell 260ms steps(2, end) both;
+}
+
+@keyframes mech-cell {
+  0% {
+    background: rgba(var(--accent-rgb), 0.85);
+  }
+  100% {
+    background: #000;
+  }
 }
 
 .mech-stage canvas {
@@ -393,7 +449,20 @@
      around it. Two shadows rather than one: a tight halo that reads as the
      ink itself being bright, and a wide, faint one that reads as the black
      picking it up. */
-  text-shadow: 0 0 calc(9 * var(--px)) rgba(46, 230, 196, 0.55), 0 0 calc(34 * var(--px)) rgba(46, 230, 196, 0.25);
+  text-shadow: 0 0 calc(9 * var(--px)) rgba(var(--accent-rgb), 0.55), 0 0 calc(34 * var(--px)) rgba(var(--accent-rgb), 0.25);
+  /* Phosphor is never quite steady. Small enough that you would not catch it
+     looking straight at it, which is the only way this reads as a lit panel
+     rather than as a blinking one. */
+  animation: mech-flicker 7s steps(1, end) infinite;
+}
+
+@keyframes mech-flicker {
+  0%, 34%, 37%, 62%, 64%, 100% {
+    opacity: 1;
+  }
+  35%, 63% {
+    opacity: 0.93;
+  }
 }
 
 .mech-roles {
@@ -542,6 +611,8 @@
 }
 
 .mech-tile {
+  animation: mech-tile-in 420ms var(--ease) both;
+  animation-delay: calc(var(--i) * 45ms + 260ms);
   width: calc(60 * var(--px));
   height: calc(51 * var(--px));
   flex: none;
@@ -571,6 +642,146 @@
   outline: none;
   box-shadow: inset 0 0 0 calc(60 * var(--px)) rgba(46, 230, 196, 0.22);
   color: #fff;
+}
+
+/* ---- the dashboard ----
+
+   The surface everything else is printed on: a phosphor grid, a bloom off the
+   middle, a sweep that crosses now and then, and the compass strip along the
+   bottom. All of it under the readout and none of it in anyone's way. */
+
+.mech-hud {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* Faded out toward the edges rather than drawn to them — a grid that reaches
+   the corners of the window is a background, and this is meant to read as a
+   panel lit from behind. */
+.mech-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(var(--accent-rgb), 0.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(var(--accent-rgb), 0.055) 1px, transparent 1px);
+  background-size: calc(46 * var(--px)) calc(46 * var(--px));
+  mask-image: radial-gradient(ellipse 78% 72% at 50% 48%, #000 20%, transparent 78%);
+  animation: mech-grid-in 1400ms var(--ease) both;
+}
+
+@keyframes mech-grid-in {
+  from {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+}
+
+.mech-bloom {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 60% 55% at 50% 50%, rgba(var(--accent-rgb), 0.05), transparent 70%);
+}
+
+/* One line down the screen every so often. Long gap, short pass — a sweep you
+   catch out of the corner of your eye beats one you sit and watch. */
+.mech-sweep {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: calc(140 * var(--px));
+  background: linear-gradient(to bottom, transparent, rgba(var(--accent-rgb), 0.07), transparent);
+  animation: mech-sweep 9s linear infinite;
+}
+
+@keyframes mech-sweep {
+  0% {
+    transform: translateY(-30vh);
+    opacity: 0;
+  }
+  6% {
+    opacity: 1;
+  }
+  26% {
+    transform: translateY(110vh);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(110vh);
+    opacity: 0;
+  }
+}
+
+/* ---- the compass strip ---- */
+
+.mech-strip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(74 * var(--px));
+  height: calc(44 * var(--px));
+  mask-image: linear-gradient(to right, transparent, #000 16%, #000 84%, transparent);
+  animation: mech-strip-in 900ms 300ms var(--ease) both;
+}
+
+@keyframes mech-strip-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(8 * var(--px)));
+  }
+}
+
+.mech-strip svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.mech-tick {
+  stroke: rgba(var(--accent-rgb), 0.32);
+  stroke-width: 1.2;
+}
+
+.mech-tick-major {
+  stroke: rgba(var(--accent-rgb), 0.6);
+  stroke-width: 1.6;
+}
+
+.mech-marker {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.6;
+  filter: drop-shadow(0 0 5px rgba(var(--accent-rgb), 0.7));
+}
+
+.mech-heading {
+  fill: var(--accent);
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: 13px;
+  letter-spacing: 1px;
+  font-variant-numeric: tabular-nums;
+  filter: drop-shadow(0 0 5px rgba(var(--accent-rgb), 0.7));
+}
+
+.mech-coords {
+  position: absolute;
+  left: 50%;
+  bottom: calc(48 * var(--px));
+  transform: translateX(-50%);
+  display: flex;
+  gap: calc(26 * var(--px));
+  font-size: calc(11 * var(--px));
+  letter-spacing: calc(1.4 * var(--px));
+  color: rgba(var(--accent-rgb), 0.7);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 calc(9 * var(--px)) rgba(var(--accent-rgb), 0.5);
+}
+
+.mech-coords span span {
+  color: #fff;
+  margin-left: calc(6 * var(--px));
 }
 
 /* ---- the bird ----
@@ -700,6 +911,13 @@
   }
 }
 
+@keyframes mech-tile-in {
+  from {
+    opacity: 0;
+    transform: translateX(calc(14 * var(--px)));
+  }
+}
+
 /* ---- footer ---- */
 
 .mech-foot {
@@ -710,19 +928,9 @@
   z-index: 3;
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
+  justify-content: flex-end;
   font-size: calc(11.5 * var(--px));
   color: var(--mid);
-}
-
-.mech-caption {
-  font-style: italic;
-  transition: opacity 200ms var(--ease);
-}
-
-.mech-caption[data-phase='out'] {
-  opacity: 0;
-  transition-duration: 140ms;
 }
 
 .mech-foot a {

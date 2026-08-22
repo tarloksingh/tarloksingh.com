@@ -1,7 +1,11 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { Leva } from 'leva'
 import { TAGS } from '../data/projects'
 import MechBird from './MechBird'
 import MechCursor from './MechCursor'
+import MechHud from './MechHud'
+import { useModelTuning } from './modelTuning'
 import { entries, thumbOf, type Entry, type Frame } from './model'
 import './Mech.css'
 
@@ -96,9 +100,35 @@ const derive = (entry: Entry, frame: Frame): Note[] => {
   ]
 }
 
-/** How long the frame on screen takes to fall away before the next is
- *  mounted. Matches the exit transition in Mech.css. */
-const EXIT_MS = 165
+/** How long the frame on screen takes to be eaten before the next is mounted.
+ *  Matches the dissolve's cover time in Mech.css. */
+const EXIT_MS = 260
+
+/* ---- the dissolve ----
+
+   Swapping frames is not a fade. A grid of cells fills in over whatever is on
+   screen, the frame changes underneath while the cover is complete, and the
+   cells clear again — so the picture is eaten and rebuilt in blocks rather
+   than dipped. Each cell carries its own delay, biased across the frame and
+   jittered, which is what stops it reading as a wipe. */
+const DISSOLVE = { columns: 30, rows: 17 }
+
+/** Fixed at module scope rather than per mount: the same scatter every time
+ *  is a texture, and a fresh one on every swap is noise. */
+const CELLS = Array.from({ length: DISSOLVE.columns * DISSOLVE.rows }, (_, i) => {
+  const column = i % DISSOLVE.columns
+  const row = Math.floor(i / DISSOLVE.columns)
+  // Sweeps left to right, but loosely — the jitter is worth more than the
+  // sweep, and a cell near the trailing edge can still go first.
+  const bias = column / DISSOLVE.columns
+  return {
+    delay: Math.round((bias * 0.45 + Math.random() * 0.55) * 150),
+    // A few cells flash the accent on their way in rather than going straight
+    // to black, which is what makes it read as a signal and not a curtain.
+    lit: Math.random() < 0.16,
+    row
+  }
+})
 
 /** The model goes first. "Open a project" means the object, and the stills are
  *  what you step to afterwards — `model.ts` appends it because the index
@@ -169,6 +199,7 @@ interface Props {
 }
 
 export default function Mech({ id, onHome }: Props) {
+  const tuning = useModelTuning()
   const entry = entries.find((item) => item.project.id === id) ?? null
   const frames = useMemo(() => (entry ? modelFirst(entry) : []), [entry])
   const [index, setIndex] = useState(0)
@@ -220,92 +251,120 @@ export default function Mech({ id, onHome }: Props) {
 
   return (
     <div className="mech">
+      {/* Development only, and portalled to `body` for the same reason the
+          gallery's panel is: rendered in place it would sit inside the
+          readout's stacking context and paint under the chrome. */}
+      {typeof document !== 'undefined'
+        ? createPortal(
+            <Leva
+              collapsed
+              hidden={!import.meta.env.DEV}
+              titleBar={{ title: 'Subject tuning' }}
+              theme={{
+                colors: { elevation1: '#161616', elevation2: '#1d1d1d', elevation3: '#292929' },
+                sizes: { rootWidth: 'min(340px, calc(100vw - 20px))' }
+              }}
+            />,
+            document.body
+          )
+        : null}
+
+      <MechHud />
       <MechCursor />
       <MechBird />
 
-      <header className="mech-head">
-        <button className="mech-wordmark" onClick={onHome}>
-          Tarlok Singh
-        </button>
-        <nav className="mech-nav">
-          <span className="mech-nav-here">{project.title.toLowerCase()}</span>
-          {TAGS.filter((tag) => tag !== 'work').map((tag) => (
-            <span key={tag} data-on={project.tags.includes(tag)}>
-              {tag}
-            </span>
-          ))}
-        </nav>
-      </header>
+      <div className="mech-frame">
+        <header className="mech-head">
+          <button className="mech-wordmark" onClick={onHome}>
+            Tarlok Singh
+          </button>
+          <nav className="mech-nav">
+            <span className="mech-nav-here">{project.title.toLowerCase()}</span>
+            {TAGS.filter((tag) => tag !== 'work').map((tag) => (
+              <span key={tag} data-on={project.tags.includes(tag)}>
+                {tag}
+              </span>
+            ))}
+          </nav>
+        </header>
 
-      {/* The subject and its labels share one box so that scaling the window
-          moves them together. */}
-      <div className="mech-stage" data-phase={swapping ? 'out' : 'in'}>
-        {current.kind === 'model' ? (
-          <Suspense fallback={null}>
-            <MechModel src={current.src} />
-          </Suspense>
-        ) : (
-          <Flat frame={current} />
-        )}
-        {/* Keyed on the frame, so stepping the rail draws the leaders out
-            again rather than revealing them already extended. */}
-        <Leaders key={current.id} notes={notes} box={boxOf(current)} />
-      </div>
+        {/* The subject and its labels share one box so that scaling the window
+            moves them together. */}
+        <div className="mech-stage">
+          {current.kind === 'model' ? (
+            <Suspense fallback={null}>
+              <MechModel src={current.src} tuning={tuning} />
+            </Suspense>
+          ) : (
+            <Flat frame={current} />
+          )}
+          {/* Keyed on the frame, so stepping the rail draws the leaders out
+              again rather than revealing them already extended. */}
+          <Leaders key={current.id} notes={notes} box={boxOf(current)} />
 
-      <section className="mech-side">
-        <h1 className="mech-title">{project.title}</h1>
-        {roles.length > 0 && <p className="mech-roles">{roles.join(', ').toLowerCase()}</p>}
+          <div className="mech-dissolve" data-phase={swapping ? 'out' : 'in'}>
+            {CELLS.map((cell, i) => (
+              <span
+                key={i}
+                data-lit={cell.lit}
+                style={{ animationDelay: `${cell.delay}ms`, transitionDelay: `${cell.delay}ms` }}
+              />
+            ))}
+          </div>
+        </div>
 
-        <div className="mech-folds">
-          {folds.map((fold) => {
-            const isOpen = open === fold.id
-            return (
-              <div className="mech-fold" key={fold.id} data-open={isOpen}>
-                <button onClick={() => setOpen(isOpen ? null : fold.id)} aria-expanded={isOpen}>
-                  <span className="mech-pip" />
-                  <span>{fold.title}</span>
-                </button>
+        <section className="mech-side">
+          <h1 className="mech-title">{project.title}</h1>
+          {roles.length > 0 && <p className="mech-roles">{roles.join(', ').toLowerCase()}</p>}
 
-                {/* Always mounted, and opened by growing its row from 0fr to
-                    1fr — the only way a panel of unknown height can animate
-                    shut as well as open. */}
-                <div className="mech-fold-body">
-                  <div>
-                    <span className="mech-fold-rule" />
-                    <p>{fold.tags ? fold.tags.join(', ').toLowerCase() : fold.text}</p>
+          <div className="mech-folds">
+            {folds.map((fold) => {
+              const isOpen = open === fold.id
+              return (
+                <div className="mech-fold" key={fold.id} data-open={isOpen}>
+                  <button onClick={() => setOpen(isOpen ? null : fold.id)} aria-expanded={isOpen}>
+                    <span className="mech-pip" />
+                    <span>{fold.title}</span>
+                  </button>
+
+                  {/* Always mounted, and opened by growing its row from 0fr to
+                      1fr — the only way a panel of unknown height can animate
+                      shut as well as open. */}
+                  <div className="mech-fold-body">
+                    <div>
+                      <span className="mech-fold-rule" />
+                      <p>{fold.tags ? fold.tags.join(', ').toLowerCase() : fold.text}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )
+            })}
+          </div>
+        </section>
+
+        <div className="mech-rail" ref={rail}>
+          {frames.map((frame, i) => {
+            const thumb = thumbOf(frame)
+            return (
+              <button
+                key={frame.id}
+                className="mech-tile"
+                aria-pressed={i === index}
+                aria-label={frame.label ?? project.title}
+                title={frame.label ?? project.title}
+                style={{ ...(thumb ? { backgroundImage: `url(${thumb})` } : {}), ['--i' as string]: i }}
+                onClick={() => setIndex(i)}
+              >
+                {thumb ? null : <span>3D</span>}
+              </button>
             )
           })}
         </div>
-      </section>
 
-      <div className="mech-rail" ref={rail}>
-        {frames.map((frame, i) => {
-          const thumb = thumbOf(frame)
-          return (
-            <button
-              key={frame.id}
-              className="mech-tile"
-              aria-pressed={i === index}
-              aria-label={frame.label ?? project.title}
-              title={frame.label ?? project.title}
-              style={thumb ? { backgroundImage: `url(${thumb})` } : undefined}
-              onClick={() => setIndex(i)}
-            >
-              {thumb ? null : <span>3D</span>}
-            </button>
-          )
-        })}
+        <footer className="mech-foot">
+          <a href="mailto:hello@tarloksingh.com">hello@tarloksingh.com</a>
+        </footer>
       </div>
-
-      <footer className="mech-foot">
-        <span className="mech-caption" data-phase={swapping ? 'out' : 'in'}>
-          {current.label ?? project.tagline}
-        </span>
-        <a href="mailto:hello@tarloksingh.com">hello@tarloksingh.com</a>
-      </footer>
     </div>
   )
 }
