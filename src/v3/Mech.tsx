@@ -8,7 +8,7 @@ import MechHud from './MechHud'
 import { useModelTuning } from './modelTuning'
 import MechDeck from './MechDeck'
 import { sound } from './sound'
-import { drift, orbit } from './subject'
+import { drift } from './subject'
 import { entries, thumbOf, type Entry, type Frame } from './model'
 import './Mech.css'
 
@@ -55,7 +55,7 @@ const SLOTS = [
  *  left column on one side and the rail on the other. A wide still pushes its
  *  elbows outward, and without this the "made in" line would be set on top of
  *  the project overview. */
-const GUTTER = { left: 470, right: 1450 }
+const GUTTER = { left: 500, right: 1450 }
 
 /** The subject's box in frame coordinates. The model's is measured off the
  *  Figma; a still's is wherever the media actually lands, which is the same
@@ -130,12 +130,17 @@ const HOLD_CAP = 900
    curtain across the screen rather than as the picture itself coming apart. */
 
 /** Side of one cell, in frame coordinates — how big a "pixel" is. */
-const CELL = 13
+const CELL = 11
 
 /** Cells are cheap but not free, and every one is a DOM node. Past this the
  *  cell grows instead, so a large subject dissolves in slightly coarser
- *  blocks rather than costing three thousand spans. */
-const MAX_CELLS = 2200
+ *  blocks rather than costing four thousand spans. */
+const MAX_CELLS = 3200
+
+/** Cells of overspill past the subject's edges. Without it the field of
+ *  green has a ruled rectangular border and the whole effect reads as an
+ *  overlay laid on top rather than as the picture itself coming apart. */
+const BLEED = 3
 
 /** The model floats and turns, so its box has to be the space it moves
  *  through rather than where it happens to be sitting. A still does not
@@ -154,13 +159,21 @@ const dissolveBox = (frame: Frame) => {
  *  time is a texture; a fresh one on every swap is noise — and generating two
  *  thousand random numbers at the moment a frame changes is the one moment
  *  not to be doing it. */
-const grids = new Map<string, { columns: number; rows: number; cells: Array<{ out: number; in: number; tone: number }> }>()
+interface Cell {
+  out: number
+  in: number
+  tone: number
+  scale: number
+  turn: number
+}
+
+const grids = new Map<string, { columns: number; rows: number; cells: Cell[] }>()
 
 const gridFor = (box: { w: number; h: number }) => {
   // Whichever is larger: the cell we want, or the cell the budget allows.
   const side = Math.max(CELL, Math.sqrt((box.w * box.h) / MAX_CELLS))
-  const columns = Math.max(6, Math.ceil(box.w / side))
-  const rows = Math.max(6, Math.ceil(box.h / side))
+  const columns = Math.max(6, Math.ceil(box.w / side)) + BLEED * 2
+  const rows = Math.max(6, Math.ceil(box.h / side)) + BLEED * 2
   const key = `${columns}x${rows}`
 
   const found = grids.get(key)
@@ -173,14 +186,24 @@ const gridFor = (box: { w: number; h: number }) => {
     // outward. Neither is tidy — the jitter is worth more than the direction,
     // and a cell at the trailing edge can still go first.
     const fromMiddle = Math.hypot(across - 0.5, down - 0.5) / 0.707
-    /* Four tones, weighted heavily toward black. The field a frame breaks up
-       into is mostly dark with green through it and the odd hot pixel — a
-       readout losing signal, not a screen of confetti. */
-    const roll = Math.random()
+
+    /* Four tones, weighted heavily toward black — a readout losing signal,
+       not a screen of confetti — and thinned out toward the edges so the
+       green fades off into the black instead of stopping at a ruled line. */
+    const edge = Math.min(across, 1 - across, down, 1 - down) * 2
+    const roll = Math.random() / Math.max(Math.pow(Math.min(edge, 1), 0.9), 0.001)
+
     return {
       out: Math.round((across * 0.5 + Math.random() * 0.5) * 170),
       in: Math.round((fromMiddle * 0.55 + Math.random() * 0.45) * 260),
-      tone: roll < 0.7 ? 0 : roll < 0.9 ? 1 : roll < 0.975 ? 2 : 3
+      tone: roll < 0.7 ? 0 : roll < 0.9 ? 1 : roll < 0.975 ? 2 : 3,
+      /* Every cell lands at its own size and a few degrees off square. The
+         overlap is what hides the lattice: a grid of identical squares all
+         arriving at exactly 1.0 is a grid, however you time it. A square
+         turned by θ needs cos θ + sin θ of scale to still cover its own
+         cell, which is where the floor of 1.1 comes from. */
+      scale: 1.1 + Math.random() * 0.12,
+      turn: Math.round((Math.random() * 2 - 1) * 5)
     }
   })
 
@@ -288,26 +311,45 @@ function Disintegration({ frame, phase }: { frame: Frame; phase: 'out' | 'in' })
   const box = dissolveBox(frame)
   const { columns, rows, cells } = gridFor(box)
 
+  // Held by identity across phase changes. React bails out of reconciling
+  // children it is handed the same elements for, which is the difference
+  // between changing one attribute and diffing four thousand spans at the
+  // exact moment the frame is meant to be moving.
+  const grid = useMemo(
+    () =>
+      cells.map((cell, i) => (
+        <span
+          key={i}
+          data-tone={cell.tone}
+          style={{
+            ['--out' as string]: `${cell.out}ms`,
+            ['--in' as string]: `${cell.in}ms`,
+            ['--s' as string]: cell.scale,
+            ['--r' as string]: `${cell.turn}deg`
+          }}
+        />
+      )),
+    [cells]
+  )
+
+  // The grid overspills the subject by `BLEED` cells on every side, so the
+  // box it is laid out in is bigger than the box it is dissolving.
+  const over = { x: (box.w / (columns - BLEED * 2)) * BLEED, y: (box.h / (rows - BLEED * 2)) * BLEED }
+
   return (
     <div
       className="mech-dissolve"
       data-phase={phase}
       style={{
-        left: `calc(${box.x} * var(--px))`,
-        top: `calc(${box.y} * var(--px))`,
-        width: `calc(${box.w} * var(--px))`,
-        height: `calc(${box.h} * var(--px))`,
+        left: `calc(${box.x - over.x} * var(--px))`,
+        top: `calc(${box.y - over.y} * var(--px))`,
+        width: `calc(${box.w + over.x * 2} * var(--px))`,
+        height: `calc(${box.h + over.y * 2} * var(--px))`,
         gridTemplateColumns: `repeat(${columns}, 1fr)`,
         gridTemplateRows: `repeat(${rows}, 1fr)`
       }}
     >
-      {cells.map((cell, i) => (
-        <span
-          key={i}
-          data-tone={cell.tone}
-          style={{ ['--out' as string]: `${cell.out}ms`, ['--in' as string]: `${cell.in}ms` }}
-        />
-      ))}
+      {grid}
     </div>
   )
 }
@@ -358,10 +400,6 @@ function Flat({ frame, onReady }: { frame: Extract<Frame, { kind: 'flat' }>; onR
  *  spins and settles, and only then do the leaders extend. */
 const BOOT_MS = 1500
 
-/** Degrees of turn per pixel dragged across the stage, and how far the
- *  elevation is ever allowed to go — past this the subject is being looked at
- *  from underneath, which is nobody's idea of a portrait. */
-const ORBIT = { perPixel: 0.42, maxEl: 32 }
 
 interface Props {
   id: string
@@ -446,30 +484,6 @@ export default function Mech({ id, onProject, onHome }: Props) {
     return () => window.clearTimeout(timer)
   }, [id, shownId])
 
-  /* Dragging the stage turns the subject. Pointer capture rather than
-     window listeners: a drag that leaves the element still belongs to it,
-     and releasing outside the window still ends it. */
-  const drag = useRef<{ x: number; y: number } | null>(null)
-
-  const onDragStart = (event: React.PointerEvent) => {
-    if ((event.target as Element).closest('button, a')) return
-    drag.current = { x: event.clientX, y: event.clientY }
-    orbit.active = true
-    event.currentTarget.setPointerCapture(event.pointerId)
-  }
-
-  const onDragMove = (event: React.PointerEvent) => {
-    const from = drag.current
-    if (!from) return
-    orbit.az += (event.clientX - from.x) * ORBIT.perPixel
-    orbit.el = Math.max(-ORBIT.maxEl, Math.min(ORBIT.maxEl, orbit.el + (event.clientY - from.y) * ORBIT.perPixel * 0.6))
-    drag.current = { x: event.clientX, y: event.clientY }
-  }
-
-  const onDragEnd = () => {
-    drag.current = null
-    orbit.active = false
-  }
 
   useEffect(() => {
     if (index === shown) return
@@ -582,14 +596,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
 
         {/* The subject and its labels share one box so that scaling the window
             moves them together. */}
-        <div
-          className="mech-stage"
-          data-grab={current.kind === 'model'}
-          onPointerDown={current.kind === 'model' ? onDragStart : undefined}
-          onPointerMove={current.kind === 'model' ? onDragMove : undefined}
-          onPointerUp={onDragEnd}
-          onPointerCancel={onDragEnd}
-        >
+        <div className="mech-stage">
           {current.kind === 'model' ? (
             <Suspense fallback={null}>
               <MechModel src={current.src} tuning={tuning} />

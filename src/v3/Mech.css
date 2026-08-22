@@ -283,8 +283,8 @@
 .mech-wordmark {
   font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-weight: 400;
-  font-size: calc(19 * var(--px));
-  letter-spacing: calc(3.4 * var(--px));
+  font-size: calc(21 * var(--px));
+  letter-spacing: calc(3.6 * var(--px));
   text-transform: uppercase;
   color: var(--mid);
   background: none;
@@ -303,7 +303,7 @@
   gap: calc(19 * var(--px));
   font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-weight: 400;
-  font-size: calc(14 * var(--px));
+  font-size: calc(15.5 * var(--px));
   color: var(--dim);
 }
 
@@ -347,7 +347,6 @@
   height: calc(1080 * var(--px));
   transform: translate(-50%, -50%);
   z-index: 1;
-  touch-action: none;
 }
 
 .mech-stage canvas {
@@ -386,6 +385,8 @@
 .mech-dissolve span {
   background: var(--tone);
   --tone: #000;
+  --s: 1.14;
+  --r: 0deg;
   transform: scale(0);
   /* No `will-change` here on purpose: eleven hundred cells asking for their
      own compositor layer is a worse problem than the one it solves, and a
@@ -395,8 +396,7 @@
 }
 
 .mech-dissolve[data-phase='out'] span {
-  /* Over one, so neighbours meet and the cover has no seams in it. */
-  transform: scale(1.04);
+  transform: scale(var(--s)) rotate(var(--r));
   transition-delay: var(--out);
 }
 
@@ -450,21 +450,26 @@
   pointer-events: auto;
 }
 
-/* One lit at a time. Everything else steps back rather than the lit one
-   getting brighter — a readout that answers a question by dimming the rest
-   of itself reads as a machine following you. */
-.mech-leaders[data-lit='true'] g {
-  opacity: 0.28;
+/* The link is additive only. Dimming the rest of the readout made hovering
+   anything read as the labels going out, which is worse than no link at
+   all — the answer to "which one is this" is that one getting brighter, not
+   the others leaving. */
+.mech-leaders g {
   transition: opacity 200ms linear;
-}
-
-.mech-leaders[data-lit='true'] g[data-on='true'] {
-  opacity: 1;
 }
 
 .mech-leaders g[data-on='true'] .mech-leader {
   stroke: var(--accent);
-  filter: drop-shadow(0 0 5px rgba(var(--accent-rgb), 0.8));
+  stroke-width: 1.6;
+  filter: drop-shadow(0 0 6px rgba(var(--accent-rgb), 0.9));
+}
+
+.mech-leaders g[data-on='true'] .mech-leader-value {
+  fill: var(--accent);
+}
+
+.mech-leaders g[data-on='true'] .mech-leader-label {
+  filter: drop-shadow(0 0 9px rgba(var(--accent-rgb), 0.95));
 }
 
 .mech-leader {
@@ -485,7 +490,7 @@
 .mech-leader-label {
   font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-weight: 400;
-  font-size: 15px;
+  font-size: 18px;
   fill: var(--accent);
   /* SVG text takes no text-shadow; a drop-shadow filter is the same halo. */
   filter: drop-shadow(0 0 6px rgba(46, 230, 196, 0.55));
@@ -493,7 +498,7 @@
 
 .mech-leader-value {
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  font-size: 14px;
+  font-size: 17px;
   fill: #fff;
 }
 
@@ -522,7 +527,7 @@
   position: absolute;
   left: calc(101 * var(--px));
   top: calc(212 * var(--px));
-  width: calc(340 * var(--px));
+  width: calc(380 * var(--px));
   bottom: calc(120 * var(--px));
   z-index: 3;
   animation: mech-in 620ms var(--ease) both;
@@ -538,7 +543,7 @@
 .mech-title {
   font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-weight: 400;
-  font-size: calc(41 * var(--px));
+  font-size: calc(46 * var(--px));
   line-height: 1;
   letter-spacing: calc(-0.4 * var(--px));
   text-transform: uppercase;
@@ -568,8 +573,8 @@
    at a title nobody is writing. */
 .mech-caret {
   display: inline-block;
-  width: calc(15 * var(--px));
-  height: calc(30 * var(--px));
+  width: calc(17 * var(--px));
+  height: calc(34 * var(--px));
   margin-left: calc(4 * var(--px));
   vertical-align: calc(-3 * var(--px));
   background: var(--accent);
@@ -595,9 +600,9 @@
 }
 
 .mech-roles {
-  margin-top: calc(9 * var(--px));
-  font-size: calc(11.5 * var(--px));
-  line-height: calc(15 * var(--px));
+  margin-top: calc(10 * var(--px));
+  font-size: calc(13.5 * var(--px));
+  line-height: calc(18 * var(--px));
   color: #fff;
 }
 
@@ -633,8 +638,8 @@
   text-align: left;
   font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-weight: 400;
-  font-size: calc(14.5 * var(--px));
-  line-height: calc(23 * var(--px));
+  font-size: calc(16.5 * var(--px));
+  line-height: calc(26 * var(--px));
   color: var(--dim);
   transition: color 200ms linear;
 }
@@ -702,8 +707,8 @@
 }
 
 .mech-fold-body p {
-  font-size: calc(10.8 * var(--px));
-  line-height: calc(15.5 * var(--px));
+  font-size: calc(13.5 * var(--px));
+  line-height: calc(19.5 * var(--px));
   color: #fff;
   white-space: pre-line;
   padding-bottom: calc(14 * var(--px));
@@ -742,8 +747,8 @@
 .mech-tile {
   animation: mech-tile-in 420ms var(--ease) both;
   animation-delay: calc(var(--i) * 45ms + 260ms);
-  width: calc(60 * var(--px));
-  height: calc(51 * var(--px));
+  width: calc(68 * var(--px));
+  height: calc(58 * var(--px));
   flex: none;
   padding: 0;
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -753,7 +758,7 @@
   background-position: center;
   display: grid;
   place-items: center;
-  font-size: calc(9 * var(--px));
+  font-size: calc(10.5 * var(--px));
   letter-spacing: calc(0.6 * var(--px));
   color: var(--mid);
   opacity: 0.55;
@@ -940,7 +945,7 @@
 .mech-heading {
   fill: #ff5560;
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  font-size: 12px;
+  font-size: 13px;
   letter-spacing: 1.5px;
   font-variant-numeric: tabular-nums;
   filter: drop-shadow(0 0 5px rgba(255, 42, 58, 0.8));
@@ -953,38 +958,18 @@
   transform: translateX(-50%);
   display: flex;
   gap: calc(26 * var(--px));
-  font-size: calc(11 * var(--px));
-  letter-spacing: calc(1.4 * var(--px));
+  font-size: calc(12.5 * var(--px));
+  letter-spacing: calc(1.5 * var(--px));
   color: rgba(var(--accent-rgb), 0.7);
   font-variant-numeric: tabular-nums;
   text-shadow: 0 0 calc(9 * var(--px)) rgba(var(--accent-rgb), 0.5);
 }
 
-.mech-coords span span,
-.mech-attitude span span {
+.mech-coords span span {
   color: #fff;
   margin-left: calc(6 * var(--px));
 }
 
-/* Only says anything once the subject has been turned by hand. */
-.mech-attitude {
-  position: absolute;
-  right: calc(138 * var(--px));
-  bottom: calc(48 * var(--px));
-  display: flex;
-  gap: calc(20 * var(--px));
-  font-size: calc(11 * var(--px));
-  letter-spacing: calc(1.4 * var(--px));
-  color: rgba(var(--accent-rgb), 0.7);
-  font-variant-numeric: tabular-nums;
-  text-shadow: 0 0 calc(9 * var(--px)) rgba(var(--accent-rgb), 0.5);
-  opacity: 0;
-  transition: opacity 400ms linear;
-}
-
-.mech-attitude[data-on='true'] {
-  opacity: 1;
-}
 
 /* ---- the bird ----
 
@@ -1154,7 +1139,7 @@
   align-items: flex-end;
   gap: calc(1.6 * var(--px));
   height: calc(13 * var(--px));
-  width: calc(58 * var(--px));
+  width: calc(66 * var(--px));
 }
 
 .mech-meter i {
@@ -1173,7 +1158,7 @@
   border: 0;
   padding: 0 calc(2 * var(--px));
   font: inherit;
-  font-size: calc(10 * var(--px));
+  font-size: calc(11.5 * var(--px));
   line-height: 1;
   color: var(--mid);
   transition: color 160ms linear, text-shadow 160ms linear;
@@ -1297,7 +1282,7 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  font-size: calc(11.5 * var(--px));
+  font-size: calc(13 * var(--px));
   color: var(--mid);
 }
 

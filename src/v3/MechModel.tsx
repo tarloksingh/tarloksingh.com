@@ -3,7 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Float, useAnimations, useGLTF } from '@react-three/drei'
 import { ACESFilmicToneMapping, Box3, MathUtils, PMREMGenerator, SRGBColorSpace, Vector3 } from 'three'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
-import { drift, gaze, orbit } from './subject'
+import { drift, gaze } from './subject'
 import { MODEL_DEFAULTS, type ModelTuning } from './modelTuning'
 import type { Group, Mesh, MeshStandardMaterial, PerspectiveCamera } from 'three'
 
@@ -280,11 +280,8 @@ function Lean({ degrees, look, children }: { degrees: number; look: Look; childr
     if (!group) return
     const target = look()
     const k = 1 - Math.pow(0.002, delta)
-    // The lean is a few degrees of interest; the orbit is however far the
-    // visitor has turned it by hand. They add, so dragging does not disable
-    // the lean and the head still notices you while held off-axis.
-    group.rotation.y = MathUtils.lerp(group.rotation.y, target.x * limit + MathUtils.degToRad(orbit.az), k)
-    group.rotation.x = MathUtils.lerp(group.rotation.x, -target.y * limit * 0.55 + MathUtils.degToRad(orbit.el), k)
+    group.rotation.y = MathUtils.lerp(group.rotation.y, target.x * limit, k)
+    group.rotation.x = MathUtils.lerp(group.rotation.x, -target.y * limit * 0.55, k)
   })
 
   return <group ref={ref}>{children}</group>

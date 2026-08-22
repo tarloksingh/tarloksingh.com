@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react'
-import { orbit } from './subject'
 
 /* The dashboard the readout sits on.
 
@@ -29,8 +28,6 @@ const TRAVEL = 0.55
 
 const pad = (n: number, width = 4) => String(Math.round(n)).padStart(width, '0')
 
-const signed = (n: number) => (n < 0 ? '-' : '+') + pad(Math.abs(n), 3)
-
 /** Seconds the compass spends spinning up before it starts telling the truth.
  *  A gauge that is simply correct the instant the page paints has never been
  *  switched on; one that races and settles has. */
@@ -41,9 +38,6 @@ export default function MechHud() {
   const heading = useRef<SVGTextElement>(null)
   const readX = useRef<HTMLSpanElement>(null)
   const readY = useRef<HTMLSpanElement>(null)
-  const readAz = useRef<HTMLSpanElement>(null)
-  const readEl = useRef<HTMLSpanElement>(null)
-  const attitude = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!window.matchMedia('(pointer: fine)').matches) return
@@ -87,14 +81,6 @@ export default function MechHud() {
       if (readX.current) readX.current.textContent = pad(spinning ? Math.random() * 4000 : at.x)
       if (readY.current) readY.current.textContent = pad(spinning ? Math.random() * 4000 : at.y)
 
-      // Attitude only says anything once the subject has been turned, and
-      // fades back once it is let go. A gauge reading zero forever is a gauge
-      // nobody looks at twice.
-      if (readAz.current) readAz.current.textContent = signed(((orbit.az % 360) + 540) % 360 - 180)
-      if (readEl.current) readEl.current.textContent = signed(orbit.el)
-      if (attitude.current) {
-        attitude.current.dataset.on = String(orbit.active || Math.abs(orbit.az) > 0.5 || Math.abs(orbit.el) > 0.5)
-      }
     }
 
     window.addEventListener('pointermove', onMove)
@@ -151,14 +137,6 @@ export default function MechHud() {
         </span>
       </div>
 
-      <div className="mech-attitude" ref={attitude} data-on="false">
-        <span>
-          AZ<span ref={readAz}>+000</span>
-        </span>
-        <span>
-          EL<span ref={readEl}>+000</span>
-        </span>
-      </div>
     </div>
   )
 }
