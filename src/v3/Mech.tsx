@@ -107,32 +107,70 @@ const EXIT_MS = 340
 /* ---- disintegration ----
 
    Swapping frames is not a fade and not a wipe. A grid of cells grows over
-   whatever is on screen until the picture has been eaten block by block, the
-   frame changes underneath at full cover, and the cells shrink away again in
-   a *different* order — so it rebuilds rather than un-wipes. Some of them
-   flare accent as they land, which is what makes it read as something being
-   written rather than something being hidden.
+   the subject until it has been eaten block by block, the frame changes
+   underneath at full cover, and the cells shrink away again in a *different*
+   order — so it rebuilds rather than un-wipes. Some flare accent as they
+   land, which makes it read as something being written rather than hidden.
 
-   Every cell's timing is decided once at module scope. The same scatter every
-   time is a texture; a fresh one on every swap is noise. */
-const DISSOLVE = { columns: 44, rows: 25 }
+   The grid covers the subject's own box and nothing else. Laid over the whole
+   frame it was dissolving a great deal of black, which is why it read as a
+   curtain across the screen rather than as the picture itself coming apart. */
 
-const CELLS = Array.from({ length: DISSOLVE.columns * DISSOLVE.rows }, (_, i) => {
-  const column = i % DISSOLVE.columns
-  const row = Math.floor(i / DISSOLVE.columns)
-  // Out sweeps loosely left to right, in comes back from the middle outward.
-  // Neither is tidy — the jitter is worth more than the direction, and a cell
-  // at the trailing edge can still go first.
-  const across = column / (DISSOLVE.columns - 1)
-  const fromMiddle = Math.hypot(across - 0.5, row / (DISSOLVE.rows - 1) - 0.5) / 0.707
-  return {
-    out: Math.round((across * 0.5 + Math.random() * 0.5) * 170),
-    in: Math.round((fromMiddle * 0.55 + Math.random() * 0.45) * 260),
-    // A tenth of them flare on the way in. Enough to read as static across
-    // the frame; more than that and it is a light show.
-    lit: Math.random() < 0.1
-  }
-})
+/** Side of one cell, in frame coordinates — how big a "pixel" is. */
+const CELL = 13
+
+/** Cells are cheap but not free, and every one is a DOM node. Past this the
+ *  cell grows instead, so a large subject dissolves in slightly coarser
+ *  blocks rather than costing three thousand spans. */
+const MAX_CELLS = 2200
+
+/** The model floats and turns, so its box has to be the space it moves
+ *  through rather than where it happens to be sitting. A still does not
+ *  move, and is dissolved to its own edges exactly. */
+const PAD = { x: 0.1, y: 0.18 }
+
+const dissolveBox = (frame: Frame) => {
+  const box = boxOf(frame)
+  if (frame.kind !== 'model') return box
+  const x = box.w * PAD.x
+  const y = box.h * PAD.y
+  return { x: box.x - x, y: box.y - y, w: box.w + x * 2, h: box.h + y * 2 }
+}
+
+/** Timings per grid shape, worked out once and reused. The same scatter every
+ *  time is a texture; a fresh one on every swap is noise — and generating two
+ *  thousand random numbers at the moment a frame changes is the one moment
+ *  not to be doing it. */
+const grids = new Map<string, { columns: number; rows: number; cells: Array<{ out: number; in: number; lit: boolean }> }>()
+
+const gridFor = (box: { w: number; h: number }) => {
+  // Whichever is larger: the cell we want, or the cell the budget allows.
+  const side = Math.max(CELL, Math.sqrt((box.w * box.h) / MAX_CELLS))
+  const columns = Math.max(6, Math.ceil(box.w / side))
+  const rows = Math.max(6, Math.ceil(box.h / side))
+  const key = `${columns}x${rows}`
+
+  const found = grids.get(key)
+  if (found) return found
+
+  const cells = Array.from({ length: columns * rows }, (_, i) => {
+    const across = (i % columns) / Math.max(columns - 1, 1)
+    const down = Math.floor(i / columns) / Math.max(rows - 1, 1)
+    // Out sweeps loosely left to right; in comes back from the middle
+    // outward. Neither is tidy — the jitter is worth more than the direction,
+    // and a cell at the trailing edge can still go first.
+    const fromMiddle = Math.hypot(across - 0.5, down - 0.5) / 0.707
+    return {
+      out: Math.round((across * 0.5 + Math.random() * 0.5) * 170),
+      in: Math.round((fromMiddle * 0.55 + Math.random() * 0.45) * 260),
+      lit: Math.random() < 0.1
+    }
+  })
+
+  const grid = { columns, rows, cells }
+  grids.set(key, grid)
+  return grid
+}
 
 /** The model goes first. "Open a project" means the object, and the stills are
  *  what you step to afterwards — `model.ts` appends it because the index
@@ -181,6 +219,34 @@ function Leaders({ notes, box }: { notes: Note[]; box: ReturnType<typeof boxOf> 
         )
       })}
     </svg>
+  )
+}
+
+function Disintegration({ frame, phase }: { frame: Frame; phase: 'out' | 'in' }) {
+  const box = dissolveBox(frame)
+  const { columns, rows, cells } = gridFor(box)
+
+  return (
+    <div
+      className="mech-dissolve"
+      data-phase={phase}
+      style={{
+        left: `calc(${box.x} * var(--px))`,
+        top: `calc(${box.y} * var(--px))`,
+        width: `calc(${box.w} * var(--px))`,
+        height: `calc(${box.h} * var(--px))`,
+        gridTemplateColumns: `repeat(${columns}, 1fr)`,
+        gridTemplateRows: `repeat(${rows}, 1fr)`
+      }}
+    >
+      {cells.map((cell, i) => (
+        <span
+          key={i}
+          data-lit={cell.lit}
+          style={{ ['--out' as string]: `${cell.out}ms`, ['--in' as string]: `${cell.in}ms` }}
+        />
+      ))}
+    </div>
   )
 }
 
@@ -306,15 +372,7 @@ export default function Mech({ id, onHome }: Props) {
               again rather than revealing them already extended. */}
           <Leaders key={current.id} notes={notes} box={boxOf(current)} />
 
-          <div className="mech-dissolve" data-phase={swapping ? 'out' : 'in'}>
-            {CELLS.map((cell, i) => (
-              <span
-                key={i}
-                data-lit={cell.lit}
-                style={{ ['--out' as string]: `${cell.out}ms`, ['--in' as string]: `${cell.in}ms` }}
-              />
-            ))}
-          </div>
+          <Disintegration frame={current} phase={swapping ? 'out' : 'in'} />
         </div>
 
         <section className="mech-side">

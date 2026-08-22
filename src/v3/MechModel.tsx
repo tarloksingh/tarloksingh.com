@@ -172,25 +172,23 @@ function Model({ src, tuning, look }: { src: string; tuning: ModelTuning; look: 
       blink.current.at = now + between(tuning.blinkMin, tuning.blinkMax)
     }
 
-    // The eyes go where you are. Sensitivity decides how eagerly they react;
-    // the cap decides how far they are ever allowed to travel, so a cursor
-    // flicked into a corner cannot drive them past a natural rotation.
-    //
-    // The vertical is negated. `VerticalLook` rises as the eyes go *down*,
-    // which is the other half of why this read wrong — pointing above the
-    // face sent them looking at the floor.
+    /* The eyes go where you are. Sensitivity decides how eagerly they react;
+       the cap decides how far they are ever allowed to travel, so a cursor
+       flicked into a corner cannot drive them past a natural rotation.
+
+       No negation on the vertical, despite v2 having one. Its `usePointer`
+       documents itself as "+1 = up" and then computes `clientY / height * 2 - 1`,
+       which is +1 at the *bottom* — so v2's minus and this function's
+       already-flipped Y are the same sign twice, and the eyes went the wrong
+       way. The flips below are on the panel because this is exactly the kind
+       of thing that is faster to settle by looking at it than by reasoning
+       about it. */
     const target = look()
     const k = 1 - Math.exp(-tuning.lookSpeed * delta)
-    eyes.current.h = MathUtils.lerp(
-      eyes.current.h,
-      MathUtils.clamp(target.x * tuning.lookH, -tuning.lookMaxH, tuning.lookMaxH),
-      k
-    )
-    eyes.current.v = MathUtils.lerp(
-      eyes.current.v,
-      MathUtils.clamp(-target.y * tuning.lookV, -tuning.lookMaxV, tuning.lookMaxV),
-      k
-    )
+    const h = target.x * tuning.lookH * (tuning.lookFlipH ? -1 : 1)
+    const v = target.y * tuning.lookV * (tuning.lookFlipV ? -1 : 1)
+    eyes.current.h = MathUtils.lerp(eyes.current.h, MathUtils.clamp(h, -tuning.lookMaxH, tuning.lookMaxH), k)
+    eyes.current.v = MathUtils.lerp(eyes.current.v, MathUtils.clamp(v, -tuning.lookMaxV, tuning.lookMaxV), k)
     setMorph('HorizontalLook', eyes.current.h)
     setMorph('VerticalLook', eyes.current.v)
 

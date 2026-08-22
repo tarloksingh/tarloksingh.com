@@ -302,6 +302,22 @@
   z-index: 1;
 }
 
+.mech-stage canvas {
+  display: block;
+}
+
+/* A still or a clip stands where the model does, at the exact size the
+   leaders were laid out against — `mediaBox()` in Mech.tsx does this same
+   sum, which is why the two can never drift apart. */
+.mech-flat {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  object-fit: cover;
+  border-radius: calc(4 * var(--px));
+}
+
 /* ---- disintegration ----
 
    Cells that grow to eat the frame and shrink to give the next one back.
@@ -314,11 +330,8 @@
    frame of it is on the compositor. */
 .mech-dissolve {
   position: absolute;
-  inset: 0;
   z-index: 3;
   display: grid;
-  grid-template-columns: repeat(44, 1fr);
-  grid-template-rows: repeat(25, 1fr);
   pointer-events: none;
 }
 

@@ -48,6 +48,11 @@ export interface ModelTuning {
   lookMaxH: number
   lookMaxV: number
   lookSpeed: number
+  /** Which way round each axis runs. On the panel rather than in the source
+   *  because the morph's own sign convention is not written down anywhere and
+   *  is faster to settle by looking at it. */
+  lookFlipH: boolean
+  lookFlipV: boolean
   /** Follow the bird over the pointer while it is in the air. */
   watchBird: boolean
   blinkMin: number
@@ -82,6 +87,8 @@ export const MODEL_DEFAULTS: ModelTuning = {
   lookMaxH: 0.6,
   lookMaxV: 0.4,
   lookSpeed: 4,
+  lookFlipH: false,
+  lookFlipV: false,
   watchBird: true,
   blinkMin: 2.5,
   blinkMax: 9.5
@@ -170,6 +177,8 @@ export function useModelTuning(): ModelTuning {
         lookMaxH: { value: start.lookMaxH, min: 0.05, max: 1, step: 0.01, label: 'Max H' },
         lookMaxV: { value: start.lookMaxV, min: 0.05, max: 1, step: 0.01, label: 'Max V' },
         lookSpeed: { value: start.lookSpeed, min: 0.5, max: 14, step: 0.1, label: 'Follow' },
+        lookFlipH: { value: start.lookFlipH, label: 'Flip H' },
+        lookFlipV: { value: start.lookFlipV, label: 'Flip V' },
         watchBird: { value: start.watchBird, label: 'Watch bird' },
         blinkMin: { value: start.blinkMin, min: 0.5, max: 12, step: 0.1, label: 'Blink min' },
         blinkMax: { value: start.blinkMax, min: 1, max: 24, step: 0.1, label: 'Blink max' }
