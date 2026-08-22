@@ -172,25 +172,33 @@ function Model({ src, tuning, look }: { src: string; tuning: ModelTuning; look: 
       blink.current.at = now + between(tuning.blinkMin, tuning.blinkMax)
     }
 
-    /* The eyes go where you are. Sensitivity decides how eagerly they react;
-       the cap decides how far they are ever allowed to travel, so a cursor
-       flicked into a corner cannot drive them past a natural rotation.
+    /* The eyes go where you are, measured out from the middle of their travel
+       — see `lookCenterH` for why the middle is not zero. Sensitivity decides
+       how eagerly they react; the cap decides how far they are ever allowed
+       to go, so a cursor flicked into a corner cannot drive them to an
+       extreme of the sweep.
 
-       No negation on the vertical, despite v2 having one. Its `usePointer`
-       documents itself as "+1 = up" and then computes `clientY / height * 2 - 1`,
-       which is +1 at the *bottom* — so v2's minus and this function's
-       already-flipped Y are the same sign twice, and the eyes went the wrong
-       way. The flips below are on the panel because this is exactly the kind
-       of thing that is faster to settle by looking at it than by reasoning
-       about it. */
+       Neither axis is negated, despite v2 negating the vertical. Its
+       `usePointer` documents itself as "+1 = up" and then computes
+       `clientY / height * 2 - 1`, which is +1 at the *bottom* — so v2's minus
+       and this function's already-flipped Y were the same sign applied twice.
+       Both signs check out against the morph deltas: `HorizontalLook` slides
+       the eyes toward +x, which is the viewer's right, and `VerticalLook`
+       slides them toward -z, which the head's rotation turns into up. The
+       flips stay on the panel anyway, because a morph's sign convention is
+       written down nowhere. */
     const target = look()
     const k = 1 - Math.exp(-tuning.lookSpeed * delta)
     const h = target.x * tuning.lookH * (tuning.lookFlipH ? -1 : 1)
     const v = target.y * tuning.lookV * (tuning.lookFlipV ? -1 : 1)
+
+    // Tracked as a deviation from the middle of the sweep rather than as the
+    // morph value itself, so the eyes start looking straight ahead instead of
+    // easing over from hard left on the first frame.
     eyes.current.h = MathUtils.lerp(eyes.current.h, MathUtils.clamp(h, -tuning.lookMaxH, tuning.lookMaxH), k)
     eyes.current.v = MathUtils.lerp(eyes.current.v, MathUtils.clamp(v, -tuning.lookMaxV, tuning.lookMaxV), k)
-    setMorph('HorizontalLook', eyes.current.h)
-    setMorph('VerticalLook', eyes.current.v)
+    setMorph('HorizontalLook', MathUtils.clamp(tuning.lookCenterH + eyes.current.h, 0, 1))
+    setMorph('VerticalLook', MathUtils.clamp(tuning.lookCenterV + eyes.current.v, 0, 1))
 
     // An expression that rises and falls on its own, so the face reads as
     // thinking rather than as waiting.

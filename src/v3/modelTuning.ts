@@ -47,6 +47,17 @@ export interface ModelTuning {
   lookV: number
   lookMaxH: number
   lookMaxV: number
+  /** Where the eyes sit when they are looking at nothing.
+   *
+   *  Not zero. `HorizontalLook` and `VerticalLook` are single morphs that
+   *  translate the whole eye mesh from one extreme of its travel to the
+   *  other — the glTF accessors give both a min equal to their max, so each
+   *  is one rigid slide, and the horizontal covers 65% of the eye's own
+   *  width. Influence 0 is not a centred gaze, it is hard left; the middle of
+   *  the sweep is. Which also means the eyes can only ever move ±0.5 from
+   *  here, so the caps above are small numbers now. */
+  lookCenterH: number
+  lookCenterV: number
   lookSpeed: number
   /** Which way round each axis runs. On the panel rather than in the source
    *  because the morph's own sign convention is not written down anywhere and
@@ -84,8 +95,10 @@ export const MODEL_DEFAULTS: ModelTuning = {
 
   lookH: 0.8,
   lookV: 0.5,
-  lookMaxH: 0.6,
-  lookMaxV: 0.4,
+  lookMaxH: 0.3,
+  lookMaxV: 0.22,
+  lookCenterH: 0.5,
+  lookCenterV: 0.5,
   lookSpeed: 4,
   lookFlipH: false,
   lookFlipV: false,
@@ -174,8 +187,10 @@ export function useModelTuning(): ModelTuning {
       {
         lookH: { value: start.lookH, min: 0, max: 2, step: 0.05, label: 'Sens H' },
         lookV: { value: start.lookV, min: 0, max: 2, step: 0.05, label: 'Sens V' },
-        lookMaxH: { value: start.lookMaxH, min: 0.05, max: 1, step: 0.01, label: 'Max H' },
-        lookMaxV: { value: start.lookMaxV, min: 0.05, max: 1, step: 0.01, label: 'Max V' },
+        lookMaxH: { value: start.lookMaxH, min: 0.02, max: 0.5, step: 0.01, label: 'Max H' },
+        lookMaxV: { value: start.lookMaxV, min: 0.02, max: 0.5, step: 0.01, label: 'Max V' },
+        lookCenterH: { value: start.lookCenterH, min: 0, max: 1, step: 0.01, label: 'Centre H' },
+        lookCenterV: { value: start.lookCenterV, min: 0, max: 1, step: 0.01, label: 'Centre V' },
         lookSpeed: { value: start.lookSpeed, min: 0.5, max: 14, step: 0.1, label: 'Follow' },
         lookFlipH: { value: start.lookFlipH, label: 'Flip H' },
         lookFlipV: { value: start.lookFlipV, label: 'Flip V' },
