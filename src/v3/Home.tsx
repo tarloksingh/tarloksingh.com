@@ -4,8 +4,9 @@ import { wallItems } from './model'
 /* The v3 home screen: the whole body of work drifting past, and two words of
    chrome over the top of it.
 
-   Tiles rest on their posters and play while hovered — see the note in
-   `DriftWall.tsx`. Clicking one crosses to the browse screen with that
+   Every clip plays, all the time. Nothing pauses on hover and the wall does
+   not follow the pointer — it drifts at its own pace regardless of what the
+   viewer is doing. Clicking a tile crosses to the browse screen with that
    project already up. */
 
 interface Props {
@@ -32,7 +33,10 @@ export default function Home({ onOpen, onBrowse }: Props) {
           speed={16}
           direction="up"
           variance={0.4}
-          parallax={1.6}
+          parallax={0}
+          pauseOnHover={false}
+          holdHoveredColumn={false}
+          play="always"
           lift={34}
           fade={0.2}
           dim={0.62}

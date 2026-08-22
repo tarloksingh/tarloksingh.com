@@ -47,6 +47,9 @@ interface Props {
   variance?: number
   parallax?: number
   pauseOnHover?: boolean
+  /** The original stops the column under the pointer even when
+   *  `pauseOnHover` is off. Set false to let it keep drifting. */
+  holdHoveredColumn?: boolean
   lift?: number
   fade?: number
   dim?: number
@@ -161,6 +164,7 @@ export default function DriftWall({
   variance = 0.45,
   parallax = 0.6,
   pauseOnHover = false,
+  holdHoveredColumn = true,
   lift = 64,
   fade = 0.6,
   dim = 0.55,
@@ -265,8 +269,8 @@ export default function DriftWall({
           const meta = columnMeta[c]
           if (!meta) continue
           const paused = wallHoveredRef.current && pauseOnHover
-          const factor = paused || hoveredColRef.current === c ? 0 : 1
-          const target = baseVelocities[c] * factor
+          const held = holdHoveredColumn && hoveredColRef.current === c
+          const target = baseVelocities[c] * (paused || held ? 0 : 1)
 
           const ease = 1 - Math.exp(-dt / (target === 0 ? 0.16 : 0.28))
           velocitiesRef.current[c] += (target - velocitiesRef.current[c]) * ease
@@ -294,7 +298,7 @@ export default function DriftWall({
       rafRef.current = null
       lastTsRef.current = null
     }
-  }, [baseVelocities, columnMeta, pauseOnHover, parallax, reduced, applyPlaneTransform])
+  }, [baseVelocities, columnMeta, pauseOnHover, holdHoveredColumn, parallax, reduced, applyPlaneTransform])
 
   const activate = useCallback((id: string, index: number) => {
     activeIdRef.current = id
