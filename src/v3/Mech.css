@@ -28,10 +28,10 @@
   /* One Figma pixel, in real ones. Three terms, and whichever is smallest
      wins: a rem so browser zoom actually enlarges the readout (rem is a fixed
      count of CSS pixels, and zoom magnifies those), and the two viewport
-     terms so the composition always fits. 0.0651rem is 1.0417px at a 16px
-     root, which puts the frame's natural width at 2000 — its cap. Past that
+     terms so the composition always fits. 0.0749rem is 1.1984px at a 16px
+     root, which puts the frame's natural width at 2300 — its cap. Past that
      the page would be a poster seen from across a room. */
-  --px: min(0.0651rem, 0.0520833vw, 0.0925926vh);
+  --px: min(0.0749rem, 0.0520833vw, 0.0925926vh);
   /* The green off an eighties instrument cluster rather than a terminal
      cyan: paler, further toward the yellow side, and it reads as something
      lit from behind instead of something emitting. */
@@ -92,7 +92,7 @@
      The leaders and the compass are SVG, drawn in user units that the viewBox
      scales by `--px`, where a rem cannot reach. They multiply by `--type-k`
      instead — the same ratio as a plain number, set in `Mech.tsx`. */
-  --type: max(var(--px), 0.0651rem);
+  --type: max(var(--px), 0.0749rem);
   --dim: #4a544f;
   --mid: #7e8c85;
   --ease: cubic-bezier(0.22, 0.85, 0.25, 1);
@@ -272,6 +272,14 @@
   height: 13px;
   border: 1.6px solid var(--accent);
   filter: drop-shadow(0 0 5px rgba(var(--accent-rgb), 0.7));
+  transition: border-color 160ms linear, filter 160ms linear;
+}
+
+/* The one target that is not a control on the page — warm, like the bird
+   itself and the bolt it is hit by, rather than the panel's own accent. */
+.mech-cursor[data-quarry='true'] .mech-lock i {
+  border-color: var(--warn);
+  filter: drop-shadow(0 0 5px rgba(var(--warn-rgb), 0.7));
 }
 
 .mech-lock i:nth-child(1) {
@@ -310,17 +318,37 @@
    there, so nothing has a second code path for its first second. */
 
 .mech[data-boot='true'] .mech-head,
-.mech[data-boot='true'] .mech-rail,
+.mech[data-boot='true'] .mech-rail-wrap,
+.mech[data-boot='true'] .mech-deck-slot,
 .mech[data-boot='true'] .mech-foot,
 .mech[data-boot='true'] .mech-coords {
   opacity: 0;
 }
 
-.mech-head,
-.mech-rail,
+/* The header drops in rather than just fading — it is chrome hung off the
+   top edge, so it reads better arriving from there than appearing in place. */
+.mech[data-boot='true'] .mech-head {
+  transform: translateY(calc(-18 * var(--px)));
+}
+
+.mech-head {
+  transition: opacity 500ms var(--ease) 120ms, transform 500ms var(--ease) 120ms;
+}
+
+.mech-rail-wrap,
+.mech-deck-slot,
 .mech-foot,
 .mech-coords {
   transition: opacity 500ms var(--ease) 120ms;
+}
+
+/* Docked top right, the same right edge as the rail below it, in the gap
+   between it and the header. */
+.mech-deck-slot {
+  position: absolute;
+  top: calc(90 * var(--px));
+  right: calc(101 * var(--px));
+  z-index: 3;
 }
 
 /* The subject arrives out of nothing rather than out of a cover — on the
@@ -339,19 +367,24 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
+  gap: calc(24 * var(--px));
   z-index: 3;
 }
 
 .mech-wordmark {
+  /* Same voice as the title: Clash Display, the same tight negative tracking
+     — just smaller, since this is a signature in the corner and not the
+     thing the screen is about. */
   font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-weight: 400;
-  font-size: calc(21 * var(--type));
-  letter-spacing: calc(3.6 * var(--type));
+  font-size: calc(16 * var(--type));
+  letter-spacing: calc(-0.4 * var(--type));
   text-transform: uppercase;
   color: var(--mid);
   background: none;
   border: 0;
   padding: 0;
+  flex: none;
   transition: color 160ms linear;
 }
 
@@ -360,9 +393,17 @@
 }
 
 .mech-nav {
+  /* Takes whatever the wordmark doesn't, and wraps rather than running past
+     the frame's right edge — a full tag row plus the current project's name
+     is wider than the header at the frame's own larger sizes. */
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
+  justify-content: flex-end;
   gap: calc(19 * var(--px));
+  row-gap: calc(6 * var(--px));
   font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-weight: 400;
   font-size: calc(15.5 * var(--type));
@@ -517,25 +558,25 @@
    `OUT_STEP` in Mech.tsx, which `EXIT_MS` is set against. */
 .mech-stage[data-covered='true'] .mech-leader-mark,
 .mech-stage[data-covered='true'] .mech-leader-core {
-  animation: mech-out 240ms var(--ease) calc(140ms + var(--d-out, 0ms)) both;
+  animation: mech-out 320ms var(--ease) calc(170ms + var(--d-out, 0ms)) both;
 }
 
 .mech-stage[data-covered='true'] .mech-leader-value {
-  animation: mech-out 220ms var(--ease) calc(180ms + var(--d-out, 0ms)) both;
+  animation: mech-out 300ms var(--ease) calc(210ms + var(--d-out, 0ms)) both;
 }
 
 .mech-stage[data-covered='true'] .mech-leader-label {
-  animation: mech-out 220ms var(--ease) calc(220ms + var(--d-out, 0ms)) both;
+  animation: mech-out 300ms var(--ease) calc(260ms + var(--d-out, 0ms)) both;
 }
 
 .mech-stage[data-covered='true'] .mech-leader {
-  animation: mech-undraw 380ms var(--ease) calc(180ms + var(--d-out, 0ms)) both;
+  animation: mech-undraw 520ms var(--ease) calc(210ms + var(--d-out, 0ms)) both;
 }
 
 /* The ping is a loop rather than an entry, so there is nothing to undo — it
    goes out with the mark it came from. */
 .mech-stage[data-covered='true'] .mech-leader-ping {
-  animation: mech-out 200ms var(--ease) calc(140ms + var(--d-out, 0ms)) both;
+  animation: mech-out 260ms var(--ease) calc(170ms + var(--d-out, 0ms)) both;
 }
 
 /* ---- the housing ----
@@ -885,13 +926,13 @@
   stroke: rgba(var(--accent-rgb), 0.85);
   stroke-width: 1.2;
   opacity: 0;
-  animation: mech-fade 420ms ease calc(var(--d) + 420ms) both;
+  animation: mech-fade 560ms ease calc(var(--d) + 560ms) both;
 }
 
 .mech-leader-core {
   fill: var(--accent);
   opacity: 0;
-  animation: mech-fade 420ms ease calc(var(--d) + 420ms) both;
+  animation: mech-fade 560ms ease calc(var(--d) + 560ms) both;
   filter: drop-shadow(0 0 5px rgba(var(--accent-rgb), 0.9));
 }
 
@@ -899,7 +940,7 @@
   fill: none;
   stroke: rgba(var(--accent-rgb), 0.55);
   stroke-width: 1;
-  animation: mech-ping 2.8s cubic-bezier(0.2, 0.7, 0.35, 1) calc(var(--d) + 520ms) infinite both;
+  animation: mech-ping 2.8s cubic-bezier(0.2, 0.7, 0.35, 1) calc(var(--d) + 700ms) infinite both;
 }
 
 @keyframes mech-ping {
@@ -948,21 +989,21 @@
   stroke-width: 1.15;
   stroke-dasharray: var(--l);
   stroke-dashoffset: var(--l);
-  animation: mech-draw 620ms cubic-bezier(0.3, 0.8, 0.3, 1) var(--d) both;
+  animation: mech-draw 850ms cubic-bezier(0.3, 0.8, 0.3, 1) var(--d) both;
 }
 
 .mech-leader-label,
 .mech-leader-value {
   opacity: 0;
-  animation: mech-fade 380ms ease both;
+  animation: mech-fade 520ms ease both;
 }
 
 .mech-leader-label {
-  animation-delay: calc(var(--d) + 300ms);
+  animation-delay: calc(var(--d) + 420ms);
 }
 
 .mech-leader-value {
-  animation-delay: calc(var(--d) + 380ms);
+  animation-delay: calc(var(--d) + 520ms);
 }
 
 .mech-leader-label {
@@ -976,7 +1017,11 @@
 
 .mech-leader-value {
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  font-size: calc(17px * var(--type-k, 1));
+  /* Same size as `.mech-fold-body p` — the other white detail text on the
+     screen, under project overview. `13.5px * type-k` and `13.5 * var(--type)`
+     land on the same rendered size; `type-k` is exactly the ratio between the
+     two units, so a plain SVG px multiplied by it means "this many `--type`". */
+  font-size: calc(13.5px * var(--type-k, 1));
   fill: #fff;
 }
 
@@ -1032,12 +1077,12 @@
 .mech-side {
   position: absolute;
   left: calc(101 * var(--px));
-  top: calc(212 * var(--px));
+  top: calc(85 * var(--px));
   width: calc(380 * var(--px));
   bottom: calc(120 * var(--px));
-  /* A column rather than three absolute things: the role line is the one
+  /* A column rather than three absolute things: the tagline is the one
      block here whose height is set by the words instead of by the frame, so
-     the folds under it have to be able to move. See `.mech-roles`. */
+     the folds under it have to be able to move. See `.mech-tagline`. */
   display: flex;
   flex-direction: column;
   z-index: 3;
@@ -1110,35 +1155,53 @@
   }
 }
 
-.mech-roles {
+.mech-tagline {
   margin-top: calc(10 * var(--px));
-  /* The folds start a fixed distance down the column — 174 in the Figma, of
-     which the title and its margin are 56 — rather than following the role
-     line: two lines of roles or four, the overview opens in the same place,
-     which is what stops the column jumping between projects.
-
-     It is a floor and not a position, because the role line is the one thing
-     in the column that can outgrow its slot. Its type has a floor under it
-     while the column's width does not, so a narrow window sets 133 characters
-     in six lines where a wide one sets three, and a fixed distance would put
-     the first fold through the middle of them. Under the floor nothing moves;
-     over it, the folds move down by exactly what the words needed. */
-  min-height: calc(118 * var(--px));
+  /* A short line, not the role list this replaced — so the reserve under it
+     only has to cover a wrap to two lines on a narrow window, not the six a
+     long tag list could run to. Still a floor and not a position, for the
+     same reason: nothing should shift the folds' start between one project's
+     tagline and the next. */
+  min-height: calc(40 * var(--px));
   font-size: calc(13.5 * var(--type));
   line-height: calc(18 * var(--type));
   color: #fff;
 }
 
-/* The folds start a fixed distance down the column rather than following the
-   role line — two lines of roles or four, the overview opens in the same
-   place, which is what stops the column jumping between projects. */
+.mech-folds-wrap {
+  /* Whatever is left of the column under the title and tagline. `min-height:
+     0` is what lets the fold list below shrink back down and actually
+     scroll, rather than growing the flex item to fit. */
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Two flexible spacers around the fold list rather than `justify-content:
+   center` — a plain centre sat noticeably low, most of the way down a tall
+   window, because the space under the title genuinely is that tall. Weighting
+   the lower spacer more than the upper one holds the list a little above
+   true middle instead. */
+.mech-folds-wrap::before,
+.mech-folds-wrap::after {
+  content: '';
+  flex: 1;
+}
+
+.mech-folds-wrap::after {
+  flex-grow: 1.6;
+}
+
 /* Inset by four and padded back out by four: a scroll box clips both axes
    whatever `overflow-x` says, and the pip turning to a diamond reaches
    outside the column's left edge. The content lands where it always did. */
 .mech-folds {
-  /* Whatever is left of the column under the role line. `min-height: 0` is
-     what lets it actually scroll rather than growing the flex item to fit. */
-  flex: 1;
+  /* Sized to its own content so the spacers above and below can centre it,
+     rather than stretching to fill the wrap and padding out the space below
+     it. `min-height: 0` is what lets it shrink back down and actually scroll
+     on a project with more folds than the column has room for. */
+  flex: 0 1 auto;
   min-height: 0;
   margin: 0 calc(-5 * var(--px));
   padding: 0 calc(5 * var(--px));
@@ -1248,28 +1311,96 @@
 
 /* ---- right rail ---- */
 
-.mech-rail {
+.mech-rail-wrap {
   position: absolute;
-  right: calc(138 * var(--px));
-  top: calc(210 * var(--px));
+  right: calc(101 * var(--px));
+  top: 50%;
+  transform: translateY(-50%);
   z-index: 3;
   display: flex;
-  flex-direction: column;
-  gap: calc(21 * var(--px));
+  align-items: stretch;
+  gap: calc(10 * var(--px));
   /* Five tiles is the Figma; a dozen is what several of the projects actually
      have. The strip scrolls rather than running off the bottom. */
   max-height: calc(690 * var(--px));
+}
+
+.mech-rail {
+  display: flex;
+  flex-direction: column;
+  gap: calc(21 * var(--px));
   overflow-y: auto;
   scrollbar-width: none;
+  padding: calc(14 * var(--px)) calc(12 * var(--px));
+  border: 1px solid rgba(var(--accent-rgb), 0.16);
+  border-radius: var(--round);
+  background: rgba(0, 0, 0, 0.25);
+  box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.1);
+  /* Drawn in after the tiles have bubbled into place — 1200ms is `BOOT_MS`
+     in Mech.tsx, plus enough of a tail for a full tile strip's own stagger
+     to clear before the frame around it appears. */
+  animation: mech-rail-frame-in 420ms var(--ease) calc(1200ms + 760ms) both;
+}
+
+@keyframes mech-rail-frame-in {
+  from {
+    border-color: rgba(var(--accent-rgb), 0);
+    background-color: rgba(0, 0, 0, 0);
+    box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0);
+  }
 }
 
 .mech-rail::-webkit-scrollbar {
   display: none;
 }
 
+/* The tile strip's own scrubber, in the same pen as the transport's — a
+   hairline track and a small glowing thumb, rather than a native scrollbar
+   nothing here otherwise draws. The bar itself grows in last of all, after
+   the frame around the tiles — `data-scrollable` still decides whether it
+   shows at all, hidden whenever the tiles all fit. */
+.mech-rail-track {
+  position: relative;
+  flex: none;
+  width: calc(3 * var(--px));
+  border-radius: calc(2 * var(--px));
+  background: rgba(var(--accent-rgb), 0.18);
+  opacity: 0;
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: opacity 200ms linear;
+  animation: mech-rail-track-in 380ms var(--ease) calc(1200ms + 940ms) both;
+}
+
+@keyframes mech-rail-track-in {
+  to {
+    transform: scaleY(1);
+  }
+}
+
+.mech-rail-wrap[data-scrollable='true'] .mech-rail-track {
+  opacity: 1;
+}
+
+.mech-rail-thumb {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: var(--thumb-top, 0%);
+  height: var(--thumb-h, 30%);
+  border-radius: calc(2 * var(--px));
+  background: var(--accent);
+  box-shadow: 0 0 calc(7 * var(--px)) rgba(var(--accent-rgb), 0.7);
+}
+
 .mech-tile {
-  animation: mech-tile-in 420ms var(--ease) both;
-  animation-delay: calc(var(--i) * 45ms + 260ms);
+  animation: mech-tile-in 460ms cubic-bezier(0.24, 1.5, 0.4, 1) both;
+  /* 1200ms is `BOOT_MS` in Mech.tsx: the tiles hold off with the rest of the
+     chrome and bubble in top to bottom once the machine is up, rather than
+     counting down from mount while the strip they're in is still invisible
+     — which is what a plain per-tile delay works out to under the boot fade
+     in `.mech-rail-wrap`. */
+  animation-delay: calc(1200ms + var(--i) * 55ms + 60ms);
   width: calc(68 * var(--px));
   height: calc(58 * var(--px));
   flex: none;
@@ -1453,18 +1584,6 @@
   filter: drop-shadow(0 0 7px rgba(var(--warn-rgb), 0.8));
 }
 
-.mech-marker-pip {
-  fill: var(--warn);
-  filter: drop-shadow(0 0 7px rgba(var(--warn-rgb), 0.9));
-  animation: mech-pip-pulse 1.8s ease-in-out infinite;
-}
-
-@keyframes mech-pip-pulse {
-  50% {
-    opacity: 0.35;
-  }
-}
-
 .mech-heading {
   fill: #f28a63;
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
@@ -1532,7 +1651,9 @@
   border: 0;
   background: none;
   pointer-events: auto;
-  color: var(--accent);
+  /* Warm, like the compass marker and the deck — not another green thing on
+     a green panel. */
+  color: var(--warn);
   transform: translate(-50%, -50%);
 }
 
@@ -1540,7 +1661,7 @@
   width: 100%;
   height: 100%;
   overflow: visible;
-  filter: drop-shadow(0 0 5px rgba(46, 230, 196, 0.5));
+  filter: drop-shadow(0 0 5px rgba(var(--warn-rgb), 0.5));
 }
 
 .mech-bird path {
@@ -1600,7 +1721,9 @@
   width: 12px;
   height: 12px;
   margin: -6px 0 0 -6px;
-  border: 1.6px solid var(--accent);
+  /* Warm, matching the bird itself — a hit reads as the same warm thing
+     breaking apart, not a green flash on a warm bird. */
+  border: 1.6px solid var(--warn);
   border-radius: 50%;
   opacity: 0;
   pointer-events: none;
@@ -2039,10 +2162,19 @@
   }
 }
 
+/* A drop and a small overshoot rather than a slide — the tiles read as
+   settling into place, not sliding in from the side. The overshoot is on
+   `transform` only; opacity's implicit end value is the tile's own resting
+   0.55 (or whatever hover/pressed already has it at), the same trick as
+   everywhere else here that fades an element up to a dim rather than a lit
+   state. */
 @keyframes mech-tile-in {
   from {
     opacity: 0;
-    transform: translateX(calc(14 * var(--px)));
+    transform: translateY(calc(-16 * var(--px))) scale(0.82);
+  }
+  55% {
+    transform: translateY(calc(2 * var(--px))) scale(1.04);
   }
 }
 
@@ -2058,19 +2190,22 @@
   flex-direction: column;
 }
 
+/* The same warm read as the compass's marker box — the one other place on
+   the panel that gets to be this color — rather than another green gauge. */
 .mech-deck-row {
   display: flex;
   align-items: center;
   gap: calc(10 * var(--px));
   padding: calc(6 * var(--px)) calc(12 * var(--px));
-  border: 1px solid rgba(var(--accent-rgb), 0.22);
-  box-shadow: inset 0 0 calc(24 * var(--px)) rgba(var(--accent-rgb), 0.05);
+  border: 1px solid var(--warn);
+  background: rgba(var(--warn-rgb), 0.1);
+  box-shadow: 0 0 calc(10 * var(--px)) rgba(var(--warn-rgb), 0.35);
 }
 
 .mech-deck-tag {
-  color: rgba(var(--accent-rgb), 0.7);
+  color: #f28a63;
   letter-spacing: calc(1.4 * var(--type));
-  text-shadow: 0 0 calc(8 * var(--px)) rgba(var(--accent-rgb), 0.45);
+  text-shadow: 0 0 calc(8 * var(--px)) rgba(var(--warn-rgb), 0.55);
 }
 
 .mech-deck-empty {
@@ -2235,7 +2370,7 @@
   z-index: 3;
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
+  justify-content: flex-end;
   font-size: calc(13 * var(--type));
   color: var(--mid);
 }

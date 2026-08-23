@@ -55,6 +55,7 @@ being false (which is why `navigator.clipboard` does not exist — see
 | `MechHud.tsx`, `MechCursor.tsx` | The dashboard, and the reticle |
 | `MechBird.tsx`, `MechLaser.tsx` | The bird, and the gun |
 | `MechDeck.tsx`, `sound.ts` | The music deck, and every synthesised sound |
+| `SplitReveal.tsx` | The tagline and fold titles, drawn in a character at a time |
 | `subject.ts` | Live facts shared across the Canvas boundary |
 | `modelTuning.ts`, `wallTuning.ts` | Leva panels, and the source they paste back |
 | `clipboard.ts` | Copying that works off localhost |

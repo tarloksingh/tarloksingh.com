@@ -36,9 +36,12 @@ export interface Note {
 
 export const NOTES: Record<string, Note[]> = {
   'mr-takahashi/model': [
-    { label: 'name', value: 'mr.takahashi' },
-    { label: '3D model', value: 'blender', fold: 'design' },
-    { label: 'animations', value: 'blender', fold: 'design' }
+    { label: 'Name', value: 'mr.takahashi', at: [0.94, 0.08], to: [1.3442, -0.0118] },
+    { label: 'Tool', value: 'blender', fold: 'design', at: [-0.0816, 0.3], to: [-0.3536, 0.2258] },
+    { label: 'Animation', value: 'blender', fold: 'design', at: [0.0495, 0.8777], to: [-0.3603, 0.9205] }
+  ],
+  'mr-takahashi/hero.mp4': [
+    { label: 'made in', value: 'blender', fold: 'tools' }
   ]
 }
 

@@ -27,6 +27,11 @@ function MechCursor() {
   const lock = useRef<HTMLDivElement>(null)
   const [hot, setHot] = useState(false)
   const [live, setLive] = useState(false)
+  /* The bird is the one target that is not chrome — everything else the
+     lock box acquires is a control on the page, and reads in the panel's
+     own accent. The bird is quarry, and gets the warm color it and the gun
+     both already are. */
+  const [quarry, setQuarry] = useState(false)
 
   useEffect(() => {
     if (!window.matchMedia('(pointer: fine)').matches) return
@@ -84,6 +89,7 @@ function MechCursor() {
         if (over) sound.lock()
         target = over
         setHot(Boolean(over))
+        setQuarry(Boolean(over?.classList.contains('mech-bird')))
       }
     }
 
@@ -118,7 +124,7 @@ function MechCursor() {
   }, [])
 
   return (
-    <div className="mech-cursor" data-live={live} data-hot={hot} aria-hidden>
+    <div className="mech-cursor" data-live={live} data-hot={hot} data-quarry={quarry} aria-hidden>
       {/* Everything is drawn about (50,50) of a 0-origin viewBox. A viewBox
           that starts anywhere else puts `transform-origin: center` at the
           centre of the viewport rather than of the shape, and the spinning

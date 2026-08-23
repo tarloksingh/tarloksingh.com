@@ -101,9 +101,10 @@ the work is duplicated, and re-tagging a project re-cuts both.
 | `MechModel.tsx` | The subject — one GLB, lit, drifting, watching you |
 | `MechHud.tsx` | The dashboard under everything: grid, bloom, sweep, compass |
 | `MechCursor.tsx` | The reticle, and the lock box it hands to a target |
-| `MechBird.tsx` | v2's bird, in the accent, shootable |
+| `MechBird.tsx` | v2's bird, warm like the gun now, shootable |
 | `MechLaser.tsx` | The gun the reticle was always for |
 | `MechDeck.tsx` | The music deck |
+| `SplitReveal.tsx` | The tagline and the fold titles, drawn in a character at a time |
 | `sound.ts` | Every sound the page makes, synthesised |
 | `subject.ts` | Two live facts about the thing on stage, shared across the Canvas |
 | `modelTuning.ts`, `wallTuning.ts` | Leva panels, and the source they paste back into |
@@ -137,12 +138,12 @@ Every number in `Mech.css` is a coordinate in the Figma's 1920×1080 frame, and
 `--px` is what one of those is worth in real pixels:
 
 ```css
---px: min(0.0651rem, 0.0520833vw, 0.0925926vh);
+--px: min(0.0749rem, 0.0520833vw, 0.0925926vh);
 ```
 
 Whichever is smallest wins. The two viewport terms keep the composition fitting
-at any window shape. At a 16px root the rem term is 1.0417px, which caps the
-frame's natural width at **2000**: past that this stops being a readout and
+at any window shape. At a 16px root the rem term is 1.1984px, which caps the
+frame's natural width at **2300**: past that this stops being a readout and
 becomes a billboard.
 
 **The rem in a `min()` is a cap, and a cap is not a zoom.** It reads like the
@@ -159,7 +160,7 @@ So every size that is type — and nothing that is not — is written in a secon
 unit:
 
 ```css
---type: max(var(--px), 0.0651rem);
+--type: max(var(--px), 0.0749rem);
 ```
 
 The same rem, and a `max()`. A frame coordinate says how big a thing is *in the
@@ -360,7 +361,7 @@ wants to be brisk, one arriving is what you asked for and can settle.
 
 **The cascade is written in the stylesheet, in both directions.** A leader
 arrives in order — the line drawn on, the words landing on it, the mark opening
-on the spot last — and each leader 130ms behind the one before. That used to be
+on the spot last — and each leader 170ms behind the one before. That used to be
 an inline `animation-delay` per element, which is a delay no rule can override:
 the way out could only ever reuse the way in's timing, and a CSS delay written
 against those selectors did nothing at all. `Mech.tsx` now sets two variables — `--d`
@@ -461,9 +462,13 @@ discharge: a flash element *and* the wash *and* the bolt all arriving at the
 bottom of the screen together read as two or three bullets leaving rather than
 as one gun going off.
 
-It is the one **orange** thing on the screen. A bolt in the panel's own green
-would read as another instrument lighting up rather than as something leaving
-the page.
+It shares its **orange** with a handful of other things now — the bird, the
+compass's marker box, the audio deck, the reticle's lock box when it is on the
+bird — rather than being the one warm thing on an all-green panel, which is
+what it was originally built against. A bolt in the panel's own green would
+still read as another instrument lighting up rather than as something leaving
+the page; what changed is how much else on the panel is allowed to share its
+color instead of sitting apart from it.
 
 The blast is wide, and the bottom edge of the screen carries a low wash of the
 same colour — faintly on all the time, so the bolts have somewhere to have come

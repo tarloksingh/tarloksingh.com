@@ -14,6 +14,7 @@ import { entries, thumbOf, type Entry, type Frame } from './model'
 import { focus, notesFor, pins, type Note } from './notes'
 import { useLabelTuning, type Handed } from './labelTuning'
 import { boxOf, leadersFor, mediaBox, MODEL_BOX } from './leaders'
+import SplitReveal from './SplitReveal'
 import './Mech.css'
 
 const MechModel = lazy(() => import('./MechModel'))
@@ -35,11 +36,11 @@ const MechPins = lazy(() => import('./MechPins'))
 
 /** How long the frame on screen takes to leave before the next is mounted:
  *  the picture's own fade, then everything mounted around it running its entry
- *  backwards after a beat. The longest of those is the leader retracting —
- *  140 of delay and 420 of draw — and this has to outlast it, or the next set
- *  of lines is drawn over the last set still coming off. Timed in Mech.css,
- *  under `entries, and their inverses`. */
-const EXIT_MS = 800
+ *  backwards after a beat. The longest of those is the leader retracting — up
+ *  to 260 of delay (`OUT_STEP.most`) and 520 of undraw — and this has to
+ *  outlast it, or the next set of lines is drawn over the last set still
+ *  coming off. Timed in Mech.css, under `entries, and their inverses`. */
+const EXIT_MS = 1050
 
 /** How long the stage will wait, empty, for the incoming frame to be ready to
  *  paint before bringing it in anyway. Nothing covers the gap now, so this is
@@ -204,8 +205,8 @@ interface LeadersProps {
  *  an exit has a swap waiting on it, and six pinned notes leaving at the
  *  entry's own pace would be most of a second of goodbye. The cap is what
  *  `EXIT_MS` is set against. */
-const IN_STEP = { from: 200, by: 130 }
-const OUT_STEP = { by: 70, most: 210 }
+const IN_STEP = { from: 240, by: 170 }
+const OUT_STEP = { by: 90, most: 260 }
 
 function Leaders({ notes, box, floats, lit, onLit }: LeadersProps) {
   const group = useRef<SVGGElement>(null)
@@ -604,8 +605,13 @@ const PANEL = {
 }
 
 /** How long the machine takes to come up: the grid strikes on, the compass
- *  spins and settles, and only then do the leaders extend. */
-const BOOT_MS = 1500
+ *  spins and settles, and only then do the leaders extend. Trimmed down from
+ *  1500 — the subject (the model or the first still) uncovers at the same
+ *  moment, and it was sitting behind the cover longer than the boot itself
+ *  needed. Still generous enough to cover the one-time cost of a model's
+ *  first mount: building the WebGL context, compiling shaders, cloning the
+ *  scene graph. */
+const BOOT_MS = 1200
 
 interface Props {
   id: string
@@ -638,7 +644,7 @@ function Typed({ text, run }: { text: string; run: string }) {
         window.clearInterval(timer)
         setDone(true)
       }
-    }, 26)
+    }, 55)
     return () => window.clearInterval(timer)
   }, [text, run])
 
@@ -676,8 +682,9 @@ export default function Mech({ id, onProject, onHome }: Props) {
      showing its poster for a beat and then cutting to the real thing. */
   const [shown, setShown] = useState(0)
   const [phase, setPhase] = useState<'in' | 'out' | 'hold'>('in')
-  const [open, setOpen] = useState<string | null>('overview')
+  const [open, setOpen] = useState<string | null>(null)
   const rail = useRef<HTMLDivElement>(null)
+  const railWrap = useRef<HTMLDivElement>(null)
   const stage = useRef<HTMLDivElement>(null)
   const root = useRef<HTMLDivElement>(null)
   const scale = useRef<HTMLElement>(null)
@@ -815,6 +822,32 @@ export default function Mech({ id, onProject, onHome }: Props) {
     rail.current?.children[index]?.scrollIntoView({ block: 'nearest' })
   }, [index])
 
+  // The rail's own scrubber: a thumb sized and placed off the tile strip's
+  // real scroll state, and a track that only shows itself once there is
+  // somewhere for the thumb to go.
+  useEffect(() => {
+    const el = rail.current
+    const wrap = railWrap.current
+    if (!el || !wrap) return
+
+    const update = () => {
+      const scrollable = el.scrollHeight > el.clientHeight + 1
+      wrap.dataset.scrollable = String(scrollable)
+      if (!scrollable) return
+      wrap.style.setProperty('--thumb-h', `${(el.clientHeight / el.scrollHeight) * 100}%`)
+      wrap.style.setProperty('--thumb-top', `${(el.scrollTop / el.scrollHeight) * 100}%`)
+    }
+
+    update()
+    el.addEventListener('scroll', update)
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => {
+      el.removeEventListener('scroll', update)
+      ro.disconnect()
+    }
+  }, [frames])
+
   // The arrow keys step the rail, the same as clicking it.
   useEffect(() => {
     if (frames.length < 2) return
@@ -829,11 +862,16 @@ export default function Mech({ id, onProject, onHome }: Props) {
   if (!entry || !current) return <div className="mech" />
 
   const { project } = entry
-  const roles = project.sections.find((section) => section.id === 'roles')?.tags ?? []
   const notes = notesFor(entry, current, drafts)
 
+  // Roles used to stand on their own under the title; they read as one more
+  // fact about the project, so they take their place among the other folds
+  // instead — right after the overview, where the standalone line used to sit.
   const folds = [
     ...(project.intro ? [{ id: 'overview', title: 'project overview', text: project.intro, tags: undefined }] : []),
+    ...project.sections
+      .filter((section) => section.id === 'roles')
+      .map((section) => ({ id: section.id, title: section.title.toLowerCase(), text: section.text, tags: section.tags })),
     ...project.sections
       .filter((section) => section.id !== 'roles')
       .map((section) => ({ id: section.id, title: section.title.toLowerCase(), text: section.text, tags: section.tags }))
@@ -908,6 +946,12 @@ export default function Mech({ id, onProject, onHome }: Props) {
           </nav>
         </header>
 
+        {/* Docked between the header and the rail rather than down in the
+            footer — the same right edge as the tile strip below it. */}
+        <div className="mech-deck-slot">
+          <MechDeck />
+        </div>
+
         {/* The subject and its labels share one box so that scaling the window
             moves them together. */}
         <div className="mech-stage" ref={stage} data-covered={covered}>
@@ -971,72 +1015,85 @@ export default function Mech({ id, onProject, onHome }: Props) {
           <h1 className="mech-title">
             <Typed text={project.title} run={shownId} />
           </h1>
-          {roles.length > 0 && <p className="mech-roles">{roles.join(', ').toLowerCase()}</p>}
+          {project.tagline && (
+            <p className="mech-tagline">
+              <SplitReveal text={project.tagline} run={shownId} delay={0.3} />
+            </p>
+          )}
 
-          <div className="mech-folds">
-            {folds.map((fold) => {
-              const isOpen = open === fold.id
-              return (
-                <div className="mech-fold" key={fold.id} data-open={isOpen}>
-                  <button
-                    onClick={() => {
-                      sound.select()
-                      setOpen(isOpen ? null : fold.id)
-                    }}
-                    onPointerEnter={() => setLit(fold.id)}
-                    onPointerLeave={() => setLit(null)}
-                    aria-expanded={isOpen}
-                  >
-                    <span className="mech-pip" />
-                    <span>{fold.title}</span>
-                  </button>
+          {/* Sized to its own content and sandwiched between two flexible
+              spacers (`.mech-folds-wrap`'s ::before/::after) rather than
+              stretched to fill the space under the title — that is what
+              lets it sit centred in whatever room is left, biased a little
+              above true middle. */}
+          <div className="mech-folds-wrap">
+            <div className="mech-folds">
+              {folds.map((fold, i) => {
+                const isOpen = open === fold.id
+                return (
+                  <div className="mech-fold" key={fold.id} data-open={isOpen}>
+                    <button
+                      onClick={() => {
+                        sound.select()
+                        setOpen(isOpen ? null : fold.id)
+                      }}
+                      onPointerEnter={() => setLit(fold.id)}
+                      onPointerLeave={() => setLit(null)}
+                      aria-expanded={isOpen}
+                    >
+                      <span className="mech-pip" />
+                      <SplitReveal text={fold.title} run={shownId} delay={0.5 + i * 0.05} />
+                    </button>
 
-                  {/* Always mounted, and opened by growing its row from 0fr to
-                      1fr — the only way a panel of unknown height can animate
-                      shut as well as open. */}
-                  <div className="mech-fold-body">
-                    <div>
-                      <span className="mech-fold-rule" />
-                      <p>{fold.tags ? fold.tags.join(', ').toLowerCase() : fold.text}</p>
+                    {/* Always mounted, and opened by growing its row from 0fr to
+                        1fr — the only way a panel of unknown height can animate
+                        shut as well as open. */}
+                    <div className="mech-fold-body">
+                      <div>
+                        <span className="mech-fold-rule" />
+                        <p>{fold.tags ? fold.tags.join(', ').toLowerCase() : fold.text}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
         </section>
 
-        <div className="mech-rail" ref={rail}>
-          {frames.map((frame, i) => {
-            const thumb = thumbOf(frame)
-            return (
-              <button
-                key={frame.id}
-                className="mech-tile"
-                aria-pressed={i === index}
-                aria-label={frame.label ?? project.title}
-                title={frame.label ?? project.title}
-                style={{ ...(thumb ? { backgroundImage: `url(${thumb})` } : {}), ['--i' as string]: i }}
-                /* Hovering is the earliest honest signal that a frame is
-                   about to be wanted, and it buys a few hundred milliseconds
-                   of head start on the fetch for free. */
-                onPointerEnter={() => warm(frame)}
-                onClick={() => {
-                  sound.select()
-                  setIndex(i)
-                }}
-              >
-                {thumb ? null : <span>3D</span>}
-              </button>
-            )
-          })}
+        <div className="mech-rail-wrap" ref={railWrap}>
+          <div className="mech-rail" ref={rail}>
+            {frames.map((frame, i) => {
+              const thumb = thumbOf(frame)
+              return (
+                <button
+                  key={frame.id}
+                  className="mech-tile"
+                  aria-pressed={i === index}
+                  aria-label={frame.label ?? project.title}
+                  title={frame.label ?? project.title}
+                  style={{ ...(thumb ? { backgroundImage: `url(${thumb})` } : {}), ['--i' as string]: i }}
+                  /* Hovering is the earliest honest signal that a frame is
+                     about to be wanted, and it buys a few hundred milliseconds
+                     of head start on the fetch for free. */
+                  onPointerEnter={() => warm(frame)}
+                  onClick={() => {
+                    sound.select()
+                    setIndex(i)
+                  }}
+                >
+                  {thumb ? null : <span>3D</span>}
+                </button>
+              )
+            })}
+          </div>
+          <div className="mech-rail-track" aria-hidden>
+            <div className="mech-rail-thumb" />
+          </div>
         </div>
 
         <footer className="mech-foot">
-          <MechDeck />
-          <a href="mailto:hello@tarloksingh.com">
-            hello@tarloksingh.com
-          </a>
+          <a href="mailto:hello@tarloksingh.com">designed by Tarlok Singh</a>
         </footer>
       </div>
     </div>
