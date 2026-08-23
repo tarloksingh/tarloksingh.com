@@ -363,11 +363,17 @@ arrives in order — the line drawn on, the words landing on it, the mark openin
 on the spot last — and each leader 130ms behind the one before. That used to be
 an inline `animation-delay` per element, which is a delay no rule can override:
 the way out could only ever reuse the way in's timing, and a CSS delay written
-against those selectors did nothing at all. `Mech.tsx` now sets one variable —
-`--d`, which leader this is — and the offsets between the parts live in
-`Mech.css` beside everything else. Going out the order is mirrored, what came
-last leaving first; the per-leader cascade is not, because three lines leaving
-one after another is a slow goodbye and there is a swap waiting on it.
+against those selectors did nothing at all. `Mech.tsx` now sets two variables — `--d`
+and `--d-out`, this leader's place in each cascade — and the offsets between the
+parts of a leader live in `Mech.css` beside everything else.
+
+**Both orders are mirrored on the way out.** Inside a leader, what came last
+goes first and the line is taken off after everything it was carrying; across
+the set, the last leader laid down is the first away. Shorter steps going out
+than coming in, and capped — `OUT_STEP` in `Mech.tsx` — because an entry can
+take as long as it likes and an exit has a swap waiting on it: six pinned notes
+leaving at the entry's own pace would be most of a second of goodbye. The cap is
+what `EXIT_MS` is set against.
 
 The brackets are a case of two animations on one element: the entry owns
 `opacity` and `scale`, the breath owns `transform`. Separate properties on

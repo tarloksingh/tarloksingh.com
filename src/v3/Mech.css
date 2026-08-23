@@ -510,32 +510,32 @@
 /* A leader does not fade out. Its entry draws the line on out of nothing, so
    its exit takes the line back off, to the tip it grew from.
 
-   The order is mirrored — what came last goes first, and the line is taken off
-   after everything it was carrying — but the per-leader cascade is not: three
-   lines leaving one after another is a slow goodbye, and there is a swap
-   waiting on it. Everything is done by 560, which is what `EXIT_MS` is set
-   against. */
+   Two orders are mirrored, not one. Inside a leader, what came last goes
+   first and the line is taken off after everything it was carrying; across the
+   set, `--d-out` runs the arrival backwards, so the last leader to be laid
+   down is the first away. Shorter steps than the way in and capped — see
+   `OUT_STEP` in Mech.tsx, which `EXIT_MS` is set against. */
 .mech-stage[data-covered='true'] .mech-leader-mark,
 .mech-stage[data-covered='true'] .mech-leader-core {
-  animation: mech-out 240ms var(--ease) 140ms both;
+  animation: mech-out 240ms var(--ease) calc(140ms + var(--d-out, 0ms)) both;
 }
 
 .mech-stage[data-covered='true'] .mech-leader-value {
-  animation: mech-out 220ms var(--ease) 180ms both;
+  animation: mech-out 220ms var(--ease) calc(180ms + var(--d-out, 0ms)) both;
 }
 
 .mech-stage[data-covered='true'] .mech-leader-label {
-  animation: mech-out 220ms var(--ease) 220ms both;
+  animation: mech-out 220ms var(--ease) calc(220ms + var(--d-out, 0ms)) both;
 }
 
 .mech-stage[data-covered='true'] .mech-leader {
-  animation: mech-undraw 380ms var(--ease) 180ms both;
+  animation: mech-undraw 380ms var(--ease) calc(180ms + var(--d-out, 0ms)) both;
 }
 
 /* The ping is a loop rather than an entry, so there is nothing to undo — it
    goes out with the mark it came from. */
 .mech-stage[data-covered='true'] .mech-leader-ping {
-  animation: mech-out 200ms var(--ease) 140ms both;
+  animation: mech-out 200ms var(--ease) calc(140ms + var(--d-out, 0ms)) both;
 }
 
 /* ---- the housing ----

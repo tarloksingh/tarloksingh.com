@@ -39,7 +39,7 @@ const MechPins = lazy(() => import('./MechPins'))
  *  140 of delay and 420 of draw — and this has to outlast it, or the next set
  *  of lines is drawn over the last set still coming off. Timed in Mech.css,
  *  under `entries, and their inverses`. */
-const EXIT_MS = 600
+const EXIT_MS = 800
 
 /** How long the stage will wait, empty, for the incoming frame to be ready to
  *  paint before bringing it in anyway. Nothing covers the gap now, so this is
@@ -194,8 +194,22 @@ interface LeadersProps {
   onLit: (key: string | null) => void
 }
 
+/** The two cascades a set of leaders runs, in milliseconds. `in` waits out the
+ *  picture it is naming and then lays the lines on one after another; `out`
+ *  takes them off in the opposite order — last in, first away — which is what
+ *  makes it read as the arrival undone rather than as a second, different
+ *  cascade of its own.
+ *
+ *  Shorter steps going out, and capped. An entry can take as long as it likes;
+ *  an exit has a swap waiting on it, and six pinned notes leaving at the
+ *  entry's own pace would be most of a second of goodbye. The cap is what
+ *  `EXIT_MS` is set against. */
+const IN_STEP = { from: 200, by: 130 }
+const OUT_STEP = { by: 70, most: 210 }
+
 function Leaders({ notes, box, floats, lit, onLit }: LeadersProps) {
   const group = useRef<SVGGElement>(null)
+  const list = leadersFor(notes, box)
 
   /* The labels ride the same bob the subject is on, read from what the float
      actually did this frame rather than from an animation timed to look like
@@ -223,17 +237,18 @@ function Leaders({ notes, box, floats, lit, onLit }: LeadersProps) {
   return (
     <svg className="mech-leaders" viewBox="0 0 1920 1080" preserveAspectRatio="none" data-lit={lit !== null} aria-hidden>
       <g ref={group}>
-      {leadersFor(notes, box).map((leader, i) => {
+      {list.map((leader, i) => {
         const y = leader.elbow[1]
         const length =
           Math.abs(leader.end - leader.elbow[0]) +
           Math.hypot(leader.tip[0] - leader.elbow[0], leader.tip[1] - y)
-        /* The leader's place in the cascade, handed to the stylesheet as a
-           variable rather than spent here as `animation-delay`. An inline
-           delay is a delay no rule can override, which meant the way out
-           could only ever reuse the way in's timing — see `entries, and their
-           inverses` in Mech.css, where both directions are now written. */
-        const delay = 200 + i * 130
+        /* This leader's place in each cascade, handed to the stylesheet as
+           variables rather than spent here as `animation-delay`. An inline
+           delay is a delay no rule can override, which is what kept the way
+           out from having any timing of its own — see `entries, and their
+           inverses` in Mech.css, where both directions are written. */
+        const delay = IN_STEP.from + i * IN_STEP.by
+        const back = Math.min((list.length - 1 - i) * OUT_STEP.by, OUT_STEP.most)
 
         const on = lit !== null && (lit === leader.label || lit === leader.fold)
 
@@ -241,7 +256,7 @@ function Leaders({ notes, box, floats, lit, onLit }: LeadersProps) {
           <g
             key={leader.label}
             data-on={on}
-            style={{ ['--d' as string]: `${delay}ms` }}
+            style={{ ['--d' as string]: `${delay}ms`, ['--d-out' as string]: `${back}ms` }}
             onPointerEnter={() => onLit(leader.label)}
             onPointerLeave={() => onLit(null)}
           >
