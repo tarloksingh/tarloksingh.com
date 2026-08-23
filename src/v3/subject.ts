@@ -25,3 +25,23 @@ export const drift = {
   x: 0,
   y: 0
 }
+
+/* ---- what can be shot ----
+
+   The laser and the bird live on opposite branches of the tree and neither
+   owns the other, so the target registers itself here: one hitbox in client
+   pixels and one function that says whether the shot actually landed. Same
+   reasoning as `gaze` — a bolt tests this from inside its own frame loop,
+   several times a frame, and none of it is ever rendered. */
+export const quarry = {
+  /** How near a bolt has to pass, in client pixels. Generous on purpose, and
+   *  for a reason beyond the bird being 38px of thin line: a bolt takes about
+   *  a fifth of a second to cross the screen and the bird covers forty pixels
+   *  in that time, so a shot aimed dead at it lands where it *was*. Leading
+   *  the target is the skill; needing to lead it to hit it at all is not. */
+  radius: 46,
+  /** Set by whatever is shootable while it is in the air. Returns true if the
+   *  shot brought it down, so a bolt that arrives a frame after something
+   *  else killed it does not fire a second burst. */
+  hit: null as null | (() => boolean)
+}

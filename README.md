@@ -94,11 +94,14 @@ the work is duplicated, and re-tagging a project re-cuts both.
 | `model.ts` | The view model — projects flattened into what the panes draw |
 | `Home.tsx`, `DriftWall.tsx` | The wall, and its tuning panel's worth of numbers |
 | `Browse.tsx`, `Detail.tsx`, `Stage.tsx` | The timeline screen |
-| `Mech.tsx` | The project screen: layout, leaders, disintegration, transit |
+| `Mech.tsx` | The project screen: layout, disintegration, transit |
+| `leaders.ts`, `notes.ts` | Where the lines go, and what they say |
+| `MechPins.tsx` | Placing them by hand — press **P**, development only |
 | `MechModel.tsx` | The subject — one GLB, lit, drifting, watching you |
 | `MechHud.tsx` | The dashboard under everything: grid, bloom, sweep, compass |
 | `MechCursor.tsx` | The reticle, and the lock box it hands to a target |
 | `MechBird.tsx` | v2's bird, in the accent, shootable |
+| `MechLaser.tsx` | The gun the reticle was always for |
 | `MechDeck.tsx` | The music deck |
 | `sound.ts` | Every sound the page makes, synthesised |
 | `subject.ts` | Two live facts about the thing on stage, shared across the Canvas |
@@ -127,22 +130,53 @@ never less.
 
 ### The leaders
 
-The lines that fan out of the subject and name its parts. Geometry is computed
-rather than placed: three slots — upper right, mid left, lower left — traced off
-the Figma as *fractions of the subject's box*, so they reshape to whatever is on
-screen. A gutter either side keeps the text clear of the project copy and the
-rail when a wide still pushes the elbows outward.
+The lines that fan out of the subject and name its parts. A note that says
+nothing about where it goes falls into a fan of three slots — upper right, mid
+left, lower left — traced off the Figma as *fractions of the subject's box*, so
+they reshape to whatever is on screen; a note that names its own two points is
+drawn to them instead, which is what **Pinning the leaders** below is about. A
+gutter either side keeps the text clear of the project copy and the rail when a
+wide still pushes the elbows outward.
 
-Text is a table keyed by media id (`mr-takahashi/hero.mp4`), two words a line
-and no geometry; anything unwritten gets a derived placeholder that reads like
-one. A note names the fold it is evidence for, and hovering either lights the
-pair — additively, because dimming the rest of the readout made hovering
-anything read as the labels going out.
+Text is a table keyed by media id (`mr-takahashi/hero.mp4`), two words a line;
+anything unwritten gets a derived placeholder that reads like one. A note names
+the fold it is evidence for, and hovering either lights the pair — additively,
+because dimming the rest of the readout made hovering anything read as the
+labels going out.
 
 Over the model they ride its float, read from what the float actually did this
 frame rather than an animation timed to look like it. Two clocks that agree at
 the start and not a minute later is the sort of thing nobody can name and
 everybody notices.
+
+### Pinning the leaders
+
+Three arms off a fixed fan is a composition, not a readout: the line that says
+"3D model" has to touch the model, and on the next picture the thing worth
+naming is somewhere else entirely. So a note can carry its own two points —
+`at`, where the line touches, and `to`, where the text sits — both as
+**fractions of the subject's box**, which is what makes them hold on a 4K
+display and on a portrait still that lands somewhere the model never does.
+
+Neither is required. A note with no geometry falls into the next free slot of
+the fan, and a fourth starts the fan again a line lower, so a picture with one
+thing worth naming and a picture with six both work before anyone has placed
+anything.
+
+Placing is not typing. Press **P** on a project screen in development:
+
+- **click the picture** to add a line where you clicked
+- **drag the dot** to move where it points, **drag the label** to move where it
+  reads — the first drag of either pins both, since a half-pinned note would
+  leave its other end in a slot it no longer shares
+- the three fields are the label, the value, and the fold in the left column
+  the line is evidence for (hovering either lights the other)
+- **copy this frame** / **copy all** hands back source to paste into `NOTES` in
+  `notes.ts`, and **revert** puts the frame back to what the file says
+
+Everything is held in localStorage while you work, the same as every tuning
+panel here, and *nothing reaches a visitor until it has been pasted*. A dashed
+chip is a note still sitting where the fan put it; a solid one has been placed.
 
 ### Disintegration
 
@@ -181,11 +215,72 @@ Two things about those morphs that are not written down anywhere else:
   leaves `Eyes Closed` pinned at 1 — and the blink only writes that morph while
   a blink is running, so nothing puts it back down.
 
+**Noticing the bird takes a moment.** The face prefers the bird to the pointer
+while it is in the air, and handing it the bird's position on the frame the
+bird appears made him whip round to it: the damping downstream only ever
+softens the *end* of a turn, never the start of one. So the target itself
+crosses from the pointer to the bird over `watchCatch` seconds on a smoothstep
+— the first tenth of a second barely moves — and comes back off it quicker than
+it went. Something caught out of the corner of an eye, rather than a turret
+acquiring.
+
 Its lighting is one setting, not several: exposure 0.1, `RoomEnvironment` at
 3.4, key 30 and fill 12.3 at the intensities that go with that exposure, and
 `envMapIntensity` 0.6 with roughness +0.2 and metalness ×0.5 on every material.
 Moving any part of it alone throws the face out. All of it is on the panel, and
 the copy button hands back `MODEL_DEFAULTS` to paste into `modelTuning.ts`.
+
+### The gun
+
+Press anywhere on the readout that is not something you could press *for* a
+reason, and a bolt leaves the bottom edge of the frame for wherever you aimed —
+alternating muzzles, so a run of shots reads as a pair of cannons rather than
+one hose. It is meant for the bird, which is the only thing on the page with a
+hitbox, but it fires at empty black just as happily: a gun that only works when
+there is a target is a button.
+
+Every `a`, `button`, `input`, `label` and `video` is the page's, not the gun's,
+and a press that lands on one of them does that control's job silently. The
+bird is the one exception — it is a `<button>` so the reticle can lock onto it,
+and clicking it fires a bolt like everything else rather than killing it by
+touch. The whole of that is `CONTROLS` in `MechLaser.tsx`.
+
+Nothing about it is React state: a shot is three divs, a transform per frame,
+and a `remove()`. Bolts test the bird's position *this frame* rather than where
+it was when you pressed, so leading it is a real thing you can do — and the hit
+radius is wide enough that a shot aimed dead at it still lands, since a bolt
+takes about a fifth of a second to cross and the bird covers forty pixels in
+that time.
+
+The bird and the gun never refer to each other. `quarry` in `subject.ts` is one
+hitbox and one function that says whether the shot landed, the same trick as
+`gaze`, for the same reason: two things on opposite branches of the tree that
+have to agree every frame and never render anything.
+
+### Nothing stutters on a swap
+
+Four things were doing work at the exact moment the frame changed, which is the
+one moment there is none to spare:
+
+- **The subject was being taken down and rebuilt.** Stepping to a still
+  unmounted the Canvas, and coming back built a WebGL context, compiled its
+  shaders, cloned the scene graph and generated an environment map again. It is
+  now mounted for as long as the project has a model and *stopped* while a
+  still is up — `frameloop="never"`, which costs nothing per frame and keeps
+  all of it warm.
+- **The pictures were being decoded.** Several are multi-megabyte webp, and
+  `load` only means the bytes arrived. The cover now waits on `decode()`, and
+  the frames either side of the one on the stage are fetched and decoded on an
+  idle callback, so stepping to one is a paint and not a decode.
+- **The title was re-rendering the screen per character.** `Typed` wrote
+  through React state, so the rail, the folds and the leaders all reconciled
+  forty times a second during the one beat that is meant to read as a machine
+  coming up. It writes to its node now, and touches state once, at the end, to
+  put the caret out.
+- **The dissolve grid was being rebuilt.** Grid shapes are rounded to six cells
+  before anything is built, so most of a project's frames share one grid and
+  swapping between them touches no DOM at all; the shapes a project does need
+  are worked out on an idle callback while the machine is still booting.
 
 ### Sound
 

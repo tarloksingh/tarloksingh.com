@@ -49,6 +49,11 @@
   --wash-lime: 140, 255, 170;
   /* Both pulled a little green, so the unlit type belongs to the same panel
      as the lit type rather than sitting on it as neutral grey. */
+  /* The one corner radius on the readout: the pictures, the clips and the
+     tiles that stand for them, in frame coordinates like everything else so
+     it scales with the composition rather than staying 10px on a wall
+     display. */
+  --round: calc(10 * var(--px));
   --dim: #4a544f;
   --mid: #7e8c85;
   --ease: cubic-bezier(0.22, 0.85, 0.25, 1);
@@ -361,6 +366,19 @@
   display: block;
 }
 
+/* The subject's own layer, so it can be taken off the stage without being
+   taken down. `visibility` rather than `display`: a canvas in a box that has
+   been laid out keeps its size, and one in `display: none` has none to come
+   back to. */
+.mech-model-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.mech-model-layer[data-on='false'] {
+  visibility: hidden;
+}
+
 /* A still or a clip stands where the model does, at the exact size the
    leaders were laid out against — `mediaBox()` in Mech.tsx does this same
    sum, which is why the two can never drift apart. */
@@ -370,7 +388,7 @@
   top: 50%;
   transform: translate(-50%, -50%);
   object-fit: cover;
-  border-radius: calc(4 * var(--px));
+  border-radius: var(--round);
 }
 
 /* ---- disintegration ----
@@ -454,6 +472,11 @@
   height: 100%;
   display: block;
   object-fit: cover;
+  /* Barely off square. Enough that the picture reads as a screen set into the
+     panel rather than as a rectangle cut out of it, and not so much that the
+     corner brackets — which are hard right angles sitting a few pixels
+     outside — start to look like they are pointing at nothing. */
+  border-radius: var(--round);
   /* The subject sits behind glass: an inner line rather than a border, so the
      picture keeps its full size and the housing keeps its exact box. */
   box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.22);
@@ -595,6 +618,7 @@
 
 .mech-housing[data-full='true'] .mech-media {
   object-fit: contain;
+  border-radius: 0;
   box-shadow: none;
 }
 
@@ -936,7 +960,7 @@
   flex: none;
   padding: 0;
   border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: calc(4 * var(--px));
+  border-radius: calc(6 * var(--px));
   background-color: #141414;
   background-size: cover;
   background-position: center;
@@ -1279,6 +1303,297 @@
   to {
     opacity: 0;
     transform: scale(7);
+  }
+}
+
+/* ---- the pin editor ----
+
+   Development only, and it looks it: this is a tool laid over the readout,
+   not part of it. Everything is placed in the same frame coordinates the
+   leaders are, so a handle sits exactly where the line it belongs to will.
+
+   The native cursor comes back while it is open. The reticle is a lovely
+   thing to aim with and a terrible thing to drag a five-pixel handle with. */
+
+.mech-pins {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+}
+
+.mech[data-pins='true'] .mech-cursor,
+.mech[data-pins='true'] .mech-guns {
+  display: none;
+}
+
+@media (pointer: fine) {
+  .mech[data-pins='true'],
+  .mech[data-pins='true'] * {
+    cursor: crosshair;
+  }
+
+  .mech[data-pins='true'] input,
+  .mech[data-pins='true'] .mech-pins-bar button {
+    cursor: auto;
+  }
+
+  .mech[data-pins='true'] .mech-pins-bar button {
+    cursor: pointer;
+  }
+
+  .mech[data-pins='true'] .mech-pin-tip,
+  .mech[data-pins='true'] .mech-pin-grip {
+    cursor: grab;
+  }
+}
+
+/* The picture's own edges — what every fraction is measured against. */
+.mech-pins-box {
+  position: absolute;
+  outline: 1px dashed rgba(var(--accent-rgb), 0.5);
+  outline-offset: 0;
+  pointer-events: none;
+}
+
+.mech-pin-tip,
+.mech-pin-chip {
+  position: absolute;
+}
+
+/* The wrapper is `mech-pin-note` and not `mech-pin`, which is already the
+   reticle's spinning centre circle — a note that inherited that animation
+   came out rotating on the spot. */
+
+/* The spot the line touches. Big enough to grab, drawn small enough to aim:
+   a ring on the point with a transparent halo of hit area around it. */
+.mech-pin-tip {
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, transparent 26%, rgba(var(--accent-rgb), 0.9) 30%, rgba(var(--accent-rgb), 0.9) 42%, transparent 46%);
+  filter: drop-shadow(0 0 4px rgba(var(--accent-rgb), 0.8));
+}
+
+.mech-pin-note[data-live='true'] .mech-pin-tip {
+  background: radial-gradient(closest-side, transparent 26%, #fff 30%, #fff 42%, transparent 46%);
+}
+
+/* Where the text will be set. The chip is not the label — it is the label's
+   seat, with the words in it. */
+.mech-pin-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 4px;
+  transform: translateY(-50%);
+  background: rgba(6, 12, 10, 0.92);
+  border: 1px solid rgba(var(--accent-rgb), 0.45);
+  box-shadow: 0 0 18px rgba(0, 0, 0, 0.6);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* A note nobody has pinned yet is sitting wherever the fan put it. Dashed,
+   so the difference between "placed here" and "fell here" is visible at a
+   glance across a frame with eight of them. */
+.mech-pin-note[data-loose='true'] .mech-pin-chip {
+  border-style: dashed;
+  opacity: 0.8;
+}
+
+.mech-pin-grip {
+  width: 9px;
+  align-self: stretch;
+  flex: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(var(--accent-rgb), 0.8) 0 1px,
+    transparent 1px 3px
+  );
+}
+
+.mech-pin-chip input {
+  width: 78px;
+  padding: 2px 4px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #000;
+  color: #fff;
+  font: inherit;
+  font-size: 11px;
+}
+
+.mech-pin-chip input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.mech-pin-chip .mech-pin-fold {
+  width: 58px;
+  color: var(--mid);
+}
+
+.mech-pin-drop {
+  padding: 2px 5px;
+  border: 0;
+  background: none;
+  color: var(--warn);
+  font: inherit;
+  font-size: 11px;
+}
+
+/* The bar sits along the bottom of the frame rather than the window: it
+   belongs to the picture being pinned, and the deck and the email are already
+   at the bottom of the screen. */
+.mech-pins-bar {
+  position: absolute;
+  left: 50%;
+  bottom: calc(24 * var(--px));
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  background: rgba(6, 12, 10, 0.94);
+  border: 1px solid rgba(var(--accent-rgb), 0.45);
+  font-size: 11px;
+  letter-spacing: 0.4px;
+  color: var(--mid);
+}
+
+.mech-pins-id {
+  color: var(--accent);
+}
+
+.mech-pins-hint {
+  color: var(--dim);
+}
+
+.mech-pins-bar button {
+  padding: 3px 8px;
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
+  background: none;
+  font: inherit;
+  font-size: 11px;
+  color: var(--accent);
+}
+
+.mech-pins-bar button:hover {
+  background: rgba(var(--accent-rgb), 0.14);
+}
+
+/* ---- the gun ----
+
+   Bolts, tracers and impacts, all of them created and destroyed by
+   `MechLaser.tsx` rather than rendered — this layer is just where they land.
+   Above the readout and the bird, below the reticle: you are always looking
+   through the sight at the thing you are shooting.
+
+   Every element here is positioned by transform alone from the layer's own
+   origin, so nothing below reflows when a shot is fired. */
+
+.mech-guns {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.mech-guns > * {
+  position: absolute;
+  left: 0;
+  top: 0;
+  will-change: transform, opacity;
+}
+
+/* The head of the shot: a bright core with the accent bleeding off the length
+   of it, tapered at the tail so it reads as exhaust rather than as a rod. */
+.mech-bolt {
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(to right, rgba(var(--accent-rgb), 0) 0%, rgba(var(--accent-rgb), 0.55) 55%, #fff 100%);
+  box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.9), 0 0 26px rgba(var(--accent-rgb), 0.45);
+}
+
+/* The whole line from the muzzle, laid down at once and fading out behind the
+   bolt. A hairline, because two bright lines is a laser pointer. */
+.mech-tracer {
+  height: 1px;
+  opacity: 0.5;
+  background: linear-gradient(to right, rgba(var(--accent-rgb), 0) 0%, rgba(var(--accent-rgb), 0.5) 30%, rgba(var(--accent-rgb), 0.16) 100%);
+  transition: opacity 300ms linear;
+}
+
+/* The discharge, at the bottom edge where the shot came from. */
+.mech-muzzle {
+  width: 90px;
+  height: 26px;
+  margin: -13px 0 0 -45px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.85), rgba(var(--accent-rgb), 0.45) 45%, transparent 100%);
+  animation: mech-muzzle 190ms ease-out forwards;
+}
+
+@keyframes mech-muzzle {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Where it landed. A hit blows a ring out of the bird; a miss is a tap on
+   whatever was behind it — smaller, dimmer, and gone quicker, so a shot that
+   found nothing reads as having found nothing.
+
+   The mark is a point, and the ring is its pseudo-element. The point is
+   placed by a transform written from JS and the ring is scaled by one written
+   in CSS, and they have to be two elements because a `scale` on top of a
+   `transform` scales about the element's own box origin rather than about
+   where the transform put it — which sends the ring off toward the corner of
+   the screen instead of opening on the spot. */
+.mech-impact {
+  width: 0;
+  height: 0;
+}
+
+.mech-impact::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 15px;
+  height: 15px;
+  margin: -7.5px 0 0 -7.5px;
+  border-radius: 50%;
+  border: 1.6px solid var(--accent);
+  box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.6);
+  animation: mech-impact var(--for) cubic-bezier(0.1, 0.7, 0.3, 1) forwards;
+}
+
+.mech-impact[data-kind='hit'] {
+  --for: 560ms;
+  --reach: 5.5;
+}
+
+.mech-impact[data-kind='miss'] {
+  --for: 320ms;
+  --reach: 2.3;
+  opacity: 0.7;
+}
+
+@keyframes mech-impact {
+  from {
+    opacity: 1;
+    transform: scale(0.3);
+  }
+  to {
+    opacity: 0;
+    transform: scale(var(--reach));
   }
 }
 

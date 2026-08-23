@@ -1,18 +1,24 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
 import { Leva } from 'leva'
 import { TAGS } from '../data/projects'
 import MechBird from './MechBird'
 import MechCursor from './MechCursor'
+import MechLaser from './MechLaser'
 import MechHud from './MechHud'
 import { useModelTuning } from './modelTuning'
 import MechDeck from './MechDeck'
 import { sound } from './sound'
 import { drift } from './subject'
 import { entries, thumbOf, type Entry, type Frame } from './model'
+import { notesFor, pins, type Note } from './notes'
+import { boxOf, leadersFor, mediaBox } from './leaders'
 import './Mech.css'
 
 const MechModel = lazy(() => import('./MechModel'))
+/* Development only — the render is behind `import.meta.env.DEV`, so a visitor
+   never fetches this chunk. See `MechPins.tsx`. */
+const MechPins = lazy(() => import('./MechPins'))
 
 /* The project screen.
 
@@ -25,88 +31,6 @@ const MechModel = lazy(() => import('./MechModel'))
 
    Left: who made it, and the folds. Middle: the thing itself, with its parts
    named. Right: everything else the project has to show. */
-
-/* ---- the leaders ---- */
-
-/** One line of a readout: what is being pointed at, and what it is. */
-interface Note {
-  label: string
-  value: string
-  /** Which fold in the left column this line is evidence for. Hovering
-   *  either one lights the other, which is the only thing tying the two
-   *  halves of the screen together — without it they are two panels that
-   *  happen to be on at the same time. */
-  fold?: string
-}
-
-/** Where a leader leaves its subject and where its text ends up.
- *
- *  `at` is a fraction of the subject's box, `elbow` the corner's offset from
- *  that tip, `run` how far the horizontal reaches, and `dir` which way it
- *  travels. The three are traced off the Figma's takahashi frame and reused
- *  for every subject — a still gets the same arms the model does. */
-const SLOTS = [
-  { at: [0.94, 0.08], elbow: [53, -55], run: 119, dir: 1 },
-  { at: [0.0, 0.285], elbow: [-34, -29], run: 146, dir: -1 },
-  { at: [0.02, 0.764], elbow: [-47, 54], run: 141, dir: -1 }
-] as const
-
-/** How far in from the frame's edges a leader's text may land — clear of the
- *  left column on one side and the rail on the other. A wide still pushes its
- *  elbows outward, and without this the "made in" line would be set on top of
- *  the project overview. */
-const GUTTER = { left: 500, right: 1450 }
-
-/** The subject's box in frame coordinates. The model's is measured off the
- *  Figma; a still's is wherever the media actually lands, which is the same
- *  sum the CSS makes so the two can never disagree. */
-const MODEL_BOX = { x: 769, y: 269, w: 403, h: 529 }
-const MEDIA_MAX = { w: 780, h: 730 }
-
-const mediaBox = (aspect: number) => {
-  const w = Math.min(MEDIA_MAX.w, MEDIA_MAX.h * aspect)
-  const h = w / aspect
-  return { x: 960 - w / 2, y: 540 - h / 2, w, h }
-}
-
-const boxOf = (frame: Frame) => (frame.kind === 'model' ? MODEL_BOX : mediaBox(frame.aspect))
-
-const leadersFor = (notes: Note[], box: { x: number; y: number; w: number; h: number }) =>
-  notes.slice(0, SLOTS.length).map((note, i) => {
-    const slot = SLOTS[i]
-    const tip = [box.x + slot.at[0] * box.w, box.y + slot.at[1] * box.h]
-    const elbow = [tip[0] + slot.elbow[0], tip[1] + slot.elbow[1]]
-    const room = slot.dir === 1 ? GUTTER.right - elbow[0] : elbow[0] - GUTTER.left
-    const run = Math.max(40, Math.min(slot.run, room))
-    return {
-      ...note,
-      tip,
-      elbow,
-      end: elbow[0] + slot.dir * run,
-      anchor: slot.dir === 1 ? ('end' as const) : ('start' as const)
-    }
-  })
-
-/* What each frame's leaders say. Keyed by frame id — "<project>/<file>", the
-   id the media already carries — so adding a line is two words and no
-   geometry. A frame not written here gets a derived pair instead, which is a
-   placeholder and reads like one. */
-const NOTES: Record<string, Note[]> = {
-  'mr-takahashi/model': [
-    { label: 'name', value: 'mr.takahashi' },
-    { label: '3D model', value: 'blender', fold: 'design' },
-    { label: 'animations', value: 'blender', fold: 'design' }
-  ]
-}
-
-const derive = (entry: Entry, frame: Frame): Note[] => {
-  const tools = entry.project.sections.find((section) => section.id === 'tools')?.tags ?? []
-  const kind = frame.kind === 'model' ? 'model' : frame.type === 'video' ? 'clip' : 'still'
-  return [
-    { label: kind, value: (frame.label ?? entry.project.title).toLowerCase() },
-    ...(tools.length > 0 ? [{ label: 'made in', value: tools[0].toLowerCase(), fold: 'tools' }] : [])
-  ]
-}
 
 /** How long the frame on screen takes to be eaten before the next is mounted.
  *  Matches the cover time the cell delays below add up to. */
@@ -169,11 +93,22 @@ interface Cell {
 
 const grids = new Map<string, { columns: number; rows: number; cells: Cell[] }>()
 
+/** Grid shapes are rounded to this many cells before anything is built.
+ *
+ *  Two frames a few pixels apart in aspect would otherwise each get their own
+ *  shape, and a shape nothing else shares is two thousand spans to reconcile
+ *  at the moment the frame changes. Rounded, most of a project's frames land
+ *  on the same grid and swapping between them touches no DOM at all. Six
+ *  cells in sixty is under a tenth of a cell's worth of stretch, which is
+ *  less than the scatter every cell already lands with. */
+const STEP = 6
+
 const gridFor = (box: { w: number; h: number }) => {
   // Whichever is larger: the cell we want, or the cell the budget allows.
   const side = Math.max(CELL, Math.sqrt((box.w * box.h) / MAX_CELLS))
-  const columns = Math.max(6, Math.ceil(box.w / side)) + BLEED * 2
-  const rows = Math.max(6, Math.ceil(box.h / side)) + BLEED * 2
+  const quantize = (n: number) => Math.max(6, Math.round(n / STEP) * STEP)
+  const columns = quantize(Math.ceil(box.w / side)) + BLEED * 2
+  const rows = quantize(Math.ceil(box.h / side)) + BLEED * 2
   const key = `${columns}x${rows}`
 
   const found = grids.get(key)
@@ -215,6 +150,47 @@ const gridFor = (box: { w: number; h: number }) => {
   const grid = { columns, rows, cells }
   grids.set(key, grid)
   return grid
+}
+
+/* ---- warming ----
+
+   The pictures on this page are big: several of them are multi-megabyte webp,
+   and decoding one of those is a hundred milliseconds of main thread. Doing
+   it at the moment the cover lifts is exactly the stutter you can see, and
+   `HOLD_CAP` only ever hid the loading half of it.
+
+   So the frames either side of the one on the stage are pulled through the
+   network and the decoder while nothing is happening, and the decoded bitmap
+   is still warm when you step to them. Neighbours rather than everything: a
+   project with a dozen stills is fifty megabytes of decoded pixels, and
+   nobody opens a readout to look at all of it at once. */
+
+const warmed = new Set<string>()
+
+const warm = (frame: Frame | undefined) => {
+  if (!frame || frame.kind === 'model' || frame.type !== 'image' || warmed.has(frame.id)) return
+  warmed.add(frame.id)
+  const image = new Image()
+  image.src = frame.src
+  // `decode` is the part that matters — a fetch alone leaves the expensive
+  // half to happen on the frame it is first painted.
+  void image.decode?.().catch(() => {})
+}
+
+/** Whenever the browser has a moment. Not `setTimeout(0)`: this is deliberately
+ *  the lowest-priority work on the page, and it is competing with a boot
+ *  sequence and a WebGL context coming up. */
+const whenIdle = (run: () => void) => {
+  const host = window as Window & {
+    requestIdleCallback?: (cb: () => void) => number
+    cancelIdleCallback?: (id: number) => void
+  }
+  if (host.requestIdleCallback) {
+    const id = host.requestIdleCallback(run)
+    return () => host.cancelIdleCallback?.(id)
+  }
+  const timer = window.setTimeout(run, 600)
+  return () => window.clearTimeout(timer)
 }
 
 /** The model goes first. "Open a project" means the object, and the stills are
@@ -406,6 +382,15 @@ function Flat({ frame, index, count, onReady }: FrameProps) {
     height: `calc(${box.h} * var(--px))`
   }
 
+  /** The cover comes off when the picture can actually be painted, which is
+   *  after the decode and not after the download. Called from both the ref
+   *  and `load`; lifting a cover that is already up is a no-op. */
+  const decoded = (image: HTMLImageElement) => {
+    const done = () => onReady()
+    if (image.decode) void image.decode().then(done, done)
+    else done()
+  }
+
   const toggleFull = () => {
     sound.select()
     if (document.fullscreenElement) void document.exitFullscreen()
@@ -455,13 +440,18 @@ function Flat({ frame, index, count, onReady }: FrameProps) {
           className="mech-media"
           src={frame.src}
           alt={frame.label ?? ''}
+          // Decoded off the main thread, and the cover held until it is —
+          // `load` only means the bytes arrived, and uncovering onto a
+          // multi-megabyte webp that has not been decoded yet is a stall on
+          // the exact frame the picture is meant to appear.
+          decoding="async"
           // A cached image can finish loading before React attaches the
           // handler, and then `onLoad` never fires and the cover sits there
           // until the cap.
           ref={(el) => {
-            if (el?.complete) onReady()
+            if (el?.complete) decoded(el)
           }}
-          onLoad={onReady}
+          onLoad={(event) => decoded(event.currentTarget)}
         />
       )}
 
@@ -530,23 +520,34 @@ interface Props {
 /** Reveals its text a character at a time. Used once, on the title, because
  *  the title is the one line that changes when the readout retargets. */
 function Typed({ text, run }: { text: string; run: string }) {
-  const [shown, setShown] = useState(text.length)
+  const out = useRef<HTMLSpanElement>(null)
+  /* The only thing state is used for here is the caret going out at the end.
+     Setting it per character re-rendered the whole project screen forty times
+     a second while the title typed — the rail, the folds, the leaders and all
+     — which is a stutter you can see, on the one beat of the page that is
+     meant to be a machine coming up smoothly. The text itself is written
+     straight to the node. */
+  const [done, setDone] = useState(false)
 
   useEffect(() => {
-    setShown(0)
+    setDone(false)
     let at = 0
+    if (out.current) out.current.textContent = ''
     const timer = window.setInterval(() => {
       at += 1
-      setShown(at)
-      if (at >= text.length) window.clearInterval(timer)
+      if (out.current) out.current.textContent = text.slice(0, at)
+      if (at >= text.length) {
+        window.clearInterval(timer)
+        setDone(true)
+      }
     }, 26)
     return () => window.clearInterval(timer)
   }, [text, run])
 
   return (
     <>
-      {text.slice(0, shown)}
-      <span className="mech-caret" data-done={shown >= text.length} />
+      <span ref={out} />
+      <span className="mech-caret" data-done={done} />
     </>
   )
 }
@@ -574,8 +575,14 @@ export default function Mech({ id, onProject, onHome }: Props) {
   const [phase, setPhase] = useState<'in' | 'out' | 'hold'>('in')
   const [open, setOpen] = useState<string | null>('overview')
   const rail = useRef<HTMLDivElement>(null)
+  /* What has been pinned in this browser, if anything. Subscribed rather than
+     read once: the editor writes to the same store the leaders read from, so
+     a drag moves the real line rather than a preview of one. */
+  const drafts = useSyncExternalStore(pins.subscribe, pins.snapshot, pins.snapshot)
+  const [pinning, setPinning] = useState(false)
 
   const current = frames[shown]
+  const modelFrame = frames.find((frame) => frame.kind === 'model')
   const covered = phase !== 'in' || booting
 
   // The machine coming up, once, on arrival.
@@ -626,6 +633,34 @@ export default function Mech({ id, onProject, onHome }: Props) {
     return () => window.clearTimeout(cap)
   }, [phase, shown, frames])
 
+  // P opens the pin editor, in development. Not while something is being
+  // typed into — the editor is mostly text fields, and a shortcut that fires
+  // inside one is a shortcut that cannot be spelled.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'p' && event.key !== 'P') return
+      if (event.metaKey || event.ctrlKey || event.altKey) return
+      const on = event.target as HTMLElement | null
+      if (on && (on.tagName === 'INPUT' || on.tagName === 'TEXTAREA' || on.isContentEditable)) return
+      setPinning((was) => !was)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  /* The neighbours of whatever is on the stage, and the grid shapes this
+     project's frames dissolve through — both worked out while the machine is
+     still booting or the visitor is still reading, rather than on the frame
+     something has to move. */
+  useEffect(() => {
+    return whenIdle(() => {
+      warm(frames[shown + 1])
+      warm(frames[shown - 1])
+      for (const frame of frames) gridFor(dissolveBox(frame))
+    })
+  }, [frames, shown])
+
   // A project with a dozen frames outruns the rail's height, so stepping with
   // the arrow keys has to bring the tile back into view.
   useEffect(() => {
@@ -647,7 +682,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
 
   const { project } = entry
   const roles = project.sections.find((section) => section.id === 'roles')?.tags ?? []
-  const notes = NOTES[current.id] ?? derive(entry, current)
+  const notes = notesFor(entry, current, drafts)
 
   const folds = [
     ...(project.intro ? [{ id: 'overview', title: 'project overview', text: project.intro, tags: undefined }] : []),
@@ -657,7 +692,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
   ]
 
   return (
-    <div className="mech" data-boot={booting}>
+    <div className="mech" data-boot={booting} data-pins={pinning}>
       {/* Development only, and portalled to `body` for the same reason the
           gallery's panel is: rendered in place it would sit inside the
           readout's stacking context and paint under the chrome. */}
@@ -679,6 +714,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
       <MechHud />
       <MechCursor />
       <MechBird />
+      <MechLaser />
 
       <div className="mech-frame">
         <header className="mech-head">
@@ -715,12 +751,28 @@ export default function Mech({ id, onProject, onHome }: Props) {
         {/* The subject and its labels share one box so that scaling the window
             moves them together. */}
         <div className="mech-stage">
-          {current.kind === 'model' ? (
-            <Suspense fallback={null}>
-              <MechModel src={current.src} tuning={tuning} />
-            </Suspense>
-          ) : (
+          {/* The model is mounted for as long as the project has one, and
+              hidden rather than unmounted while a still is on the stage.
+
+              Unmounting it threw away a WebGL context, a compiled set of
+              shaders, a cloned scene graph and a generated environment map,
+              and building all of that again is most of a hundred milliseconds
+              on the main thread — a hitch, every single time you stepped back
+              to the model. Hidden and stopped it costs nothing per frame: see
+              `live` in MechModel, which puts the render loop to sleep. */}
+          {modelFrame && (
+            <div className="mech-model-layer" data-on={current.kind === 'model'}>
+              <Suspense fallback={null}>
+                <MechModel src={modelFrame.src} tuning={tuning} live={current.kind === 'model'} />
+              </Suspense>
+            </div>
+          )}
+          {current.kind !== 'model' && (
             <Flat
+              // Prefixed: the leaders below are keyed on the same frame, and
+              // two siblings under one parent with the same key is a duplicate
+              // React resolves by leaving the outgoing housing in the DOM.
+              key={`flat-${current.id}`}
               frame={current}
               index={shown}
               count={frames.length}
@@ -734,7 +786,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
               finishes. */}
           {!booting && (
             <Leaders
-              key={current.id}
+              key={`leaders-${current.id}`}
               notes={notes}
               box={boxOf(current)}
               floats={current.kind === 'model'}
@@ -744,6 +796,12 @@ export default function Mech({ id, onProject, onHome }: Props) {
           )}
 
           <Disintegration frame={current} phase={covered ? 'out' : 'in'} />
+
+          {import.meta.env.DEV && pinning && (
+            <Suspense fallback={null}>
+              <MechPins frame={current} notes={notes} onClose={() => setPinning(false)} />
+            </Suspense>
+          )}
         </div>
 
         <section className="mech-side">

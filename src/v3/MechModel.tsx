@@ -45,6 +45,12 @@ const THINK = { gap: [4, 12], hold: [1.2, 3.8], intensity: 0.6, fade: 2.5 }
 
 const between = (min: number, max: number) => min + Math.random() * (max - min)
 
+/** Seconds the attention takes to come back off the bird once it is gone.
+ *  Quicker than going, because losing interest is not the part anyone
+ *  watches — but not instant, or the head snaps back to the pointer the
+ *  moment the bird leaves the frame. */
+const LOSE = 1.1
+
 /** Where to look, in normalised device coordinates: -1..1 with +1 at the right
  *  and +1 at the top.
  *
@@ -55,9 +61,25 @@ const between = (min: number, max: number) => min + Math.random() * (max - min)
  *
  *  A bird in the air wins over the pointer. Something crossing the room is
  *  more interesting than a mouse sitting still, and it is the one moment the
- *  face has anything to react to. */
-function useGaze(watchBird: boolean) {
+ *  face has anything to react to.
+ *
+ *  It does not win *immediately*, which is the whole of `attention`. Handing
+ *  the head the bird's position the frame the bird appears makes him whip
+ *  round to it — the damping downstream only ever softens the last part of a
+ *  turn, never the first. So the target itself crosses from the pointer to
+ *  the bird over `catchSeconds`, on a smoothstep: the first tenth of a second
+ *  barely moves, and by the time he is really turning he is already most of
+ *  the way there. Something caught out of the corner of an eye and then
+ *  followed, rather than a turret acquiring. */
+function useGaze(watchBird: boolean, catchSeconds: number) {
   const ndc = useRef({ x: 0, y: 0 })
+  /** 0 is the pointer, 1 is the bird, and the whole of the catch is in
+   *  between. Advanced on its own clock rather than per reader: `Lean` and
+   *  the eyes both call the returned function every frame, and an attention
+   *  that stepped on every call would run twice as fast for two readers. */
+  const attention = useRef(0)
+  const settings = useRef({ watchBird, catchSeconds })
+  settings.current = { watchBird, catchSeconds }
 
   useEffect(() => {
     const onMove = (event: PointerEvent) => {
@@ -68,14 +90,35 @@ function useGaze(watchBird: boolean) {
     return () => window.removeEventListener('pointermove', onMove)
   }, [])
 
-  return () => {
-    if (watchBird && gaze.bird.active) {
-      return {
-        x: (gaze.bird.x / window.innerWidth) * 2 - 1,
-        y: -((gaze.bird.y / window.innerHeight) * 2 - 1)
-      }
+  useEffect(() => {
+    let raf = 0
+    let previous = performance.now()
+    const tick = (now: number) => {
+      raf = requestAnimationFrame(tick)
+      const dt = Math.min(0.05, (now - previous) / 1000)
+      previous = now
+      const onto = settings.current.watchBird && gaze.bird.active
+      const span = Math.max(0.05, onto ? settings.current.catchSeconds : LOSE)
+      attention.current = MathUtils.clamp(attention.current + (onto ? dt : -dt) / span, 0, 1)
     }
-    return ndc.current
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [])
+
+  return () => {
+    const t = attention.current
+    if (t <= 0) return ndc.current
+    // Smoothstep, so the move out of the pointer's orbit starts at nothing
+    // and the arrival at the bird settles rather than stops.
+    const k = t * t * (3 - 2 * t)
+    const bird = {
+      x: (gaze.bird.x / window.innerWidth) * 2 - 1,
+      y: -((gaze.bird.y / window.innerHeight) * 2 - 1)
+    }
+    return {
+      x: MathUtils.lerp(ndc.current.x, bird.x, k),
+      y: MathUtils.lerp(ndc.current.y, bird.y, k)
+    }
   }
 }
 
@@ -333,13 +376,29 @@ function Lens({ focalLength, fill }: { focalLength: number; fill: number }) {
   return null
 }
 
-export default function MechModel({ src, tuning = MODEL_DEFAULTS }: { src: string; tuning?: ModelTuning }) {
+/** Whether the subject is the thing on the stage right now.
+ *
+ *  A still on the stage does not unmount this — see the stage in `Mech.tsx`.
+ *  It stops instead: `frameloop="never"` means no render, no `useFrame`, no
+ *  morph writes and no GPU work, while the context, the shaders, the cloned
+ *  scene and the environment map all stay exactly where they are. Coming
+ *  back is a flag; building them again was a visible stutter. */
+export default function MechModel({
+  src,
+  tuning = MODEL_DEFAULTS,
+  live = true
+}: {
+  src: string
+  tuning?: ModelTuning
+  live?: boolean
+}) {
   const distance = distanceFor(MODEL_DEFAULTS.focalLength, MODEL_DEFAULTS.fill)
-  const look = useGaze(tuning.watchBird)
+  const look = useGaze(tuning.watchBird, tuning.watchCatch)
 
   return (
     <Canvas
       dpr={[1, 2]}
+      frameloop={live ? 'always' : 'never'}
       camera={{ fov: fovForFocalLength(MODEL_DEFAULTS.focalLength), position: [0, 0, distance] }}
       gl={{ alpha: true, antialias: true, toneMapping: ACESFilmicToneMapping, outputColorSpace: SRGBColorSpace }}
       style={{ background: 'transparent' }}

@@ -225,7 +225,7 @@
   width: calc(36px * var(--a));
   padding: 0;
   border: 0.48px solid transparent;
-  border-radius: 2.36px;
+  border-radius: 3.5px;
   background-color: #111;
   background-size: cover;
   background-position: center;
@@ -418,6 +418,8 @@
   display: block;
   object-fit: contain;
   object-position: left top;
+  /* Slightly off square, the same as the project screen's. */
+  border-radius: 6px;
 }
 
 /* ---- video scrubber ---- */

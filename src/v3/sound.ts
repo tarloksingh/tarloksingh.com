@@ -164,6 +164,21 @@ export const sound = {
     air({ from: 5200, to: 900, gain: 0.04, length: 0.3, q: 0.7, delay: 0.3 })
   },
 
+  /** The gun. A short bright crack with a pitch that falls out from under
+   *  it — the drop is what keeps a laser from reading as a beep — over a
+   *  breath of air for the discharge. */
+  shot() {
+    tone({ type: 'sawtooth', from: 2400, to: 260, gain: 0.075, length: 0.13 })
+    tone({ type: 'square', from: 1200, to: 180, gain: 0.035, length: 0.09 })
+    air({ from: 6000, to: 900, gain: 0.05, length: 0.16, q: 0.8 })
+  },
+
+  /** The bolt arriving on something that is not a target: a tap, and nothing
+   *  else. Quieter than the shot, so a miss reads as a miss. */
+  splash() {
+    air({ from: 2600, to: 700, gain: 0.03, length: 0.09, q: 1.6 })
+  },
+
   /** The bird, hit. */
   hit() {
     air({ from: 4000, to: 300, gain: 0.14, length: 0.22, q: 0.6 })

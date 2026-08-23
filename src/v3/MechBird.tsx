@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { BIRD_BODY, BIRD_WING_DOWN, BIRD_WING_UP } from '../site/frames'
 import { sound } from './sound'
-import { gaze } from './subject'
+import { gaze, quarry } from './subject'
 
 /* A bird crosses the readout, and you can shoot it.
 
@@ -15,6 +15,11 @@ import { gaze } from './subject'
    It is a `<button>` on purpose. The reticle already acquires anything that
    is one, so the lock brackets snap to the bird with no special case — the
    cursor was a targeting system before there was anything to shoot at.
+
+   Nothing here listens for a click. It registers itself with `quarry` and the
+   gun decides: a kill is a bolt arriving, not a pointer touching, so clicking
+   the bird and clicking three inches ahead of it are the same gesture with
+   different aim. `MechLaser` is what fires.
 
    Desktop only, and only where there is a real pointer. */
 
@@ -41,7 +46,6 @@ export default function MechBird() {
   const wrap = useRef<HTMLDivElement>(null)
   const [mode, setMode] = useState<Mode>('away')
   const [enabled, setEnabled] = useState(false)
-  const hit = useRef<() => void>(() => {})
 
   useEffect(() => {
     if (!window.matchMedia('(pointer: fine)').matches) return
@@ -101,12 +105,17 @@ export default function MechBird() {
       gaze.bird.y = y
     }
 
-    hit.current = () => {
-      if (phase !== 'flying') return
+    /* Registered rather than wired: the gun has no idea what it is shooting
+       at, and the bird has no idea anything is shooting. Returns whether the
+       shot actually landed, so a second bolt arriving on a bird already
+       falling does not fire a second burst. */
+    quarry.hit = () => {
+      if (phase !== 'flying') return false
       fell = 0
       drop = rand(-120, -40)
       sound.hit()
       enter('hit')
+      return true
     }
 
     const tick = (now: number) => {
@@ -156,6 +165,7 @@ export default function MechBird() {
     raf = requestAnimationFrame(tick)
     return () => {
       gaze.bird.active = false
+      quarry.hit = null
       cancelAnimationFrame(raf)
     }
   }, [])
@@ -165,12 +175,7 @@ export default function MechBird() {
   return (
     <div className="mech-sky" data-mode={mode} aria-hidden>
       <div className="mech-bird-wrap" ref={wrap}>
-        <button
-          className="mech-bird"
-          style={{ width: SIZE, height: HEIGHT }}
-          onPointerDown={() => hit.current()}
-          tabIndex={-1}
-        >
+        <button className="mech-bird" style={{ width: SIZE, height: HEIGHT }} tabIndex={-1}>
           <svg viewBox="0 0 44 30" fill="none" focusable="false">
             {BIRD_BODY.map((d) => (
               <path key={d} d={d} />

@@ -66,6 +66,12 @@ export interface ModelTuning {
   lookFlipV: boolean
   /** Follow the bird over the pointer while it is in the air. */
   watchBird: boolean
+  /** Seconds the head takes to come off the pointer and onto the bird. The
+   *  turn itself is damped downstream, but damping only ever softens the end
+   *  of a move — without a ramp on the target the first frame of it is a
+   *  whip round. This is the number that makes him notice the bird rather
+   *  than acquire it. */
+  watchCatch: number
   blinkMin: number
   blinkMax: number
 }
@@ -103,6 +109,7 @@ export const MODEL_DEFAULTS: ModelTuning = {
   lookFlipH: false,
   lookFlipV: false,
   watchBird: true,
+  watchCatch: 1.8,
   blinkMin: 2.5,
   blinkMax: 9.5
 }
@@ -195,6 +202,7 @@ export function useModelTuning(): ModelTuning {
         lookFlipH: { value: start.lookFlipH, label: 'Flip H' },
         lookFlipV: { value: start.lookFlipV, label: 'Flip V' },
         watchBird: { value: start.watchBird, label: 'Watch bird' },
+        watchCatch: { value: start.watchCatch, min: 0, max: 6, step: 0.05, label: 'Catch (s)' },
         blinkMin: { value: start.blinkMin, min: 0.5, max: 12, step: 0.1, label: 'Blink min' },
         blinkMax: { value: start.blinkMax, min: 1, max: 24, step: 0.1, label: 'Blink max' }
       },
