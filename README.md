@@ -159,7 +159,7 @@ So the two blocks of prose — the role line under the title, and the copy insid
 an open fold — are the one thing on the screen not sized in frame coordinates:
 
 ```css
---read: max(calc(13.5 * var(--px)), 1rem);
+--read: max(calc(13.5 * var(--px)), 0.9375rem);
 ```
 
 A `max()`, and the difference is the whole point. A frame coordinate says how
@@ -168,12 +168,17 @@ and the wrong one for a paragraph: under about a 1500 window the composition's
 idea of 13.5 is ten real pixels. Prose takes whichever is larger and so has a
 floor under it, keeps growing for as long as anyone keeps pressing ⌘+, and
 follows the browser's own text size — which is the setting a person who needs
-bigger type has usually already found. The fold headings are a multiple of it
-rather than a coordinate of their own, because at a frame coordinate the
-heading was the *smaller* of the two on any window under about 1900.
+bigger type has usually already found.
+
+15px is a floor and not a size. It is one pixel over what the frame gives at
+its cap, which is all the copy wanted there; everything it does, it does on the
+windows below that.
 
 Everything else stays in frame coordinates, and should: an instrument label is
-part of the drawing.
+part of the drawing. The fold headings are the one place that costs something —
+at 16.5 frame coordinates a heading is 13px on a laptop and 9px at heavy zoom,
+under a body that is holding at 15, so the hierarchy inverts as the window
+shrinks. Deliberate: it is the smaller change.
 
 **What a floor costs is that one block can outgrow its slot.** The role line's
 type has a floor and the column's width does not, so a narrow window sets 133

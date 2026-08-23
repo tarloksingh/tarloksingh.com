@@ -77,7 +77,9 @@
      about a 1500 window the composition's idea of 13.5 is ten real pixels,
      and prose is the one thing on this screen someone actually reads rather
      than scans. So the two blocks of it — the role line and the copy inside a
-     fold — take whichever is larger, the frame's size or a rem.
+     fold — take whichever is larger, the frame's size or 15px. A floor, not
+     a size: it is a pixel over what the frame gives at the cap, and on every
+     window under that it is the only thing keeping the copy off ten.
 
      `max()` is also the only way browser zoom reaches this page. Zoom works
      by making a CSS pixel physically bigger; a rem is a fixed count of them
@@ -89,7 +91,7 @@
      growing, for as long as anyone keeps pressing. It is the same reason this
      follows the browser's own text size, which is the setting someone who
      needs bigger type has usually already found. */
-  --read: max(calc(13.5 * var(--px)), 1rem);
+  --read: max(calc(13.5 * var(--px)), 0.9375rem);
   --dim: #4a544f;
   --mid: #7e8c85;
   --ease: cubic-bezier(0.22, 0.85, 0.25, 1);
@@ -1024,11 +1026,8 @@
   text-align: left;
   font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-weight: 400;
-  /* A multiple of the copy rather than a coordinate of its own: at a frame
-     coordinate the heading was the smaller of the two on any window under
-     about 1900, which is a hierarchy upside down. */
-  font-size: calc(var(--read) * 1.22);
-  line-height: 1.6;
+  font-size: calc(16.5 * var(--px));
+  line-height: calc(26 * var(--px));
   color: var(--dim);
   transition: color 200ms linear;
 }
