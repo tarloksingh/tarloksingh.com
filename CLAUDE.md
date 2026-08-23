@@ -48,7 +48,7 @@ being false (which is why `navigator.clipboard` does not exist — see
 | `model.ts` | Projects flattened into what the panes draw |
 | `Home.tsx`, `DriftWall.tsx` | The wall |
 | `Browse.tsx`, `Detail.tsx`, `Stage.tsx` | The timeline screen |
-| `Mech.tsx` | The project screen: layout, disintegration, transit |
+| `Mech.tsx` | The project screen: layout, the swap, transit |
 | `leaders.ts`, `notes.ts` | Where the label lines go, and what they say |
 | `MechPins.tsx`, `labelTuning.ts` | Placing labels (**P**) and copying them out |
 | `MechModel.tsx` | The subject: one GLB, lit, drifting, watching, shootable |
@@ -96,27 +96,22 @@ larger than about 1600. Use `MediaItem.still` and `MediaItem.thumb`, never
 
 ## Where this is up to
 
-The last thing on the table is **the frame transition** on the project screen.
-It works and it is cheap — `Disintegration` in `Mech.tsx` draws it on a canvas,
-so the cell count and the colours cost nothing to change — but the look is not
-settled: a field of squares was called "somewhat ugly", and the open question
-is what replaces it. Four directions were on the table and none was chosen:
+**The frame transition is settled.** It is not the field of cells any more —
+that was called "somewhat ugly", and the four replacements on the table (CRT
+collapse, scanline sweep, ordered dither, slat flip) were all more cover. What
+it is instead is a sequence: the picture fades out, the labels pointing at it
+follow it out, the next picture fades in, and its labels draw themselves in.
+Four beats, timed in `Mech.css` beside the rules that use them, with `EXIT_MS`
+in `Mech.tsx` covering the first two. The canvas and its grid are gone; see
+**The swap** in `README.md`, and `50629fd` for the dissolve if it is wanted.
 
-- **CRT collapse** — the picture squashes to one hot horizontal line, holds and
-  flickers, and the next frame opens back out of it
-- **Scanline sweep** — a bright bar travels down, old above and new below, with
-  the image tearing sideways either side of it
-- **Ordered dither** — the same digital-decay idea on a 4×4 Bayer matrix, so it
-  thins to single pixels rather than blocks
-- **Slat flip** — horizontal slats turning edge-on, mechanical rather than
-  digital
-
-Whatever it becomes, the canvas is the place to build it: one component, one
-`paint(now)` loop, no DOM. `EXIT_MS` has to match however long the new cover
-takes, and the picture's own fade is in `.mech-stage[data-covered]`.
-
-Worth offering rather than guessing: two of them behind a Leva toggle, so the
-choice is made by looking at real pictures.
+**Type is on its own unit.** `--type: max(var(--px), 0.0651rem)` — the same rem
+that caps `--px`, but a `max()`, so type has a floor on a small window and
+browser zoom can move it. At the cap it renders identically to the frame
+coordinates it replaced. Every font size, letter-spacing and leading uses it.
+SVG text cannot: it is drawn in user units the viewBox scales, so the leaders
+and the compass multiply by `--type-k`, the ratio between the two units as a
+plain number, measured off a probe in `useTypeScale`.
 
 ## Commit policy
 

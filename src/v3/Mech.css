@@ -440,46 +440,44 @@
   border-radius: var(--round);
 }
 
-/* ---- disintegration ----
+/* ---- the swap ----
 
-   Cells that grow to eat the frame and shrink to give the next one back.
-   Scaling rather than fading, because a block that arrives at full size is a
-   pixel dying and a block that fades is a curtain. Out and in read from
-   different delays, so the frame rebuilds instead of un-wiping.
+   Four beats, in order: the picture fades, the labels pointing at it follow
+   it out, the next picture arrives, and its labels draw themselves in. See
+   `the swap` in Mech.tsx — `EXIT_MS` there is the first two of these and has
+   to stay longer than they add up to.
 
-   Laid out by the grid and never measured: one layout for eleven hundred
-   spans at mount, and nothing per swap. Transform and opacity only, so every
-   frame of it is on the compositor. */
-.mech-dissolve {
-  position: absolute;
-  z-index: 3;
-  pointer-events: none;
-}
+   Opacity only, so every frame of it is on the compositor and none of it is
+   painted. What it replaces — a canvas of cells eaten out of the subject — is
+   in `50629fd`. */
 
-/* One canvas, not a grid of elements. See `Disintegration` in Mech.tsx for
-   why: six thousand rectangles a frame here cost less than four thousand
-   spans cost to *start*. */
-.mech-dissolve canvas {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-/* The picture itself is what goes. It fades under the blocks rather than
-   being buried by them, which is why the field can be as sparse and as coarse
-   as it now is — and why swapping a frame no longer means writing a property
-   onto four thousand elements and asking the browser to resolve style for all
-   of them, twice. */
+/* Out is quicker than in. A picture leaving is a thing being taken away and
+   wants to be brisk about it; a picture arriving is the thing you asked for
+   and can afford to settle. */
 .mech-stage .mech-housing,
 .mech-stage .mech-model-layer {
-  /* Paced against the cover the canvas draws — `SPREAD.out + GROW` in
-     Mech.tsx — so the picture is going while the blocks are arriving rather
-     than gone before most of them have. */
-  transition: opacity 460ms linear;
+  transition: opacity 300ms linear;
 }
 
 .mech-stage[data-covered='true'] .mech-housing,
 .mech-stage[data-covered='true'] .mech-model-layer {
+  opacity: 0;
+  transition-duration: 240ms;
+}
+
+/* The labels leave *after* the thing they are pointing at, which is the whole
+   sequence in one rule: a leader still pointing at an empty stage reads as a
+   mistake, and one that goes first takes the explanation away while the
+   picture is still there to need it. 150 in, and gone by 370 — inside
+   `EXIT_MS`, which is what stops the next set being drawn over this one.
+
+   Only ever the way out. The leaders arriving are a fresh mount with the new
+   frame, and they have their own draw-in — see `.mech-leader`. */
+.mech-stage .mech-leaders {
+  transition: opacity 220ms linear 150ms;
+}
+
+.mech-stage[data-covered='true'] .mech-leaders {
   opacity: 0;
 }
 
@@ -792,18 +790,22 @@
   pointer-events: none;
 }
 
+/* Everything a leader is made of starts on the same delay — the length of
+   the picture's fade-in — so the line, the mark it lands on and the words are
+   in exactly the relationship they were tuned in, one beat later than the
+   thing they are naming. */
 .mech-leader-mark {
   fill: none;
   stroke: rgba(var(--accent-rgb), 0.85);
   stroke-width: 1.2;
   opacity: 0;
-  animation: mech-fade 420ms ease both;
+  animation: mech-fade 420ms ease 220ms both;
 }
 
 .mech-leader-core {
   fill: var(--accent);
   opacity: 0;
-  animation: mech-fade 420ms ease both;
+  animation: mech-fade 420ms ease 220ms both;
   filter: drop-shadow(0 0 5px rgba(var(--accent-rgb), 0.9));
 }
 
@@ -811,7 +813,7 @@
   fill: none;
   stroke: rgba(var(--accent-rgb), 0.55);
   stroke-width: 1;
-  animation: mech-ping 2.8s cubic-bezier(0.2, 0.7, 0.35, 1) infinite both;
+  animation: mech-ping 2.8s cubic-bezier(0.2, 0.7, 0.35, 1) 220ms infinite both;
 }
 
 @keyframes mech-ping {
@@ -847,24 +849,27 @@
 
 @media (prefers-reduced-motion: reduce) {
   .mech-leader-ping {
-    animation: mech-fade 420ms ease both;
+    animation: mech-fade 420ms ease 220ms both;
     opacity: 0.35;
   }
 }
 
+/* Held back by the length of the picture's own fade-in, so the line is drawn
+   onto something rather than into an empty stage. Same delay on the two bits
+   of text, which then follow the line out. */
 .mech-leader {
   fill: none;
   stroke: #fff;
   stroke-width: 1.15;
   stroke-dasharray: var(--l);
   stroke-dashoffset: var(--l);
-  animation: mech-draw 620ms cubic-bezier(0.3, 0.8, 0.3, 1) both;
+  animation: mech-draw 620ms cubic-bezier(0.3, 0.8, 0.3, 1) 220ms both;
 }
 
 .mech-leader-label,
 .mech-leader-value {
   opacity: 0;
-  animation: mech-fade 380ms ease both;
+  animation: mech-fade 380ms ease 220ms both;
 }
 
 .mech-leader-label {

@@ -1,4 +1,4 @@
-import { lazy, memo, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore, type RefObject } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { Leva, LevaPanel } from 'leva'
 import { TAGS } from '../data/projects'
@@ -13,7 +13,7 @@ import { drift, flinch, quarry } from './subject'
 import { entries, thumbOf, type Entry, type Frame } from './model'
 import { focus, notesFor, pins, type Note } from './notes'
 import { useLabelTuning, type Handed } from './labelTuning'
-import { boxOf, leadersFor, mediaBox, MODEL_BOX, type Box } from './leaders'
+import { boxOf, leadersFor, mediaBox, MODEL_BOX } from './leaders'
 import './Mech.css'
 
 const MechModel = lazy(() => import('./MechModel'))
@@ -33,18 +33,20 @@ const MechPins = lazy(() => import('./MechPins'))
    Left: who made it, and the folds. Middle: the thing itself, with its parts
    named. Right: everything else the project has to show. */
 
-/** How long the frame on screen takes to be eaten before the next is mounted.
- *  Matches the cover the cells below add up to — `SPREAD.out + GROW` — so the
- *  picture changes at the moment the last one lands and not before. */
-const EXIT_MS = 660
+/** How long the frame on screen takes to leave before the next is mounted:
+ *  the picture's own fade, then its labels following it out after a beat, and
+ *  then a breath. Matches `.mech-housing`/`.mech-leaders` in Mech.css, which
+ *  is where those two are timed — the swap must not land before the labels
+ *  have gone, or the new lines are drawn over the old ones going. */
+const EXIT_MS = 400
 
-/** How long the cover will wait for the incoming frame to be ready to paint
- *  before giving up and uncovering anyway. A still that is slow to decode is
- *  better than a stage that stays black — and a cover that sits there for the
- *  best part of a second while a clip buffers is worse than either, which is
- *  why this is shorter than it was and why `warm` now starts the fetch when
- *  the tile is picked rather than when the frame is mounted. */
-const HOLD_CAP = 480
+/** How long the stage will wait, empty, for the incoming frame to be ready to
+ *  paint before bringing it in anyway. Nothing covers the gap now, so this is
+ *  a hole in the middle of the transition rather than time hidden behind a
+ *  field of cells — shorter than it was for that reason, and mostly unspent:
+ *  `warm` starts the fetch when the tile is picked, so a neighbour is usually
+ *  decoded before its turn comes. */
+const HOLD_CAP = 300
 
 /* ---- the type scale ----
 
@@ -83,314 +85,29 @@ const useTypeScale = (root: RefObject<HTMLDivElement | null>, probe: RefObject<H
   }, [root, probe])
 }
 
-/* ---- disintegration ----
+/* ---- the swap ----
 
-   Swapping frames is not a fade and not a wipe. A grid of cells grows over
-   the subject while the picture fades out underneath them, the frame changes
-   at full cover, and the cells shrink away again in a *different* order — so
-   it rebuilds rather than un-wipes.
+   Frames do not cross-fade and they no longer come apart either. It is four
+   beats in order, and the order is the whole idea: the picture goes, then the
+   labels that were pointing at it follow it out — a leader should still be
+   pointing while there is something to point at — then the next picture
+   arrives, and only then do its own labels draw themselves in.
 
-   **Drawn on a canvas, not built out of elements.** It was a grid of spans
-   with a CSS transition each, and that put a hard ceiling on how many pixels
-   the effect could have: measured in Chrome, 3,888 of them cost 11ms to write
-   a property onto and 35ms for the browser to resolve style across, twice per
-   swap, before anything was painted. Six thousand rectangles on a canvas is
-   two or three milliseconds and no layout, no style, no DOM at all — so the
-   pixels can be small and numerous, which is the only size at which this
-   reads as something digitising rather than as tiles falling over.
+   What this replaces is a field of cells drawn over the subject, which is in
+   `50629fd` if it is ever wanted back. Two things were wrong with it that a
+   fade does not have: the field was the subject's own box, so a 16:9 frame
+   followed by a 9:16 one changed the size of the block mid-swap, and the
+   canvas cleared as the box changed, which is the blank between them.
 
-   The loop runs only while something is moving and stops when the last cell
-   has landed. */
+   Every beat is a CSS transition on `opacity` or an animation the leaders
+   already had; nothing here paints. The lengths live in `Mech.css` beside the
+   rules that use them, except the two the machine has to know about: how long
+   the picture and its labels take to leave, and how long the next one is
+   allowed to keep the stage empty while it decodes. */
 
-/** Side of one cell, in frame coordinates — how big a "pixel" is, and the
- *  ceiling on how many of them there are. Both are what they are because
- *  nothing here is an element any more: the ceiling went up with the field
- *  below it, so a cell stays the size it was drawn at rather than being
- *  stretched to fill a bigger area out of the same budget. */
-const CELL = 10
-const MAX_CELLS = 9000
-
-/** Cells of overspill past everything the cover has to hide, so the green
- *  thins out into the dashboard rather than stopping at a ruled line. The
- *  ring is faded across, in `gridFor` — it is the only part of the field
- *  allowed to be sparse. */
-const BLEED = 5
-
-/** Milliseconds. `GROW` is how long one cell takes to arrive or leave, and
- *  the spreads are how far apart the first and last cell of a pass are — so
- *  a whole cover is `SPREAD.out + GROW`, which is what `EXIT_MS` has to
- *  match. Slower than a swap needs to be, on purpose: the picture coming
- *  apart is the part worth watching. */
-const GROW = 320
-const SPREAD = { out: 340, in: 460 }
-
-/** The model floats and turns, so its box has to be the space it moves
- *  through rather than where it happens to be sitting. It is mounted in
- *  nothing, so it gets no housing. */
+/** The model floats and turns, so the space it is a target in has to be what
+ *  it moves through rather than where it happens to be sitting. */
 const PAD = { x: 0.1, y: 0.18 }
-
-/** A still is not what goes when a frame goes — the housing goes with it. The
- *  brackets hang 13 out and are 15 long, the strip naming the frame sits a
- *  `--label-gap` above it and the transport's buttons are 30 tall under it,
- *  and every one of those fades on `[data-covered]` with the picture. Covering
- *  the picture alone is what left the housing dissolving on its own, outside a
- *  field that stopped at the picture's edge. Frame coordinates, matching
- *  `--label-gap`, `--label-inset` and the brackets in `Mech.css`. */
-const HOUSING = { x: 30, top: 40, bottom: 48 }
-
-/** Everything the cover has to hide. */
-const coverBox = (frame: Frame): Box => {
-  const box = boxOf(frame)
-  if (frame.kind === 'model') {
-    const x = box.w * PAD.x
-    const y = box.h * PAD.y
-    return { x: box.x - x, y: box.y - y, w: box.w + x * 2, h: box.h + y * 2 }
-  }
-  return {
-    x: box.x - HOUSING.x,
-    y: box.y - HOUSING.top,
-    w: box.w + HOUSING.x * 2,
-    h: box.h + HOUSING.top + HOUSING.bottom
-  }
-}
-
-/** The canvas: everything that goes, plus the bleed ring outside it.
- *
- *  The bleed used to be counted into the grid without being added to the box,
- *  which put the ring *inside* the picture's own edges — the cells came out
- *  smaller and nothing overspilled at all. Adding it to the box is what makes
- *  it overspill; fading it in `gridFor` is what keeps it from painting a lit
- *  rectangle over the dashboard.
- *
- *  One pass at the cell size is enough. The bleed depends on the cell, the
- *  cell on the area and the area on the bleed, but the `CELL` floor wins on
- *  everything short of the largest subject, so a second pass would move the
- *  number by less than a cell. */
-const fieldBox = (frame: Frame): Box => {
-  const cover = coverBox(frame)
-  const bleed = BLEED * Math.max(CELL, Math.sqrt((cover.w * cover.h) / MAX_CELLS))
-  return { x: cover.x - bleed, y: cover.y - bleed, w: cover.w + bleed * 2, h: cover.h + bleed * 2 }
-}
-
-/** Timings per grid shape, worked out once and reused. The same scatter every
- *  time is a texture; a fresh one on every swap is noise — and generating six
- *  thousand random numbers at the moment a frame changes is the one moment
- *  not to be doing it.
- *
- *  `out` and `in` are fractions of their spread rather than milliseconds, so
- *  the timing above can be changed without invalidating a cached grid. */
-interface Cell {
-  out: number
-  in: number
-  tone: number
-  scale: number
-  turn: number
-}
-
-const grids = new Map<string, { columns: number; rows: number; cells: Cell[] }>()
-
-/** Grid shapes are rounded to this many cells before anything is built, so
- *  most of a project's frames share one grid and one scatter. */
-const STEP = 6
-
-const gridFor = (box: { w: number; h: number }) => {
-  // Whichever is larger: the cell we want, or the cell the budget allows. The
-  // box already includes the bleed ring, so the budget counts it without
-  // having to guess at what share of the grid it is.
-  const side = Math.max(CELL, Math.sqrt((box.w * box.h) / MAX_CELLS))
-  const quantize = (n: number) => Math.max(6, Math.round(n / STEP) * STEP)
-  const columns = quantize(Math.ceil(box.w / side))
-  const rows = quantize(Math.ceil(box.h / side))
-  const key = `${columns}x${rows}`
-
-  const found = grids.get(key)
-  if (found) return found
-
-  const cells: Cell[] = Array.from({ length: columns * rows }, (_, i) => {
-    const across = (i % columns) / Math.max(columns - 1, 1)
-    const down = Math.floor(i / columns) / Math.max(rows - 1, 1)
-    // Out sweeps loosely left to right; in comes back from the middle
-    // outward. Neither is tidy — the jitter is worth more than the direction,
-    // and a cell at the trailing edge can still go first.
-    const fromMiddle = Math.hypot(across - 0.5, down - 0.5) / 0.707
-
-    /* Which rung of the ladder this cell sits on, weighted toward the dark
-       end — a readout losing signal, not a screen of confetti — and thinned
-       across the bleed ring so the field fades off rather than stopping at a
-       ruled line.
-
-       The falloff is the ring and nothing more. It used to be a flat sixth of
-       the grid, which on a tall subject was a dozen cells of dusk eating into
-       the picture the cover is there to hide; `BLEED / columns` is exactly the
-       cells that hang outside it, so everything over the housing gets the full
-       range of the ladder and only the overspill thins.
-
-       The weight *multiplies* the roll. Dividing by it, which is what this
-       did, sent every cell near an edge to a roll far above every threshold:
-       the border came out brightest and the cover was a solid mint
-       rectangle. Low rolls are the dark end, so damping has to scale down. */
-    const ring = { x: BLEED / columns, y: BLEED / rows }
-    const inset = Math.min(
-      across / ring.x,
-      (1 - across) / ring.x,
-      down / ring.y,
-      (1 - down) / ring.y
-    )
-    const roll = Math.random() * Math.min(inset, 1)
-
-    return {
-      out: across * 0.5 + Math.random() * 0.5,
-      in: fromMiddle * 0.55 + Math.random() * 0.45,
-      tone: TONES.findIndex((step) => roll <= step),
-      /* Every cell lands at its own size and a few degrees off square. The
-         overlap is what hides the lattice: a grid of identical squares all
-         arriving at exactly 1.0 is a grid, however you time it. A square
-         turned by θ needs cos θ + sin θ of scale to still cover its own
-         cell, which is where the floor of 1.1 comes from. */
-      scale: 1.1 + Math.random() * 0.12,
-      turn: (Math.random() * 2 - 1) * 0.09
-    }
-  })
-
-  const grid = { columns, rows, cells }
-  grids.set(key, grid)
-  return grid
-}
-
-/* ---- the ladder ----
-
-   Seven rungs from nothing up to a pixel catching the light. It was three,
-   and three is not enough to read as variation: two shades a hair apart are
-   one shade with noise on it, and the whole field came out looking like one
-   colour at two brightnesses.
-
-   The thresholds are cumulative — a roll lands on the first rung it is under
-   — and they are weighted hard toward the dark end, so the bright ones are
-   scattered rather than everywhere. */
-const TONES = [0.34, 0.53, 0.68, 0.79, 0.88, 0.95, 1]
-
-/** Built from the readout's own accent so there is one green on the page.
- *  Rung 0 paints nothing at all: the picture is hidden by its own fade, and a
- *  filled cell out here would only paint over the dashboard. */
-const ladder = (accent: string) => [
-  '',
-  '#0b1c17',
-  '#123028',
-  '#1b483b',
-  '#2c7660',
-  `rgba(${accent}, 0.85)`,
-  '#e2fff3'
-]
-
-const clamp01 = (n: number) => (n < 0 ? 0 : n > 1 ? 1 : n)
-
-/** Smoothstep. The same shape the cells used to get from their transition
- *  curve, now that there is no transition to get it from. */
-const ease = (t: number) => t * t * (3 - 2 * t)
-
-const Disintegration = memo(function Disintegration({ frame, phase }: { frame: Frame; phase: 'out' | 'in' }) {
-  const surface = useRef<HTMLCanvasElement>(null)
-  const box = fieldBox(frame)
-  const { columns, rows, cells } = gridFor(box)
-  /* The grid can change without the phase changing: the frame underneath is
-     swapped at full cover, and a still of a different shape brings a
-     different grid with it. Restarting the animation there would rebuild the
-     cover from nothing at the one moment it has to be complete — so a run
-     that is not a phase change starts already finished. */
-  const last = useRef<'out' | 'in' | null>(null)
-
-  useEffect(() => {
-    const canvas = surface.current
-    const context = canvas?.getContext('2d')
-    if (!canvas || !context) return
-
-    /* The accent is read off the element rather than written here twice —
-       `--accent` on `.mech` is the one green on the page. */
-    const accent =
-      getComputedStyle(canvas).getPropertyValue('--accent-rgb').trim() || '134, 226, 180'
-    const palette = ladder(accent)
-
-    let width = 0
-    let height = 0
-    const measure = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2)
-      const rect = canvas.getBoundingClientRect()
-      width = rect.width
-      height = rect.height
-      canvas.width = Math.max(1, Math.round(width * dpr))
-      canvas.height = Math.max(1, Math.round(height * dpr))
-      context.setTransform(dpr, 0, 0, dpr, 0, 0)
-    }
-
-    // Measured on a resize rather than every frame: reading a rect inside the
-    // loop is a layout flush sixty times a second for a number that changes
-    // when the window does.
-    const watch = new ResizeObserver(measure)
-    watch.observe(canvas)
-    measure()
-
-    const spread = phase === 'out' ? SPREAD.out : SPREAD.in
-    const turning = last.current !== phase
-    last.current = phase
-    const started = turning ? performance.now() : performance.now() - (spread + GROW)
-    let raf = 0
-
-    const paint = (now: number) => {
-      const at = now - started
-      const dpr = Math.min(window.devicePixelRatio || 1, 2)
-      context.setTransform(dpr, 0, 0, dpr, 0, 0)
-      context.clearRect(0, 0, width, height)
-
-      const cw = width / columns
-      const ch = height / rows
-
-      for (let i = 0; i < cells.length; i++) {
-        const cell = cells[i]
-        if (cell.tone === 0) continue
-
-        const delay = (phase === 'out' ? cell.out : cell.in) * spread
-        const along = ease(clamp01((at - delay) / GROW))
-        const size = (phase === 'out' ? along : 1 - along) * cell.scale
-        if (size <= 0.01) continue
-
-        const x = (i % columns) * cw + cw / 2
-        const y = Math.floor(i / columns) * ch + ch / 2
-        const w = cw * size
-        const h = ch * size
-
-        // `setTransform` rather than save/rotate/restore: the same result for
-        // six thousand cells without six thousand state pushes.
-        const cos = Math.cos(cell.turn)
-        const sin = Math.sin(cell.turn)
-        context.setTransform(dpr * cos, dpr * sin, -dpr * sin, dpr * cos, dpr * x, dpr * y)
-        context.fillStyle = palette[cell.tone]
-        context.fillRect(-w / 2, -h / 2, w, h)
-      }
-
-      if (at < spread + GROW) raf = requestAnimationFrame(paint)
-    }
-
-    raf = requestAnimationFrame(paint)
-    return () => {
-      cancelAnimationFrame(raf)
-      watch.disconnect()
-    }
-  }, [phase, cells, columns, rows])
-
-  return (
-    <div
-      className="mech-dissolve"
-      style={{
-        left: `calc(${box.x} * var(--px))`,
-        top: `calc(${box.y} * var(--px))`,
-        width: `calc(${box.w} * var(--px))`,
-        height: `calc(${box.h} * var(--px))`
-      }}
-    >
-      <canvas ref={surface} />
-    </div>
-  )
-})
 
 /* ---- warming ----
 
@@ -1072,7 +789,6 @@ export default function Mech({ id, onProject, onHome }: Props) {
       warm(frames[shown + 1])
       warm(frames[shown - 1])
       warm(frames[shown + 2])
-      for (const frame of frames) gridFor(fieldBox(frame))
     })
   }, [frames, shown])
 
@@ -1211,7 +927,12 @@ export default function Mech({ id, onProject, onHome }: Props) {
           {/* Held back until the machine is up: the leaders extending is the
               last beat of the boot, not something already there when it
               finishes. */}
-          {!booting && (
+          {/* Mounted for the two phases the picture is on the stage and not
+              the one where it is empty, so the lines that are leaving belong
+              to the frame that is leaving — and the ones arriving mount at the
+              moment the next picture starts, which is what their own draw-in
+              is timed against. */}
+          {!booting && phase !== 'hold' && (
             <Leaders
               key={`leaders-${current.id}`}
               notes={notes}
@@ -1221,8 +942,6 @@ export default function Mech({ id, onProject, onHome }: Props) {
               onLit={setLit}
             />
           )}
-
-          <Disintegration frame={current} phase={covered ? 'out' : 'in'} />
 
           {import.meta.env.DEV && pinning && (
             <Suspense fallback={null}>

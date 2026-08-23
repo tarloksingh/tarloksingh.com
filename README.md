@@ -300,65 +300,48 @@ Everything is held in localStorage while you work, the same as every tuning
 panel here, and *nothing reaches a visitor until it has been pasted*. A dashed
 chip is a note still sitting where the fan put it; a solid one has been placed.
 
-### Disintegration
+### The swap
 
-Frames do not cross-fade. A grid of cells grows over the subject while the
-picture itself fades out underneath them, the frame changes at full cover, and
-the cells shrink away in a *different* order, so the next one is rebuilt rather
-than un-wiped. Each cell lands at its own scale and a few degrees off square —
-a square turned by θ needs `cos θ + sin θ` of scale to still cover its cell,
-which is where the floor of 1.1 comes from.
+Frames do not cross-fade, and they no longer come apart either. Four beats, in
+this order, and the order is the whole idea:
 
-**Nothing in it is black.** A cell with no tone paints nothing at all, so the
-dashboard grid shows through the gaps; the picture is hidden by its own fade,
-not buried. Filling the unlit cells with black is what put a hard black
-rectangle around the whole effect — the cover was opaque over an area larger
-than the picture, and everything behind it went with it.
+1. the picture fades out
+2. the labels that were pointing at it follow it out
+3. the next picture fades in
+4. its own labels draw themselves in
 
-**Drawn on a canvas, not built out of elements.** It was a grid of spans with
-a CSS transition each, and that put a ceiling on how many pixels the effect
-could have: measured in Chrome, 3,888 of them cost 11ms to write a property
-onto and 35ms for the browser to resolve style across, *twice* per swap,
-before anything was painted. That was the rest of the pause between one picture
-and the next once the pictures themselves stopped being twelve megapixels. Six
-thousand rectangles on a canvas is two or three milliseconds and no layout, no
-style, no DOM at all — so a cell can go back to being ten frame-pixels, which
-is the only size at which this reads as something digitising rather than as
-tiles falling over. `MAX_CELLS` is a ceiling now rather than a budget being
-spent: no subject on the page comes near it.
+A leader should still be pointing while there is something to point at, which
+is why the labels go second and not with it — and why they come back last
+rather than arriving over an empty stage. The timings live next to the rules
+that use them in `Mech.css`; `EXIT_MS` in `Mech.tsx` is the first two beats
+and has to stay longer than they add up to, or the incoming lines are drawn
+over the outgoing ones. Out is quicker than in: a picture leaving is a thing
+being taken away and wants to be brisk about it, a picture arriving is the
+thing you asked for and can settle.
 
-**The cover has to be bigger than the picture, because the picture is not what
-goes.** A still is mounted in a housing — brackets hanging 13 out, the strip
-naming it a `--label-gap` above, a transport whose buttons are 30 tall below —
-and every part of that fades with the frame on `[data-covered]`. Dissolving to
-the picture's own edges left the housing dissolving on its own, in the open,
-beside a field that stopped short of it. `HOUSING` in `Mech.tsx` is what the
-cover reaches past the picture, in the same frame coordinates as the tokens in
-`Mech.css` it is derived from; the model, which is mounted in nothing, keeps
-its float padding instead. What is *not* covered is the leaders — a field that
-reached them would be most of the screen — so their lines and labels still
-change over the top of the cover rather than under it.
+The leaders are **mounted for the two phases the picture is on the stage and
+not for the one where it is empty**. That is what makes the sequence hold
+without a timer: the set that is leaving belongs to the frame that is leaving,
+and the set arriving mounts at the moment the next picture starts, which is
+what its own draw-in is timed against. Everything a leader is made of — the
+line, the mark it lands on, the ping, the two bits of text — carries the same
+delay, so the choreography inside it is exactly as it was tuned, one beat later
+than the thing it names.
 
-**Nothing black paints past the picture.** The field overspills the cover by
-`BLEED` cells so the green thins out into the dashboard rather than stopping at
-a ruled line — but a black cell out there has no picture to hide and paints
-over the dashboard grid instead, which is where the hard black rectangle around
-every dissolve came from. Only the lit cells reach past the edge, and they fade
-out rather than settling to black.
+`hold` is the beat in the middle, after the outgoing frame has gone and before
+the incoming one comes in. It is a real hole now rather than time hidden behind
+a cover, which is why `HOLD_CAP` is shorter than it was — and mostly unspent,
+since `warm` starts the fetch when the tile is picked rather than when the
+frame is mounted.
 
-The fade is the ring and nothing else. The bleed used to be counted into the
-grid without being added to the box it is drawn in, so the ring came out
-*inside* the picture's own edges: the cells were squeezed a little smaller and
-nothing overspilled at all. And the thinning that goes with it was a flat sixth
-of the field, which on a tall subject is a dozen cells of dusk eating into the
-thing the cover is there to hide. Both are the same number now — the cells that
-actually hang outside — so everything over the housing gets the full range of
-the ladder and only the overspill goes dark.
-
-Three phases, not two. `hold` is after the cover completes and before it lifts:
-the incoming still or clip is mounted but has not necessarily painted, and
-uncovering onto an undecoded video is what shows a poster for a beat and then
-cuts to the real thing.
+**What this replaced.** A field of cells drawn on a canvas, eaten out of the
+subject and rebuilt in a different order — `50629fd`, if it is ever wanted
+back. Two things were wrong with it that a fade does not have. The field was
+the subject's own box, so a 16:9 frame followed by a 9:16 one changed the size
+of the block half way through the swap; and the canvas is resized when that box
+changes, which clears it, which is the blank between them. Making the block one
+size for every frame of a project would have fixed both, and is the change not
+made — the sequence above was worth more than a better cover.
 
 ### The face
 
