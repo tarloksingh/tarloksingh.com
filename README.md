@@ -203,8 +203,8 @@ Placing is not typing. Press **P** on a project screen in development:
   leave its other end in a slot it no longer shares
 - the three fields are the label, the value, and the fold in the left column
   the line is evidence for (hovering either lights the other)
-- **copying and reverting are on the tuning panel**, in a `Labels` folder, not
-  on the overlay — see below
+- **copying and reverting are on the Labels panel**, not on the overlay — see
+  below
 
 **The transport is drawn, not typed.** It was a row of single characters —
 `▶`, `⊘`, `⤢` — at eleven frame pixels, which is a row of specks: you could not
@@ -216,8 +216,10 @@ and the bird, in a hit target you can actually hit.
 over the picture; getting one out does not. The overlay lives inside `.mech`,
 where the native cursor is hidden and every press is a placement — a text field
 in there is one you cannot see yourself select in. So the copy and revert
-buttons are a `Labels` folder on the Subject tuning panel, which is portalled
-to `body`, and the source itself opens in a dialog portalled there too.
+buttons are their **own Leva panel** — `useCreateStore` in `labelTuning.ts`,
+stacked under the subject's, because lighting and labels have nothing to do
+with each other and a folder buried inside someone else's panel is a folder
+nobody finds. The source itself opens in a dialog portalled to `body` too.
 
 **Copying works on a plain http origin.** `navigator.clipboard` only exists in
 a secure context — HTTPS, or localhost — and the dev server here is reached
@@ -249,15 +251,28 @@ chip is a note still sitting where the fan put it; a solid one has been placed.
 
 ### Disintegration
 
-Frames do not cross-fade. A grid of cells grows over the subject until it has
-been eaten block by block, the frame changes underneath at full cover, and the
-cells shrink away in a *different* order, so the next one is rebuilt rather than
-un-wiped. Cells are eleven frame-pixels square, cut from the same box the
-leaders point at, and each lands at its own scale and a few degrees off square —
+Frames do not cross-fade. A grid of cells grows over the subject while the
+picture itself fades out underneath them, the frame changes at full cover, and
+the cells shrink away in a *different* order, so the next one is rebuilt rather
+than un-wiped. Each cell lands at its own scale and a few degrees off square —
 a square turned by θ needs `cos θ + sin θ` of scale to still cover its cell,
-which is where the floor of 1.1 comes from. The field overspills the subject by
-three cells with its tint thinned toward the edges, so the green fades off into
-black instead of stopping at a ruled line.
+which is where the floor of 1.1 comes from.
+
+**Nothing in it is black.** A cell with no tone paints nothing at all, so the
+dashboard grid shows through the gaps; the picture is hidden by its own fade,
+not buried. Filling the unlit cells with black is what put a hard black
+rectangle around the whole effect — the cover was opaque over an area larger
+than the picture, and everything behind it went with it.
+
+**And the cells are chunky, on purpose.** Every one is a DOM node, and a phase
+flip writes a property on all of them and then makes the browser resolve style
+for all of them. Measured in Chrome: 3,888 cells, 11ms to write and 35ms to
+recalculate, *twice* per swap, before anything is painted. That was the rest of
+the pause between one picture and the next once the pictures themselves
+stopped being twelve megapixels. Twenty-four frame-pixels a cell and a budget
+of fourteen hundred — bleed included, which it was not before — brings a
+typical grid to under nine hundred. The blocks can afford to be coarse because
+they are no longer what hides the picture.
 
 **Nothing black paints past the picture.** The field overspills by three cells
 so the green fades off rather than stopping at a ruled line — but a black cell
@@ -418,7 +433,16 @@ one moment there is none to spare:
 - **The dissolve grid was being rebuilt.** Grid shapes are rounded to six cells
   before anything is built, so most of a project's frames share one grid and
   swapping between them touches no DOM at all; the shapes a project does need
-  are worked out on an idle callback while the machine is still booting.
+  are worked out on an idle callback while the machine is still booting. And
+  the grid is a quarter the size it was — see **Disintegration**, which is
+  where the measurements are.
+- **Everything on the screen was re-rendering three times a swap.** The project
+  screen re-renders on each phase, and the dashboard, the reticle, the bird,
+  the gun and the deck went with it every time despite taking no props and
+  caring about none of it. They are memoised.
+- **Hovering a tile now starts its fetch.** It is the earliest honest signal
+  that a frame is about to be wanted, and it is a few hundred milliseconds of
+  head start for nothing.
 
 ### Nothing shows a master
 

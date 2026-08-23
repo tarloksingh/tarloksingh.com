@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, memo } from 'react'
 import { sound } from './sound'
 import { gaze, quarry } from './subject'
 
@@ -59,7 +59,7 @@ const el = (className: string) => {
   return node
 }
 
-export default function MechLaser() {
+function MechLaser() {
   const layer = useRef<HTMLDivElement>(null)
   const emitter = useRef<HTMLElement>(null)
 
@@ -240,3 +240,8 @@ export default function MechLaser() {
     </div>
   )
 }
+
+/* Memoised. It takes no props and nothing it draws depends on the readout's
+   state, but the project screen re-renders on every phase of every frame swap
+   — and without this, so does all of MechLaser. */
+export default memo(MechLaser)

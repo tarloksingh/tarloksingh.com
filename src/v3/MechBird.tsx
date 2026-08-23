@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, memo } from 'react'
 import { BIRD_BODY, BIRD_WING_DOWN, BIRD_WING_UP } from '../site/frames'
 import { sound } from './sound'
 import { gaze, quarry } from './subject'
@@ -42,7 +42,7 @@ const rand = (a: number, b: number) => a + Math.random() * (b - a)
 
 type Mode = 'away' | 'flying' | 'hit'
 
-export default function MechBird() {
+function MechBird() {
   const wrap = useRef<HTMLDivElement>(null)
   const [mode, setMode] = useState<Mode>('away')
   const [enabled, setEnabled] = useState(false)
@@ -193,3 +193,8 @@ export default function MechBird() {
     </div>
   )
 }
+
+/* Memoised. It takes no props and nothing it draws depends on the readout's
+   state, but the project screen re-renders on every phase of every frame swap
+   — and without this, so does all of MechBird. */
+export default memo(MechBird)

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, memo } from 'react'
 
 /* The dashboard the readout sits on.
 
@@ -33,7 +33,7 @@ const pad = (n: number, width = 4) => String(Math.round(n)).padStart(width, '0')
  *  switched on; one that races and settles has. */
 const SPIN = 1.15
 
-export default function MechHud() {
+function MechHud() {
   const strip = useRef<SVGGElement>(null)
   const heading = useRef<SVGTextElement>(null)
   const readX = useRef<HTMLSpanElement>(null)
@@ -140,3 +140,8 @@ export default function MechHud() {
     </div>
   )
 }
+
+/* Memoised. It takes no props and nothing it draws depends on the readout's
+   state, but the project screen re-renders on every phase of every frame swap
+   — and without this, so does all of MechHud. */
+export default memo(MechHud)

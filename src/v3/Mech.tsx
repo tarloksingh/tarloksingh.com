@@ -1,6 +1,6 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { lazy, memo, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
-import { Leva } from 'leva'
+import { Leva, LevaPanel } from 'leva'
 import { TAGS } from '../data/projects'
 import MechBird from './MechBird'
 import MechCursor from './MechCursor'
@@ -57,18 +57,28 @@ const HOLD_CAP = 480
    frame it was dissolving a great deal of black, which is why it read as a
    curtain across the screen rather than as the picture itself coming apart. */
 
-/** Side of one cell, in frame coordinates — how big a "pixel" is. */
-const CELL = 11
+/** Side of one cell, in frame coordinates — how big a "pixel" is.
+ *
+ *  Chunkier than it was, and cheaper for it. Every cell is a DOM node, and a
+ *  phase flip writes a property on all of them and then makes the browser
+ *  resolve style for all of them: measured in Chrome, that was 3,888 cells
+ *  costing 11ms to write and 35ms to recalculate — *twice* a swap, before
+ *  anything is painted. That was the rest of the pause between one picture
+ *  and the next once the pictures themselves stopped being twelve megapixels.
+ *
+ *  It can afford to be coarse now because the blocks are no longer what hides
+ *  the picture — the picture fades out underneath them. They are the
+ *  character of the thing, not the curtain. */
+const CELL = 24
 
-/** Cells are cheap but not free, and every one is a DOM node. Past this the
- *  cell grows instead, so a large subject dissolves in slightly coarser
- *  blocks rather than costing four thousand spans. */
-const MAX_CELLS = 3200
+/** Ceiling on the whole grid, bleed included. Past this the cell grows
+ *  instead, so a large subject dissolves in slightly coarser blocks rather
+ *  than costing four thousand spans. */
+const MAX_CELLS = 1400
 
-/** Cells of overspill past the subject's edges. Without it the field of
- *  green has a ruled rectangular border and the whole effect reads as an
- *  overlay laid on top rather than as the picture itself coming apart. */
-const BLEED = 3
+/** Cells of overspill past the subject's edges, so the field does not stop at
+ *  a ruled line. */
+const BLEED = 2
 
 /** The model floats and turns, so its box has to be the space it moves
  *  through rather than where it happens to be sitting. A still does not
@@ -93,9 +103,6 @@ interface Cell {
   tone: number
   scale: number
   turn: number
-  /** In the overspill ring rather than over the picture. Nothing here has
-   *  anything to hide, so a black one only paints over the dashboard. */
-  edge: boolean
 }
 
 const grids = new Map<string, { columns: number; rows: number; cells: Cell[] }>()
@@ -111,8 +118,11 @@ const grids = new Map<string, { columns: number; rows: number; cells: Cell[] }>(
 const STEP = 6
 
 const gridFor = (box: { w: number; h: number }) => {
-  // Whichever is larger: the cell we want, or the cell the budget allows.
-  const side = Math.max(CELL, Math.sqrt((box.w * box.h) / MAX_CELLS))
+  // Whichever is larger: the cell we want, or the cell the budget allows. The
+  // budget counts the bleed, which it did not before — the ring is a fifth of
+  // the grid on a small subject, and a ceiling that ignores it is not one.
+  const spare = Math.max(0.4, 1 - (BLEED * 4 * Math.sqrt(MAX_CELLS)) / MAX_CELLS)
+  const side = Math.max(CELL, Math.sqrt((box.w * box.h) / (MAX_CELLS * spare)))
   const quantize = (n: number) => Math.max(6, Math.round(n / STEP) * STEP)
   const columns = quantize(Math.ceil(box.w / side)) + BLEED * 2
   const rows = quantize(Math.ceil(box.h / side)) + BLEED * 2
@@ -143,19 +153,19 @@ const gridFor = (box: { w: number; h: number }) => {
     return {
       out: Math.round((across * 0.5 + Math.random() * 0.5) * 170),
       in: Math.round((fromMiddle * 0.55 + Math.random() * 0.45) * 260),
-      tone: roll < 0.87 ? 0 : roll < 0.97 ? 1 : 2,
+      /* Rather more of the frame is lit than it used to be, because the
+         unlit share is now *nothing* rather than black: a cell with no tone
+         paints the dashboard behind it, which is what stops the effect being
+         a black rectangle laid over the page. Enough blocks to read as the
+         picture coming apart, and the picture's own fade does the hiding. */
+      tone: roll < 0.42 ? 0 : roll < 0.86 ? 1 : 2,
       /* Every cell lands at its own size and a few degrees off square. The
          overlap is what hides the lattice: a grid of identical squares all
          arriving at exactly 1.0 is a grid, however you time it. A square
          turned by θ needs cos θ + sin θ of scale to still cover its own
          cell, which is where the floor of 1.1 comes from. */
       scale: 1.1 + Math.random() * 0.12,
-      turn: Math.round((Math.random() * 2 - 1) * 5),
-      edge:
-        (i % columns) < BLEED ||
-        (i % columns) >= columns - BLEED ||
-        Math.floor(i / columns) < BLEED ||
-        Math.floor(i / columns) >= rows - BLEED
+      turn: Math.round((Math.random() * 2 - 1) * 5)
     }
   })
 
@@ -350,7 +360,7 @@ function Leaders({ notes, box, floats, lit, onLit }: LeadersProps) {
   )
 }
 
-function Disintegration({ frame, phase }: { frame: Frame; phase: 'out' | 'in' }) {
+const Disintegration = memo(function Disintegration({ frame, phase }: { frame: Frame; phase: 'out' | 'in' }) {
   const box = dissolveBox(frame)
   const { columns, rows, cells } = gridFor(box)
 
@@ -364,7 +374,6 @@ function Disintegration({ frame, phase }: { frame: Frame; phase: 'out' | 'in' })
         <span
           key={i}
           data-tone={cell.tone}
-          data-edge={cell.edge}
           style={{
             ['--out' as string]: `${cell.out}ms`,
             ['--in' as string]: `${cell.in}ms`,
@@ -396,7 +405,7 @@ function Disintegration({ frame, phase }: { frame: Frame; phase: 'out' | 'in' })
       {grid}
     </div>
   )
-}
+})
 
 /* ---- transport icons ----
 
@@ -682,6 +691,13 @@ function Source({ handed, onClose }: { handed: Handed; onClose: () => void }) {
   )
 }
 
+/** Both panels wear the same dark theme as the readout rather than Leva's
+ *  default blue-on-grey. */
+const PANEL = {
+  colors: { elevation1: '#161616', elevation2: '#1d1d1d', elevation3: '#292929' },
+  sizes: { rootWidth: 'min(340px, calc(100vw - 20px))' }
+}
+
 /** How long the machine takes to come up: the grid strikes on, the compass
  *  spins and settles, and only then do the leaders extend. */
 const BOOT_MS = 1500
@@ -735,7 +751,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
      picture: copying out, reverting, and adding a line without having a
      picture to click on. See `labelTuning.ts`. */
   const [handed, setHanded] = useState<Handed>(null)
-  useLabelTuning(setHanded)
+  const labels = useLabelTuning(setHanded)
   /* The project on screen trails the one in the URL by a transit, the same
      way the frame trails the tile you picked. Retargeting is the readout
      swinging over to something else, not a page being replaced. */
@@ -923,15 +939,22 @@ export default function Mech({ id, onProject, onHome }: Props) {
           readout's stacking context and paint under the chrome. */}
       {typeof document !== 'undefined'
         ? createPortal(
-            <Leva
-              collapsed
-              hidden={!import.meta.env.DEV}
-              titleBar={{ title: 'Subject tuning' }}
-              theme={{
-                colors: { elevation1: '#161616', elevation2: '#1d1d1d', elevation3: '#292929' },
-                sizes: { rootWidth: 'min(340px, calc(100vw - 20px))' }
-              }}
-            />,
+            <>
+              <Leva
+                collapsed
+                hidden={!import.meta.env.DEV}
+                titleBar={{ title: 'Subject tuning' }}
+                theme={PANEL}
+              />
+              {/* Its own panel, not a folder under the subject's lighting:
+                  they have nothing to do with each other. Sits under the
+                  first one, which is where Leva stacks a second. */}
+              {import.meta.env.DEV && (
+                <div className="mech-labels-panel">
+                  <LevaPanel store={labels} collapsed fill titleBar={{ title: 'Labels', drag: false }} theme={PANEL} />
+                </div>
+              )}
+            </>,
             document.body
           )
         : null}
@@ -977,7 +1000,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
 
         {/* The subject and its labels share one box so that scaling the window
             moves them together. */}
-        <div className="mech-stage" ref={stage}>
+        <div className="mech-stage" ref={stage} data-covered={covered}>
           {/* The model is mounted for as long as the project has one, and
               hidden rather than unmounted while a still is on the stage.
 
@@ -1081,6 +1104,10 @@ export default function Mech({ id, onProject, onHome }: Props) {
                 aria-label={frame.label ?? project.title}
                 title={frame.label ?? project.title}
                 style={{ ...(thumb ? { backgroundImage: `url(${thumb})` } : {}), ['--i' as string]: i }}
+                /* Hovering is the earliest honest signal that a frame is
+                   about to be wanted, and it buys a few hundred milliseconds
+                   of head start on the fetch for free. */
+                onPointerEnter={() => warm(frame)}
                 onClick={() => {
                   sound.select()
                   setIndex(i)

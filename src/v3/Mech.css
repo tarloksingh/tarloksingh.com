@@ -426,12 +426,16 @@
 
 .mech-dissolve span {
   background: var(--tone);
-  --tone: #000;
+  /* Nothing. Not black — a black cell paints over the dashboard grid behind
+     the picture, and a field of them is the ruled black rectangle that used
+     to sit around the whole effect. What hides the picture is the picture
+     fading out underneath; the cells are what it comes apart into. */
+  --tone: transparent;
   --s: 1.14;
   --r: 0deg;
   transform: scale(0);
-  /* No `will-change` here on purpose: eleven hundred cells asking for their
-     own compositor layer is a worse problem than the one it solves, and a
+  /* No `will-change` here on purpose: a thousand cells asking for their own
+     compositor layer is a worse problem than the one it solves, and a
      transform transition is promoted while it runs anyway. */
   transition: transform 170ms cubic-bezier(0.3, 0, 0.7, 1);
   transition-delay: var(--in);
@@ -442,9 +446,8 @@
   transition-delay: var(--out);
 }
 
-/* Mostly black, green through it. A cell keeps its tone for the whole of the
-   uncover — the frame comes back out of a field of green rather than out of a
-   black rectangle. */
+/* Two lit tones through the field: a dark one that reads as a dead pixel and
+   the accent for the ones still carrying signal. */
 .mech-dissolve span[data-tone='1'] {
   --tone: #14322a;
 }
@@ -453,43 +456,19 @@
   --tone: rgba(var(--accent-rgb), 0.9);
 }
 
-/* The overspill ring has no picture under it, so a black cell out there is
-   not hiding anything — it is painting over the dashboard grid, which is
-   where the ruled black rectangle around every dissolve came from. Only the
-   lit cells reach past the picture's edge, and they fade out rather than
-   settling to black. */
-.mech-dissolve span[data-edge='true'][data-tone='0'] {
-  background: transparent;
+/* The picture itself is what goes. It fades under the blocks rather than
+   being buried by them, which is why the field can be as sparse and as coarse
+   as it now is — and why swapping a frame no longer means writing a property
+   onto four thousand elements and asking the browser to resolve style for all
+   of them, twice. */
+.mech-stage .mech-housing,
+.mech-stage .mech-model-layer {
+  transition: opacity 240ms linear;
 }
 
-/* Going out, the tinted cells settle to black behind the cover: the picture
-   is eaten by something bright and what is left is dark. Stepped, because a
-   pixel resolving through a smooth gradient is not a pixel. */
-.mech-dissolve[data-phase='out'] span:not([data-tone='0']) {
-  animation: mech-settle 420ms steps(4, end) both;
-  animation-delay: var(--out);
-}
-
-.mech-dissolve[data-phase='out'] span[data-edge='true']:not([data-tone='0']) {
-  animation-name: mech-settle-edge;
-}
-
-@keyframes mech-settle {
-  from {
-    background: var(--tone);
-  }
-  to {
-    background: #000;
-  }
-}
-
-@keyframes mech-settle-edge {
-  from {
-    background: var(--tone);
-  }
-  to {
-    background: transparent;
-  }
+.mech-stage[data-covered='true'] .mech-housing,
+.mech-stage[data-covered='true'] .mech-model-layer {
+  opacity: 0;
 }
 
 /* ---- the housing ----
@@ -612,6 +591,14 @@
   height: calc(11 * var(--px));
   border: 0;
   background: var(--accent);
+}
+
+/* The full screen control sits on the right-hand end of the strip whatever is
+   in front of it. On a clip the scrubber pushes it there; on a still there was
+   nothing to push, so it ended up tucked against the caption as if it belonged
+   to the words. */
+.mech-transport button:last-child {
+  margin-left: auto;
 }
 
 .mech-time {
@@ -1680,6 +1667,17 @@
   background: var(--accent);
   border-color: var(--accent);
   font-weight: 600;
+}
+
+/* The labels panel, stacked under the subject's. Leva positions its own
+   global panel; a second one is an ordinary element, so it is placed here —
+   at the same width, under the first, out of the readout's way. */
+.mech-labels-panel {
+  position: fixed;
+  top: 320px;
+  right: 10px;
+  z-index: 1000;
+  width: min(340px, calc(100vw - 20px));
 }
 
 /* ---- the source, on screen ----

@@ -1,4 +1,4 @@
-import { button, folder, useControls } from 'leva'
+import { button, useControls, useCreateStore } from 'leva'
 import { copyText } from './clipboard'
 import { addNote, focus, notesFor, pins } from './notes'
 import { entries } from './model'
@@ -14,7 +14,13 @@ import { entries } from './model'
    hands source back for pasting.
 
    So the two halves are split by what they are for. Press **P** to place and
-   drag; use this folder to get the result out.
+   drag; use this panel to get the result out.
+
+   Its own store, and therefore its own panel: the subject's lighting and the
+   labels have nothing to do with each other, and a folder buried under
+   "Subject tuning" is a folder nobody finds. `useCreateStore` is how Leva
+   does a second panel — the store is handed to a `<LevaPanel>` rather than to
+   the global one.
 
    The buttons close over nothing. `focus.id` is the frame the readout is
    showing, written by `Mech` on every change — the same arrangement
@@ -33,29 +39,34 @@ const notesOf = (id: string) => {
 }
 
 export function useLabelTuning(onHanded: (handed: Handed) => void) {
+  const store = useCreateStore()
+
   const hand = (text: string) => {
     // eslint-disable-next-line no-console
     console.log(`[pins] paste into NOTES in src/v3/notes.ts:\n\n${text}`)
     void copyText(text).then((copied) => onHanded({ text, copied }))
   }
 
-  useControls({
-    Labels: folder(
-      {
-        'Add a line': button(() => {
-          if (!focus.id) return
-          // Down the middle of the picture, since there is nothing to click
-          // on out here. Drag it where it belongs with P.
-          const notes = notesOf(focus.id)
-          addNote(focus.id, [0.5, 0.3 + (notes.length % 4) * 0.14], notes)
-        }),
-        'Copy this frame': button(() => hand(pins.source(focus.id))),
-        'Copy every frame': button(() => hand(pins.source())),
-        'Revert this frame': button(() => {
-          if (focus.id) pins.clear(focus.id)
-        })
-      },
-      { collapsed: true }
-    )
-  })
+  useControls(
+    {
+      'Place them — press P': button(() => {
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'p', bubbles: true }))
+      }),
+      'Add a line': button(() => {
+        if (!focus.id) return
+        // Down the middle of the picture, since there is nothing to click on
+        // out here. Drag it where it belongs with P.
+        const notes = notesOf(focus.id)
+        addNote(focus.id, [0.5, 0.3 + (notes.length % 4) * 0.14], notes)
+      }),
+      'Copy this frame': button(() => hand(pins.source(focus.id))),
+      'Copy every frame': button(() => hand(pins.source())),
+      'Revert this frame': button(() => {
+        if (focus.id) pins.clear(focus.id)
+      })
+    },
+    { store }
+  )
+
+  return store
 }

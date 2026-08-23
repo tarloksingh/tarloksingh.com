@@ -90,8 +90,9 @@ larger than about 1600. Use `MediaItem.still` and `MediaItem.thumb`, never
 ## Dev-only tools
 
 - **P** on a project screen opens the label pin editor (placing and dragging).
-- The **Subject tuning** panel (top right) carries the model's lighting and
-  eyes, and a **Labels** folder that copies pinned labels out as source.
+- Two Leva panels, top right, both opening collapsed: **Subject tuning** (the
+  model's lens, lighting and eyes) and **Labels** (copies pinned labels out as
+  source). A second panel is `useCreateStore` + `<LevaPanel store>`.
 
 ## Commit policy
 

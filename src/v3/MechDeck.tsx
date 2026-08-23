@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, memo } from 'react'
 import { tracks } from '../data/tracks'
 import { sound } from './sound'
 
@@ -37,7 +37,7 @@ const read = (): Stored => {
  *  waveform because this is a dashboard and a dashboard has gauges. */
 const BARS = 16
 
-export default function MechDeck() {
+function MechDeck() {
   const initial = useRef(read())
   const audio = useRef<HTMLAudioElement>(null)
   const meter = useRef<HTMLDivElement>(null)
@@ -229,3 +229,8 @@ export default function MechDeck() {
     </div>
   )
 }
+
+/* Memoised. It takes no props and nothing it draws depends on the readout's
+   state, but the project screen re-renders on every phase of every frame swap
+   — and without this, so does all of MechDeck. */
+export default memo(MechDeck)

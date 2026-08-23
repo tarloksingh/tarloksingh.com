@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, memo } from 'react'
 import { sound } from './sound'
 
 /* The reticle.
@@ -21,7 +21,7 @@ const RING = 0.3
 /** Breathing room between a target's box and the brackets that acquire it. */
 const PAD = 7
 
-export default function MechCursor() {
+function MechCursor() {
   const ring = useRef<HTMLDivElement>(null)
   const pin = useRef<HTMLDivElement>(null)
   const lock = useRef<HTMLDivElement>(null)
@@ -154,3 +154,8 @@ export default function MechCursor() {
     </div>
   )
 }
+
+/* Memoised. It takes no props and nothing it draws depends on the readout's
+   state, but the project screen re-renders on every phase of every frame swap
+   — and without this, so does all of MechCursor. */
+export default memo(MechCursor)
