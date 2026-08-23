@@ -1,4 +1,5 @@
 import { button, folder, useControls } from 'leva'
+import { copyText } from './clipboard'
 import { useEffect } from 'react'
 
 /* ---- the subject's tuning panel ----
@@ -144,7 +145,10 @@ export function useModelTuning(): ModelTuning {
   const values = useControls({
     'Copy for source': button(() => {
       const text = asSource(live)
-      void navigator.clipboard?.writeText(text)
+      // Not `navigator.clipboard` directly: it does not exist on a plain
+      // http origin, which is what the tailnet dev server is. See
+      // `clipboard.ts` — the console line below is the real fallback.
+      void copyText(text)
       const n = keys.filter((key) => live[key] !== MODEL_DEFAULTS[key]).length
       // eslint-disable-next-line no-console
       console.log(

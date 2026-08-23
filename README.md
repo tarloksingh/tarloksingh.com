@@ -122,6 +122,14 @@ The pictures and the clips carry a small radius (`--round`, in frame
 coordinates like everything else, so it scales with the composition rather than
 staying 10px on a wall display). Full screen puts them back square.
 
+The words around the picture — the strip that names it above, the transport
+below — are two tokens rather than four numbers scattered through the file:
+`--label-gap` is how far off the picture's edge they sit and `--label-inset`
+how far in from its sides they start. The inset is not decoration. The
+brackets hang 13 out and are 15 long, so type set flush with the picture's left
+edge is type set underneath a bracket, which is what "clip" was doing. Those
+are the two numbers to move if it ever wants to sit differently.
+
 ### One frame, scaled
 
 Every number in `Mech.css` is a coordinate in the Figma's 1920×1080 frame, and
@@ -196,6 +204,15 @@ Placing is not typing. Press **P** on a project screen in development:
   the line is evidence for (hovering either lights the other)
 - **copy this frame** / **copy all** hands back source to paste into `NOTES` in
   `notes.ts`, and **revert** puts the frame back to what the file says
+
+**Copying works on a plain http origin.** `navigator.clipboard` only exists in
+a secure context — HTTPS, or localhost — and the dev server here is reached
+over the tailnet by IP or MagicDNS name, which is neither. Written the obvious
+way, the copy buttons were doing nothing and saying nothing on the one machine
+most likely to be using them. `clipboard.ts` tries the real API, falls back to
+the old `execCommand`, and if even that fails puts the source on screen in a
+selected textarea. Every path also logs it. The tuning panels' copy buttons go
+through the same helper, for the same reason.
 
 Everything is held in localStorage while you work, the same as every tuning
 panel here, and *nothing reaches a visitor until it has been pasted*. A dashed
@@ -277,6 +294,25 @@ element's own space, so the head sits on the origin the scale turns about).
 It is the one **orange** thing on the screen. A bolt in the panel's own green
 would read as another instrument lighting up rather than as something leaving
 the page.
+
+The blast is wide, and the bottom edge of the screen carries a low wash of the
+same colour — faintly on all the time, so the bolts have somewhere to have come
+from, and flaring on every shot. It says where the gun is without drawing a
+barrel.
+
+**You can hit the subject.** While the thing on the stage is the model rather
+than a picture, it is a target: the project screen registers its box in client
+pixels (worked out from the stage's own rect, padded out to the space the float
+actually moves the head through), and a bolt landing inside it goes to
+`MechModel`. A still is not a target — shooting a photograph of something is
+shooting a photograph.
+
+What he does about it: shuts his eyes hard, twitches twice, takes a knock
+backwards, and stays a little sad for a few seconds. The eyelids are one morph
+for the pair, so a wink is not available and the twitch is a flutter rather
+than one eye going. The knock is a single impulse on the lean, left to the
+damping that was already there to bring him out of it — no second timer to keep
+in step with, and nothing to get out of step with the first.
 
 The reticle's pin is snapped onto the pointer on every press: it normally
 chases a couple of frames behind, and a bolt aimed at the true pointer while

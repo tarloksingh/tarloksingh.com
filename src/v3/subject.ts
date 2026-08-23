@@ -34,6 +34,13 @@ export const drift = {
    reasoning as `gaze` — a bolt tests this from inside its own frame loop,
    several times a frame, and none of it is ever rendered. */
 export const quarry = {
+  /** The thing on the stage, while it is a model rather than a picture: a box
+   *  in client pixels and what to do when a bolt lands inside it. Registered
+   *  by the project screen, which is the only thing that knows where the
+   *  subject is framed. A still is not a target — shooting a photograph of
+   *  something is shooting a photograph. */
+  subject: null as null | { rect: () => DOMRect | null; hit: () => void },
+
   /** How near a bolt has to pass, in client pixels. Generous on purpose, and
    *  for a reason beyond the bird being 38px of thin line: a bolt takes about
    *  a fifth of a second to cross the screen and the bird covers forty pixels
@@ -45,3 +52,8 @@ export const quarry = {
    *  else killed it does not fire a second burst. */
   hit: null as null | (() => boolean)
 }
+
+/** When the subject was last hit, on the `performance.now()` clock. Read from
+ *  inside the Canvas's frame loop; written from a pointer event outside it.
+ *  Zero means it has never happened. */
+export const flinch = { at: 0 }

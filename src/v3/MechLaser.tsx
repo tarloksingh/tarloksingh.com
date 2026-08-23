@@ -61,6 +61,7 @@ const el = (className: string) => {
 
 export default function MechLaser() {
   const layer = useRef<HTMLDivElement>(null)
+  const emitter = useRef<HTMLElement>(null)
 
   useEffect(() => {
     if (!window.matchMedia('(pointer: fine)').matches) return
@@ -71,6 +72,7 @@ export default function MechLaser() {
     const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
     let raf = 0
+    let settle = 0
 
     interface Bolt {
       node: HTMLDivElement
@@ -138,8 +140,25 @@ export default function MechLaser() {
         }
 
         if (at >= 1) {
-          sound.splash()
-          mark(bolt.to.x, bolt.to.y, 'miss')
+          /* Landed. If the subject is on the stage and the bolt came down
+             inside its box, it is the subject that was hit — which it takes
+             personally, in `MechModel`. */
+          const box = quarry.subject?.rect()
+          const struck =
+            box !== null &&
+            box !== undefined &&
+            x >= box.left &&
+            x <= box.right &&
+            y >= box.top &&
+            y <= box.bottom
+
+          if (struck) {
+            quarry.subject!.hit()
+            mark(x, y, 'hit')
+          } else {
+            sound.splash()
+            mark(bolt.to.x, bolt.to.y, 'miss')
+          }
           finish(bolt)
         }
       }
@@ -166,6 +185,16 @@ export default function MechLaser() {
         `translate3d(${from.x}px, ${from.y}px, 0) rotate(${angle}deg) scale(${NEAR}) translate(-100%, -50%)`
 
       host.append(node)
+
+      // The wash along the bottom edge flares with the shot and settles back.
+      const glow = emitter.current
+      if (glow) {
+        glow.dataset.on = 'true'
+        window.clearTimeout(settle)
+        settle = window.setTimeout(() => {
+          glow.dataset.on = 'false'
+        }, 90)
+      }
 
       const flash = el('mech-muzzle')
       flash.style.transform = `translate3d(${from.x}px, ${from.y}px, 0) rotate(${angle}deg) translate(-50%, -50%)`
@@ -203,11 +232,16 @@ export default function MechLaser() {
     window.addEventListener('pointerdown', onDown)
     return () => {
       window.removeEventListener('pointerdown', onDown)
+      window.clearTimeout(settle)
       cancelAnimationFrame(raf)
       for (const bolt of bolts) bolt.node.remove()
       bolts.clear()
     }
   }, [])
 
-  return <div className="mech-guns" ref={layer} aria-hidden />
+  return (
+    <div className="mech-guns" ref={layer} aria-hidden>
+      <i className="mech-emitter" ref={emitter} data-on="false" />
+    </div>
+  )
 }

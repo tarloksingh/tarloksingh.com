@@ -41,7 +41,7 @@ const GUTTER = { left: 500, right: 1450 }
 /** The subject's box in frame coordinates. The model's is measured off the
  *  Figma; a still's is wherever the media actually lands, which is the same
  *  sum the CSS makes so the two can never disagree. */
-const MODEL_BOX = { x: 769, y: 269, w: 403, h: 529 }
+export const MODEL_BOX = { x: 769, y: 269, w: 403, h: 529 }
 const MEDIA_MAX = { w: 780, h: 730 }
 
 export const mediaBox = (aspect: number) => {

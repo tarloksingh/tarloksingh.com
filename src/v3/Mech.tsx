@@ -9,10 +9,10 @@ import MechHud from './MechHud'
 import { useModelTuning } from './modelTuning'
 import MechDeck from './MechDeck'
 import { sound } from './sound'
-import { drift } from './subject'
+import { drift, flinch, quarry } from './subject'
 import { entries, thumbOf, type Entry, type Frame } from './model'
 import { notesFor, pins, type Note } from './notes'
-import { boxOf, leadersFor, mediaBox } from './leaders'
+import { boxOf, leadersFor, mediaBox, MODEL_BOX } from './leaders'
 import './Mech.css'
 
 const MechModel = lazy(() => import('./MechModel'))
@@ -601,6 +601,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
   const [phase, setPhase] = useState<'in' | 'out' | 'hold'>('in')
   const [open, setOpen] = useState<string | null>('overview')
   const rail = useRef<HTMLDivElement>(null)
+  const stage = useRef<HTMLDivElement>(null)
   /* What has been pinned in this browser, if anything. Subscribed rather than
      read once: the editor writes to the same store the leaders read from, so
      a drag moves the real line rather than a preview of one. */
@@ -658,6 +659,37 @@ export default function Mech({ id, onProject, onHome }: Props) {
     const cap = window.setTimeout(() => setPhase('in'), HOLD_CAP)
     return () => window.clearTimeout(cap)
   }, [phase, shown, frames])
+
+  /* The subject is a target while it is the thing on the stage. Registered
+     as a box in client pixels worked out from the stage's own rect, so it
+     scales with the composition and needs no element of its own — and padded
+     out to the space the float actually moves the head through, the same
+     reasoning as `dissolveBox`. A still is not a target: shooting a
+     photograph of something is shooting a photograph. */
+  useEffect(() => {
+    if (current?.kind !== 'model') return
+    quarry.subject = {
+      rect: () => {
+        const box = stage.current?.getBoundingClientRect()
+        if (!box) return null
+        const px = box.width / 1920
+        const pad = { x: MODEL_BOX.w * PAD.x, y: MODEL_BOX.h * PAD.y }
+        return new DOMRect(
+          box.left + (MODEL_BOX.x - pad.x) * px,
+          box.top + (MODEL_BOX.y - pad.y) * px,
+          (MODEL_BOX.w + pad.x * 2) * px,
+          (MODEL_BOX.h + pad.y * 2) * px
+        )
+      },
+      hit: () => {
+        flinch.at = performance.now()
+        sound.thud()
+      }
+    }
+    return () => {
+      quarry.subject = null
+    }
+  }, [current])
 
   // P opens the pin editor, in development. Not while something is being
   // typed into — the editor is mostly text fields, and a shortcut that fires
@@ -776,7 +808,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
 
         {/* The subject and its labels share one box so that scaling the window
             moves them together. */}
-        <div className="mech-stage">
+        <div className="mech-stage" ref={stage}>
           {/* The model is mounted for as long as the project has one, and
               hidden rather than unmounted while a still is on the stage.
 

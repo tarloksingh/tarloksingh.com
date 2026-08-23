@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { boxOf, leadersFor, pointIn, type Box } from './leaders'
 import { pins, type Note } from './notes'
 import { sound } from './sound'
+import { copyText } from './clipboard'
 import type { Frame } from './model'
 
 /* Pinning the leaders.
@@ -47,6 +48,11 @@ export default function MechPins({ frame, notes, onClose }: Props) {
   // so letting go of a handle over the picture does not also add a note.
   const dragging = useRef(false)
   const [live, setLive] = useState<number | null>(null)
+  /* What the copy buttons did. `copied` is which one last worked, and clears
+     itself; `manual` is the source held on screen because there was no
+     clipboard to put it on — see `clipboard.ts`. */
+  const [copied, setCopied] = useState<'frame' | 'all' | null>(null)
+  const [manual, setManual] = useState<string | null>(null)
 
   const write = (next: Note[]) => pins.set(frame.id, next)
 
@@ -109,6 +115,24 @@ export default function MechPins({ frame, notes, onClose }: Props) {
     const at = fractionIn(rect, box, event.clientX, event.clientY)
     if (at[0] < -0.02 || at[0] > 1.02 || at[1] < -0.02 || at[1] > 1.02) return
     addAt(at)
+  }
+
+  /** Hands the source over: to the clipboard if this page is allowed one, and
+   *  to a panel you can select out of if it is not. Either way it goes to the
+   *  console, which is the one place it can always be got at. */
+  const hand = (which: 'frame' | 'all') => {
+    const text = which === 'frame' ? pins.source(frame.id) : pins.source()
+    sound.select()
+    // eslint-disable-next-line no-console
+    console.log(`[pins] paste into NOTES in src/v3/notes.ts:\n\n${text}`)
+    void copyText(text).then((ok) => {
+      if (!ok) {
+        setManual(text)
+        return
+      }
+      setCopied(which)
+      window.setTimeout(() => setCopied((was) => (was === which ? null : was)), 1600)
+    })
   }
 
   const place = (x: number, y: number) => ({
@@ -192,29 +216,31 @@ export default function MechPins({ frame, notes, onClose }: Props) {
         >
           + line
         </button>
-        <button
-          onClick={() => {
-            const text = pins.source(frame.id)
-            void navigator.clipboard?.writeText(text)
-            // eslint-disable-next-line no-console
-            console.log(`[pins] paste into NOTES in src/v3/notes.ts:\n\n${text}`)
-          }}
-        >
-          copy this frame
-        </button>
-        <button
-          onClick={() => {
-            const text = pins.source()
-            void navigator.clipboard?.writeText(text)
-            // eslint-disable-next-line no-console
-            console.log(`[pins] every frame pinned in this browser — paste over NOTES in src/v3/notes.ts:\n\n${text}`)
-          }}
-        >
-          copy all
-        </button>
+        <button onClick={() => hand('frame')}>{copied === 'frame' ? 'copied ✓' : 'copy this frame'}</button>
+        <button onClick={() => hand('all')}>{copied === 'all' ? 'copied ✓' : 'copy all'}</button>
         <button onClick={() => pins.clear(frame.id)}>revert</button>
         <button onClick={onClose}>done · P</button>
       </div>
+
+      {/* No clipboard on this origin — http over the tailnet is not a secure
+          context. The text is here instead, selected, so it is one keystroke
+          away rather than lost. */}
+      {manual !== null && (
+        <div className="mech-pins-source" onPointerDown={(event) => event.stopPropagation()}>
+          <div className="mech-pins-source-head">
+            <span>no clipboard on this origin — select and copy</span>
+            <button onClick={() => setManual(null)}>close</button>
+          </div>
+          <textarea
+            readOnly
+            value={manual}
+            ref={(el) => {
+              el?.focus()
+              el?.select()
+            }}
+          />
+        </div>
+      )}
     </div>
   )
 }

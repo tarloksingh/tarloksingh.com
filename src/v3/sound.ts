@@ -179,6 +179,14 @@ export const sound = {
     air({ from: 2600, to: 700, gain: 0.03, length: 0.09, q: 1.6 })
   },
 
+  /** A bolt landing on the subject. Low and short and slightly unpleasant —
+   *  it is a thing being hit, not a thing being picked. Nothing breaks, but
+   *  nobody enjoys it either. */
+  thud() {
+    tone({ type: 'sine', from: 180, to: 52, gain: 0.11, length: 0.22 })
+    air({ from: 900, to: 160, gain: 0.06, length: 0.13, q: 0.9 })
+  },
+
   /** The bird, hit. */
   hit() {
     air({ from: 4000, to: 300, gain: 0.14, length: 0.22, q: 0.6 })

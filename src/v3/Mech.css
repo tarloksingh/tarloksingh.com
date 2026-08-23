@@ -60,6 +60,16 @@
      it scales with the composition rather than staying 10px on a wall
      display. */
   --round: calc(10 * var(--px));
+  /* The housing's furniture, in frame coordinates: how far the strip above
+     the picture and the transport below it sit off its edges, and how far in
+     from its sides the words start.
+
+     The inset is not decoration. The corner brackets hang 13 out and are 15
+     long, so anything set flush with the picture's left edge is set under a
+     bracket — which is what "clip" was doing. These are the two numbers to
+     move if the type ever wants to sit differently. */
+  --label-gap: calc(16 * var(--px));
+  --label-inset: calc(26 * var(--px));
   --dim: #4a544f;
   --mid: #7e8c85;
   --ease: cubic-bezier(0.22, 0.85, 0.25, 1);
@@ -491,8 +501,8 @@
 .mech-housing-label,
 .mech-transport {
   position: absolute;
-  left: 0;
-  right: 0;
+  left: var(--label-inset);
+  right: var(--label-inset);
   display: flex;
   align-items: center;
   gap: calc(10 * var(--px));
@@ -503,7 +513,7 @@
 }
 
 .mech-housing-label {
-  bottom: calc(100% + 7 * var(--px));
+  bottom: calc(100% + var(--label-gap));
 }
 
 .mech-housing-count {
@@ -513,7 +523,7 @@
 }
 
 .mech-transport {
-  top: calc(100% + 9 * var(--px));
+  top: calc(100% + var(--label-gap));
 }
 
 .mech-transport button {
@@ -1628,6 +1638,51 @@
   font-weight: 600;
 }
 
+/* The way out when there is no clipboard. Middle of the screen, monospaced,
+   and selected the moment it appears. */
+.mech-pins-source {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(760px, 80%);
+  padding: 10px;
+  background: rgba(4, 9, 8, 0.97);
+  border: 1px solid var(--accent);
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+}
+
+.mech-pins-source-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 11px;
+  color: var(--accent);
+}
+
+.mech-pins-source-head button {
+  padding: 2px 8px;
+  border: 1px solid rgba(var(--accent-rgb), 0.4);
+  background: none;
+  font: inherit;
+  font-size: 11px;
+  color: var(--accent);
+}
+
+.mech-pins-source textarea {
+  width: 100%;
+  height: 260px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #000;
+  color: #cfe9dc;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
 /* ---- the gun ----
 
    Bolts, tracers and impacts, all of them created and destroyed by
@@ -1653,6 +1708,43 @@
   will-change: transform, opacity;
 }
 
+/* The gun is somewhere, and it is under you. A low wash along the bottom edge
+   says where without drawing a barrel: on faintly all the time, so the bolts
+   have somewhere to have come from, and flaring on every shot.
+
+   Positioned against the layer's own edges rather than by transform, so it is
+   the one thing in here that is not a bolt. */
+.mech-emitter {
+  left: 50%;
+  top: auto;
+  bottom: 0;
+  width: min(1100px, 86vw);
+  height: 190px;
+  transform: translateX(-50%) translateY(46%);
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    rgba(var(--shot-rgb), 0.5),
+    rgba(var(--shot-rgb), 0.16) 45%,
+    transparent 100%
+  );
+  opacity: 0.16;
+  /* Quick up, slow down — a flare, not a blink. */
+  transition: opacity 460ms ease-out;
+  will-change: opacity;
+}
+
+.mech-emitter[data-on='true'] {
+  opacity: 0.75;
+  transition-duration: 60ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mech-emitter {
+    transition: none;
+  }
+}
+
 /* The head of the shot: a white core with the heat bleeding off the length of
    it, tapered at the tail so it reads as exhaust rather than as a rod. It is
    scaled from JS as it travels, which is where the depth is — see
@@ -1667,12 +1759,12 @@
 
 /* The discharge, at the bottom edge where the shot came from. */
 .mech-muzzle {
-  width: 150px;
-  height: 44px;
-  margin: -22px 0 0 -75px;
+  width: 260px;
+  height: 78px;
+  margin: -39px 0 0 -130px;
   border-radius: 50%;
   background: radial-gradient(closest-side, rgba(255, 245, 232, 0.9), rgba(var(--shot-rgb), 0.55) 40%, transparent 100%);
-  animation: mech-muzzle 210ms ease-out forwards;
+  animation: mech-muzzle 260ms ease-out forwards;
 }
 
 @keyframes mech-muzzle {

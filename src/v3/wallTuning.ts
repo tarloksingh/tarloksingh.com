@@ -1,4 +1,5 @@
 import { button, folder, useControls } from 'leva'
+import { copyText } from './clipboard'
 import { useEffect } from 'react'
 
 /* ---- the wall's tuning panel ----
@@ -103,7 +104,10 @@ export function useWallTuning(): WallTuning {
   const values = useControls({
     'Copy for source': button(() => {
       const text = asSource(live)
-      void navigator.clipboard?.writeText(text)
+      // Not `navigator.clipboard` directly: it does not exist on a plain
+      // http origin, which is what the tailnet dev server is. See
+      // `clipboard.ts` — the console line below is the real fallback.
+      void copyText(text)
       const n = changedCount(live)
       // eslint-disable-next-line no-console
       console.log(

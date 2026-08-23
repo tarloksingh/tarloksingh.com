@@ -3,7 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Float, useAnimations, useGLTF } from '@react-three/drei'
 import { ACESFilmicToneMapping, Box3, MathUtils, PMREMGenerator, SRGBColorSpace, Vector3 } from 'three'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
-import { drift, gaze } from './subject'
+import { drift, flinch, gaze } from './subject'
 import { MODEL_DEFAULTS, type ModelTuning } from './modelTuning'
 import type { Group, Mesh, MeshStandardMaterial, PerspectiveCamera } from 'three'
 
@@ -44,6 +44,54 @@ const BLINK_LENGTH = 0.28
 const THINK = { gap: [4, 12], hold: [1.2, 3.8], intensity: 0.6, fade: 2.5 }
 
 const between = (min: number, max: number) => min + Math.random() * (max - min)
+
+/* ---- being shot ----
+
+   The gun can land a bolt on him, and something has to happen or the whole
+   thing is a decoration you fire at. What happens is small: he shuts his eyes
+   for a moment, twitches, and goes a little sad for a few seconds.
+
+   The eyelids are one morph for both eyes — `Eyes Closed` drives the pair —
+   so a wink is not available and the twitch is a flutter rather than one eye
+   going. Two half-closes after the first hard blink, which reads as a face
+   shaking something off. */
+const HURT = {
+  /** Seconds. The blink and the two twitches after it. */
+  blink: 0.16,
+  twitch: [
+    [0.3, 0.42],
+    [0.55, 0.65]
+  ],
+  /** How far the lids come down on a twitch, against 1 for the blink. */
+  squint: 0.45,
+  /** How sad, and for how many seconds it takes to fade back out. */
+  sad: 0.85,
+  hold: 1.6,
+  fade: 4.5,
+  /** Degrees the head is knocked back. Applied once, as an impulse — the
+   *  lean's own damping is what brings him out of it, which is why there is
+   *  no second number here for the recovery. */
+  kick: 5
+}
+
+/** How far the lids are down from a hit, `since` seconds ago. Zero once it is
+ *  over, so it can be maxed against the idle blink without either one having
+ *  to know about the other. */
+const hurtLids = (since: number) => {
+  if (since < 0) return 0
+  // The blink is a triangle raised above 1 so it holds shut across the middle
+  // of its window rather than touching closed for one frame.
+  if (since < HURT.blink) return Math.min(1, 1.5 - Math.abs(since / HURT.blink - 0.5) * 2)
+  for (const [from, to] of HURT.twitch) {
+    if (since >= from && since < to) {
+      return HURT.squint * (1 - Math.abs((since - from) / (to - from) - 0.5) * 2)
+    }
+  }
+  return 0
+}
+
+/** Seconds since the last hit, or a large number if there has not been one. */
+const hurtAge = () => (flinch.at === 0 ? Infinity : (performance.now() - flinch.at) / 1000)
 
 /** Seconds the attention takes to come back off the bird once it is gone.
  *  Quicker than going, because losing interest is not the part anyone
@@ -183,6 +231,10 @@ function Model({ src, tuning, look }: { src: string; tuning: ModelTuning; look: 
   }, [source])
 
   const blink = useRef({ at: performance.now() / 1000 + between(tuning.blinkMin, tuning.blinkMax) })
+  /** How sad he currently is, chased toward the target rather than set: it
+   *  comes on fast and leaves slowly, which is the difference between being
+   *  hurt and pulling a face. */
+  const hurt = useRef(0)
   const eyes = useRef({ h: 0, v: 0 })
   // `phase` is what makes the gap a real rest rather than a fixed pause: it
   // only leaves 'gap' once the timer is up *and* the outgoing expression has
@@ -207,6 +259,7 @@ function Model({ src, tuning, look }: { src: string; tuning: ModelTuning; look: 
   // down, so it has to start down.
   useEffect(() => {
     setMorph('Eyes Closed', 0)
+    setMorph('EmotionSad', 0)
     for (const name of IDLE) setMorph(name, 0)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fit])
@@ -222,12 +275,25 @@ function Model({ src, tuning, look }: { src: string; tuning: ModelTuning; look: 
     // triangle rather than a snap.
     const now = performance.now() / 1000
     const since = now - blink.current.at
+    let lids = 0
     if (since >= 0 && since < BLINK_LENGTH) {
-      setMorph('Eyes Closed', 1 - Math.abs(since / BLINK_LENGTH - 0.5) * 2)
+      lids = 1 - Math.abs(since / BLINK_LENGTH - 0.5) * 2
     } else if (since >= BLINK_LENGTH) {
-      setMorph('Eyes Closed', 0)
       blink.current.at = now + between(tuning.blinkMin, tuning.blinkMax)
     }
+
+    /* Being shot closes the eyes over the top of whatever the idle blink was
+       doing. Maxed rather than added, so a hit landing mid-blink is one pair
+       of eyelids and not one and a half. */
+    const hit = hurtAge()
+    lids = Math.min(1, Math.max(lids, hurtLids(hit)))
+    setMorph('Eyes Closed', lids)
+
+    // And it stays with him for a few seconds after the flinch is over.
+    const wants = hit < HURT.hold ? HURT.sad : 0
+    const rate = wants > 0 ? 9 : 3 / HURT.fade
+    hurt.current = MathUtils.lerp(hurt.current, wants, 1 - Math.exp(-rate * delta))
+    setMorph('EmotionSad', hurt.current)
 
     /* The eyes go where you are, measured out from the middle of their travel
        — see `lookCenterH` for why the middle is not zero. Sensitivity decides
@@ -317,6 +383,9 @@ function Drift({ fill }: { fill: number }) {
 function Lean({ degrees, look, children }: { degrees: number; look: Look; children: React.ReactNode }) {
   const ref = useRef<Group>(null)
   const limit = MathUtils.degToRad(degrees)
+  /** The last hit this has already reacted to, so the knock is one impulse
+   *  and not a force applied every frame for as long as it hurts. */
+  const knocked = useRef(0)
 
   useFrame((_, delta) => {
     const group = ref.current
@@ -325,6 +394,14 @@ function Lean({ degrees, look, children }: { degrees: number; look: Look; childr
     const k = 1 - Math.pow(0.002, delta)
     group.rotation.y = MathUtils.lerp(group.rotation.y, target.x * limit, k)
     group.rotation.x = MathUtils.lerp(group.rotation.x, -target.y * limit * 0.55, k)
+
+    /* Knocked back once, on the frame the bolt lands, and left to the same
+       damping that brought him here — which is why it eases out over about
+       half a second without a second timer to keep in step with. */
+    if (flinch.at !== knocked.current) {
+      knocked.current = flinch.at
+      group.rotation.x -= MathUtils.degToRad(HURT.kick)
+    }
   })
 
   return <group ref={ref}>{children}</group>
