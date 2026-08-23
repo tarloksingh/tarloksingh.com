@@ -34,8 +34,9 @@ const MechPins = lazy(() => import('./MechPins'))
    named. Right: everything else the project has to show. */
 
 /** How long the frame on screen takes to be eaten before the next is mounted.
- *  Matches the cover time the cell delays below add up to. */
-const EXIT_MS = 340
+ *  Matches the cover the cells below add up to — `SPREAD.out + GROW` — so the
+ *  picture changes at the moment the last one lands and not before. */
+const EXIT_MS = 660
 
 /** How long the cover will wait for the incoming frame to be ready to paint
  *  before giving up and uncovering anyway. A still that is slow to decode is
@@ -48,37 +49,39 @@ const HOLD_CAP = 480
 /* ---- disintegration ----
 
    Swapping frames is not a fade and not a wipe. A grid of cells grows over
-   the subject until it has been eaten block by block, the frame changes
-   underneath at full cover, and the cells shrink away again in a *different*
-   order — so it rebuilds rather than un-wipes. Some flare accent as they
-   land, which makes it read as something being written rather than hidden.
+   the subject while the picture fades out underneath them, the frame changes
+   at full cover, and the cells shrink away again in a *different* order — so
+   it rebuilds rather than un-wipes.
 
-   The grid covers the subject's own box and nothing else. Laid over the whole
-   frame it was dissolving a great deal of black, which is why it read as a
-   curtain across the screen rather than as the picture itself coming apart. */
+   **Drawn on a canvas, not built out of elements.** It was a grid of spans
+   with a CSS transition each, and that put a hard ceiling on how many pixels
+   the effect could have: measured in Chrome, 3,888 of them cost 11ms to write
+   a property onto and 35ms for the browser to resolve style across, twice per
+   swap, before anything was painted. Six thousand rectangles on a canvas is
+   two or three milliseconds and no layout, no style, no DOM at all — so the
+   pixels can be small and numerous, which is the only size at which this
+   reads as something digitising rather than as tiles falling over.
 
-/** Side of one cell, in frame coordinates — how big a "pixel" is.
- *
- *  Chunkier than it was, and cheaper for it. Every cell is a DOM node, and a
- *  phase flip writes a property on all of them and then makes the browser
- *  resolve style for all of them: measured in Chrome, that was 3,888 cells
- *  costing 11ms to write and 35ms to recalculate — *twice* a swap, before
- *  anything is painted. That was the rest of the pause between one picture
- *  and the next once the pictures themselves stopped being twelve megapixels.
- *
- *  It can afford to be coarse now because the blocks are no longer what hides
- *  the picture — the picture fades out underneath them. They are the
- *  character of the thing, not the curtain. */
-const CELL = 24
+   The loop runs only while something is moving and stops when the last cell
+   has landed. */
 
-/** Ceiling on the whole grid, bleed included. Past this the cell grows
- *  instead, so a large subject dissolves in slightly coarser blocks rather
- *  than costing four thousand spans. */
-const MAX_CELLS = 1400
+/** Side of one cell, in frame coordinates — how big a "pixel" is, and the
+ *  ceiling on how many of them there are. Both are what they are because
+ *  nothing here is an element any more. */
+const CELL = 10
+const MAX_CELLS = 7000
 
 /** Cells of overspill past the subject's edges, so the field does not stop at
  *  a ruled line. */
-const BLEED = 2
+const BLEED = 3
+
+/** Milliseconds. `GROW` is how long one cell takes to arrive or leave, and
+ *  the spreads are how far apart the first and last cell of a pass are — so
+ *  a whole cover is `SPREAD.out + GROW`, which is what `EXIT_MS` has to
+ *  match. Slower than a swap needs to be, on purpose: the picture coming
+ *  apart is the part worth watching. */
+const GROW = 320
+const SPREAD = { out: 340, in: 460 }
 
 /** The model floats and turns, so its box has to be the space it moves
  *  through rather than where it happens to be sitting. A still does not
@@ -94,9 +97,12 @@ const dissolveBox = (frame: Frame) => {
 }
 
 /** Timings per grid shape, worked out once and reused. The same scatter every
- *  time is a texture; a fresh one on every swap is noise — and generating two
+ *  time is a texture; a fresh one on every swap is noise — and generating six
  *  thousand random numbers at the moment a frame changes is the one moment
- *  not to be doing it. */
+ *  not to be doing it.
+ *
+ *  `out` and `in` are fractions of their spread rather than milliseconds, so
+ *  the timing above can be changed without invalidating a cached grid. */
 interface Cell {
   out: number
   in: number
@@ -107,20 +113,14 @@ interface Cell {
 
 const grids = new Map<string, { columns: number; rows: number; cells: Cell[] }>()
 
-/** Grid shapes are rounded to this many cells before anything is built.
- *
- *  Two frames a few pixels apart in aspect would otherwise each get their own
- *  shape, and a shape nothing else shares is two thousand spans to reconcile
- *  at the moment the frame changes. Rounded, most of a project's frames land
- *  on the same grid and swapping between them touches no DOM at all. Six
- *  cells in sixty is under a tenth of a cell's worth of stretch, which is
- *  less than the scatter every cell already lands with. */
+/** Grid shapes are rounded to this many cells before anything is built, so
+ *  most of a project's frames share one grid and one scatter. */
 const STEP = 6
 
 const gridFor = (box: { w: number; h: number }) => {
   // Whichever is larger: the cell we want, or the cell the budget allows. The
-  // budget counts the bleed, which it did not before — the ring is a fifth of
-  // the grid on a small subject, and a ceiling that ignores it is not one.
+  // budget counts the bleed ring, which is a fifth of the grid on a small
+  // subject — a ceiling that ignores it is not one.
   const spare = Math.max(0.4, 1 - (BLEED * 4 * Math.sqrt(MAX_CELLS)) / MAX_CELLS)
   const side = Math.max(CELL, Math.sqrt((box.w * box.h) / (MAX_CELLS * spare)))
   const quantize = (n: number) => Math.max(6, Math.round(n / STEP) * STEP)
@@ -131,7 +131,7 @@ const gridFor = (box: { w: number; h: number }) => {
   const found = grids.get(key)
   if (found) return found
 
-  const cells = Array.from({ length: columns * rows }, (_, i) => {
+  const cells: Cell[] = Array.from({ length: columns * rows }, (_, i) => {
     const across = (i % columns) / Math.max(columns - 1, 1)
     const down = Math.floor(i / columns) / Math.max(rows - 1, 1)
     // Out sweeps loosely left to right; in comes back from the middle
@@ -139,9 +139,10 @@ const gridFor = (box: { w: number; h: number }) => {
     // and a cell at the trailing edge can still go first.
     const fromMiddle = Math.hypot(across - 0.5, down - 0.5) / 0.707
 
-    /* Three tones, weighted hard toward black — a readout losing signal, not
-       a screen of confetti — and thinned further toward the edges so the
-       green fades off into the black instead of stopping at a ruled line.
+    /* Which rung of the ladder this cell sits on, weighted toward the dark
+       end — a readout losing signal, not a screen of confetti — and thinned
+       further toward the edges so the field fades off rather than stopping at
+       a ruled line.
 
        The weight *multiplies* the roll. Dividing by it, which is what this
        did, sent every cell near an edge to a roll far above every threshold:
@@ -151,21 +152,16 @@ const gridFor = (box: { w: number; h: number }) => {
     const roll = Math.random() * Math.min(inset / 0.16, 1)
 
     return {
-      out: Math.round((across * 0.5 + Math.random() * 0.5) * 170),
-      in: Math.round((fromMiddle * 0.55 + Math.random() * 0.45) * 260),
-      /* Rather more of the frame is lit than it used to be, because the
-         unlit share is now *nothing* rather than black: a cell with no tone
-         paints the dashboard behind it, which is what stops the effect being
-         a black rectangle laid over the page. Enough blocks to read as the
-         picture coming apart, and the picture's own fade does the hiding. */
-      tone: roll < 0.42 ? 0 : roll < 0.86 ? 1 : 2,
+      out: across * 0.5 + Math.random() * 0.5,
+      in: fromMiddle * 0.55 + Math.random() * 0.45,
+      tone: TONES.findIndex((step) => roll <= step),
       /* Every cell lands at its own size and a few degrees off square. The
          overlap is what hides the lattice: a grid of identical squares all
          arriving at exactly 1.0 is a grid, however you time it. A square
          turned by θ needs cos θ + sin θ of scale to still cover its own
          cell, which is where the floor of 1.1 comes from. */
       scale: 1.1 + Math.random() * 0.12,
-      turn: Math.round((Math.random() * 2 - 1) * 5)
+      turn: (Math.random() * 2 - 1) * 0.09
     }
   })
 
@@ -173,6 +169,141 @@ const gridFor = (box: { w: number; h: number }) => {
   grids.set(key, grid)
   return grid
 }
+
+/* ---- the ladder ----
+
+   Seven rungs from nothing up to a pixel catching the light. It was three,
+   and three is not enough to read as variation: two shades a hair apart are
+   one shade with noise on it, and the whole field came out looking like one
+   colour at two brightnesses.
+
+   The thresholds are cumulative — a roll lands on the first rung it is under
+   — and they are weighted hard toward the dark end, so the bright ones are
+   scattered rather than everywhere. */
+const TONES = [0.34, 0.53, 0.68, 0.79, 0.88, 0.95, 1]
+
+/** Built from the readout's own accent so there is one green on the page.
+ *  Rung 0 paints nothing at all: the picture is hidden by its own fade, and a
+ *  filled cell out here would only paint over the dashboard. */
+const ladder = (accent: string) => [
+  '',
+  '#0b1c17',
+  '#123028',
+  '#1b483b',
+  '#2c7660',
+  `rgba(${accent}, 0.85)`,
+  '#e2fff3'
+]
+
+const clamp01 = (n: number) => (n < 0 ? 0 : n > 1 ? 1 : n)
+
+/** Smoothstep. The same shape the cells used to get from their transition
+ *  curve, now that there is no transition to get it from. */
+const ease = (t: number) => t * t * (3 - 2 * t)
+
+const Disintegration = memo(function Disintegration({ frame, phase }: { frame: Frame; phase: 'out' | 'in' }) {
+  const surface = useRef<HTMLCanvasElement>(null)
+  const box = dissolveBox(frame)
+  const { columns, rows, cells } = gridFor(box)
+  /* The grid can change without the phase changing: the frame underneath is
+     swapped at full cover, and a still of a different shape brings a
+     different grid with it. Restarting the animation there would rebuild the
+     cover from nothing at the one moment it has to be complete — so a run
+     that is not a phase change starts already finished. */
+  const last = useRef<'out' | 'in' | null>(null)
+
+  useEffect(() => {
+    const canvas = surface.current
+    const context = canvas?.getContext('2d')
+    if (!canvas || !context) return
+
+    /* The accent is read off the element rather than written here twice —
+       `--accent` on `.mech` is the one green on the page. */
+    const accent =
+      getComputedStyle(canvas).getPropertyValue('--accent-rgb').trim() || '134, 226, 180'
+    const palette = ladder(accent)
+
+    let width = 0
+    let height = 0
+    const measure = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      const rect = canvas.getBoundingClientRect()
+      width = rect.width
+      height = rect.height
+      canvas.width = Math.max(1, Math.round(width * dpr))
+      canvas.height = Math.max(1, Math.round(height * dpr))
+      context.setTransform(dpr, 0, 0, dpr, 0, 0)
+    }
+
+    // Measured on a resize rather than every frame: reading a rect inside the
+    // loop is a layout flush sixty times a second for a number that changes
+    // when the window does.
+    const watch = new ResizeObserver(measure)
+    watch.observe(canvas)
+    measure()
+
+    const spread = phase === 'out' ? SPREAD.out : SPREAD.in
+    const turning = last.current !== phase
+    last.current = phase
+    const started = turning ? performance.now() : performance.now() - (spread + GROW)
+    let raf = 0
+
+    const paint = (now: number) => {
+      const at = now - started
+      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      context.setTransform(dpr, 0, 0, dpr, 0, 0)
+      context.clearRect(0, 0, width, height)
+
+      const cw = width / columns
+      const ch = height / rows
+
+      for (let i = 0; i < cells.length; i++) {
+        const cell = cells[i]
+        if (cell.tone === 0) continue
+
+        const delay = (phase === 'out' ? cell.out : cell.in) * spread
+        const along = ease(clamp01((at - delay) / GROW))
+        const size = (phase === 'out' ? along : 1 - along) * cell.scale
+        if (size <= 0.01) continue
+
+        const x = (i % columns) * cw + cw / 2
+        const y = Math.floor(i / columns) * ch + ch / 2
+        const w = cw * size
+        const h = ch * size
+
+        // `setTransform` rather than save/rotate/restore: the same result for
+        // six thousand cells without six thousand state pushes.
+        const cos = Math.cos(cell.turn)
+        const sin = Math.sin(cell.turn)
+        context.setTransform(dpr * cos, dpr * sin, -dpr * sin, dpr * cos, dpr * x, dpr * y)
+        context.fillStyle = palette[cell.tone]
+        context.fillRect(-w / 2, -h / 2, w, h)
+      }
+
+      if (at < spread + GROW) raf = requestAnimationFrame(paint)
+    }
+
+    raf = requestAnimationFrame(paint)
+    return () => {
+      cancelAnimationFrame(raf)
+      watch.disconnect()
+    }
+  }, [phase, cells, columns, rows])
+
+  return (
+    <div
+      className="mech-dissolve"
+      style={{
+        left: `calc(${box.x} * var(--px))`,
+        top: `calc(${box.y} * var(--px))`,
+        width: `calc(${box.w} * var(--px))`,
+        height: `calc(${box.h} * var(--px))`
+      }}
+    >
+      <canvas ref={surface} />
+    </div>
+  )
+})
 
 /* ---- warming ----
 
@@ -359,53 +490,6 @@ function Leaders({ notes, box, floats, lit, onLit }: LeadersProps) {
     </svg>
   )
 }
-
-const Disintegration = memo(function Disintegration({ frame, phase }: { frame: Frame; phase: 'out' | 'in' }) {
-  const box = dissolveBox(frame)
-  const { columns, rows, cells } = gridFor(box)
-
-  // Held by identity across phase changes. React bails out of reconciling
-  // children it is handed the same elements for, which is the difference
-  // between changing one attribute and diffing four thousand spans at the
-  // exact moment the frame is meant to be moving.
-  const grid = useMemo(
-    () =>
-      cells.map((cell, i) => (
-        <span
-          key={i}
-          data-tone={cell.tone}
-          style={{
-            ['--out' as string]: `${cell.out}ms`,
-            ['--in' as string]: `${cell.in}ms`,
-            ['--s' as string]: cell.scale,
-            ['--r' as string]: `${cell.turn}deg`
-          }}
-        />
-      )),
-    [cells]
-  )
-
-  // The grid overspills the subject by `BLEED` cells on every side, so the
-  // box it is laid out in is bigger than the box it is dissolving.
-  const over = { x: (box.w / (columns - BLEED * 2)) * BLEED, y: (box.h / (rows - BLEED * 2)) * BLEED }
-
-  return (
-    <div
-      className="mech-dissolve"
-      data-phase={phase}
-      style={{
-        left: `calc(${box.x - over.x} * var(--px))`,
-        top: `calc(${box.y - over.y} * var(--px))`,
-        width: `calc(${box.w + over.x * 2} * var(--px))`,
-        height: `calc(${box.h + over.y * 2} * var(--px))`,
-        gridTemplateColumns: `repeat(${columns}, 1fr)`,
-        gridTemplateRows: `repeat(${rows}, 1fr)`
-      }}
-    >
-      {grid}
-    </div>
-  )
-})
 
 /* ---- transport icons ----
 
