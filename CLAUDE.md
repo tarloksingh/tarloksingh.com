@@ -94,6 +94,30 @@ larger than about 1600. Use `MediaItem.still` and `MediaItem.thumb`, never
   model's lens, lighting and eyes) and **Labels** (copies pinned labels out as
   source). A second panel is `useCreateStore` + `<LevaPanel store>`.
 
+## Where this is up to
+
+The last thing on the table is **the frame transition** on the project screen.
+It works and it is cheap — `Disintegration` in `Mech.tsx` draws it on a canvas,
+so the cell count and the colours cost nothing to change — but the look is not
+settled: a field of squares was called "somewhat ugly", and the open question
+is what replaces it. Four directions were on the table and none was chosen:
+
+- **CRT collapse** — the picture squashes to one hot horizontal line, holds and
+  flickers, and the next frame opens back out of it
+- **Scanline sweep** — a bright bar travels down, old above and new below, with
+  the image tearing sideways either side of it
+- **Ordered dither** — the same digital-decay idea on a 4×4 Bayer matrix, so it
+  thins to single pixels rather than blocks
+- **Slat flip** — horizontal slats turning edge-on, mechanical rather than
+  digital
+
+Whatever it becomes, the canvas is the place to build it: one component, one
+`paint(now)` loop, no DOM. `EXIT_MS` has to match however long the new cover
+takes, and the picture's own fade is in `.mech-stage[data-covered]`.
+
+Worth offering rather than guessing: two of them behind a Leva toggle, so the
+choice is made by looking at real pictures.
+
 ## Commit policy
 
 Commit after any significant change without waiting for approval: finishing a
