@@ -141,13 +141,52 @@ Every number in `Mech.css` is a coordinate in the Figma's 1920×1080 frame, and
 ```
 
 Whichever is smallest wins. The two viewport terms keep the composition fitting
-at any window shape. The rem is what makes browser zoom mean something — a rem
-is a fixed count of CSS pixels and zoom magnifies those, so a page sized purely
-in viewport units is a page where zooming does nothing at all. At a 16px root
-that term is 1.0417px, which caps the frame's natural width at **2000**: past
-that this stops being a readout and becomes a billboard.
+at any window shape. At a 16px root the rem term is 1.0417px, which caps the
+frame's natural width at **2000**: past that this stops being a readout and
+becomes a billboard.
 
-The chrome hangs off a centred column of that width. Only the subject and its
+**The rem in a `min()` is a cap, and a cap is not a zoom.** It reads like the
+term that makes browser zoom mean something — zoom works by making a CSS pixel
+physically bigger, a rem is a fixed count of them so it grows, and `vw`/`vh`
+are fractions of the window so they do not. But `min()` takes the *smallest*:
+the moment a viewport term drops under the cap, the rem is out of the sum
+entirely and the readout is pinned to the window at exactly the physical size
+it already had. On a 2560×1318 window that happens at about 118%. Press harder
+and nothing at all moves. A rem can only ever hold this design back, never
+carry it.
+
+So the two blocks of prose — the role line under the title, and the copy inside
+an open fold — are the one thing on the screen not sized in frame coordinates:
+
+```css
+--read: max(calc(13.5 * var(--px)), 1rem);
+```
+
+A `max()`, and the difference is the whole point. A frame coordinate says how
+big a thing is *in the composition*, which is the right answer for a bracket
+and the wrong one for a paragraph: under about a 1500 window the composition's
+idea of 13.5 is ten real pixels. Prose takes whichever is larger and so has a
+floor under it, keeps growing for as long as anyone keeps pressing ⌘+, and
+follows the browser's own text size — which is the setting a person who needs
+bigger type has usually already found. The fold headings are a multiple of it
+rather than a coordinate of their own, because at a frame coordinate the
+heading was the *smaller* of the two on any window under about 1900.
+
+Everything else stays in frame coordinates, and should: an instrument label is
+part of the drawing.
+
+**What a floor costs is that one block can outgrow its slot.** The role line's
+type has a floor and the column's width does not, so a narrow window sets 133
+characters in six lines where a wide one sets three — and the folds used to
+start at a fixed 174 down the column, which would have put the first one
+through the middle of them. A taller floor does not fix it either: the line
+count rises as the window *narrows*, which is the opposite direction to
+anything expressible in `--px`. So the column is a flex stack and the 174 is a
+`min-height` on the role line instead of a position under it. Under the floor
+nothing has moved by a pixel; over it, the folds move down by exactly what the
+words needed.
+
+The chrome hangs off a centred column of 2000. Only the subject and its
 leader lines share a 16:9 box, and they have to, because a label that misses
 what it names is not a readout. A wider window buys the leaders clearance,
 never less.

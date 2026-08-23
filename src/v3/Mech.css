@@ -70,6 +70,26 @@
      move if the type ever wants to sit differently. */
   --label-gap: calc(16 * var(--px));
   --label-inset: calc(26 * var(--px));
+  /* The one size on the readout that is not a frame coordinate.
+
+     A frame coordinate says how big a thing is *in the composition*, which is
+     the right answer for a bracket and the wrong one for a paragraph: below
+     about a 1500 window the composition's idea of 13.5 is ten real pixels,
+     and prose is the one thing on this screen someone actually reads rather
+     than scans. So the two blocks of it — the role line and the copy inside a
+     fold — take whichever is larger, the frame's size or a rem.
+
+     `max()` is also the only way browser zoom reaches this page. Zoom works
+     by making a CSS pixel physically bigger; a rem is a fixed count of them
+     so it grows, and `vw`/`vh` are fractions of the window so they do not.
+     `--px` is a `min()` of the three, which means the moment a viewport term
+     drops under the rem cap — anything past about 118% — the rem is out of
+     the sum and the readout is pinned to the window at exactly the physical
+     size it already had. Reading text takes the `max()` instead and so keeps
+     growing, for as long as anyone keeps pressing. It is the same reason this
+     follows the browser's own text size, which is the setting someone who
+     needs bigger type has usually already found. */
+  --read: max(calc(13.5 * var(--px)), 1rem);
   --dim: #4a544f;
   --mid: #7e8c85;
   --ease: cubic-bezier(0.22, 0.85, 0.25, 1);
@@ -876,6 +896,11 @@
   top: calc(212 * var(--px));
   width: calc(380 * var(--px));
   bottom: calc(120 * var(--px));
+  /* A column rather than three absolute things: the role line is the one
+     block here whose height is set by the words instead of by the frame, so
+     the folds under it have to be able to move. See `.mech-roles`. */
+  display: flex;
+  flex-direction: column;
   z-index: 3;
   animation: mech-in 620ms var(--ease) both;
 }
@@ -948,8 +973,22 @@
 
 .mech-roles {
   margin-top: calc(10 * var(--px));
-  font-size: calc(13.5 * var(--px));
-  line-height: calc(18 * var(--px));
+  /* The folds start a fixed distance down the column — 174 in the Figma, of
+     which the title and its margin are 56 — rather than following the role
+     line: two lines of roles or four, the overview opens in the same place,
+     which is what stops the column jumping between projects.
+
+     It is a floor and not a position, because the role line is the one thing
+     in the column that can outgrow its slot. Its type has a floor under it
+     while the column's width does not, so a narrow window sets 133 characters
+     in six lines where a wide one sets three, and a fixed distance would put
+     the first fold through the middle of them. Under the floor nothing moves;
+     over it, the folds move down by exactly what the words needed. */
+  min-height: calc(118 * var(--px));
+  font-size: var(--read);
+  /* Unitless, so the leading follows the type wherever the floor puts it
+     rather than staying at a frame coordinate the words have outgrown. */
+  line-height: 1.35;
   color: #fff;
 }
 
@@ -960,11 +999,11 @@
    whatever `overflow-x` says, and the pip turning to a diamond reaches
    outside the column's left edge. The content lands where it always did. */
 .mech-folds {
-  position: absolute;
-  top: calc(174 * var(--px));
-  left: calc(-5 * var(--px));
-  right: calc(-5 * var(--px));
-  bottom: 0;
+  /* Whatever is left of the column under the role line. `min-height: 0` is
+     what lets it actually scroll rather than growing the flex item to fit. */
+  flex: 1;
+  min-height: 0;
+  margin: 0 calc(-5 * var(--px));
   padding: 0 calc(5 * var(--px));
   overflow-y: auto;
   scrollbar-width: none;
@@ -985,8 +1024,11 @@
   text-align: left;
   font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-weight: 400;
-  font-size: calc(16.5 * var(--px));
-  line-height: calc(26 * var(--px));
+  /* A multiple of the copy rather than a coordinate of its own: at a frame
+     coordinate the heading was the smaller of the two on any window under
+     about 1900, which is a hierarchy upside down. */
+  font-size: calc(var(--read) * 1.22);
+  line-height: 1.6;
   color: var(--dim);
   transition: color 200ms linear;
 }
@@ -1054,8 +1096,8 @@
 }
 
 .mech-fold-body p {
-  font-size: calc(13.5 * var(--px));
-  line-height: calc(19.5 * var(--px));
+  font-size: var(--read);
+  line-height: 1.45;
   color: #fff;
   white-space: pre-line;
   padding-bottom: calc(14 * var(--px));
