@@ -351,6 +351,17 @@ against those selectors did nothing at all. `Mech.tsx` now sets one variable —
 last leaving first; the per-leader cascade is not, because three lines leaving
 one after another is a slow goodbye and there is a swap waiting on it.
 
+**`reverse` alone is not an inverse.** It runs the keyframes backwards but
+evaluates the timing function at 1−t rather than mirroring it, so an entry that
+starts fast and eases out becomes an exit that sits still and then snaps.
+Measured on a leader before this was fixed: a quarter of the way through its
+retract the line had given back 2px of 170, and half way through, 13 — a line
+not moving and then vanishing, which is exactly what it looked like. Mirroring
+a cubic-bezier is `(1−x2, 1−y2, 1−x1, 1−y1)`; the two entry curves put through
+that are `--ease-back` and `--ease-back-soft`, and every reversed animation
+uses one of them. The same retract now reads 43% / 75% / 93% at the same three
+points.
+
 The brackets are a case of two animations on one element: the entry owns
 `opacity` and `scale`, the breath owns `transform`. Separate properties on
 purpose — a bracket that popped in with a transform would have the breath take

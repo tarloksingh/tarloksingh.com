@@ -93,6 +93,19 @@
      scales by `--px`, where a rem cannot reach. They multiply by `--type-k`
      instead — the same ratio as a plain number, set in `Mech.tsx`. */
   --type: max(var(--px), 0.0651rem);
+  /* The entry curves, mirrored — for anything played with `reverse`.
+
+     `reverse` runs the keyframes backwards but evaluates the timing function
+     at 1−t rather than mirroring it, so an entry that starts fast comes out as
+     an exit that does nothing and then snaps. Measured on the leader: a
+     quarter of the way through its retract the line had given back 2px of
+     170, and half way through, 13 — which on screen is a line sitting still
+     and then vanishing, not a line being taken back off.
+
+     Mirroring a cubic-bezier is `(1−x2, 1−y2, 1−x1, 1−y1)`. These are the two
+     the entries use, put through that. */
+  --ease-back: cubic-bezier(0.7, 0, 0.7, 0.2);
+  --ease-back-soft: cubic-bezier(0.75, 0, 0.75, 0.9);
   --dim: #4a544f;
   --mid: #7e8c85;
   --ease: cubic-bezier(0.22, 0.85, 0.25, 1);
@@ -487,11 +500,11 @@
    the thing it was holding, the same way the leaders do. */
 .mech-stage[data-covered='true'] .mech-housing-label,
 .mech-stage[data-covered='true'] .mech-transport {
-  animation: mech-pop 240ms cubic-bezier(0.4, 0, 0.8, 0.4) 140ms reverse both;
+  animation: mech-pop 240ms var(--ease-back) 140ms reverse both;
 }
 
 .mech-stage[data-covered='true'] .mech-corner {
-  animation: mech-pop 240ms cubic-bezier(0.4, 0, 0.8, 0.4) 140ms reverse both;
+  animation: mech-pop 240ms var(--ease-back) 140ms reverse both;
 }
 
 /* A leader does not fade out. It runs its arrival backwards: what came last
@@ -504,19 +517,19 @@
    it. Everything under 560, which is what `EXIT_MS` is set against. */
 .mech-stage[data-covered='true'] .mech-leader-mark,
 .mech-stage[data-covered='true'] .mech-leader-core {
-  animation: mech-fade 240ms ease 140ms reverse both;
+  animation: mech-fade 240ms var(--ease-back-soft) 140ms reverse both;
 }
 
 .mech-stage[data-covered='true'] .mech-leader-value {
-  animation: mech-fade 220ms ease 180ms reverse both;
+  animation: mech-fade 220ms var(--ease-back-soft) 180ms reverse both;
 }
 
 .mech-stage[data-covered='true'] .mech-leader-label {
-  animation: mech-fade 220ms ease 220ms reverse both;
+  animation: mech-fade 220ms var(--ease-back-soft) 220ms reverse both;
 }
 
 .mech-stage[data-covered='true'] .mech-leader {
-  animation: mech-draw 380ms cubic-bezier(0.3, 0.8, 0.3, 1) 180ms reverse both;
+  animation: mech-draw 380ms var(--ease-back) 180ms reverse both;
 }
 
 /* The ping is a loop rather than an entry, so there is nothing to run
@@ -763,7 +776,7 @@
   .mech-stage[data-covered='true'] .mech-corner,
   .mech-stage[data-covered='true'] .mech-housing-label,
   .mech-stage[data-covered='true'] .mech-transport {
-    animation: mech-fade 240ms 140ms reverse both;
+    animation: mech-fade 240ms var(--ease-back-soft) 140ms reverse both;
   }
 }
 
