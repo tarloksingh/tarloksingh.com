@@ -152,40 +152,47 @@ are fractions of the window so they do not. But `min()` takes the *smallest*:
 the moment a viewport term drops under the cap, the rem is out of the sum
 entirely and the readout is pinned to the window at exactly the physical size
 it already had. On a 2560×1318 window that happens at about 118%. Press harder
-and nothing at all moves. A rem can only ever hold this design back, never
-carry it.
+and nothing at all moves. A rem in a `min()` can only ever hold this design
+back, never carry it.
 
-So the two blocks of prose — the role line under the title, and the copy inside
-an open fold — are the one thing on the screen not sized in frame coordinates:
+So every size that is type — and nothing that is not — is written in a second
+unit:
 
 ```css
---read: max(calc(13.5 * var(--px)), 0.9375rem);
+--type: max(var(--px), 0.0651rem);
 ```
 
-A `max()`, and the difference is the whole point. A frame coordinate says how
-big a thing is *in the composition*, which is the right answer for a bracket
-and the wrong one for a paragraph: under about a 1500 window the composition's
-idea of 13.5 is ten real pixels. Prose takes whichever is larger and so has a
-floor under it, keeps growing for as long as anyone keeps pressing ⌘+, and
-follows the browser's own text size — which is the setting a person who needs
-bigger type has usually already found.
+The same rem, and a `max()`. A frame coordinate says how big a thing is *in the
+composition*, which is the right answer for a bracket and the wrong one for a
+word: at the bottom of the range the frame's idea of 13.5 is ten real pixels,
+and nothing is gained by a label nobody can read being perfectly in proportion.
+The floor is the rem out of `--px` itself — the size the type is drawn at once
+the frame has stopped growing — so **at the cap nothing renders a pixel
+differently than it did when all of it was `--px`**. Below the cap the words
+hold while the drawing shrinks around them, and above it they keep growing for
+as long as anyone keeps pressing ⌘+. It is the same reason the page follows the
+browser's own text size, which is the setting a person who needs bigger type
+has usually already found.
 
-15px is a floor and not a size. It is one pixel over what the frame gives at
-its cap, which is all the copy wanted there; everything it does, it does on the
-windows below that.
-
-Everything else stays in frame coordinates, and should: an instrument label is
-part of the drawing. The fold headings are the one place that costs something —
-at 16.5 frame coordinates a heading is 13px on a laptop and 9px at heavy zoom,
-under a body that is holding at 15, so the hierarchy inverts as the window
-shrinks. Deliberate: it is the smaller change.
+**SVG text cannot be reached this way.** The leaders' labels and the compass's
+heading are drawn inside a `viewBox` the browser scales by `--px`, so a length
+written in there — rem, pixel, anything — is scaled along with the drawing.
+What crosses the boundary is the *ratio* between the two units, because a plain
+number multiplies the same on both sides of it: `--type-k`, set on `.mech` by
+`useTypeScale` in `Mech.tsx` and used as `calc(18px * var(--type-k))`. It has
+to be measured rather than worked out, since `getComputedStyle` hands back
+`min(…)`/`max(…)` as the expression and not the value — so a hidden probe is
+sized `100 * var(--type)` by `100 * var(--px)` and its own box is read. The
+observer watches the probe rather than the window: the probe changes when
+either unit does, which includes a text-size change that never resizes the
+window at all.
 
 **What a floor costs is that one block can outgrow its slot.** The role line's
 type has a floor and the column's width does not, so a narrow window sets 133
 characters in six lines where a wide one sets three — and the folds used to
 start at a fixed 174 down the column, which would have put the first one
-through the middle of them. A taller floor does not fix it either: the line
-count rises as the window *narrows*, which is the opposite direction to
+through the middle of them. A taller fixed number does not fix it either: the
+line count rises as the window *narrows*, which is the opposite direction to
 anything expressible in `--px`. So the column is a flex stack and the 174 is a
 `min-height` on the role line instead of a position under it. Under the floor
 nothing has moved by a pixel; over it, the folds move down by exactly what the

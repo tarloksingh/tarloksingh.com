@@ -1,4 +1,4 @@
-import { lazy, memo, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { lazy, memo, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { Leva, LevaPanel } from 'leva'
 import { TAGS } from '../data/projects'
@@ -45,6 +45,43 @@ const EXIT_MS = 660
  *  why this is shorter than it was and why `warm` now starts the fetch when
  *  the tile is picked rather than when the frame is mounted. */
 const HOLD_CAP = 480
+
+/* ---- the type scale ----
+
+   `--type` in Mech.css floors the type at a rem so it survives a small window
+   and follows browser zoom. It reaches everything set in HTML by being a
+   length. It cannot reach the leaders or the compass: those are SVG text,
+   drawn in user units that the viewBox scales by `--px`, and a rem written in
+   there would be scaled along with everything else.
+
+   What crosses is the ratio between the two — a plain number multiplies the
+   same in both coordinate systems. It has to be measured rather than worked
+   out here: `--px` and `--type` are `min()`/`max()` over rem and viewport
+   units, and `getComputedStyle` hands back the expression, not the value. So
+   a hidden probe is sized by both and its own box is read.
+
+   On a resize, which is also what zoom fires. */
+const useTypeScale = (root: RefObject<HTMLDivElement | null>, probe: RefObject<HTMLElement | null>) => {
+  useEffect(() => {
+    const host = root.current
+    const box = probe.current
+    if (!host || !box) return
+
+    const measure = () => {
+      const rect = box.getBoundingClientRect()
+      if (rect.height > 0) host.style.setProperty('--type-k', String(rect.width / rect.height))
+    }
+
+    measure()
+    /* The probe, not the window. Its own box is the two units, so it changes
+       whenever either of them does — a resize, a zoom, or the reader turning
+       their browser's text size up, which moves the rem without moving the
+       window at all. */
+    const watch = new ResizeObserver(measure)
+    watch.observe(box)
+    return () => watch.disconnect()
+  }, [root, probe])
+}
 
 /* ---- disintegration ----
 
@@ -908,6 +945,9 @@ export default function Mech({ id, onProject, onHome }: Props) {
   const [open, setOpen] = useState<string | null>('overview')
   const rail = useRef<HTMLDivElement>(null)
   const stage = useRef<HTMLDivElement>(null)
+  const root = useRef<HTMLDivElement>(null)
+  const scale = useRef<HTMLElement>(null)
+  useTypeScale(root, scale)
   /* What has been pinned in this browser, if anything. Subscribed rather than
      read once: the editor writes to the same store the leaders read from, so
      a drag moves the real line rather than a preview of one. */
@@ -1067,7 +1107,10 @@ export default function Mech({ id, onProject, onHome }: Props) {
   ]
 
   return (
-    <div className="mech" data-boot={booting} data-pins={pinning}>
+    <div className="mech" ref={root} data-boot={booting} data-pins={pinning}>
+      {/* Sized by both units at once, so the ratio between them can be read
+          off one box. See `useTypeScale`. */}
+      <i className="mech-scale" ref={scale} aria-hidden />
       {/* Development only, and portalled to `body` for the same reason the
           gallery's panel is: rendered in place it would sit inside the
           readout's stacking context and paint under the chrome. */}

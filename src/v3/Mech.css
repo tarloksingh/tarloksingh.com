@@ -70,28 +70,29 @@
      move if the type ever wants to sit differently. */
   --label-gap: calc(16 * var(--px));
   --label-inset: calc(26 * var(--px));
-  /* The one size on the readout that is not a frame coordinate.
+  /* Type, and only type. Every other number here is a frame coordinate — how
+     big a thing is *in the composition* — and that is the right answer for a
+     bracket and the wrong one for a word: at the bottom of the range the
+     frame's idea of 13.5 is ten real pixels, and nothing is gained by a label
+     nobody can read being perfectly in proportion.
 
-     A frame coordinate says how big a thing is *in the composition*, which is
-     the right answer for a bracket and the wrong one for a paragraph: below
-     about a 1500 window the composition's idea of 13.5 is ten real pixels,
-     and prose is the one thing on this screen someone actually reads rather
-     than scans. So the two blocks of it — the role line and the copy inside a
-     fold — take whichever is larger, the frame's size or 15px. A floor, not
-     a size: it is a pixel over what the frame gives at the cap, and on every
-     window under that it is the only thing keeping the copy off ten.
+     The floor is the rem out of `--px` itself, which is the size the type is
+     drawn at once the frame has stopped growing. So at the cap nothing here
+     renders a pixel differently than it did when all of it was `--px`; below
+     the cap the words hold while the drawing shrinks around them.
 
-     `max()` is also the only way browser zoom reaches this page. Zoom works
-     by making a CSS pixel physically bigger; a rem is a fixed count of them
-     so it grows, and `vw`/`vh` are fractions of the window so they do not.
-     `--px` is a `min()` of the three, which means the moment a viewport term
-     drops under the rem cap — anything past about 118% — the rem is out of
-     the sum and the readout is pinned to the window at exactly the physical
-     size it already had. Reading text takes the `max()` instead and so keeps
-     growing, for as long as anyone keeps pressing. It is the same reason this
-     follows the browser's own text size, which is the setting someone who
-     needs bigger type has usually already found. */
-  --read: max(calc(13.5 * var(--px)), 0.9375rem);
+     And `max()` is the only way browser zoom reaches this page at all. Zoom
+     makes a CSS pixel physically bigger: a rem is a fixed count of them so it
+     grows, `vw`/`vh` are fractions of the window so they do not. `--px` takes
+     the `min()` of the three, so past about 118% a viewport term is under the
+     rem and the readout freezes at the size it had — a rem in a `min()` is a
+     cap, and a cap can only hold a design back. Type takes the `max()` and
+     keeps going, for as long as anyone keeps pressing.
+
+     The leaders and the compass are SVG, drawn in user units that the viewBox
+     scales by `--px`, where a rem cannot reach. They multiply by `--type-k`
+     instead — the same ratio as a plain number, set in `Mech.tsx`. */
+  --type: max(var(--px), 0.0651rem);
   --dim: #4a544f;
   --mid: #7e8c85;
   --ease: cubic-bezier(0.22, 0.85, 0.25, 1);
@@ -105,6 +106,16 @@
    off the window, so on a very wide screen the readout stays a readout
    instead of stretching into a billboard. Full height, though — the dashboard
    underneath it runs to all four edges. */
+/* Sized by both units at once so `useTypeScale` can read the ratio between
+   them off one box — 100 of each, for a number with some precision in it. */
+.mech-scale {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+  width: calc(100 * var(--type));
+  height: calc(100 * var(--px));
+}
+
 .mech-frame {
   position: relative;
   width: calc(1920 * var(--px));
@@ -334,8 +345,8 @@
 .mech-wordmark {
   font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-weight: 400;
-  font-size: calc(21 * var(--px));
-  letter-spacing: calc(3.6 * var(--px));
+  font-size: calc(21 * var(--type));
+  letter-spacing: calc(3.6 * var(--type));
   text-transform: uppercase;
   color: var(--mid);
   background: none;
@@ -354,7 +365,7 @@
   gap: calc(19 * var(--px));
   font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-weight: 400;
-  font-size: calc(15.5 * var(--px));
+  font-size: calc(15.5 * var(--type));
   color: var(--dim);
 }
 
@@ -508,8 +519,8 @@
   display: flex;
   align-items: center;
   gap: calc(10 * var(--px));
-  font-size: calc(12.5 * var(--px));
-  letter-spacing: calc(1.3 * var(--px));
+  font-size: calc(12.5 * var(--type));
+  letter-spacing: calc(1.3 * var(--type));
   color: rgba(var(--accent-rgb), 0.75);
   animation: mech-fade 400ms 160ms both;
 }
@@ -859,7 +870,7 @@
 .mech-leader-label {
   font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-weight: 400;
-  font-size: 18px;
+  font-size: calc(18px * var(--type-k, 1));
   fill: var(--accent);
   /* SVG text takes no text-shadow; a drop-shadow filter is the same halo. */
   filter: drop-shadow(0 0 6px rgba(46, 230, 196, 0.55));
@@ -867,7 +878,7 @@
 
 .mech-leader-value {
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  font-size: 17px;
+  font-size: calc(17px * var(--type-k, 1));
   fill: #fff;
 }
 
@@ -917,9 +928,9 @@
 .mech-title {
   font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-weight: 400;
-  font-size: calc(46 * var(--px));
+  font-size: calc(46 * var(--type));
   line-height: 1;
-  letter-spacing: calc(-0.4 * var(--px));
+  letter-spacing: calc(-0.4 * var(--type));
   text-transform: uppercase;
   color: var(--accent);
   /* Everything set in the accent carries a little of it into the black
@@ -987,10 +998,8 @@
      the first fold through the middle of them. Under the floor nothing moves;
      over it, the folds move down by exactly what the words needed. */
   min-height: calc(118 * var(--px));
-  font-size: var(--read);
-  /* Unitless, so the leading follows the type wherever the floor puts it
-     rather than staying at a frame coordinate the words have outgrown. */
-  line-height: 1.35;
+  font-size: calc(13.5 * var(--type));
+  line-height: calc(18 * var(--type));
   color: #fff;
 }
 
@@ -1026,8 +1035,8 @@
   text-align: left;
   font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-weight: 400;
-  font-size: calc(16.5 * var(--px));
-  line-height: calc(26 * var(--px));
+  font-size: calc(16.5 * var(--type));
+  line-height: calc(26 * var(--type));
   color: var(--dim);
   transition: color 200ms linear;
 }
@@ -1095,8 +1104,8 @@
 }
 
 .mech-fold-body p {
-  font-size: var(--read);
-  line-height: 1.45;
+  font-size: calc(13.5 * var(--type));
+  line-height: calc(19.5 * var(--type));
   color: #fff;
   white-space: pre-line;
   padding-bottom: calc(14 * var(--px));
@@ -1146,8 +1155,8 @@
   background-position: center;
   display: grid;
   place-items: center;
-  font-size: calc(10.5 * var(--px));
-  letter-spacing: calc(0.6 * var(--px));
+  font-size: calc(10.5 * var(--type));
+  letter-spacing: calc(0.6 * var(--type));
   color: var(--mid);
   opacity: 0.55;
   transition: opacity 200ms linear, border-color 200ms linear, box-shadow 200ms linear;
@@ -1333,8 +1342,8 @@
 .mech-heading {
   fill: #f28a63;
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  font-size: 13px;
-  letter-spacing: 1.5px;
+  font-size: calc(13px * var(--type-k, 1));
+  letter-spacing: calc(1.5px * var(--type-k, 1));
   font-variant-numeric: tabular-nums;
   filter: drop-shadow(0 0 6px rgba(var(--warn-rgb), 0.85));
 }
@@ -1346,8 +1355,8 @@
   transform: translateX(-50%);
   display: flex;
   gap: calc(26 * var(--px));
-  font-size: calc(12.5 * var(--px));
-  letter-spacing: calc(1.5 * var(--px));
+  font-size: calc(12.5 * var(--type));
+  letter-spacing: calc(1.5 * var(--type));
   color: rgba(var(--accent-rgb), 0.7);
   font-variant-numeric: tabular-nums;
   text-shadow: 0 0 calc(9 * var(--px)) rgba(var(--accent-rgb), 0.5);
@@ -1934,13 +1943,13 @@
 
 .mech-deck-tag {
   color: rgba(var(--accent-rgb), 0.7);
-  letter-spacing: calc(1.4 * var(--px));
+  letter-spacing: calc(1.4 * var(--type));
   text-shadow: 0 0 calc(8 * var(--px)) rgba(var(--accent-rgb), 0.45);
 }
 
 .mech-deck-empty {
   color: var(--mid);
-  letter-spacing: calc(1.2 * var(--px));
+  letter-spacing: calc(1.2 * var(--type));
 }
 
 /* Development only. A visitor should never be told where to put files, but
@@ -1948,8 +1957,8 @@
    built. */
 .mech-deck-hint {
   margin-top: calc(6 * var(--px));
-  font-size: calc(10.5 * var(--px));
-  letter-spacing: calc(0.6 * var(--px));
+  font-size: calc(10.5 * var(--type));
+  letter-spacing: calc(0.6 * var(--type));
   color: var(--dim);
 }
 
@@ -1977,7 +1986,7 @@
   border: 0;
   padding: 0 calc(2 * var(--px));
   font: inherit;
-  font-size: calc(11.5 * var(--px));
+  font-size: calc(11.5 * var(--type));
   line-height: 1;
   color: var(--mid);
   transition: color 160ms linear, text-shadow 160ms linear;
@@ -2101,7 +2110,7 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  font-size: calc(13 * var(--px));
+  font-size: calc(13 * var(--type));
   color: var(--mid);
 }
 
