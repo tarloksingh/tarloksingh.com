@@ -13,7 +13,7 @@ import { drift, flinch, quarry } from './subject'
 import { entries, thumbOf, type Entry, type Frame } from './model'
 import { focus, notesFor, pins, type Note } from './notes'
 import { useLabelTuning, type Handed } from './labelTuning'
-import { boxOf, leadersFor, mediaBox, MODEL_BOX } from './leaders'
+import { boxOf, leadersFor, mediaBox, MODEL_BOX, type Box } from './leaders'
 import './Mech.css'
 
 const MechModel = lazy(() => import('./MechModel'))
@@ -67,13 +67,17 @@ const HOLD_CAP = 480
 
 /** Side of one cell, in frame coordinates — how big a "pixel" is, and the
  *  ceiling on how many of them there are. Both are what they are because
- *  nothing here is an element any more. */
+ *  nothing here is an element any more: the ceiling went up with the field
+ *  below it, so a cell stays the size it was drawn at rather than being
+ *  stretched to fill a bigger area out of the same budget. */
 const CELL = 10
-const MAX_CELLS = 7000
+const MAX_CELLS = 9000
 
-/** Cells of overspill past the subject's edges, so the field does not stop at
- *  a ruled line. */
-const BLEED = 3
+/** Cells of overspill past everything the cover has to hide, so the green
+ *  thins out into the dashboard rather than stopping at a ruled line. The
+ *  ring is faded across, in `gridFor` — it is the only part of the field
+ *  allowed to be sparse. */
+const BLEED = 5
 
 /** Milliseconds. `GROW` is how long one cell takes to arrive or leave, and
  *  the spreads are how far apart the first and last cell of a pass are — so
@@ -84,16 +88,51 @@ const GROW = 320
 const SPREAD = { out: 340, in: 460 }
 
 /** The model floats and turns, so its box has to be the space it moves
- *  through rather than where it happens to be sitting. A still does not
- *  move, and is dissolved to its own edges exactly. */
+ *  through rather than where it happens to be sitting. It is mounted in
+ *  nothing, so it gets no housing. */
 const PAD = { x: 0.1, y: 0.18 }
 
-const dissolveBox = (frame: Frame) => {
+/** A still is not what goes when a frame goes — the housing goes with it. The
+ *  brackets hang 13 out and are 15 long, the strip naming the frame sits a
+ *  `--label-gap` above it and the transport's buttons are 30 tall under it,
+ *  and every one of those fades on `[data-covered]` with the picture. Covering
+ *  the picture alone is what left the housing dissolving on its own, outside a
+ *  field that stopped at the picture's edge. Frame coordinates, matching
+ *  `--label-gap`, `--label-inset` and the brackets in `Mech.css`. */
+const HOUSING = { x: 30, top: 40, bottom: 48 }
+
+/** Everything the cover has to hide. */
+const coverBox = (frame: Frame): Box => {
   const box = boxOf(frame)
-  if (frame.kind !== 'model') return box
-  const x = box.w * PAD.x
-  const y = box.h * PAD.y
-  return { x: box.x - x, y: box.y - y, w: box.w + x * 2, h: box.h + y * 2 }
+  if (frame.kind === 'model') {
+    const x = box.w * PAD.x
+    const y = box.h * PAD.y
+    return { x: box.x - x, y: box.y - y, w: box.w + x * 2, h: box.h + y * 2 }
+  }
+  return {
+    x: box.x - HOUSING.x,
+    y: box.y - HOUSING.top,
+    w: box.w + HOUSING.x * 2,
+    h: box.h + HOUSING.top + HOUSING.bottom
+  }
+}
+
+/** The canvas: everything that goes, plus the bleed ring outside it.
+ *
+ *  The bleed used to be counted into the grid without being added to the box,
+ *  which put the ring *inside* the picture's own edges — the cells came out
+ *  smaller and nothing overspilled at all. Adding it to the box is what makes
+ *  it overspill; fading it in `gridFor` is what keeps it from painting a lit
+ *  rectangle over the dashboard.
+ *
+ *  One pass at the cell size is enough. The bleed depends on the cell, the
+ *  cell on the area and the area on the bleed, but the `CELL` floor wins on
+ *  everything short of the largest subject, so a second pass would move the
+ *  number by less than a cell. */
+const fieldBox = (frame: Frame): Box => {
+  const cover = coverBox(frame)
+  const bleed = BLEED * Math.max(CELL, Math.sqrt((cover.w * cover.h) / MAX_CELLS))
+  return { x: cover.x - bleed, y: cover.y - bleed, w: cover.w + bleed * 2, h: cover.h + bleed * 2 }
 }
 
 /** Timings per grid shape, worked out once and reused. The same scatter every
@@ -119,13 +158,12 @@ const STEP = 6
 
 const gridFor = (box: { w: number; h: number }) => {
   // Whichever is larger: the cell we want, or the cell the budget allows. The
-  // budget counts the bleed ring, which is a fifth of the grid on a small
-  // subject — a ceiling that ignores it is not one.
-  const spare = Math.max(0.4, 1 - (BLEED * 4 * Math.sqrt(MAX_CELLS)) / MAX_CELLS)
-  const side = Math.max(CELL, Math.sqrt((box.w * box.h) / (MAX_CELLS * spare)))
+  // box already includes the bleed ring, so the budget counts it without
+  // having to guess at what share of the grid it is.
+  const side = Math.max(CELL, Math.sqrt((box.w * box.h) / MAX_CELLS))
   const quantize = (n: number) => Math.max(6, Math.round(n / STEP) * STEP)
-  const columns = quantize(Math.ceil(box.w / side)) + BLEED * 2
-  const rows = quantize(Math.ceil(box.h / side)) + BLEED * 2
+  const columns = quantize(Math.ceil(box.w / side))
+  const rows = quantize(Math.ceil(box.h / side))
   const key = `${columns}x${rows}`
 
   const found = grids.get(key)
@@ -141,15 +179,27 @@ const gridFor = (box: { w: number; h: number }) => {
 
     /* Which rung of the ladder this cell sits on, weighted toward the dark
        end — a readout losing signal, not a screen of confetti — and thinned
-       further toward the edges so the field fades off rather than stopping at
-       a ruled line.
+       across the bleed ring so the field fades off rather than stopping at a
+       ruled line.
+
+       The falloff is the ring and nothing more. It used to be a flat sixth of
+       the grid, which on a tall subject was a dozen cells of dusk eating into
+       the picture the cover is there to hide; `BLEED / columns` is exactly the
+       cells that hang outside it, so everything over the housing gets the full
+       range of the ladder and only the overspill thins.
 
        The weight *multiplies* the roll. Dividing by it, which is what this
        did, sent every cell near an edge to a roll far above every threshold:
        the border came out brightest and the cover was a solid mint
        rectangle. Low rolls are the dark end, so damping has to scale down. */
-    const inset = Math.min(across, 1 - across, down, 1 - down)
-    const roll = Math.random() * Math.min(inset / 0.16, 1)
+    const ring = { x: BLEED / columns, y: BLEED / rows }
+    const inset = Math.min(
+      across / ring.x,
+      (1 - across) / ring.x,
+      down / ring.y,
+      (1 - down) / ring.y
+    )
+    const roll = Math.random() * Math.min(inset, 1)
 
     return {
       out: across * 0.5 + Math.random() * 0.5,
@@ -203,7 +253,7 @@ const ease = (t: number) => t * t * (3 - 2 * t)
 
 const Disintegration = memo(function Disintegration({ frame, phase }: { frame: Frame; phase: 'out' | 'in' }) {
   const surface = useRef<HTMLCanvasElement>(null)
-  const box = dissolveBox(frame)
+  const box = fieldBox(frame)
   const { columns, rows, cells } = gridFor(box)
   /* The grid can change without the phase changing: the frame underneath is
      swapped at full cover, and a still of a different shape brings a
@@ -982,7 +1032,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
       warm(frames[shown + 1])
       warm(frames[shown - 1])
       warm(frames[shown + 2])
-      for (const frame of frames) gridFor(dissolveBox(frame))
+      for (const frame of frames) gridFor(fieldBox(frame))
     })
   }, [frames, shown])
 

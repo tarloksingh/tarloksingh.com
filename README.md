@@ -264,22 +264,45 @@ not buried. Filling the unlit cells with black is what put a hard black
 rectangle around the whole effect — the cover was opaque over an area larger
 than the picture, and everything behind it went with it.
 
-**And the cells are chunky, on purpose.** Every one is a DOM node, and a phase
-flip writes a property on all of them and then makes the browser resolve style
-for all of them. Measured in Chrome: 3,888 cells, 11ms to write and 35ms to
-recalculate, *twice* per swap, before anything is painted. That was the rest of
-the pause between one picture and the next once the pictures themselves
-stopped being twelve megapixels. Twenty-four frame-pixels a cell and a budget
-of fourteen hundred — bleed included, which it was not before — brings a
-typical grid to under nine hundred. The blocks can afford to be coarse because
-they are no longer what hides the picture.
+**Drawn on a canvas, not built out of elements.** It was a grid of spans with
+a CSS transition each, and that put a ceiling on how many pixels the effect
+could have: measured in Chrome, 3,888 of them cost 11ms to write a property
+onto and 35ms for the browser to resolve style across, *twice* per swap,
+before anything was painted. That was the rest of the pause between one picture
+and the next once the pictures themselves stopped being twelve megapixels. Six
+thousand rectangles on a canvas is two or three milliseconds and no layout, no
+style, no DOM at all — so a cell can go back to being ten frame-pixels, which
+is the only size at which this reads as something digitising rather than as
+tiles falling over. `MAX_CELLS` is a ceiling now rather than a budget being
+spent: no subject on the page comes near it.
 
-**Nothing black paints past the picture.** The field overspills by three cells
-so the green fades off rather than stopping at a ruled line — but a black cell
-out there has no picture to hide and paints over the dashboard grid instead,
-which is where the hard black rectangle around every dissolve came from. Only
-the lit cells reach past the edge now, and they fade out rather than settling
-to black.
+**The cover has to be bigger than the picture, because the picture is not what
+goes.** A still is mounted in a housing — brackets hanging 13 out, the strip
+naming it a `--label-gap` above, a transport whose buttons are 30 tall below —
+and every part of that fades with the frame on `[data-covered]`. Dissolving to
+the picture's own edges left the housing dissolving on its own, in the open,
+beside a field that stopped short of it. `HOUSING` in `Mech.tsx` is what the
+cover reaches past the picture, in the same frame coordinates as the tokens in
+`Mech.css` it is derived from; the model, which is mounted in nothing, keeps
+its float padding instead. What is *not* covered is the leaders — a field that
+reached them would be most of the screen — so their lines and labels still
+change over the top of the cover rather than under it.
+
+**Nothing black paints past the picture.** The field overspills the cover by
+`BLEED` cells so the green thins out into the dashboard rather than stopping at
+a ruled line — but a black cell out there has no picture to hide and paints
+over the dashboard grid instead, which is where the hard black rectangle around
+every dissolve came from. Only the lit cells reach past the edge, and they fade
+out rather than settling to black.
+
+The fade is the ring and nothing else. The bleed used to be counted into the
+grid without being added to the box it is drawn in, so the ring came out
+*inside* the picture's own edges: the cells were squeezed a little smaller and
+nothing overspilled at all. And the thinning that goes with it was a flat sixth
+of the field, which on a tall subject is a dozen cells of dusk eating into the
+thing the cover is there to hide. Both are the same number now — the cells that
+actually hang outside — so everything over the housing gets the full range of
+the ladder and only the overspill goes dark.
 
 Three phases, not two. `hold` is after the cover completes and before it lifts:
 the incoming still or clip is mounted but has not necessarily painted, and
