@@ -323,10 +323,38 @@ The leaders are **mounted for the two phases the picture is on the stage and
 not for the one where it is empty**. That is what makes the sequence hold
 without a timer: the set that is leaving belongs to the frame that is leaving,
 and the set arriving mounts at the moment the next picture starts, which is
-what its own draw-in is timed against. Everything a leader is made of — the
-line, the mark it lands on, the ping, the two bits of text — carries the same
-delay, so the choreography inside it is exactly as it was tuned, one beat later
-than the thing it names.
+what its own draw-in is timed against.
+
+**Nothing here fades out. Everything runs its entry backwards.** A fade out of
+a thing that was drawn on, or popped in, is a different gesture from the one it
+arrived with — and the housing is furniture, so it should read as being
+*placed* and then *taken*. So the corner brackets, the strip naming the frame
+and the transport under it each pop in on `mech-pop`, and leave on the same
+keyframes with `animation-direction: reverse`; a leader is drawn on with
+`mech-draw` and retracts along `mech-draw` reversed, back to the tip it grew
+from. One description of each move, and no way for the two directions to drift
+apart. Swapping the `animation` shorthand restarts it, so `[data-covered]` is
+the whole mechanism — no timers, no second state.
+
+Only the *picture* fades, because a photograph has no entry to undo. Out is
+quicker than in either way: a picture leaving is a thing being taken away and
+wants to be brisk, one arriving is what you asked for and can settle.
+
+**The cascade is written in the stylesheet, in both directions.** A leader
+arrives in order — the line drawn on, the words landing on it, the mark opening
+on the spot last — and each leader 130ms behind the one before. That used to be
+an inline `animation-delay` per element, which is a delay no rule can override:
+the way out could only ever reuse the way in's timing, and a CSS delay written
+against those selectors did nothing at all. `Mech.tsx` now sets one variable —
+`--d`, which leader this is — and the offsets between the parts live in
+`Mech.css` beside everything else. Going out the order is mirrored, what came
+last leaving first; the per-leader cascade is not, because three lines leaving
+one after another is a slow goodbye and there is a swap waiting on it.
+
+The brackets are a case of two animations on one element: the entry owns
+`opacity` and `scale`, the breath owns `transform`. Separate properties on
+purpose — a bracket that popped in with a transform would have the breath take
+the property straight back off it.
 
 `hold` is the beat in the middle, after the outgoing frame has gone and before
 the incoming one comes in. It is a real hole now rather than time hidden behind

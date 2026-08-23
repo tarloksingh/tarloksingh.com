@@ -34,11 +34,12 @@ const MechPins = lazy(() => import('./MechPins'))
    named. Right: everything else the project has to show. */
 
 /** How long the frame on screen takes to leave before the next is mounted:
- *  the picture's own fade, then its labels following it out after a beat, and
- *  then a breath. Matches `.mech-housing`/`.mech-leaders` in Mech.css, which
- *  is where those two are timed — the swap must not land before the labels
- *  have gone, or the new lines are drawn over the old ones going. */
-const EXIT_MS = 400
+ *  the picture's own fade, then everything mounted around it running its entry
+ *  backwards after a beat. The longest of those is the leader retracting —
+ *  140 of delay and 420 of draw — and this has to outlast it, or the next set
+ *  of lines is drawn over the last set still coming off. Timed in Mech.css,
+ *  under `entries, and their inverses`. */
+const EXIT_MS = 600
 
 /** How long the stage will wait, empty, for the incoming frame to be ready to
  *  paint before bringing it in anyway. Nothing covers the gap now, so this is
@@ -227,6 +228,11 @@ function Leaders({ notes, box, floats, lit, onLit }: LeadersProps) {
         const length =
           Math.abs(leader.end - leader.elbow[0]) +
           Math.hypot(leader.tip[0] - leader.elbow[0], leader.tip[1] - y)
+        /* The leader's place in the cascade, handed to the stylesheet as a
+           variable rather than spent here as `animation-delay`. An inline
+           delay is a delay no rule can override, which meant the way out
+           could only ever reuse the way in's timing — see `entries, and their
+           inverses` in Mech.css, where both directions are now written. */
         const delay = 200 + i * 130
 
         const on = lit !== null && (lit === leader.label || lit === leader.fold)
@@ -235,6 +241,7 @@ function Leaders({ notes, box, floats, lit, onLit }: LeadersProps) {
           <g
             key={leader.label}
             data-on={on}
+            style={{ ['--d' as string]: `${delay}ms` }}
             onPointerEnter={() => onLit(leader.label)}
             onPointerLeave={() => onLit(null)}
           >
@@ -248,33 +255,29 @@ function Leaders({ notes, box, floats, lit, onLit }: LeadersProps) {
               cx={leader.tip[0]}
               cy={leader.tip[1]}
               r={13}
-              style={{ animationDelay: `${delay + 520}ms` }}
             />
             <circle
               className="mech-leader-mark"
               cx={leader.tip[0]}
               cy={leader.tip[1]}
               r={6.5}
-              style={{ animationDelay: `${delay + 420}ms` }}
             />
             <circle
               className="mech-leader-core"
               cx={leader.tip[0]}
               cy={leader.tip[1]}
               r={1.9}
-              style={{ animationDelay: `${delay + 420}ms` }}
             />
             <polyline
               className="mech-leader"
               points={`${leader.end},${y} ${leader.elbow[0]},${y} ${leader.tip[0]},${leader.tip[1]}`}
-              style={{ ['--l' as string]: length, animationDelay: `${delay}ms` }}
+              style={{ ['--l' as string]: length }}
             />
             <text
               className="mech-leader-label"
               x={leader.end}
               y={y - 9}
               textAnchor={leader.anchor}
-              style={{ animationDelay: `${delay + 300}ms` }}
             >
               {leader.label}
             </text>
@@ -283,7 +286,6 @@ function Leaders({ notes, box, floats, lit, onLit }: LeadersProps) {
               x={leader.end}
               y={y + 21}
               textAnchor={leader.anchor}
-              style={{ animationDelay: `${delay + 380}ms` }}
             >
               {leader.value}
             </text>
