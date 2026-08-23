@@ -205,14 +205,31 @@ Placing is not typing. Press **P** on a project screen in development:
 - **copy this frame** / **copy all** hands back source to paste into `NOTES` in
   `notes.ts`, and **revert** puts the frame back to what the file says
 
+**The transport is drawn, not typed.** It was a row of single characters —
+`▶`, `⊘`, `⤢` — at eleven frame pixels, which is a row of specks: you could not
+tell the full screen control from the mute one, which is the only thing either
+of them has to say. They are SVG now, at the same weight of line as the reticle
+and the bird, in a hit target you can actually hit.
+
 **Copying works on a plain http origin.** `navigator.clipboard` only exists in
 a secure context — HTTPS, or localhost — and the dev server here is reached
 over the tailnet by IP or MagicDNS name, which is neither. Written the obvious
 way, the copy buttons were doing nothing and saying nothing on the one machine
-most likely to be using them. `clipboard.ts` tries the real API, falls back to
-the old `execCommand`, and if even that fails puts the source on screen in a
-selected textarea. Every path also logs it. The tuning panels' copy buttons go
-through the same helper, for the same reason.
+most likely to be using them. `clipboard.ts` tries the real API and falls back to the
+old `execCommand` — out of a field that is really on screen, because browsers
+decline to copy a selection out of something they consider invisible and the
+`opacity: 0` version of that trick is a copy that reports success and puts
+nothing on the clipboard.
+
+And the source goes on screen **either way**, in a field that is already
+selected. The clipboard is the one part of this that cannot be verified: there
+is no reading it back to check, `execCommand` reports success it did not have,
+and on this origin the modern API is not there at all. If the automatic copy
+worked the panel is a receipt you close; if it did not, it is one keystroke. A
+copy button that might have worked is not a copy button.
+
+The tuning panels' copy buttons go through the same helper, for the same
+reason.
 
 Everything is held in localStorage while you work, the same as every tuning
 panel here, and *nothing reaches a visitor until it has been pasted*. A dashed
@@ -286,10 +303,20 @@ time reads as coming from the page rather than from you.
 muzzle and shrinks the whole way out, on a travel eased so it covers less
 screen the further it gets — which is the whole of the depth, and why there is
 no tracer: a line held between the muzzle and the target is a line drawn across
-a flat page, and it was the one thing that gave the trick away. The head of the
-streak stays exactly on the point at every distance, which falls out of the
-order of the transform (`translate(-100%, -50%)` is applied first, in the
-element's own space, so the head sits on the origin the scale turns about).
+a flat page, and it was the one thing that gave the trick away.
+
+The head of the streak lands exactly on the point at every distance, which
+takes **`transform-origin: 0 0`** and is wrong without it. The transform ends
+in `translate(-100%, -50%)` to put the head on the aim point, and a transform
+applied about the element's default centre swings that head away again by up to
+half the bolt's length, in a direction that turns with the angle and shrinks
+with the scale. It looked like the gun being slightly out of alignment. It was
+the origin.
+
+There is no separate muzzle flash. The wash along the bottom edge is the
+discharge: a flash element *and* the wash *and* the bolt all arriving at the
+bottom of the screen together read as two or three bullets leaving rather than
+as one gun going off.
 
 It is the one **orange** thing on the screen. A bolt in the panel's own green
 would read as another instrument lighting up rather than as something leaving
@@ -307,12 +334,18 @@ actually moves the head through), and a bolt landing inside it goes to
 `MechModel`. A still is not a target — shooting a photograph of something is
 shooting a photograph.
 
-What he does about it: shuts his eyes hard, twitches twice, takes a knock
-backwards, and stays a little sad for a few seconds. The eyelids are one morph
-for the pair, so a wink is not available and the twitch is a flutter rather
-than one eye going. The knock is a single impulse on the lean, left to the
-damping that was already there to bring him out of it — no second timer to keep
-in step with, and nothing to get out of step with the first.
+What he does about it: shuts his eyes, twitches twice, tips his head back, and
+saddens for a few seconds. The eyelids are one morph for the pair, so a wink is
+not available and the twitch is a flutter rather than one eye going.
+
+Every part of it is slower than it first was, because every part of it was
+instant and instant reads as a glitch: the blink takes the better part of half
+a second, the sadness arrives over a second and a half and leaves over five,
+and the head tips back over a quarter of a second rather than all at once. The
+tip is a curve laid over the lean rather than a shove into it — the lean keeps
+its own damped value, because adding the knock to `rotation.x` and then damping
+`rotation.x` toward the pointer next frame feeds the knock back into the lean
+and the two never finish arguing.
 
 The reticle's pin is snapped onto the pointer on every press: it normally
 chases a couple of frames behind, and a bolt aimed at the true pointer while
@@ -352,6 +385,12 @@ one moment there is none to spare:
   `load` only means the bytes arrived. The cover now waits on `decode()`, and
   the frames either side of the one on the stage are fetched and decoded on an
   idle callback, so stepping to one is a paint and not a decode.
+- **Nothing started loading until the cover finished.** The frame is mounted at
+  full cover, a third of a second after the tile was pressed — a third of a
+  second the picture could have spent arriving. `warm` now runs the moment the
+  tile is picked, and it warms clips as well as stills: a clip is several
+  megabytes and the housing waits on `loadeddata` before it uncovers, which is
+  what was left of the pause between one picture and the next.
 - **The title was re-rendering the screen per character.** `Typed` wrote
   through React state, so the rail, the folds and the leaders all reconciled
   forty times a second during the one beat that is meant to read as a machine

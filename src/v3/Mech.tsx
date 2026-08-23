@@ -38,8 +38,11 @@ const EXIT_MS = 340
 
 /** How long the cover will wait for the incoming frame to be ready to paint
  *  before giving up and uncovering anyway. A still that is slow to decode is
- *  better than a stage that stays black. */
-const HOLD_CAP = 900
+ *  better than a stage that stays black — and a cover that sits there for the
+ *  best part of a second while a clip buffers is worse than either, which is
+ *  why this is shorter than it was and why `warm` now starts the fetch when
+ *  the tile is picked rather than when the frame is mounted. */
+const HOLD_CAP = 480
 
 /* ---- disintegration ----
 
@@ -167,14 +170,38 @@ const gridFor = (box: { w: number; h: number }) => {
 
 const warmed = new Set<string>()
 
+/** Held so the browser does not collect a clip the moment it is buffered and
+ *  then have to fetch it again a second later. Two or three at a time. */
+const buffering: HTMLVideoElement[] = []
+const BUFFERS = 4
+
 const warm = (frame: Frame | undefined) => {
-  if (!frame || frame.kind === 'model' || frame.type !== 'image' || warmed.has(frame.id)) return
+  if (!frame || frame.kind === 'model' || warmed.has(frame.id)) return
   warmed.add(frame.id)
-  const image = new Image()
-  image.src = frame.src
-  // `decode` is the part that matters — a fetch alone leaves the expensive
-  // half to happen on the frame it is first painted.
-  void image.decode?.().catch(() => {})
+
+  if (frame.type === 'image') {
+    const image = new Image()
+    image.src = frame.src
+    // `decode` is the part that matters — a fetch alone leaves the expensive
+    // half to happen on the frame it is first painted.
+    void image.decode?.().catch(() => {})
+    return
+  }
+
+  /* Clips are the slow ones — several megabytes each, and the housing waits
+     for `loadeddata` before it uncovers, which is the pause. Pulled through
+     the network here, into the HTTP cache the real `<video>` will hit; the
+     element is never mounted and never plays. */
+  const video = document.createElement('video')
+  video.preload = 'auto'
+  video.muted = true
+  video.src = frame.src
+  video.load()
+  buffering.push(video)
+  while (buffering.length > BUFFERS) {
+    const old = buffering.shift()
+    if (old) old.src = ''
+  }
 }
 
 /** Whenever the browser has a moment. Not `setTimeout(0)`: this is deliberately
@@ -361,6 +388,63 @@ function Disintegration({ frame, phase }: { frame: Frame; phase: 'out' | 'in' })
   )
 }
 
+/* ---- transport icons ----
+
+   Drawn rather than typed. The transport was a row of single characters —
+   `▶`, `⊘`, `⤢` — at eleven frame pixels, which is a row of specks: nobody
+   could tell the full screen control from the mute one, and `⊘` does not say
+   "muted" in any font. These are the same weight of line as the reticle and
+   the bird, and they scale with the frame like everything else.
+
+   `viewBox` is 24 square for all of them, so one CSS rule sizes the set. */
+
+const Icon = ({ children }: { children: React.ReactNode }) => (
+  <svg className="mech-icon" viewBox="0 0 24 24" aria-hidden focusable="false">
+    {children}
+  </svg>
+)
+
+const PLAY = (
+  <Icon>
+    {/* The one filled shape in the set: a triangle in outline reads as a
+        cursor rather than as play. */}
+    <path className="mech-icon-solid" d="M 8 5 L 19 12 L 8 19 Z" />
+  </Icon>
+)
+
+const PAUSE = (
+  <Icon>
+    <path d="M 9 5 v 14 M 15 5 v 14" />
+  </Icon>
+)
+
+const SOUND = (
+  <Icon>
+    <path d="M 4 9.5 h 3.5 L 12 5.5 v 13 L 7.5 14.5 H 4 Z" />
+    <path d="M 15.5 9 a 4.4 4.4 0 0 1 0 6" />
+    <path d="M 18 6.5 a 8 8 0 0 1 0 11" />
+  </Icon>
+)
+
+const MUTED = (
+  <Icon>
+    <path d="M 4 9.5 h 3.5 L 12 5.5 v 13 L 7.5 14.5 H 4 Z" />
+    <path d="M 16 9.5 l 5 5 M 21 9.5 l -5 5" />
+  </Icon>
+)
+
+const FULL = (
+  <Icon>
+    <path d="M 4 9 V 4 h 5 M 20 9 V 4 h -5 M 4 15 v 5 h 5 M 20 15 v 5 h -5" />
+  </Icon>
+)
+
+const UNFULL = (
+  <Icon>
+    <path d="M 9 4 v 5 H 4 M 15 4 v 5 h 5 M 9 20 v -5 H 4 M 15 20 v -5 h 5" />
+  </Icon>
+)
+
 const clock = (seconds: number) => {
   if (!Number.isFinite(seconds)) return '0:00'
   return `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`
@@ -489,8 +573,8 @@ function Flat({ frame, index, count, onReady }: FrameProps) {
       <div className="mech-transport">
         {frame.type === 'video' ? (
           <>
-            <button onClick={togglePlay} aria-label={playing ? 'Pause' : 'Play'}>
-              {playing ? '❙❙' : '▶'}
+            <button onClick={togglePlay} aria-label={playing ? 'Pause' : 'Play'} title={playing ? 'Pause' : 'Play'}>
+              {playing ? PAUSE : PLAY}
             </button>
             <input
               type="range"
@@ -515,16 +599,21 @@ function Flat({ frame, index, count, onReady }: FrameProps) {
                 setMuted((was) => !was)
               }}
               aria-label={muted ? 'Unmute' : 'Mute'}
+              title={muted ? 'Sound on' : 'Mute'}
             >
-              {muted ? '⊘' : '≋'}
+              {muted ? MUTED : SOUND}
             </button>
           </>
         ) : (
           <span className="mech-time">{frame.label ?? ''}</span>
         )}
 
-        <button onClick={toggleFull} aria-label={full ? 'Exit full screen' : 'Full screen'}>
-          {full ? '⤡' : '⤢'}
+        <button
+          onClick={toggleFull}
+          aria-label={full ? 'Exit full screen' : 'Full screen'}
+          title={full ? 'Exit full screen' : 'Full screen'}
+        >
+          {full ? UNFULL : FULL}
         </button>
       </div>
     </div>
@@ -639,6 +728,11 @@ export default function Mech({ id, onProject, onHome }: Props) {
 
   useEffect(() => {
     if (index === shown) return
+    /* Started here rather than when the frame is mounted, which is a third of
+       a second later at full cover: the cover is time the picture could have
+       been loading in, and spending it doing nothing is most of the pause
+       people saw between one picture and the next. */
+    warm(frames[index])
     sound.dissolve()
     setPhase('out')
     const timer = window.setTimeout(() => {
@@ -715,6 +809,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
     return whenIdle(() => {
       warm(frames[shown + 1])
       warm(frames[shown - 1])
+      warm(frames[shown + 2])
       for (const frame of frames) gridFor(dissolveBox(frame))
     })
   }, [frames, shown])

@@ -56,22 +56,41 @@ const between = (min: number, max: number) => min + Math.random() * (max - min)
    going. Two half-closes after the first hard blink, which reads as a face
    shaking something off. */
 const HURT = {
-  /** Seconds. The blink and the two twitches after it. */
-  blink: 0.16,
+  /** Seconds the eyes take to close and open again. Slow enough to see: a
+   *  blink you cannot follow is a frame drop, not a reaction. */
+  blink: 0.42,
   twitch: [
-    [0.3, 0.42],
-    [0.55, 0.65]
+    [0.6, 0.86],
+    [1.05, 1.24]
   ],
   /** How far the lids come down on a twitch, against 1 for the blink. */
   squint: 0.45,
-  /** How sad, and for how many seconds it takes to fade back out. */
+  /** How sad. `rise` and `fall` are the seconds it takes to arrive at that and
+   *  to leave it again — arriving is the part you watch, so it is slow, and
+   *  `hold` is how long he stays there before it starts to lift. */
   sad: 0.85,
-  hold: 1.6,
-  fade: 4.5,
-  /** Degrees the head is knocked back. Applied once, as an impulse — the
-   *  lean's own damping is what brings him out of it, which is why there is
-   *  no second number here for the recovery. */
-  kick: 5
+  rise: 1.5,
+  hold: 2.6,
+  fall: 5,
+  /** Degrees the head is knocked back, over `tip` seconds, and the seconds it
+   *  takes to come back off it. Not an impulse: a head that reaches five
+   *  degrees inside one frame has been hit by a truck, and this is a bolt. */
+  kick: 5,
+  tip: 0.26,
+  settle: 0.9
+}
+
+/** How far back the head is tipped by a hit `since` seconds ago, 0..1. Up on
+ *  a smoothstep and down on a longer one, so both ends of it ease. */
+const hurtTip = (since: number) => {
+  if (since < 0) return 0
+  if (since < HURT.tip) {
+    const t = since / HURT.tip
+    return t * t * (3 - 2 * t)
+  }
+  const t = (since - HURT.tip) / HURT.settle
+  if (t >= 1) return 0
+  return 1 - t * t * (3 - 2 * t)
 }
 
 /** How far the lids are down from a hit, `since` seconds ago. Zero once it is
@@ -291,7 +310,9 @@ function Model({ src, tuning, look }: { src: string; tuning: ModelTuning; look: 
 
     // And it stays with him for a few seconds after the flinch is over.
     const wants = hit < HURT.hold ? HURT.sad : 0
-    const rate = wants > 0 ? 9 : 3 / HURT.fade
+    // Three time constants is most of the way there, which is what makes
+    // `rise` and `fall` read as the seconds they say.
+    const rate = 3 / (wants > 0 ? HURT.rise : HURT.fall)
     hurt.current = MathUtils.lerp(hurt.current, wants, 1 - Math.exp(-rate * delta))
     setMorph('EmotionSad', hurt.current)
 
@@ -383,25 +404,27 @@ function Drift({ fill }: { fill: number }) {
 function Lean({ degrees, look, children }: { degrees: number; look: Look; children: React.ReactNode }) {
   const ref = useRef<Group>(null)
   const limit = MathUtils.degToRad(degrees)
-  /** The last hit this has already reacted to, so the knock is one impulse
-   *  and not a force applied every frame for as long as it hurts. */
-  const knocked = useRef(0)
+  /** The lean on its own, without the knock. Kept apart from what is on the
+   *  group: adding the knock to `rotation.x` and then damping `rotation.x`
+   *  toward the pointer next frame feeds the knock back into the lean, and
+   *  the two never quite finish arguing. */
+  const lean = useRef({ x: 0, y: 0 })
 
   useFrame((_, delta) => {
     const group = ref.current
     if (!group) return
     const target = look()
     const k = 1 - Math.pow(0.002, delta)
-    group.rotation.y = MathUtils.lerp(group.rotation.y, target.x * limit, k)
-    group.rotation.x = MathUtils.lerp(group.rotation.x, -target.y * limit * 0.55, k)
+    lean.current.y = MathUtils.lerp(lean.current.y, target.x * limit, k)
+    lean.current.x = MathUtils.lerp(lean.current.x, -target.y * limit * 0.55, k)
+    group.rotation.y = lean.current.y
 
-    /* Knocked back once, on the frame the bolt lands, and left to the same
-       damping that brought him here — which is why it eases out over about
-       half a second without a second timer to keep in step with. */
-    if (flinch.at !== knocked.current) {
-      knocked.current = flinch.at
-      group.rotation.x -= MathUtils.degToRad(HURT.kick)
-    }
+    /* The knock is a curve laid over the lean rather than a shove into it.
+       Shoving the rotation once and letting the damping unwind it put the
+       whole five degrees into a single frame, which is a head snapping rather
+       than a head recoiling; this tips back over a quarter of a second and
+       comes off it over the best part of one. */
+    group.rotation.x = lean.current.x - MathUtils.degToRad(HURT.kick) * hurtTip(hurtAge())
   })
 
   return <group ref={ref}>{children}</group>

@@ -506,7 +506,7 @@
   display: flex;
   align-items: center;
   gap: calc(10 * var(--px));
-  font-size: calc(11.5 * var(--px));
+  font-size: calc(12.5 * var(--px));
   letter-spacing: calc(1.3 * var(--px));
   color: rgba(var(--accent-rgb), 0.75);
   animation: mech-fade 400ms 160ms both;
@@ -523,27 +523,49 @@
 }
 
 .mech-transport {
-  top: calc(100% + var(--label-gap));
+  top: calc(100% + var(--label-gap) - 6 * var(--px));
 }
 
+/* Big enough to read and to hit. The controls were single characters at
+   eleven frame pixels, which is a row of specks — you could not tell the full
+   screen control from the mute one, which is the only thing either of them
+   has to say. */
 .mech-transport button {
-  background: none;
+  display: grid;
+  place-items: center;
+  width: calc(30 * var(--px));
+  height: calc(30 * var(--px));
+  flex: none;
+  padding: 0;
   border: 0;
-  padding: 0 calc(2 * var(--px));
-  font: inherit;
-  font-size: calc(11 * var(--px));
-  line-height: 1;
+  background: none;
   color: var(--mid);
-  transition: color 160ms linear, text-shadow 160ms linear;
+  transition: color 160ms linear, filter 160ms linear;
+}
+
+.mech-icon {
+  width: calc(22 * var(--px));
+  height: calc(22 * var(--px));
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Play is a solid triangle; everything else is a line drawing. */
+.mech-icon-solid {
+  fill: currentColor;
+  stroke: none;
 }
 
 .mech-transport button:hover {
   color: var(--accent);
-  text-shadow: 0 0 calc(9 * var(--px)) rgba(var(--accent-rgb), 0.6);
+  filter: drop-shadow(0 0 calc(7 * var(--px)) rgba(var(--accent-rgb), 0.7));
 }
 
 .mech-transport button[data-off='true'] {
-  color: #6a4a3a;
+  color: #7c5340;
 }
 
 .mech-transport input[type='range'] {
@@ -1729,14 +1751,18 @@
     transparent 100%
   );
   opacity: 0.16;
-  /* Quick up, slow down — a flare, not a blink. */
-  transition: opacity 460ms ease-out;
-  will-change: opacity;
+  /* Quick up, slow down — a flare, not a blink. This is the whole discharge:
+     there used to be a separate flash element as well, and three orange
+     things appearing at the bottom of the screen at once read as three
+     bullets leaving rather than as one gun going off. */
+  transition: opacity 520ms ease-out, transform 520ms ease-out;
+  will-change: opacity, transform;
 }
 
 .mech-emitter[data-on='true'] {
-  opacity: 0.75;
-  transition-duration: 60ms;
+  opacity: 0.9;
+  transform: translateX(-50%) translateY(40%) scale(1.12);
+  transition-duration: 55ms;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1753,27 +1779,15 @@
 .mech-bolt {
   height: 3.4px;
   border-radius: 2px;
+  /* Not the default centre. The transform ends in `translate(-100%, -50%)` to
+     put the head of the streak on the aim point, and that only works if the
+     whole chain is applied from the element's own corner: about the centre,
+     the rotation and the scale swing the head away from the point by up to
+     half the bolt's length, in a direction that changes with the angle. That
+     was the shot landing beside the reticle. */
+  transform-origin: 0 0;
   background: linear-gradient(to right, rgba(var(--shot-rgb), 0) 0%, rgba(var(--shot-rgb), 0.6) 55%, #fff5e8 100%);
   box-shadow: 0 0 11px rgba(var(--shot-rgb), 0.95), 0 0 30px rgba(var(--shot-rgb), 0.5);
-}
-
-/* The discharge, at the bottom edge where the shot came from. */
-.mech-muzzle {
-  width: 260px;
-  height: 78px;
-  margin: -39px 0 0 -130px;
-  border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(255, 245, 232, 0.9), rgba(var(--shot-rgb), 0.55) 40%, transparent 100%);
-  animation: mech-muzzle 260ms ease-out forwards;
-}
-
-@keyframes mech-muzzle {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-  }
 }
 
 /* Where it landed. A hit blows a ring out of the bird; a miss is a tap on

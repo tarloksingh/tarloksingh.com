@@ -196,11 +196,6 @@ export default function MechLaser() {
         }, 90)
       }
 
-      const flash = el('mech-muzzle')
-      flash.style.transform = `translate3d(${from.x}px, ${from.y}px, 0) rotate(${angle}deg) translate(-50%, -50%)`
-      flash.addEventListener('animationend', () => flash.remove(), { once: true })
-      host.append(flash)
-
       bolts.add({
         node,
         from,

@@ -23,13 +23,22 @@ export async function copyText(text: string): Promise<boolean> {
 
   /* Deprecated, synchronous, and works on plain http. It has to run inside the
      gesture that asked for it, which is why nothing above is awaited unless
-     the modern API is actually present. */
+     the modern API is actually present.
+
+     The field is real: on screen, in the viewport, not `opacity: 0` and not
+     `pointer-events: none`. Browsers decline to copy a selection out of
+     something they consider invisible, and the invisible version of this is a
+     copy that reports success and puts nothing on the clipboard. One pixel in
+     the corner is invisible enough. */
   try {
     const field = document.createElement('textarea')
     field.value = text
     field.setAttribute('readonly', '')
-    field.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;pointer-events:none'
+    field.style.cssText =
+      'position:fixed;left:0;bottom:0;width:1px;height:1px;padding:0;border:0;margin:0;' +
+      'font-size:16px;color:transparent;background:transparent;z-index:-1'
     document.body.append(field)
+    field.focus()
     field.select()
     field.setSelectionRange(0, text.length)
     const ok = document.execCommand('copy')

@@ -120,18 +120,22 @@ export default function MechPins({ frame, notes, onClose }: Props) {
   /** Hands the source over: to the clipboard if this page is allowed one, and
    *  to a panel you can select out of if it is not. Either way it goes to the
    *  console, which is the one place it can always be got at. */
+  /* Copying is *also* shown, always. The clipboard is the part of this that
+     cannot be verified — there is no reading it back to check, `execCommand`
+     reports success it did not have, and on a plain http origin the modern
+     API is not there at all. So the source goes on screen either way, in a
+     field that is already selected: if the automatic copy worked the panel is
+     a receipt you close, and if it did not it is one keystroke. A copy button
+     that might have worked is not a copy button. */
   const hand = (which: 'frame' | 'all') => {
     const text = which === 'frame' ? pins.source(frame.id) : pins.source()
     sound.select()
     // eslint-disable-next-line no-console
     console.log(`[pins] paste into NOTES in src/v3/notes.ts:\n\n${text}`)
+    setManual(text)
+    setCopied(null)
     void copyText(text).then((ok) => {
-      if (!ok) {
-        setManual(text)
-        return
-      }
-      setCopied(which)
-      window.setTimeout(() => setCopied((was) => (was === which ? null : was)), 1600)
+      if (ok) setCopied(which)
     })
   }
 
@@ -216,19 +220,20 @@ export default function MechPins({ frame, notes, onClose }: Props) {
         >
           + line
         </button>
-        <button onClick={() => hand('frame')}>{copied === 'frame' ? 'copied ✓' : 'copy this frame'}</button>
-        <button onClick={() => hand('all')}>{copied === 'all' ? 'copied ✓' : 'copy all'}</button>
+        <button onClick={() => hand('frame')}>copy this frame</button>
+        <button onClick={() => hand('all')}>copy all</button>
         <button onClick={() => pins.clear(frame.id)}>revert</button>
         <button onClick={onClose}>done · P</button>
       </div>
 
-      {/* No clipboard on this origin — http over the tailnet is not a secure
-          context. The text is here instead, selected, so it is one keystroke
-          away rather than lost. */}
       {manual !== null && (
         <div className="mech-pins-source" onPointerDown={(event) => event.stopPropagation()}>
           <div className="mech-pins-source-head">
-            <span>no clipboard on this origin — select and copy</span>
+            <span>
+              {copied
+                ? 'copied ✓ — and here it is, in case your browser said otherwise'
+                : 'select and copy — ⌘C'}
+            </span>
             <button onClick={() => setManual(null)}>close</button>
           </div>
           <textarea
