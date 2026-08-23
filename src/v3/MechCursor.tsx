@@ -87,16 +87,31 @@ export default function MechCursor() {
       }
     }
 
+    /* The gun fires at the pointer's true position, and the pin is a couple of
+       frames behind it after a fast move — so a bolt aimed the instant you
+       press lands *beside* the crosshair rather than in the middle of it,
+       which reads as the shot being off. Snapped on the press, so the two
+       cannot disagree at the one moment it matters. */
+    const onDown = (event: PointerEvent) => {
+      to.x = event.clientX
+      to.y = event.clientY
+      b.x = to.x
+      b.y = to.y
+      place(pin.current, b)
+    }
+
     const onLeave = () => setLive(false)
 
     // The first gesture is what a browser will let an AudioContext start on.
     window.addEventListener('pointerdown', sound.wake, { once: true })
     window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerdown', onDown)
     document.addEventListener('pointerleave', onLeave)
     raf = requestAnimationFrame(tick)
 
     return () => {
       window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerdown', onDown)
       document.removeEventListener('pointerleave', onLeave)
       cancelAnimationFrame(raf)
     }

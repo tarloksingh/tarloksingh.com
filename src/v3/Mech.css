@@ -40,6 +40,12 @@
   /* The one warm thing on the panel. A lamp, not a siren. */
   --warn: #e0562b;
   --warn-rgb: 224, 86, 43;
+  /* What comes out of the gun. Warmer and brighter than the warning lamp,
+     and the only thing on the screen allowed this much heat — a bolt in the
+     panel's own green would read as another instrument lighting up rather
+     than as something leaving the page. */
+  --shot: #ff8f3a;
+  --shot-rgb: 255, 143, 58;
   /* The room the panel is lit in: a cold blue off one side and a lime sign
      off the other. Both stay under the readout, never in it. Kept off the
      warm half of the wheel on purpose — red down here reads as a warning,
@@ -563,42 +569,77 @@
   max-width: calc(320 * var(--px));
 }
 
-/* Corner brackets, drawn outside the picture so they never sit on it. */
+/* Corner brackets, drawn well outside the picture so they never sit on it —
+   and never touch it either. Pulled back off the corners: at five pixels they
+   read as a border that had a bite taken out of each corner, and the whole
+   point of a bracket is the air between it and the thing it is holding.
+
+   They breathe. Each one drifts a couple of pixels further out and back on a
+   slow cycle, all four together, so the housing reads as something holding
+   the picture rather than as a rule drawn around it. `--dx`/`--dy` are which
+   way out is for that corner, which is what lets one set of keyframes serve
+   all four. */
 .mech-corner {
   position: absolute;
-  width: calc(13 * var(--px));
-  height: calc(13 * var(--px));
+  width: calc(15 * var(--px));
+  height: calc(15 * var(--px));
   border: 1px solid rgba(var(--accent-rgb), 0.7);
   filter: drop-shadow(0 0 calc(6 * var(--px)) rgba(var(--accent-rgb), 0.4));
-  animation: mech-fade 400ms 220ms both;
+  /* Two at once: the entry fade owns opacity and the breath owns transform,
+     so neither has to know about the other. */
+  animation: mech-fade 400ms 220ms both, mech-breathe 4.2s 700ms ease-in-out infinite alternate;
+}
+
+@keyframes mech-breathe {
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(calc(var(--dx) * 5 * var(--px)), calc(var(--dy) * 5 * var(--px)));
+  }
 }
 
 .mech-corner[data-at='tl'] {
-  left: calc(-5 * var(--px));
-  top: calc(-5 * var(--px));
+  left: calc(-13 * var(--px));
+  top: calc(-13 * var(--px));
   border-right: 0;
   border-bottom: 0;
+  --dx: -1;
+  --dy: -1;
 }
 
 .mech-corner[data-at='tr'] {
-  right: calc(-5 * var(--px));
-  top: calc(-5 * var(--px));
+  right: calc(-13 * var(--px));
+  top: calc(-13 * var(--px));
   border-left: 0;
   border-bottom: 0;
+  --dx: 1;
+  --dy: -1;
 }
 
 .mech-corner[data-at='bl'] {
-  left: calc(-5 * var(--px));
-  bottom: calc(-5 * var(--px));
+  left: calc(-13 * var(--px));
+  bottom: calc(-13 * var(--px));
   border-right: 0;
   border-top: 0;
+  --dx: -1;
+  --dy: 1;
 }
 
 .mech-corner[data-at='br'] {
-  right: calc(-5 * var(--px));
-  bottom: calc(-5 * var(--px));
+  right: calc(-13 * var(--px));
+  bottom: calc(-13 * var(--px));
   border-left: 0;
   border-top: 0;
+  --dx: 1;
+  --dy: 1;
+}
+
+/* Nothing breathes at anybody who asked it not to. */
+@media (prefers-reduced-motion: reduce) {
+  .mech-corner {
+    animation: mech-fade 400ms 220ms both;
+  }
 }
 
 /* Full screen: the housing becomes the window, and its furniture goes back
@@ -678,6 +719,84 @@
 
 .mech-leaders g[data-on='true'] .mech-leader-label {
   filter: drop-shadow(0 0 9px rgba(var(--accent-rgb), 0.95));
+}
+
+/* ---- the mark on the spot ----
+
+   Three circles on the tip of every leader: a still ring, a dot in it, and a
+   ping that opens out of it and goes. Together they answer the question a
+   line on its own leaves open — not "there is something here" but "this, the
+   thing under the ring". The ping is the part you notice without looking,
+   which is why it is slow and faint rather than a beacon.
+
+   `transform-box: fill-box` so the scale turns about the circle's own centre
+   and not about the corner of the 1920×1080 viewBox. */
+.mech-leader-ping,
+.mech-leader-mark,
+.mech-leader-core {
+  transform-box: fill-box;
+  transform-origin: center;
+  pointer-events: none;
+}
+
+.mech-leader-mark {
+  fill: none;
+  stroke: rgba(var(--accent-rgb), 0.85);
+  stroke-width: 1.2;
+  opacity: 0;
+  animation: mech-fade 420ms ease both;
+}
+
+.mech-leader-core {
+  fill: var(--accent);
+  opacity: 0;
+  animation: mech-fade 420ms ease both;
+  filter: drop-shadow(0 0 5px rgba(var(--accent-rgb), 0.9));
+}
+
+.mech-leader-ping {
+  fill: none;
+  stroke: rgba(var(--accent-rgb), 0.55);
+  stroke-width: 1;
+  animation: mech-ping 2.8s cubic-bezier(0.2, 0.7, 0.35, 1) infinite both;
+}
+
+@keyframes mech-ping {
+  0% {
+    opacity: 0;
+    transform: scale(0.35);
+  }
+  12% {
+    opacity: 0.85;
+  }
+  /* Held open and empty for most of the cycle: a ring that pulses without a
+     rest is a loading spinner, and this is meant to be something you catch
+     out of the corner of an eye twice a minute. */
+  62%,
+  100% {
+    opacity: 0;
+    transform: scale(2.1);
+  }
+}
+
+/* Lit with everything else in the pair, so hovering a fold points at the part
+   of the picture it is about. */
+.mech-leaders g[data-on='true'] .mech-leader-mark {
+  stroke: var(--accent);
+  stroke-width: 1.6;
+  filter: drop-shadow(0 0 7px rgba(var(--accent-rgb), 0.9));
+}
+
+.mech-leaders g[data-on='true'] .mech-leader-ping {
+  stroke: var(--accent);
+  animation-duration: 1.3s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mech-leader-ping {
+    animation: mech-fade 420ms ease both;
+    opacity: 0.35;
+  }
 }
 
 .mech-leader {
@@ -1347,12 +1466,28 @@
   }
 }
 
-/* The picture's own edges — what every fraction is measured against. */
+/* The picture's own edges — what every fraction is measured against, and the
+   only part of the screen a click can add a line in. Said out loud, because
+   an invisible rule about where clicks count is a rule nobody discovers. */
 .mech-pins-box {
   position: absolute;
   outline: 1px dashed rgba(var(--accent-rgb), 0.5);
   outline-offset: 0;
+  background: rgba(var(--accent-rgb), 0.04);
   pointer-events: none;
+}
+
+.mech-pins-box span {
+  position: absolute;
+  /* Inside the box, not above it: above it is where the housing already puts
+     its own label strip, and two lines of small green type on the same
+     baseline is neither of them being read. */
+  left: 7px;
+  top: 6px;
+  font-size: 10.5px;
+  letter-spacing: 0.4px;
+  color: rgba(var(--accent-rgb), 0.85);
+  text-shadow: 0 0 6px #000, 0 0 12px #000;
 }
 
 .mech-pin-tip,
@@ -1468,7 +1603,7 @@
 }
 
 .mech-pins-hint {
-  color: var(--dim);
+  color: var(--mid);
 }
 
 .mech-pins-bar button {
@@ -1482,6 +1617,15 @@
 
 .mech-pins-bar button:hover {
   background: rgba(var(--accent-rgb), 0.14);
+}
+
+/* The one button on the bar that makes something rather than moving it. */
+.mech-pins-bar button.mech-pins-add,
+.mech-pins-bar button.mech-pins-add:hover {
+  color: #000;
+  background: var(--accent);
+  border-color: var(--accent);
+  font-weight: 600;
 }
 
 /* ---- the gun ----
@@ -1509,32 +1653,26 @@
   will-change: transform, opacity;
 }
 
-/* The head of the shot: a bright core with the accent bleeding off the length
-   of it, tapered at the tail so it reads as exhaust rather than as a rod. */
+/* The head of the shot: a white core with the heat bleeding off the length of
+   it, tapered at the tail so it reads as exhaust rather than as a rod. It is
+   scaled from JS as it travels, which is where the depth is — see
+   `MechLaser.tsx`. Nothing here has a fixed size in the frame's coordinates,
+   because a bolt is not part of the composition; it is in the room. */
 .mech-bolt {
-  height: 3px;
+  height: 3.4px;
   border-radius: 2px;
-  background: linear-gradient(to right, rgba(var(--accent-rgb), 0) 0%, rgba(var(--accent-rgb), 0.55) 55%, #fff 100%);
-  box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.9), 0 0 26px rgba(var(--accent-rgb), 0.45);
-}
-
-/* The whole line from the muzzle, laid down at once and fading out behind the
-   bolt. A hairline, because two bright lines is a laser pointer. */
-.mech-tracer {
-  height: 1px;
-  opacity: 0.5;
-  background: linear-gradient(to right, rgba(var(--accent-rgb), 0) 0%, rgba(var(--accent-rgb), 0.5) 30%, rgba(var(--accent-rgb), 0.16) 100%);
-  transition: opacity 300ms linear;
+  background: linear-gradient(to right, rgba(var(--shot-rgb), 0) 0%, rgba(var(--shot-rgb), 0.6) 55%, #fff5e8 100%);
+  box-shadow: 0 0 11px rgba(var(--shot-rgb), 0.95), 0 0 30px rgba(var(--shot-rgb), 0.5);
 }
 
 /* The discharge, at the bottom edge where the shot came from. */
 .mech-muzzle {
-  width: 90px;
-  height: 26px;
-  margin: -13px 0 0 -45px;
+  width: 150px;
+  height: 44px;
+  margin: -22px 0 0 -75px;
   border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.85), rgba(var(--accent-rgb), 0.45) 45%, transparent 100%);
-  animation: mech-muzzle 190ms ease-out forwards;
+  background: radial-gradient(closest-side, rgba(255, 245, 232, 0.9), rgba(var(--shot-rgb), 0.55) 40%, transparent 100%);
+  animation: mech-muzzle 210ms ease-out forwards;
 }
 
 @keyframes mech-muzzle {
@@ -1570,8 +1708,8 @@
   height: 15px;
   margin: -7.5px 0 0 -7.5px;
   border-radius: 50%;
-  border: 1.6px solid var(--accent);
-  box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.6);
+  border: 1.6px solid var(--shot);
+  box-shadow: 0 0 12px rgba(var(--shot-rgb), 0.6);
   animation: mech-impact var(--for) cubic-bezier(0.1, 0.7, 0.3, 1) forwards;
 }
 
@@ -1583,7 +1721,7 @@
 .mech-impact[data-kind='miss'] {
   --for: 320ms;
   --reach: 2.3;
-  opacity: 0.7;
+  opacity: 0.6;
 }
 
 @keyframes mech-impact {

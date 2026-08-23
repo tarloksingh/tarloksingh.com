@@ -257,6 +257,32 @@ function Leaders({ notes, box, floats, lit, onLit }: LeadersProps) {
             onPointerEnter={() => onLit(leader.label)}
             onPointerLeave={() => onLit(null)}
           >
+            {/* The mark on the spot. A line arriving at a picture tells you
+                there is something there; a ring opening on it tells you
+                *which* thing, which is the entire job of a leader and the one
+                part a bare polyline could never do. Drawn before the line so
+                the line is laid over it rather than under. */}
+            <circle
+              className="mech-leader-ping"
+              cx={leader.tip[0]}
+              cy={leader.tip[1]}
+              r={13}
+              style={{ animationDelay: `${delay + 520}ms` }}
+            />
+            <circle
+              className="mech-leader-mark"
+              cx={leader.tip[0]}
+              cy={leader.tip[1]}
+              r={6.5}
+              style={{ animationDelay: `${delay + 420}ms` }}
+            />
+            <circle
+              className="mech-leader-core"
+              cx={leader.tip[0]}
+              cy={leader.tip[1]}
+              r={1.9}
+              style={{ animationDelay: `${delay + 420}ms` }}
+            />
             <polyline
               className="mech-leader"
               points={`${leader.end},${y} ${leader.elbow[0]},${y} ${leader.tip[0]},${leader.tip[1]}`}

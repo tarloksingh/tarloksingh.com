@@ -107,6 +107,21 @@ the work is duplicated, and re-tagging a project re-cuts both.
 | `subject.ts` | Two live facts about the thing on stage, shared across the Canvas |
 | `modelTuning.ts`, `wallTuning.ts` | Leva panels, and the source they paste back into |
 
+### The housing
+
+A still is not laid on the page, it is mounted in something: corner brackets, a
+strip naming it, a transport under it. The brackets sit well clear of the
+picture — at five pixels they read as a border with a bite taken out of each
+corner, and the air between a bracket and the thing it holds is the whole point
+of a bracket. They breathe, all four together, drifting a few pixels further
+out and back on a four-second cycle, so the housing reads as something holding
+the picture rather than as a rule drawn around it. One set of keyframes serves
+all four corners: `--dx`/`--dy` on each one is which way out is.
+
+The pictures and the clips carry a small radius (`--round`, in frame
+coordinates like everything else, so it scales with the composition rather than
+staying 10px on a wall display). Full screen puts them back square.
+
 ### One frame, scaled
 
 Every number in `Mech.css` is a coordinate in the Figma's 1920×1080 frame, and
@@ -144,6 +159,12 @@ the fold it is evidence for, and hovering either lights the pair — additively,
 because dimming the rest of the readout made hovering anything read as the
 labels going out.
 
+Every leader ends in a **mark on the spot**: a ring, a dot inside it, and a
+slow ping that opens out of it and goes. A line arriving at a picture says
+there is something there; the ring says *which* thing, which is the entire job
+of a leader and the one part a bare polyline could never do. Hovering the
+label or its fold lights the mark along with everything else in the pair.
+
 Over the model they ride its float, read from what the float actually did this
 frame rather than an animation timed to look like it. Two clocks that agree at
 the start and not a minute later is the sort of thing nobody can name and
@@ -165,7 +186,9 @@ anything.
 
 Placing is not typing. Press **P** on a project screen in development:
 
-- **click the picture** to add a line where you clicked
+- **click the picture** to add a line where you clicked — the box a click
+  counts inside is drawn and says so, and **+ line** on the bar drops one down
+  the middle for anyone who would rather not aim
 - **drag the dot** to move where it points, **drag the label** to move where it
   reads — the first drag of either pins both, since a half-pinned note would
   leave its other end in a slot it no longer shares
@@ -233,11 +256,32 @@ the copy button hands back `MODEL_DEFAULTS` to paste into `modelTuning.ts`.
 ### The gun
 
 Press anywhere on the readout that is not something you could press *for* a
-reason, and a bolt leaves the bottom edge of the frame for wherever you aimed —
-alternating muzzles, so a run of shots reads as a pair of cannons rather than
-one hose. It is meant for the bird, which is the only thing on the page with a
-hitbox, but it fires at empty black just as happily: a gun that only works when
-there is a target is a button.
+reason, and a bolt leaves the bottom edge of the frame for wherever you aimed.
+It is meant for the bird, which is the only thing on the page with a hitbox,
+but it fires at empty black just as happily: a gun that only works when there
+is a target is a button.
+
+**One muzzle, in the middle of the bottom edge.** You are behind the gun, not
+beside a pair of them, and a shot that leaves from somewhere different every
+time reads as coming from the page rather than from you.
+
+**And it goes away from you.** The bolt is longest and thickest leaving the
+muzzle and shrinks the whole way out, on a travel eased so it covers less
+screen the further it gets — which is the whole of the depth, and why there is
+no tracer: a line held between the muzzle and the target is a line drawn across
+a flat page, and it was the one thing that gave the trick away. The head of the
+streak stays exactly on the point at every distance, which falls out of the
+order of the transform (`translate(-100%, -50%)` is applied first, in the
+element's own space, so the head sits on the origin the scale turns about).
+
+It is the one **orange** thing on the screen. A bolt in the panel's own green
+would read as another instrument lighting up rather than as something leaving
+the page.
+
+The reticle's pin is snapped onto the pointer on every press: it normally
+chases a couple of frames behind, and a bolt aimed at the true pointer while
+the crosshair was still catching up landed *beside* the sight rather than in
+it, which reads as the shot being off.
 
 Every `a`, `button`, `input`, `label` and `video` is the page's, not the gun's,
 and a press that lands on one of them does that control's job silently. The

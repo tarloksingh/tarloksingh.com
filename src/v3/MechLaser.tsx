@@ -11,6 +11,16 @@ import { gaze, quarry } from './subject'
    thing on the page with a hitbox — but it fires at empty black just as
    happily, because a gun that only works when there is a target is a button.
 
+   One muzzle, in the middle of the bottom edge: you are behind the gun, not
+   beside a pair of them, and a shot that leaves from somewhere different every
+   time reads as coming from the page rather than from you.
+
+   And it goes *away* from you. The bolt is longest and thickest as it leaves
+   the muzzle, and shrinks the whole way out — which, with an eased travel that
+   covers less screen the further it gets, is the whole of the depth. There is
+   no tracer: a line held between the muzzle and the target is a line drawn
+   across a flat page, and it was the one thing that gave the trick away.
+
    Nothing here is React state. A shot is a handful of divs, a transform per
    frame, and a `remove()`; putting bolts in state would re-render the whole
    project screen several times a second while somebody was enjoying
@@ -34,15 +44,14 @@ const SPEED = 3200
  *  screen still lands before you have stopped looking at it. */
 const FLIGHT = { min: 0.075, max: 0.34 }
 
-/** Length of the bolt itself, in pixels, and how much of the muzzle-to-target
- *  line the tracer keeps behind it. */
-const BOLT = 78
+/** Length of the bolt itself, in pixels, at its nearest. */
+const BOLT = 92
 
-/** How far apart the two muzzles sit at the bottom of the frame, as a
- *  fraction of the window's width either side of the middle. They alternate,
- *  which is what makes a run of shots read as a pair of cannons rather than
- *  one hose. */
-const MUZZLE = 0.16
+/** How big the bolt is leaving the muzzle and how small it is landing. The
+ *  ratio is the depth: anything under about two reads as a streak that got a
+ *  bit shorter, and much over four reads as a firework. */
+const NEAR = 1.5
+const FAR = 0.38
 
 const el = (className: string) => {
   const node = document.createElement('div')
@@ -61,12 +70,10 @@ export default function MechLaser() {
     // crosses in the shortest flight rather than travelling.
     const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-    let side = 1
     let raf = 0
 
     interface Bolt {
       node: HTMLDivElement
-      tracer: HTMLDivElement
       from: { x: number; y: number }
       to: { x: number; y: number }
       angle: number
@@ -90,14 +97,6 @@ export default function MechLaser() {
 
     const finish = (bolt: Bolt) => {
       bolt.node.remove()
-      // The tracer outlives the bolt by its own fade, which is the whole
-      // reason it is a separate element: the streak stays in the air for a
-      // beat after the thing that drew it has landed.
-      bolt.tracer.addEventListener('transitionend', () => bolt.tracer.remove(), { once: true })
-      // A transition on a layer that is not being painted never ends, and a
-      // tracer nobody removes is a line left across the screen.
-      window.setTimeout(() => bolt.tracer.remove(), 800)
-      bolt.tracer.style.opacity = '0'
       bolts.delete(bolt)
       if (bolts.size === 0) {
         cancelAnimationFrame(raf)
@@ -109,11 +108,21 @@ export default function MechLaser() {
       raf = requestAnimationFrame(tick)
       for (const bolt of bolts) {
         const at = Math.min(1, (now - bolt.fired) / (bolt.flight * 1000))
-        const x = bolt.from.x + (bolt.to.x - bolt.from.x) * at
-        const y = bolt.from.y + (bolt.to.y - bolt.from.y) * at
-        // The streak trails the point rather than straddling it: the head is
-        // where the bolt actually is, and the length is exhaust.
-        bolt.node.style.transform = `translate3d(${x}px, ${y}px, 0) rotate(${bolt.angle}deg) translate(-100%, -50%)`
+        /* Eased out, because something receding covers less screen the
+           further away it gets. A constant crossing is a sprite sliding
+           across a page, whatever size you draw it. */
+        const along = 1 - (1 - at) * (1 - at)
+        const x = bolt.from.x + (bolt.to.x - bolt.from.x) * along
+        const y = bolt.from.y + (bolt.to.y - bolt.from.y) * along
+        const size = NEAR + (FAR - NEAR) * along
+
+        /* The order matters. `translate(-100%, -50%)` is applied first, in the
+           element's own space, which puts the head of the streak on the
+           origin — so it stays exactly on the point through the scale and the
+           rotation that follow, at any distance. The tail is the only thing
+           that moves when the bolt shrinks. */
+        bolt.node.style.transform =
+          `translate3d(${x}px, ${y}px, 0) rotate(${bolt.angle}deg) scale(${size}) translate(-100%, -50%)`
 
         /* Tested against where the bird is *now* rather than where it was
            when you pressed. A bolt takes a couple of hundred milliseconds to
@@ -140,9 +149,8 @@ export default function MechLaser() {
       const host = layer.current
       if (!host) return
 
-      side = -side
       const from = {
-        x: window.innerWidth / 2 + side * window.innerWidth * MUZZLE,
+        x: window.innerWidth / 2,
         // On the bottom edge rather than under it: the layer clips, and a
         // discharge nobody can see is a sound with no picture.
         y: window.innerHeight - 2
@@ -152,17 +160,12 @@ export default function MechLaser() {
       const distance = Math.hypot(dx, dy)
       const angle = (Math.atan2(dy, dx) * 180) / Math.PI
 
-      // The tracer is the whole muzzle-to-target line, laid down at once and
-      // fading; the bolt is the bright head running along it.
-      const tracer = el('mech-tracer')
-      tracer.style.width = `${distance}px`
-      tracer.style.transform = `translate3d(${from.x}px, ${from.y}px, 0) rotate(${angle}deg) translate(0, -50%)`
-
       const node = el('mech-bolt')
       node.style.width = `${BOLT}px`
-      node.style.transform = `translate3d(${from.x}px, ${from.y}px, 0) rotate(${angle}deg) translate(-100%, -50%)`
+      node.style.transform =
+        `translate3d(${from.x}px, ${from.y}px, 0) rotate(${angle}deg) scale(${NEAR}) translate(-100%, -50%)`
 
-      host.append(tracer, node)
+      host.append(node)
 
       const flash = el('mech-muzzle')
       flash.style.transform = `translate3d(${from.x}px, ${from.y}px, 0) rotate(${angle}deg) translate(-50%, -50%)`
@@ -171,7 +174,6 @@ export default function MechLaser() {
 
       bolts.add({
         node,
-        tracer,
         from,
         to,
         angle,
@@ -202,10 +204,7 @@ export default function MechLaser() {
     return () => {
       window.removeEventListener('pointerdown', onDown)
       cancelAnimationFrame(raf)
-      for (const bolt of bolts) {
-        bolt.node.remove()
-        bolt.tracer.remove()
-      }
+      for (const bolt of bolts) bolt.node.remove()
       bolts.clear()
     }
   }, [])

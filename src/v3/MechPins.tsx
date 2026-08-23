@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { boxOf, leadersFor, pointIn, type Box } from './leaders'
 import { pins, type Note } from './notes'
+import { sound } from './sound'
 import type { Frame } from './model'
 
 /* Pinning the leaders.
@@ -90,17 +91,24 @@ export default function MechPins({ frame, notes, onClose }: Props) {
     node.addEventListener('pointerup', drop)
   }
 
+  /** A new line, pointing at a fraction of the picture, with its text out to
+   *  whichever side has more room. */
+  const addAt = (at: [number, number]) => {
+    const side = at[0] > 0.5 ? 1 : -1
+    write([...notes, { label: 'label', value: 'value', at, to: [at[0] + side * AWAY, at[1] - 0.1] }])
+  }
+
   /** Clicking the picture adds a note there. Anywhere else on the overlay is
    *  a miss and does nothing — the frame's own edges are the only thing that
-   *  make a fraction mean anything. */
+   *  make a fraction mean anything, which is why the box is drawn and why the
+   *  bar has a button for people who would rather not guess. */
   const add = (event: React.PointerEvent) => {
     if (dragging.current) return
     const rect = host.current?.getBoundingClientRect()
     if (!rect) return
     const at = fractionIn(rect, box, event.clientX, event.clientY)
     if (at[0] < -0.02 || at[0] > 1.02 || at[1] < -0.02 || at[1] > 1.02) return
-    const side = at[0] > 0.5 ? 1 : -1
-    write([...notes, { label: 'label', value: 'value', at, to: [at[0] + side * AWAY, at[1] - 0.1] }])
+    addAt(at)
   }
 
   const place = (x: number, y: number) => ({
@@ -120,7 +128,9 @@ export default function MechPins({ frame, notes, onClose }: Props) {
           width: `calc(${box.w} * var(--px))`,
           height: `calc(${box.h} * var(--px))`
         }}
-      />
+      >
+        <span>click anywhere in here to add a line</span>
+      </div>
 
       {laid.map((leader, i) => {
         const tip = notes[i].at ? pointIn(box, notes[i].at) : leader.tip
@@ -170,7 +180,18 @@ export default function MechPins({ frame, notes, onClose }: Props) {
 
       <div className="mech-pins-bar" onPointerDown={(event) => event.stopPropagation()}>
         <span className="mech-pins-id">{frame.id}</span>
-        <span className="mech-pins-hint">click the picture to add · drag the dot and the label</span>
+        <span className="mech-pins-hint">{notes.length} line{notes.length === 1 ? '' : 's'} · drag the dot and the label</span>
+        <button
+          className="mech-pins-add"
+          onClick={() => {
+            // Down the middle, stepped, so pressing it three times does not
+            // stack three lines on one spot.
+            sound.select()
+            addAt([0.5, 0.3 + (notes.length % 4) * 0.14])
+          }}
+        >
+          + line
+        </button>
         <button
           onClick={() => {
             const text = pins.source(frame.id)
