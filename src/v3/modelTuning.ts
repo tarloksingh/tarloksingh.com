@@ -166,7 +166,7 @@ export function useModelTuning(): ModelTuning {
         fill: { value: start.fill, min: 0.2, max: 0.95, step: 0.01, label: 'Fills' },
         lean: { value: start.lean, min: 0, max: 40, step: 0.5 }
       },
-      { collapsed: false }
+      { collapsed: true }
     ),
 
     Drift: folder(
@@ -191,7 +191,7 @@ export function useModelTuning(): ModelTuning {
         fillY: { value: start.fillY, min: -12, max: 12, step: 0.01 },
         fillZ: { value: start.fillZ, min: -12, max: 12, step: 0.01 }
       },
-      { collapsed: false }
+      { collapsed: true }
     ),
 
     Eyes: folder(
@@ -210,7 +210,7 @@ export function useModelTuning(): ModelTuning {
         blinkMin: { value: start.blinkMin, min: 0.5, max: 12, step: 0.1, label: 'Blink min' },
         blinkMax: { value: start.blinkMax, min: 1, max: 24, step: 0.1, label: 'Blink max' }
       },
-      { collapsed: false }
+      { collapsed: true }
     ),
 
     Material: folder(

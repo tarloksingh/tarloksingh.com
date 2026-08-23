@@ -63,11 +63,13 @@ export const byYear = (visible: Entry[]): Array<{ year: number; entries: Entry[]
   return [...buckets.entries()].sort((a, b) => b[0] - a[0]).map(([year, group]) => ({ year, entries: group }))
 }
 
-/** A poster for a 36px timeline square. Videos already have a still pulled at
- *  build time; models have none yet and fall back to a flat tile. */
+/** A poster for a 36px timeline square or a 68px rail tile. Never the master:
+ *  a dozen tiles each decoding a twelve-megapixel photograph to draw it at
+ *  seventy pixels is most of what a project screen costs to open. See
+ *  `MediaItem.thumb`. */
 export const thumbOf = (frame: Frame): string | null => {
   if (frame.kind === 'model') return null
-  return frame.type === 'video' ? (frame.poster ?? null) : frame.src
+  return frame.thumb ?? (frame.type === 'video' ? (frame.poster ?? null) : frame.src)
 }
 
 /* ---- the wall ----
@@ -92,7 +94,9 @@ export const wallItems: WallItem[] = (() => {
   const flat = entries.flatMap((entry) =>
     entry.frames.flatMap((frame): WallItem[] => {
       if (frame.kind === 'model') return []
-      const image = frame.type === 'video' ? frame.poster : frame.src
+      // The wall draws a few hundred pixels wide at most — the 1600 copy, not
+      // the master.
+      const image = frame.type === 'video' ? frame.poster : (frame.still ?? frame.src)
       if (!image) return []
       return [
         {

@@ -1,8 +1,7 @@
 import { useRef, useState } from 'react'
 import { boxOf, leadersFor, pointIn, type Box } from './leaders'
-import { pins, type Note } from './notes'
+import { addNote, pins, type Note } from './notes'
 import { sound } from './sound'
-import { copyText } from './clipboard'
 import type { Frame } from './model'
 
 /* Pinning the leaders.
@@ -27,10 +26,6 @@ interface Props {
   onClose: () => void
 }
 
-/** Where a brand new note's text lands before anyone has dragged it: out to
- *  the side there is more room on, and a little above the spot. */
-const AWAY = 0.42
-
 /** Client pixels to a fraction of the subject's box. The overlay is the whole
  *  1920×1080 frame, so a point in it converts through the frame first — and
  *  reading the rect per drag rather than per move keeps a drag from measuring
@@ -48,11 +43,6 @@ export default function MechPins({ frame, notes, onClose }: Props) {
   // so letting go of a handle over the picture does not also add a note.
   const dragging = useRef(false)
   const [live, setLive] = useState<number | null>(null)
-  /* What the copy buttons did. `copied` is which one last worked, and clears
-     itself; `manual` is the source held on screen because there was no
-     clipboard to put it on — see `clipboard.ts`. */
-  const [copied, setCopied] = useState<'frame' | 'all' | null>(null)
-  const [manual, setManual] = useState<string | null>(null)
 
   const write = (next: Note[]) => pins.set(frame.id, next)
 
@@ -98,11 +88,9 @@ export default function MechPins({ frame, notes, onClose }: Props) {
   }
 
   /** A new line, pointing at a fraction of the picture, with its text out to
-   *  whichever side has more room. */
-  const addAt = (at: [number, number]) => {
-    const side = at[0] > 0.5 ? 1 : -1
-    write([...notes, { label: 'label', value: 'value', at, to: [at[0] + side * AWAY, at[1] - 0.1] }])
-  }
+   *  whichever side has more room. Shared with the panel's own button, which
+   *  drops one down the middle. */
+  const addAt = (at: [number, number]) => addNote(frame.id, at, notes)
 
   /** Clicking the picture adds a note there. Anywhere else on the overlay is
    *  a miss and does nothing — the frame's own edges are the only thing that
@@ -120,25 +108,6 @@ export default function MechPins({ frame, notes, onClose }: Props) {
   /** Hands the source over: to the clipboard if this page is allowed one, and
    *  to a panel you can select out of if it is not. Either way it goes to the
    *  console, which is the one place it can always be got at. */
-  /* Copying is *also* shown, always. The clipboard is the part of this that
-     cannot be verified — there is no reading it back to check, `execCommand`
-     reports success it did not have, and on a plain http origin the modern
-     API is not there at all. So the source goes on screen either way, in a
-     field that is already selected: if the automatic copy worked the panel is
-     a receipt you close, and if it did not it is one keystroke. A copy button
-     that might have worked is not a copy button. */
-  const hand = (which: 'frame' | 'all') => {
-    const text = which === 'frame' ? pins.source(frame.id) : pins.source()
-    sound.select()
-    // eslint-disable-next-line no-console
-    console.log(`[pins] paste into NOTES in src/v3/notes.ts:\n\n${text}`)
-    setManual(text)
-    setCopied(null)
-    void copyText(text).then((ok) => {
-      if (ok) setCopied(which)
-    })
-  }
-
   const place = (x: number, y: number) => ({
     left: `calc(${x} * var(--px))`,
     top: `calc(${y} * var(--px))`
@@ -220,32 +189,10 @@ export default function MechPins({ frame, notes, onClose }: Props) {
         >
           + line
         </button>
-        <button onClick={() => hand('frame')}>copy this frame</button>
-        <button onClick={() => hand('all')}>copy all</button>
-        <button onClick={() => pins.clear(frame.id)}>revert</button>
+        <span className="mech-pins-hint">copy and revert are on the tuning panel</span>
         <button onClick={onClose}>done · P</button>
       </div>
 
-      {manual !== null && (
-        <div className="mech-pins-source" onPointerDown={(event) => event.stopPropagation()}>
-          <div className="mech-pins-source-head">
-            <span>
-              {copied
-                ? 'copied ✓ — and here it is, in case your browser said otherwise'
-                : 'select and copy — ⌘C'}
-            </span>
-            <button onClick={() => setManual(null)}>close</button>
-          </div>
-          <textarea
-            readOnly
-            value={manual}
-            ref={(el) => {
-              el?.focus()
-              el?.select()
-            }}
-          />
-        </div>
-      )}
     </div>
   )
 }

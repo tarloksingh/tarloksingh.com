@@ -11,7 +11,8 @@ import MechDeck from './MechDeck'
 import { sound } from './sound'
 import { drift, flinch, quarry } from './subject'
 import { entries, thumbOf, type Entry, type Frame } from './model'
-import { notesFor, pins, type Note } from './notes'
+import { focus, notesFor, pins, type Note } from './notes'
+import { useLabelTuning, type Handed } from './labelTuning'
 import { boxOf, leadersFor, mediaBox, MODEL_BOX } from './leaders'
 import './Mech.css'
 
@@ -92,6 +93,9 @@ interface Cell {
   tone: number
   scale: number
   turn: number
+  /** In the overspill ring rather than over the picture. Nothing here has
+   *  anything to hide, so a black one only paints over the dashboard. */
+  edge: boolean
 }
 
 const grids = new Map<string, { columns: number; rows: number; cells: Cell[] }>()
@@ -146,7 +150,12 @@ const gridFor = (box: { w: number; h: number }) => {
          turned by θ needs cos θ + sin θ of scale to still cover its own
          cell, which is where the floor of 1.1 comes from. */
       scale: 1.1 + Math.random() * 0.12,
-      turn: Math.round((Math.random() * 2 - 1) * 5)
+      turn: Math.round((Math.random() * 2 - 1) * 5),
+      edge:
+        (i % columns) < BLEED ||
+        (i % columns) >= columns - BLEED ||
+        Math.floor(i / columns) < BLEED ||
+        Math.floor(i / columns) >= rows - BLEED
     }
   })
 
@@ -181,7 +190,7 @@ const warm = (frame: Frame | undefined) => {
 
   if (frame.type === 'image') {
     const image = new Image()
-    image.src = frame.src
+    image.src = frame.still ?? frame.src
     // `decode` is the part that matters — a fetch alone leaves the expensive
     // half to happen on the frame it is first painted.
     void image.decode?.().catch(() => {})
@@ -355,6 +364,7 @@ function Disintegration({ frame, phase }: { frame: Frame; phase: 'out' | 'in' })
         <span
           key={i}
           data-tone={cell.tone}
+          data-edge={cell.edge}
           style={{
             ['--out' as string]: `${cell.out}ms`,
             ['--in' as string]: `${cell.in}ms`,
@@ -548,7 +558,8 @@ function Flat({ frame, index, count, onReady }: FrameProps) {
       ) : (
         <img
           className="mech-media"
-          src={frame.src}
+          // The 1600px copy, never the master — see `MediaItem.still`.
+          src={frame.still ?? frame.src}
           alt={frame.label ?? ''}
           // Decoded off the main thread, and the cover held until it is —
           // `load` only means the bytes arrived, and uncovering onto a
@@ -620,6 +631,57 @@ function Flat({ frame, index, count, onReady }: FrameProps) {
   )
 }
 
+/* ---- the source, on screen ----
+
+   Whatever the copy buttons hand over is also shown, always, in a field that
+   is already selected. The clipboard is the one part of this that cannot be
+   checked: there is no reading it back, `execCommand` reports success it did
+   not have, and on a plain http origin — which is what the dev server is over
+   the tailnet — the modern API is not there at all.
+
+   Portalled to `body` rather than drawn on the readout. Inside `.mech` the
+   native cursor is hidden, so a text field there is one you cannot see
+   yourself select in, and the pin overlay treats every press as a placement.
+   Out here it is an ordinary dialog and ⌘C is an ordinary ⌘C. */
+function Source({ handed, onClose }: { handed: Handed; onClose: () => void }) {
+  const field = useRef<HTMLTextAreaElement>(null)
+
+  // In an effect rather than a ref callback: the button that opened this still
+  // has the focus at the moment the ref runs, and whichever of the two lands
+  // second is the one that wins.
+  useEffect(() => {
+    if (!handed) return
+    const timer = window.setTimeout(() => {
+      field.current?.focus()
+      field.current?.select()
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [handed])
+
+  if (!handed) return null
+
+  return createPortal(
+    <div className="mech-source" role="dialog" aria-label="Label source">
+      <div className="mech-source-head">
+        <span>
+          {handed.copied ? 'copied ✓' : 'no clipboard on this origin'} — paste into NOTES in src/v3/notes.ts
+        </span>
+        <button
+          onClick={() => {
+            field.current?.focus()
+            field.current?.select()
+          }}
+        >
+          select all
+        </button>
+        <button onClick={onClose}>close</button>
+      </div>
+      <textarea ref={field} readOnly value={handed.text} spellCheck={false} />
+    </div>,
+    document.body
+  )
+}
+
 /** How long the machine takes to come up: the grid strikes on, the compass
  *  spins and settles, and only then do the leaders extend. */
 const BOOT_MS = 1500
@@ -669,6 +731,11 @@ function Typed({ text, run }: { text: string; run: string }) {
 
 export default function Mech({ id, onProject, onHome }: Props) {
   const tuning = useModelTuning()
+  /* The label maker's half that belongs on the panel rather than over the
+     picture: copying out, reverting, and adding a line without having a
+     picture to click on. See `labelTuning.ts`. */
+  const [handed, setHanded] = useState<Handed>(null)
+  useLabelTuning(setHanded)
   /* The project on screen trails the one in the URL by a transit, the same
      way the frame trails the tile you picked. Retargeting is the readout
      swinging over to something else, not a page being replaced. */
@@ -785,6 +852,11 @@ export default function Mech({ id, onProject, onHome }: Props) {
     }
   }, [current])
 
+  // What the panel's label buttons act on.
+  useEffect(() => {
+    focus.id = current?.id ?? ''
+  }, [current])
+
   // P opens the pin editor, in development. Not while something is being
   // typed into — the editor is mostly text fields, and a shortcut that fires
   // inside one is a shortcut that cannot be spelled.
@@ -863,6 +935,8 @@ export default function Mech({ id, onProject, onHome }: Props) {
             document.body
           )
         : null}
+
+      <Source handed={handed} onClose={() => setHanded(null)} />
 
       <MechHud />
       <MechCursor />

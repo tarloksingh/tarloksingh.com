@@ -10,8 +10,9 @@ npm run build    # tsc -b && vite build
 node scripts/check-media.mjs   # every file the project data quotes exists
 ```
 
-Adding media is three scripts, in this order: `bash scripts/posters.sh`,
-`bash scripts/field-clips.sh`, `node scripts/media-manifest.mjs`.
+Adding media is four scripts, in this order: `bash scripts/posters.sh`,
+`bash scripts/field-clips.sh`, `node scripts/stills.mjs`,
+`node scripts/media-manifest.mjs`.
 
 The dev server binds to `0.0.0.0` and `vite.config.ts` allow-lists `.ts.net`,
 so the site is reachable over the tailnet while `npm run dev` is running —
@@ -202,14 +203,21 @@ Placing is not typing. Press **P** on a project screen in development:
   leave its other end in a slot it no longer shares
 - the three fields are the label, the value, and the fold in the left column
   the line is evidence for (hovering either lights the other)
-- **copy this frame** / **copy all** hands back source to paste into `NOTES` in
-  `notes.ts`, and **revert** puts the frame back to what the file says
+- **copying and reverting are on the tuning panel**, in a `Labels` folder, not
+  on the overlay — see below
 
 **The transport is drawn, not typed.** It was a row of single characters —
 `▶`, `⊘`, `⤢` — at eleven frame pixels, which is a row of specks: you could not
 tell the full screen control from the mute one, which is the only thing either
 of them has to say. They are SVG now, at the same weight of line as the reticle
 and the bird, in a hit target you can actually hit.
+
+**The two halves are split by what they are for.** Placing a label wants to be
+over the picture; getting one out does not. The overlay lives inside `.mech`,
+where the native cursor is hidden and every press is a placement — a text field
+in there is one you cannot see yourself select in. So the copy and revert
+buttons are a `Labels` folder on the Subject tuning panel, which is portalled
+to `body`, and the source itself opens in a dialog portalled there too.
 
 **Copying works on a plain http origin.** `navigator.clipboard` only exists in
 a secure context — HTTPS, or localhost — and the dev server here is reached
@@ -221,12 +229,16 @@ decline to copy a selection out of something they consider invisible and the
 `opacity: 0` version of that trick is a copy that reports success and puts
 nothing on the clipboard.
 
-And the source goes on screen **either way**, in a field that is already
-selected. The clipboard is the one part of this that cannot be verified: there
-is no reading it back to check, `execCommand` reports success it did not have,
-and on this origin the modern API is not there at all. If the automatic copy
-worked the panel is a receipt you close; if it did not, it is one keystroke. A
-copy button that might have worked is not a copy button.
+And the source goes on screen **either way**, in a field that is focused and
+already selected. The clipboard is the one part of this that cannot be
+verified: there is no reading it back to check, `execCommand` reports success
+it did not have, and on this origin the modern API is not there at all. If the
+automatic copy worked the dialog is a receipt you close; if it did not, it is
+one ⌘C. A copy button that might have worked is not a copy button.
+
+The focus is set in an effect rather than a ref callback, because the button
+that opened the dialog still has the focus at the moment a ref runs and
+whichever of the two lands second is the one that wins.
 
 The tuning panels' copy buttons go through the same helper, for the same
 reason.
@@ -246,6 +258,13 @@ a square turned by θ needs `cos θ + sin θ` of scale to still cover its cell,
 which is where the floor of 1.1 comes from. The field overspills the subject by
 three cells with its tint thinned toward the edges, so the green fades off into
 black instead of stopping at a ruled line.
+
+**Nothing black paints past the picture.** The field overspills by three cells
+so the green fades off rather than stopping at a ruled line — but a black cell
+out there has no picture to hide and paints over the dashboard grid instead,
+which is where the hard black rectangle around every dissolve came from. Only
+the lit cells reach past the edge now, and they fade out rather than settling
+to black.
 
 Three phases, not two. `hold` is after the cover completes and before it lifts:
 the incoming still or clip is mounted but has not necessarily painted, and
@@ -400,6 +419,34 @@ one moment there is none to spare:
   before anything is built, so most of a project's frames share one grid and
   swapping between them touches no DOM at all; the shapes a project does need
   are worked out on an idle callback while the machine is still booting.
+
+### Nothing shows a master
+
+The stills in `src/assets/<project>/` are camera and render output: 2316×3088,
+3024×4032, several megabytes each. The stage they land on is 780×730 frame
+pixels — about 1600 device pixels on a retina display at the frame's widest —
+and the rail tile beside it is sixty-eight.
+
+Measured in Chrome, one 2316×3088 webp costs **~256ms to fetch and ~144ms to
+decode**, and the decode is on the main thread. A dozen rail tiles each
+decoding a twelve-megapixel photograph to draw it at seventy pixels is most of
+what opening a project used to cost. That was the pause between one picture and
+the next, and no amount of prefetching fixes a decode that big — it only moves
+it.
+
+So `scripts/stills.mjs` builds two copies of every still:
+
+| | Long edge | What uses it |
+|---|---|---|
+| `src/assets/stills/` | 1600 | The stage, the wall, the index screen |
+| `src/assets/thumbs/` | 400 | The rail tiles and the timeline squares |
+
+They arrive as `MediaItem.still` and `MediaItem.thumb`, both falling back to
+`src` if the script has not been run. **Nothing that displays an image should
+read `src`.** The script uses `sips`, which is in macOS and reads webp — it
+cannot write webp, so the output is jpeg, the same as `posters.sh`, and at
+these sizes the difference is tens of kilobytes. Rerunning it only rebuilds
+what is missing or older than its master.
 
 ### Sound
 

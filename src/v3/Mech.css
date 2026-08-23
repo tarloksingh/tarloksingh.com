@@ -453,6 +453,15 @@
   --tone: rgba(var(--accent-rgb), 0.9);
 }
 
+/* The overspill ring has no picture under it, so a black cell out there is
+   not hiding anything — it is painting over the dashboard grid, which is
+   where the ruled black rectangle around every dissolve came from. Only the
+   lit cells reach past the picture's edge, and they fade out rather than
+   settling to black. */
+.mech-dissolve span[data-edge='true'][data-tone='0'] {
+  background: transparent;
+}
+
 /* Going out, the tinted cells settle to black behind the cover: the picture
    is eaten by something bright and what is left is dark. Stepped, because a
    pixel resolving through a smooth gradient is not a pixel. */
@@ -461,12 +470,25 @@
   animation-delay: var(--out);
 }
 
+.mech-dissolve[data-phase='out'] span[data-edge='true']:not([data-tone='0']) {
+  animation-name: mech-settle-edge;
+}
+
 @keyframes mech-settle {
   from {
     background: var(--tone);
   }
   to {
     background: #000;
+  }
+}
+
+@keyframes mech-settle-edge {
+  from {
+    background: var(--tone);
+  }
+  to {
+    background: transparent;
   }
 }
 
@@ -1660,49 +1682,72 @@
   font-weight: 600;
 }
 
-/* The way out when there is no clipboard. Middle of the screen, monospaced,
-   and selected the moment it appears. */
-.mech-pins-source {
-  position: absolute;
+/* ---- the source, on screen ----
+
+   Portalled to `body`, so none of `.mech`'s rules reach it: the cursor is a
+   real cursor, the text is really selectable, and ⌘C is an ordinary ⌘C. Its
+   own colours for the same reason — the accent tokens live on `.mech` and
+   this is not inside it. */
+.mech-source {
+  position: fixed;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: min(760px, 80%);
-  padding: 10px;
-  background: rgba(4, 9, 8, 0.97);
-  border: 1px solid var(--accent);
-  box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+  z-index: 3000;
+  width: min(780px, 88vw);
+  padding: 12px;
+  background: #050a09;
+  border: 1px solid #86e2b4;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.85);
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  cursor: auto;
 }
 
-.mech-pins-source-head {
+.mech-source-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-  font-size: 11px;
-  color: var(--accent);
+  gap: 10px;
+  margin-bottom: 9px;
+  font-size: 11.5px;
+  letter-spacing: 0.3px;
+  color: #86e2b4;
 }
 
-.mech-pins-source-head button {
-  padding: 2px 8px;
-  border: 1px solid rgba(var(--accent-rgb), 0.4);
+.mech-source-head span {
+  flex: 1;
+}
+
+.mech-source-head button {
+  padding: 3px 9px;
+  border: 1px solid rgba(134, 226, 180, 0.45);
   background: none;
   font: inherit;
-  font-size: 11px;
-  color: var(--accent);
+  font-size: 11.5px;
+  color: #86e2b4;
+  cursor: pointer;
 }
 
-.mech-pins-source textarea {
+.mech-source-head button:hover {
+  background: rgba(134, 226, 180, 0.14);
+}
+
+.mech-source textarea {
+  display: block;
   width: 100%;
-  height: 260px;
-  padding: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  height: 300px;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
   background: #000;
   color: #cfe9dc;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
-  line-height: 1.5;
+  font-size: 11.5px;
+  line-height: 1.55;
   resize: vertical;
+  /* Both said out loud. This is a text field that has to behave like one, and
+     it is a portal away from a subtree where neither is the default. */
+  cursor: text;
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 /* ---- the gun ----

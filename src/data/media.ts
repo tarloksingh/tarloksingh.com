@@ -35,6 +35,22 @@ const clipModules = import.meta.glob('../assets/clips/*/*.mp4', {
   import: 'default'
 }) as Record<string, string>
 
+// Display-sized copies of the stills (`scripts/stills.mjs`), at 1600 and 400
+// on the long edge. The masters are camera output — two and three thousand
+// pixels, several megabytes — and one of those costs about 140ms of main
+// thread to decode however fast it arrives. Nothing on this site ever shows a
+// still larger than about 1600 device pixels, and the tiles show it at
+// seventy. See `MediaItem.still` and `MediaItem.thumb`.
+const stillModules = import.meta.glob('../assets/stills/*/*.jpg', {
+  eager: true,
+  import: 'default'
+}) as Record<string, string>
+
+const thumbModules = import.meta.glob('../assets/thumbs/*/*.jpg', {
+  eager: true,
+  import: 'default'
+}) as Record<string, string>
+
 /** "../assets/capsule-c1/hero.mp4" -> "capsule-c1/hero.mp4" */
 const keyBy = (pattern: RegExp) => (modules: Record<string, string>) => {
   const out: Record<string, string> = {}
@@ -49,6 +65,8 @@ const videos = keyBy(/\.\.\/assets\/([^/]+\/[^/]+)$/)(videoModules)
 const images = keyBy(/\.\.\/assets\/([^/]+\/[^/]+)$/)(imageModules)
 const posters = keyBy(/\.\.\/assets\/posters\/([^/]+\/[^/]+)\.jpg$/)(posterModules)
 const clips = keyBy(/\.\.\/assets\/clips\/([^/]+\/[^/]+)\.mp4$/)(clipModules)
+const stills = keyBy(/\.\.\/assets\/stills\/([^/]+\/[^/]+)\.jpg$/)(stillModules)
+const thumbs = keyBy(/\.\.\/assets\/thumbs\/([^/]+\/[^/]+)\.jpg$/)(thumbModules)
 
 export interface MediaItem {
   type: 'video' | 'image'
@@ -61,6 +79,14 @@ export interface MediaItem {
    *  couple of hundred pixels wide, and playing every one of them at once is
    *  only affordable at this size. Never used on a case study. */
   clip?: string
+  /** For images: the same picture at 1600 and at 400 on the long edge
+   *  (`scripts/stills.mjs`). `still` is what anything showing the picture
+   *  should render — the master is two to twelve megapixels and decoding one
+   *  is over a tenth of a second of main thread — and `thumb` is for the rail
+   *  tiles and the timeline squares. Both fall back to `src` if the
+   *  derivatives have not been generated. */
+  still?: string
+  thumb?: string
   /** Caption, as written on the original case study. */
   label?: string
   /** Videos carrying real audio, as opposed to silent screen captures. */
@@ -81,6 +107,7 @@ export function resolveVideo(projectId: string, filename: string, label?: string
     type: 'video',
     src,
     poster: posters[stem],
+    thumb: posters[stem],
     clip: clips[stem],
     label,
     hasSound,
@@ -93,7 +120,16 @@ export function resolveImage(projectId: string, filename: string, label?: string
   const id = `${projectId}/${filename}`
   const src = images[id]
   if (!src) return null
-  return { type: 'image', src, label, aspect: aspectOf(id), id }
+  const stem = `${projectId}/${filename.replace(/\.[^.]+$/, '')}`
+  return {
+    type: 'image',
+    src,
+    still: stills[stem] ?? src,
+    thumb: thumbs[stem] ?? stills[stem] ?? src,
+    label,
+    aspect: aspectOf(id),
+    id
+  }
 }
 
 /** Every filename the data quotes that has no matching asset on disk. */

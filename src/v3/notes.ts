@@ -112,6 +112,12 @@ const asSource = (id: string, notes: Note[]) => {
   return `  '${id}': [\n${notes.map(line).join(',\n')}\n  ]`
 }
 
+/** Which frame the readout is showing, so the tuning panel's label buttons
+ *  have something to act on. The panel is mounted once and its buttons close
+ *  over nothing; this is what they read, the same trick `modelTuning`'s copy
+ *  button uses with `live`. */
+export const focus = { id: '' }
+
 export const pins = {
   /** The whole draft. Handed to `useSyncExternalStore`, so it has to be the
    *  same object until something actually changes. */
@@ -154,3 +160,11 @@ export const pins = {
  *  the table if the frame is written down, and a derived pair if not. */
 export const notesFor = (entry: Entry, frame: Frame, drafts: Draft = draft): Note[] =>
   drafts[frame.id] ?? NOTES[frame.id] ?? derive(entry, frame)
+
+/** Add a line to a frame's draft, pointing at a fraction of its picture. Used
+ *  by the editor's own click-to-place and by the panel's button, which has no
+ *  picture to click on. */
+export const addNote = (id: string, at: [number, number], from: Note[]) => {
+  const side = at[0] > 0.5 ? 1 : -1
+  pins.set(id, [...from, { label: 'label', value: 'value', at, to: [at[0] + side * 0.42, at[1] - 0.1] }])
+}

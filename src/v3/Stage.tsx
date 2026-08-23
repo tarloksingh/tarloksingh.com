@@ -105,7 +105,7 @@ function Slide({ frame, active }: { frame: Frame; active: boolean }) {
         ) : frame.type === 'video' ? (
           <Video frame={frame} active={active} />
         ) : (
-          <img src={frame.src} alt={frame.label ?? ''} loading="lazy" />
+          <img src={frame.still ?? frame.src} alt={frame.label ?? ''} loading="lazy" decoding="async" />
         )}
       </div>
     </div>
