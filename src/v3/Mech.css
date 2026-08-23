@@ -93,19 +93,6 @@
      scales by `--px`, where a rem cannot reach. They multiply by `--type-k`
      instead — the same ratio as a plain number, set in `Mech.tsx`. */
   --type: max(var(--px), 0.0651rem);
-  /* The entry curves, mirrored — for anything played with `reverse`.
-
-     `reverse` runs the keyframes backwards but evaluates the timing function
-     at 1−t rather than mirroring it, so an entry that starts fast comes out as
-     an exit that does nothing and then snaps. Measured on the leader: a
-     quarter of the way through its retract the line had given back 2px of
-     170, and half way through, 13 — which on screen is a line sitting still
-     and then vanishing, not a line being taken back off.
-
-     Mirroring a cubic-bezier is `(1−x2, 1−y2, 1−x1, 1−y1)`. These are the two
-     the entries use, put through that. */
-  --ease-back: cubic-bezier(0.7, 0, 0.7, 0.2);
-  --ease-back-soft: cubic-bezier(0.75, 0, 0.75, 0.9);
   --dim: #4a544f;
   --mid: #7e8c85;
   --ease: cubic-bezier(0.22, 0.85, 0.25, 1);
@@ -486,58 +473,69 @@
 /* ---- entries, and their inverses ----
 
    Everything mounted around the picture arrives with an animation and leaves
-   by running that same animation backwards. Not a fade out: a fade out of a
-   thing that popped in is a different gesture, and the housing reads as being
-   *placed* and then *taken*, which is the whole difference between furniture
-   and decoration.
+   by undoing it. Not a fade out: a fade out of a thing that was drawn on, or
+   popped in, is a different gesture, and the housing should read as being
+   *placed* and then *taken*.
 
-   `reverse` rather than a second set of keyframes, so there is one description
-   of each move and no way for the two directions to drift apart. Changing the
-   `animation` shorthand restarts it, which is what makes the covered flag
-   enough to drive this — no timers, and no state beyond the one attribute.
+   **Each exit is its own keyframes, and that is not a style choice.** The
+   obvious way to write this is the entry with `animation-direction: reverse`,
+   and it does not work, for two reasons that both look like the animation is
+   missing:
 
-   All of it waits out the picture's own fade first: the housing goes after
-   the thing it was holding, the same way the leaders do. */
+   A `reverse` animation runs its keyframes backwards but evaluates its timing
+   function at 1−t rather than mirroring it, so an entry that starts fast comes
+   out as an exit that sits still and then snaps.
+
+   And — the one that actually bit — **an animation is only restarted when its
+   `animation-name` changes.** Going from `mech-draw` on the way in to
+   `mech-draw reverse` on the way out leaves the *same* running animation in
+   place with new timing bolted on. Its current time is already seconds past
+   the end of the entry, so it lands in the after-phase immediately and holds
+   the finished value: the line is not retracted, it is simply gone on the next
+   frame. Nothing animates, and nothing in the DOM looks wrong — the animation
+   is attached, with the right duration and direction, and it is over.
+
+   Different names force the browser to build a new animation with a current
+   time of zero. `mech-pop`/`mech-unpop`, `mech-draw`/`mech-undraw`,
+   `mech-fade`/`mech-out`. Forward, so the curve means what it says.
+
+   All of it waits out the picture's own fade first: the housing goes after the
+   thing it was holding, the same way the leaders do. */
 .mech-stage[data-covered='true'] .mech-housing-label,
-.mech-stage[data-covered='true'] .mech-transport {
-  animation: mech-pop 240ms var(--ease-back) 140ms reverse both;
-}
-
+.mech-stage[data-covered='true'] .mech-transport,
 .mech-stage[data-covered='true'] .mech-corner {
-  animation: mech-pop 240ms var(--ease-back) 140ms reverse both;
+  animation: mech-unpop 240ms var(--ease) 140ms both;
 }
 
-/* A leader does not fade out. It runs its arrival backwards: what came last
-   goes first, and the line — drawn on before any of it — is taken back off
-   after everything it was carrying. `reverse` on the same keyframes, so the
-   line retracts to the tip it grew from rather than dissolving in place.
+/* A leader does not fade out. Its entry draws the line on out of nothing, so
+   its exit takes the line back off, to the tip it grew from.
 
-   The order is mirrored, the per-leader cascade is not: three lines leaving
-   one after another is a slow goodbye, and the way out has a swap waiting on
-   it. Everything under 560, which is what `EXIT_MS` is set against. */
+   The order is mirrored — what came last goes first, and the line is taken off
+   after everything it was carrying — but the per-leader cascade is not: three
+   lines leaving one after another is a slow goodbye, and there is a swap
+   waiting on it. Everything is done by 560, which is what `EXIT_MS` is set
+   against. */
 .mech-stage[data-covered='true'] .mech-leader-mark,
 .mech-stage[data-covered='true'] .mech-leader-core {
-  animation: mech-fade 240ms var(--ease-back-soft) 140ms reverse both;
+  animation: mech-out 240ms var(--ease) 140ms both;
 }
 
 .mech-stage[data-covered='true'] .mech-leader-value {
-  animation: mech-fade 220ms var(--ease-back-soft) 180ms reverse both;
+  animation: mech-out 220ms var(--ease) 180ms both;
 }
 
 .mech-stage[data-covered='true'] .mech-leader-label {
-  animation: mech-fade 220ms var(--ease-back-soft) 220ms reverse both;
+  animation: mech-out 220ms var(--ease) 220ms both;
 }
 
 .mech-stage[data-covered='true'] .mech-leader {
-  animation: mech-draw 380ms var(--ease-back) 180ms reverse both;
+  animation: mech-undraw 380ms var(--ease) 180ms both;
 }
 
-/* The ping is a loop rather than an entry, so there is nothing to run
-   backwards — it just stops being there with the mark it came out of. Its own
-   keyframes, because `mech-fade` reversed would land on the element's
-   underlying opacity, and the ping never declares one. */
+/* The ping is a loop rather than an entry, so there is nothing to undo — it
+   goes out with the mark it came from. */
 .mech-stage[data-covered='true'] .mech-leader-ping {
-  animation: mech-out 200ms ease 140ms both;
+  animation: mech-out 200ms var(--ease) 140ms both;
 }
 
 /* ---- the housing ----
@@ -776,7 +774,7 @@
   .mech-stage[data-covered='true'] .mech-corner,
   .mech-stage[data-covered='true'] .mech-housing-label,
   .mech-stage[data-covered='true'] .mech-transport {
-    animation: mech-fade 240ms var(--ease-back-soft) 140ms reverse both;
+    animation: mech-out 240ms 140ms both;
   }
 }
 
@@ -994,9 +992,31 @@
   }
 }
 
+/* Both ends written out. `mech-out` is used on elements that declare
+   `opacity: 0` themselves — the leader's text and its mark, which are invisible
+   until their entry runs — and an implicit `from` would take that underlying 0
+   and fade nothing to nothing. */
 @keyframes mech-out {
+  from {
+    opacity: 1;
+  }
   to {
     opacity: 0;
+  }
+}
+
+/* The implicit end here is the underlying `stroke-dashoffset`, which is the
+   line's own length: drawn at 0, taken back off to `--l`. */
+@keyframes mech-undraw {
+  from {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes mech-unpop {
+  to {
+    opacity: 0;
+    scale: 0.88;
   }
 }
 

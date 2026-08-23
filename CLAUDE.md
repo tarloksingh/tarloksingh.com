@@ -102,7 +102,11 @@ collapse, scanline sweep, ordered dither, slat flip) were all more cover. What
 it is instead is a sequence: the picture fades out, the labels pointing at it
 follow it out, the next picture fades in, and its labels draw themselves in.
 Four beats, timed in `Mech.css` beside the rules that use them, with `EXIT_MS`
-in `Mech.tsx` covering the first two. The canvas and its grid are gone; see
+in `Mech.tsx` covering the first two. Every exit has **its own keyframes** —
+`mech-unpop`, `mech-undraw`, `mech-out` — never the entry with
+`animation-direction: reverse`: an animation is only restarted when its
+`animation-name` changes, so reusing the name leaves the finished entry running
+and the exit never plays. The canvas and its grid are gone; see
 **The swap** in `README.md`, and `50629fd` for the dissolve if it is wanted.
 
 **Type is on its own unit.** `--type: max(var(--px), 0.0651rem)` — the same rem

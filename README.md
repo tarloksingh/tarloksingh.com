@@ -325,16 +325,34 @@ without a timer: the set that is leaving belongs to the frame that is leaving,
 and the set arriving mounts at the moment the next picture starts, which is
 what its own draw-in is timed against.
 
-**Nothing here fades out. Everything runs its entry backwards.** A fade out of
-a thing that was drawn on, or popped in, is a different gesture from the one it
-arrived with — and the housing is furniture, so it should read as being
-*placed* and then *taken*. So the corner brackets, the strip naming the frame
-and the transport under it each pop in on `mech-pop`, and leave on the same
-keyframes with `animation-direction: reverse`; a leader is drawn on with
-`mech-draw` and retracts along `mech-draw` reversed, back to the tip it grew
-from. One description of each move, and no way for the two directions to drift
-apart. Swapping the `animation` shorthand restarts it, so `[data-covered]` is
-the whole mechanism — no timers, no second state.
+**Nothing here fades out. Everything undoes its entry.** A fade out of a thing
+that was drawn on, or popped in, is a different gesture from the one it arrived
+with — and the housing is furniture, so it should read as being *placed* and
+then *taken*. The corner brackets, the strip naming the frame and the transport
+under it pop in on `mech-pop` and leave on `mech-unpop`; a leader is drawn on
+with `mech-draw` and taken back off with `mech-undraw`, retracting to the tip it
+grew from. `[data-covered]` is the whole mechanism — no timers, no second state.
+
+**Each exit is its own keyframes, and that is not a style choice.** The obvious
+way to write this is the entry with `animation-direction: reverse`, and it fails
+twice, both times looking like the animation is simply missing:
+
+- A `reverse` animation runs its keyframes backwards but evaluates its timing
+  function at 1−t rather than mirroring it. Every entry here starts fast and
+  eases out, so every exit sat still and then snapped — a quarter of the way
+  through its retract the leader had given back 2px of 170.
+- And **an animation is only restarted when its `animation-name` changes.**
+  `mech-draw` in and `mech-draw reverse` out is the *same* running animation
+  with new timing bolted onto it. By then its current time is seconds past the
+  end of the entry, so it lands in the after-phase on the first frame and holds
+  the finished value. The line is not retracted, it is gone. Nothing in the DOM
+  looks wrong either: the animation is attached, with the right duration and
+  the right direction, and it is over. This is invisible in a background tab,
+  where animations never advance and the current time is still near zero, which
+  is exactly where it was first looked for.
+
+Different names force a new animation with a current time of zero, and let the
+exits run forward so their curves mean what they say.
 
 Only the *picture* fades, because a photograph has no entry to undo. Out is
 quicker than in either way: a picture leaving is a thing being taken away and
@@ -350,17 +368,6 @@ against those selectors did nothing at all. `Mech.tsx` now sets one variable —
 `Mech.css` beside everything else. Going out the order is mirrored, what came
 last leaving first; the per-leader cascade is not, because three lines leaving
 one after another is a slow goodbye and there is a swap waiting on it.
-
-**`reverse` alone is not an inverse.** It runs the keyframes backwards but
-evaluates the timing function at 1−t rather than mirroring it, so an entry that
-starts fast and eases out becomes an exit that sits still and then snaps.
-Measured on a leader before this was fixed: a quarter of the way through its
-retract the line had given back 2px of 170, and half way through, 13 — a line
-not moving and then vanishing, which is exactly what it looked like. Mirroring
-a cubic-bezier is `(1−x2, 1−y2, 1−x1, 1−y1)`; the two entry curves put through
-that are `--ease-back` and `--ease-back-soft`, and every reversed animation
-uses one of them. The same retract now reads 43% / 75% / 93% at the same three
-points.
 
 The brackets are a case of two animations on one element: the entry owns
 `opacity` and `scale`, the breath owns `transform`. Separate properties on
