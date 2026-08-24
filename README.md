@@ -299,12 +299,28 @@ on the stage stood in any relation to it — move a subject back and it slid
 across a flat backdrop. And it could not move, which on a page where the
 brackets breathe and the compass drifts made it the one dead layer on screen.
 
-So it is geometry, in the cast's own canvas and therefore in the cast's own
-space: one plane, 200×200 vertices, displaced in a vertex shader and lit by
-nothing. The subjects stand in front of it because they are actually in front
-of it. Four sines at incommensurable rates, not noise — noise wants to look
-like terrain and this wants to look like a signal, something generated rather
-than somewhere real.
+So it is geometry: one plane, 200×200 vertices, displaced in a vertex shader
+and lit by nothing. Four sines at incommensurable rates, not noise — noise
+wants to look like terrain and this wants to look like a signal, something
+generated rather than somewhere real.
+
+**Its own canvas, at the size of the window.** It went inside the cast's
+canvas first, which put it inside `.mech-frame` — and that frame is a 16:9
+column, because `--px` takes the smaller of a width term and a height term. On
+any window wider than 16:9 the wave stopped in mid-air at the letterbox while
+the phosphor grid behind it ran to the edges, and a horizon with a vertical
+cut down each side is not a horizon. It cannot both share the cast's canvas
+and be full-bleed: that canvas is where the subjects are placed, and widening
+it would move every one of them.
+
+So it is a second context — which it can afford to be, with no lights, no
+environment map, no raycasting, one mesh, one material and `dpr={1}`. It stays
+glued to the cast because it is handed the same lens: same focal length, same
+camera height, same distance. The vertical framing is therefore identical and
+the horizon lands on exactly the scanline it would have landed on inside the
+frame. Only the sideways extent differs, which is the whole point. That makes
+three WebGL contexts on home — cast, face, wave — and none on a project
+screen but the subject's.
 
 **The lines are drawn in the fragment shader, not built out of geometry.**
 `wireframe: true` on a triangulated plane draws the diagonals too, which reads
@@ -321,15 +337,22 @@ of running at full strength and stopping. A linear ramp put a bright band
 exactly where the surface goes edge-on to the camera, which is the one place a
 horizon must not have an edge.
 
-Additive, `depthWrite: false`, `renderOrder: -1`. It never occludes a subject
-however far forward hover brings one, and never fights one for the depth
-buffer — it is a light source in the composition, not an object in it. Which
-is also why `far` on the cast's camera reaches 140 while `near` stays wrapped
-tight: depth precision is governed almost entirely by the near plane, so the
-distance the wave needs costs nothing.
+Additive and `depthWrite: false` — it is a light source in the composition,
+not an object in it, and nothing shares its scene to fight for the depth
+buffer.
 
-Its own folder on the Cast panel — height, tightness, speed, drop, push back,
-cells, reach, brightness, and the two colours.
+Colour is three stops, not two: a two-stop ramp makes every middle height a
+muddy blend of the ends, so there is a trough, a middle and a crest. On top of
+that, **Bright** is a straight multiplier on the colour (past 1 it blows the
+crests out, which over black is exactly the look), **Glow** is how much hotter
+crests and intersections run than troughs, and **Hue spread** fans the hue
+across the width of the field with **Hue drift** turning it slowly. The hue
+controls rotate colours that have already been chosen rather than generating
+them, so a spread of zero leaves the three swatches exactly as set instead of
+replacing them with a rainbow nobody picked.
+
+All of it is one folder on the Cast panel, with the same copy-to-source as
+everything else.
 
 ### The housing
 

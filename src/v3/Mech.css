@@ -3665,3 +3665,34 @@
   font-size: calc(12.5 * var(--type));
   line-height: 1.7;
 }
+
+/* ---- the wave's layer ----
+
+   Full window, not the frame. `.mech-frame` is 1920 coordinates wide and
+   `--px` takes the smaller of a width term and a height term, so on anything
+   wider than 16:9 the frame is letterboxed — and the wave, drawn inside it,
+   stopped dead at the black bars while the grid behind it ran to the edges.
+
+   Fixed and inset like `.mech-hud`, at the same stacking level and earlier in
+   the DOM, so the grid, the bloom and the sweep all still paint over it. It
+   takes no pointer: the gun and the reticle have to reach the page through
+   it. See `MechWave.tsx`. */
+.mech-wave-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  /* Fades with the retarget, the same as everything else that belongs to
+     home — so opening a project takes the ground out with the cast rather
+     than cutting it. */
+  opacity: 1;
+  transition: opacity 700ms var(--ease);
+}
+
+.mech[data-covered='true']:not([data-boot='true']) .mech-wave-layer {
+  opacity: 0;
+}
+
+.mech-wave-layer canvas {
+  display: block;
+}

@@ -30,6 +30,11 @@ const MechProduct = lazy(() => import('./MechProduct'))
 /* The home screen's line-up. Lazy for the same reason the other two are: a
    visitor who lands straight on a project URL never pays for it. */
 const MechCast = lazy(() => import('./MechCast'))
+/* The ground the cast stands over. Its own canvas at the size of the window
+   rather than a child of the cast's, because `.mech-frame` is a 16:9 column
+   and a horizon cut off at the letterbox is not a horizon. See
+   `MechWave.tsx`. */
+const MechWave = lazy(() => import('./MechWave'))
 /* Development only — the render is behind `import.meta.env.DEV`, so a visitor
    never fetches this chunk. See `MechPins.tsx`. */
 const MechPins = lazy(() => import('./MechPins'))
@@ -1229,6 +1234,19 @@ export default function Mech({ id, onProject, onHome }: Props) {
 
       <Source handed={handed} onClose={() => setHanded(null)} />
 
+      {/* Behind the instrument surface and outside the frame. Before
+          `MechHud` in the DOM and on the same stacking level, so the phosphor
+          grid still paints over it — the grid is what the readout is printed
+          on, and a picture on top of it turns the page into wallpaper with
+          widgets. */}
+      {home && (
+        <div className="mech-wave-layer" aria-hidden>
+          <Suspense fallback={null}>
+            <MechWave wave={cast.wave} studio={cast.studio} live={home} />
+          </Suspense>
+        </div>
+      )}
+
       <MechHud />
       <MechCursor />
       <MechBird />
@@ -1303,7 +1321,6 @@ export default function Mech({ id, onProject, onHome }: Props) {
                   studio={cast.studio}
                   slots={cast.slots}
                   lights={cast.lights}
-                  wave={cast.wave}
                   focusHeroId={eyed ? (HERO_BY_PROJECT.get(eyed) ?? null) : null}
                   /* The retarget's own cover, which is already true for the
                      whole of an exit — so the cast retracts on the way out

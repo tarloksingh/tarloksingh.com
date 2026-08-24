@@ -7,17 +7,7 @@ import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js
 import VideoFrame from '../three/VideoFrame'
 import { SpriteFlipbook } from '../three/CapsuleStage'
 import { CAST, FISH_MAN_FRAMES, type Hero } from './heroes'
-import MechWave from './MechWave'
-import {
-  CAST_STUDIO,
-  CAST_WAVE,
-  lightFor,
-  slotFor,
-  type CastLight,
-  type CastSlot,
-  type CastStudio,
-  type CastWave
-} from './castTuning'
+import { CAST_STUDIO, lightFor, slotFor, type CastLight, type CastSlot, type CastStudio } from './castTuning'
 import type { Group, Mesh, PerspectiveCamera } from 'three'
 
 /* The home screen's cast: every subject on one stage, at once, arranged.
@@ -115,12 +105,7 @@ function Lens({ focalLength, fill }: { focalLength: number; fill: number }) {
  
        Floored, because a near plane at or below zero is not a projection. */
     camera.near = Math.max(0.05, z - CAST_DEPTH)
-    /* Far has to reach the back of the wave, which runs away to a horizon —
-       but depth precision is governed almost entirely by the *near* plane, so
-       buying that distance costs nothing as long as near stays where it is.
-       This is the whole reason near is computed tightly above and far is
-       not. */
-    camera.far = z + WAVE_REACH
+    camera.far = z + CAST_DEPTH
     camera.updateProjectionMatrix()
   }, [camera, focalLength, held])
 
@@ -131,10 +116,6 @@ function Lens({ focalLength, fill }: { focalLength: number; fill: number }) {
  *  the near and far planes are wrapped around, and the budget hover has to
  *  move a subject in. */
 const CAST_DEPTH = 4
-
-/** How far behind the cast the far plane sits — enough to contain the whole
- *  of the wave's field. See the note in `Lens`. */
-const WAVE_REACH = 140
 
 /* ---- coming and going ----
 
@@ -479,8 +460,6 @@ interface Props {
   slots?: Record<string, CastSlot>
   /** Every subject's own rig, keyed the same way. */
   lights?: Record<string, CastLight>
-  /** The ground they stand over. */
-  wave?: CastWave
   /** Which project is being looked at, if any — the hero whose `project`
    *  matches comes forward and the rest drop back. Hovering a subject
    *  directly does the same thing and wins while it lasts. */
@@ -497,7 +476,6 @@ export default function MechCast({
   studio = CAST_STUDIO,
   slots,
   lights,
-  wave = CAST_WAVE,
   focusHeroId,
   shown = true,
   live = true
@@ -534,11 +512,6 @@ export default function MechCast({
       <SeeEverything />
       <Lens focalLength={studio.focalLength} fill={studio.fill} />
       <Studio intensity={studio.envIntensity} exposure={studio.exposure} />
-
-      {/* The ground, in the same space as the cast — which is the whole
-          reason it is here and not a picture behind the page. It is lit by
-          nothing and writes no depth; see `MechWave.tsx`. */}
-      <MechWave wave={wave} />
 
       {CAST.map((hero, index) => {
         // The face is a layer of its own over this canvas — see the note at

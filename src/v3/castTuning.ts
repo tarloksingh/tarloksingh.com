@@ -178,8 +178,23 @@ export interface CastWave {
   cells: number
   /** The distance the far edge has dissolved by, so it reaches no edge. */
   fade: number
+  /** How solid the lines are. */
   opacity: number
+  /** Straight multiplier on the colour. The one to reach for first — past 1
+   *  it blows the crests out, which over black is exactly the look. */
+  gain: number
+  /** How much hotter crests and intersections run than troughs. 0 is a flat
+   *  sheet of one colour; high is a field lit from inside. */
+  glow: number
+  /** Degrees of hue fanned across the width of the field. 0 leaves the three
+   *  colours below exactly as set. */
+  hue: number
+  /** Degrees a second the whole hue drifts. Slow, or it is a novelty. */
+  hueSpeed: number
+  /** Troughs, mid-height, crests. Three rather than two because a two-stop
+   *  ramp makes every middle height a muddy blend of the ends. */
   low: string
+  mid: string
   high: string
   /** World units square, and vertices per side. Cost, not look. */
   size: number
@@ -196,11 +211,16 @@ export const CAST_WAVE: CastWave = {
   cells: 90,
   fade: 62,
   opacity: 0.95,
+  gain: 1.35,
+  glow: 1.3,
+  hue: 46,
+  hueSpeed: 3,
   /* Purple against the panel's green, which is the entire point of it: home
      and a project screen are the same machine, and this is what stops the
      front door reading as a project nobody has picked yet. */
-  low: '#3b1d6e',
-  high: '#c07cff',
+  low: '#2b1a86',
+  mid: '#8b3ff0',
+  high: '#ff7ae0',
   size: 90,
   segments: 200
 }
@@ -284,12 +304,16 @@ const asSource = () => {
     const body = LIGHT_KEYS.map((key) => `${key}: ${tidy(light[key])}`).join(', ')
     return `  ${hero.id}: { ${body} }`
   }).join(',\n')}\n}`
-  const waveKeys = ['on', 'amp', 'scale', 'speed', 'y', 'depth', 'cells', 'fade', 'opacity'] as const
+  const waveKeys = [
+    'on', 'amp', 'scale', 'speed', 'y', 'depth', 'cells', 'fade',
+    'opacity', 'gain', 'glow', 'hue', 'hueSpeed'
+  ] as const
   const wave = `export const CAST_WAVE: CastWave = {\n${[
     ...waveKeys.map((key) =>
       typeof live.wave[key] === 'boolean' ? `  ${key}: ${live.wave[key]}` : `  ${key}: ${tidy(live.wave[key] as number)}`
     ),
     `  low: '${live.wave.low}'`,
+    `  mid: '${live.wave.mid}'`,
     `  high: '${live.wave.high}'`,
     `  size: ${tidy(live.wave.size)}`,
     `  segments: ${tidy(live.wave.segments)}`
@@ -390,8 +414,13 @@ export function useCastTuning() {
           'wave.depth': { value: startWave.depth, min: 0, max: 60, step: 0.5, label: 'Push back' },
           'wave.cells': { value: startWave.cells, min: 8, max: 240, step: 1, label: 'Cells' },
           'wave.fade': { value: startWave.fade, min: 8, max: 120, step: 1, label: 'Reach' },
-          'wave.opacity': { value: startWave.opacity, min: 0, max: 2, step: 0.01, label: 'Bright' },
+          'wave.opacity': { value: startWave.opacity, min: 0, max: 3, step: 0.01, label: 'Lines' },
+          'wave.gain': { value: startWave.gain, min: 0, max: 6, step: 0.01, label: 'Bright' },
+          'wave.glow': { value: startWave.glow, min: 0, max: 5, step: 0.01, label: 'Glow' },
+          'wave.hue': { value: startWave.hue, min: 0, max: 360, step: 1, label: 'Hue spread' },
+          'wave.hueSpeed': { value: startWave.hueSpeed, min: -90, max: 90, step: 0.5, label: 'Hue drift' },
           'wave.low': { value: startWave.low, label: 'Trough' },
+          'wave.mid': { value: startWave.mid, label: 'Middle' },
           'wave.high': { value: startWave.high, label: 'Crest' }
         },
         { collapsed: true }
@@ -448,7 +477,12 @@ export function useCastTuning() {
       cells: values['wave.cells'],
       fade: values['wave.fade'],
       opacity: values['wave.opacity'],
+      gain: values['wave.gain'],
+      glow: values['wave.glow'],
+      hue: values['wave.hue'],
+      hueSpeed: values['wave.hueSpeed'],
       low: values['wave.low'] as unknown as string,
+      mid: values['wave.mid'] as unknown as string,
       high: values['wave.high'] as unknown as string
     }
     try {
@@ -498,7 +532,12 @@ export function useCastTuning() {
     cells: values['wave.cells'],
     fade: values['wave.fade'],
     opacity: values['wave.opacity'],
+    gain: values['wave.gain'],
+    glow: values['wave.glow'],
+    hue: values['wave.hue'],
+    hueSpeed: values['wave.hueSpeed'],
     low: values['wave.low'] as unknown as string,
+    mid: values['wave.mid'] as unknown as string,
     high: values['wave.high'] as unknown as string
   }
 
