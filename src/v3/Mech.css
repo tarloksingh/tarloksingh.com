@@ -3483,9 +3483,10 @@
   padding: calc(9 * var(--px)) calc(9 * var(--px)) calc(9 * var(--px)) calc(14 * var(--px));
   border: 1px solid rgba(var(--accent-rgb), 0.22);
   border-radius: var(--round);
-  /* Nearly opaque, because there is a lit colour field behind this now — see
-     `.mech-wave`. A 55% black that read fine over the plain grid let the
-     purple through far enough to grey out the names. */
+  /* Nearly opaque, because there is a lit surface behind this now — the
+     wave runs under the whole stage (`MechWave.tsx`). A 55% black that read
+     fine over the plain grid let the purple through far enough to grey out
+     the names. */
   background: rgba(0, 0, 0, 0.78);
   box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.06);
   text-align: left;
@@ -3655,63 +3656,6 @@
   font-size: calc(14 * var(--type));
   line-height: 1.6;
   color: var(--mid);
-}
-
-/* ---- the wave, home only ----
-
-   Home and a project screen are the same machine, which is the point — and
-   also the risk: with the same grid, the same bloom and the same chrome, the
-   front door reads as a project you have not picked yet. This is what makes
-   it somewhere else. A wide colour field under the instrument surface, warm
-   purple against the panel's green, so the two screens are the same room with
-   the lights changed rather than the same screen twice.
-
-   Under the grid, never over it. The grid is what the readout is printed on;
-   a picture on top of it turns the whole page into a desktop wallpaper with
-   widgets. `screen` keeps it additive against the black — the source is a
-   dark vector and `normal` would flatten the bloom and the sweep that sit
-   above it.
-
-   It fades with the retarget like everything else, and it is only ever paid
-   for at home: `background-image` is set inside the home rule, so a visitor
-   landing on a project URL never fetches the file. */
-.mech-wave {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  mix-blend-mode: screen;
-  background-position: center;
-  background-size: cover;
-  background-repeat: no-repeat;
-  transition: opacity 900ms var(--ease);
-  pointer-events: none;
-  /* Cut off before the instruments. The source is bottom-heavy — the bright
-     part of the mesh lands exactly where the index, the compass strip and the
-     coordinate readout are, and a lit purple field behind small green type is
-     type nobody can read. So the field is at full strength through the middle
-     of the frame, where the cast stands, and gone by the bottom eighth, where
-     the panel starts. */
-  mask-image: linear-gradient(to bottom, #000 0%, #000 62%, rgba(0, 0, 0, 0.35) 84%, transparent 94%);
-}
-
-.mech[data-home='true'] .mech-wave {
-  background-image: url('/patterns/home-wave.avif');
-  opacity: 0.42;
-  animation: mech-wave-in 1600ms var(--ease) 200ms both;
-}
-
-/* A slow drift, so the field is not a flat sheet pinned behind the readout —
-   the same reasoning as the corner brackets breathing. Long enough that you
-   would not catch it looking straight at it. */
-@keyframes mech-wave-in {
-  from {
-    opacity: 0;
-    transform: scale(1.08);
-  }
-  to {
-    opacity: 0.42;
-    transform: scale(1);
-  }
 }
 
 /* The intro paragraph runs longer than a project's brief and is the first

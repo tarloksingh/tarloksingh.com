@@ -49,6 +49,7 @@ being false (which is why `navigator.clipboard` does not exist — see
 | `Browse.tsx`, `Detail.tsx`, `Stage.tsx` | The timeline screen |
 | `Mech.tsx` | **Home and a project both** — layout, the swap, transit |
 | `MechCast.tsx`, `castTuning.ts` | The home line-up, and where each one stands |
+| `MechWave.tsx` | The ground it stands over — a shader, not a picture |
 | `leaders.ts`, `notes.ts` | Where the label lines go, and what they say |
 | `MechPins.tsx`, `labelTuning.ts` | Placing labels (**P**) and copying them out |
 | `MechModel.tsx` | The subject: one GLB, lit, drifting, watching, shootable |

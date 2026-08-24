@@ -289,26 +289,47 @@ exact because it is the real type.
 
 ### The wave
 
-Home and a project screen being the same machine is the point, and also the
-risk: with the same grid, the same bloom and the same chrome, the front door
-reads as a project you have not picked yet. `.mech-wave` is what makes it
-somewhere else — a wide colour field under the instrument surface, warm purple
-against the panel's green, so the two screens are the same room with the
-lights changed rather than the same screen twice.
+The ground the cast stands over: a displaced grid running back to a horizon,
+moving.
 
-Under the grid, never over it. The grid is what the readout is printed on; a
-picture on top of it turns the page into a desktop wallpaper with widgets.
-`mix-blend-mode: screen` keeps it additive against the black. And it is masked
-off below about 62% of the frame: the source is bottom-heavy and its bright
-mesh landed exactly where the index, the compass strip and the coordinate
-readout are, which is small green type on a lit purple field — unreadable. The
-index boxes went to 78% black for the same reason.
+It started as a stock AVIF laid behind the page with `mix-blend-mode: screen`,
+which was fine for about a minute and then obviously wrong for two reasons. It
+was a *picture of* depth pasted behind things that have real depth, so nothing
+on the stage stood in any relation to it — move a subject back and it slid
+across a flat backdrop. And it could not move, which on a page where the
+brackets breathe and the compass drifts made it the one dead layer on screen.
 
-The `background-image` is set inside the home rule, so a visitor landing on a
-project URL never fetches the file.
+So it is geometry, in the cast's own canvas and therefore in the cast's own
+space: one plane, 200×200 vertices, displaced in a vertex shader and lit by
+nothing. The subjects stand in front of it because they are actually in front
+of it. Four sines at incommensurable rates, not noise — noise wants to look
+like terrain and this wants to look like a signal, something generated rather
+than somewhere real.
 
-The wall is gone. `DriftWall.tsx` and `wallTuning.ts` are untouched and
-unmounted, not deleted, in case it is wanted somewhere else later.
+**The lines are drawn in the fragment shader, not built out of geometry.**
+`wireframe: true` on a triangulated plane draws the diagonals too, which reads
+as a net rather than a grid, and a real `LineSegments` grid at this density is
+forty thousand segments to upload. A grid measured off the interpolated UV
+costs nothing, stays exactly one pixel wide at any distance — that is what
+`fwidth` is for, the derivative of the UV per pixel, which is how thick a
+line has to be drawn to look constant — and brightens its own intersections
+into nodes for free. Without that division the far half of the field is a
+solid sheet of aliased white.
+
+The far fade is squared, so the field thins across most of its length instead
+of running at full strength and stopping. A linear ramp put a bright band
+exactly where the surface goes edge-on to the camera, which is the one place a
+horizon must not have an edge.
+
+Additive, `depthWrite: false`, `renderOrder: -1`. It never occludes a subject
+however far forward hover brings one, and never fights one for the depth
+buffer — it is a light source in the composition, not an object in it. Which
+is also why `far` on the cast's camera reaches 140 while `near` stays wrapped
+tight: depth precision is governed almost entirely by the near plane, so the
+distance the wave needs costs nothing.
+
+Its own folder on the Cast panel — height, tightness, speed, drop, push back,
+cells, reach, brightness, and the two colours.
 
 ### The housing
 

@@ -156,6 +156,55 @@ export const CAST_LIGHTS: Record<string, CastLight> = {
 
 export const lightFor = (id: string): CastLight => CAST_LIGHTS[id] ?? CAST_LIGHT_FALLBACK
 
+/** The ground the cast stands over — see `MechWave.tsx`.
+ *
+ *  Part of the cast's scene rather than a layer behind the page, because it
+ *  replaced a picture of a wave and the whole problem with the picture was
+ *  that nothing on the stage stood in any relation to it. The geometry
+ *  numbers (`size`, `segments`) are not on the panel: they are the cost of
+ *  the thing, not the look of it, and changing either rebuilds the buffer. */
+export interface CastWave {
+  on: boolean
+  /** How high the crests run, in world units. */
+  amp: number
+  /** How tight the pattern is — bigger is more, smaller waves. */
+  scale: number
+  speed: number
+  /** How far below the cast the surface sits. */
+  y: number
+  /** How far back its centre is pushed, which is what gives it a horizon. */
+  depth: number
+  /** Grid cells across the whole field. */
+  cells: number
+  /** The distance the far edge has dissolved by, so it reaches no edge. */
+  fade: number
+  opacity: number
+  low: string
+  high: string
+  /** World units square, and vertices per side. Cost, not look. */
+  size: number
+  segments: number
+}
+
+export const CAST_WAVE: CastWave = {
+  on: true,
+  amp: 1.15,
+  scale: 0.34,
+  speed: 0.5,
+  y: -1.9,
+  depth: 18,
+  cells: 90,
+  fade: 62,
+  opacity: 0.95,
+  /* Purple against the panel's green, which is the entire point of it: home
+     and a project screen are the same machine, and this is what stops the
+     front door reading as a project nobody has picked yet. */
+  low: '#3b1d6e',
+  high: '#c07cff',
+  size: 90,
+  segments: 200
+}
+
 /* Five across, reading left to right, in the room to the right of the side
    column — the readout lives at frame x 101–481 and a subject standing in it
    is a subject standing on the writing, which is what the first arrangement
@@ -190,6 +239,7 @@ interface Stored {
   studio?: Partial<CastStudio>
   slots?: Record<string, CastSlot>
   lights?: Record<string, CastLight>
+  wave?: Partial<CastWave>
 }
 
 const stored = (): Stored => {
@@ -204,10 +254,13 @@ const stored = (): Stored => {
 const saved = typeof window === 'undefined' ? {} : stored()
 const start: CastStudio = { ...CAST_STUDIO, ...saved.studio }
 
+const startWave: CastWave = { ...CAST_WAVE, ...saved.wave }
+
 const live = {
   studio: { ...start },
   slots: { ...CAST_SLOTS, ...saved.slots },
-  lights: { ...CAST_LIGHTS, ...saved.lights }
+  lights: { ...CAST_LIGHTS, ...saved.lights },
+  wave: { ...startWave }
 }
 
 const keys = Object.keys(CAST_STUDIO) as Array<keyof CastStudio>
@@ -231,7 +284,17 @@ const asSource = () => {
     const body = LIGHT_KEYS.map((key) => `${key}: ${tidy(light[key])}`).join(', ')
     return `  ${hero.id}: { ${body} }`
   }).join(',\n')}\n}`
-  return `${studio}\n\n${slots}\n\n${lights}`
+  const waveKeys = ['on', 'amp', 'scale', 'speed', 'y', 'depth', 'cells', 'fade', 'opacity'] as const
+  const wave = `export const CAST_WAVE: CastWave = {\n${[
+    ...waveKeys.map((key) =>
+      typeof live.wave[key] === 'boolean' ? `  ${key}: ${live.wave[key]}` : `  ${key}: ${tidy(live.wave[key] as number)}`
+    ),
+    `  low: '${live.wave.low}'`,
+    `  high: '${live.wave.high}'`,
+    `  size: ${tidy(live.wave.size)}`,
+    `  segments: ${tidy(live.wave.segments)}`
+  ].join(',\n')}\n}`
+  return `${studio}\n\n${slots}\n\n${lights}\n\n${wave}`
 }
 
 /** Every subject's placement at once, plus the shared studio.
@@ -315,6 +378,25 @@ export function useCastTuning() {
         { collapsed: true }
       ),
 
+      /* The ground. Its own folder because it is its own object — see
+         `MechWave.tsx`. */
+      Wave: folder(
+        {
+          'wave.on': { value: startWave.on, label: 'On' },
+          'wave.amp': { value: startWave.amp, min: 0, max: 4, step: 0.01, label: 'Height' },
+          'wave.scale': { value: startWave.scale, min: 0.05, max: 2, step: 0.01, label: 'Tightness' },
+          'wave.speed': { value: startWave.speed, min: 0, max: 3, step: 0.01, label: 'Speed' },
+          'wave.y': { value: startWave.y, min: -8, max: 2, step: 0.05, label: 'Drop' },
+          'wave.depth': { value: startWave.depth, min: 0, max: 60, step: 0.5, label: 'Push back' },
+          'wave.cells': { value: startWave.cells, min: 8, max: 240, step: 1, label: 'Cells' },
+          'wave.fade': { value: startWave.fade, min: 8, max: 120, step: 1, label: 'Reach' },
+          'wave.opacity': { value: startWave.opacity, min: 0, max: 2, step: 0.01, label: 'Bright' },
+          'wave.low': { value: startWave.low, label: 'Trough' },
+          'wave.high': { value: startWave.high, label: 'Crest' }
+        },
+        { collapsed: true }
+      ),
+
       Drift: folder(
         {
           floatSpeed: { value: start.floatSpeed, min: 0, max: 4, step: 0.05, label: 'Speed' },
@@ -355,10 +437,24 @@ export function useCastTuning() {
         LIGHT_KEYS.map((key) => [key, values[`${hero.id}.${key}`]])
       ) as unknown as CastLight
     }
+    live.wave = {
+      ...live.wave,
+      on: values['wave.on'] as unknown as boolean,
+      amp: values['wave.amp'],
+      scale: values['wave.scale'],
+      speed: values['wave.speed'],
+      y: values['wave.y'],
+      depth: values['wave.depth'],
+      cells: values['wave.cells'],
+      fade: values['wave.fade'],
+      opacity: values['wave.opacity'],
+      low: values['wave.low'] as unknown as string,
+      high: values['wave.high'] as unknown as string
+    }
     try {
       window.localStorage.setItem(
         STORE_KEY,
-        JSON.stringify({ studio: live.studio, slots: live.slots, lights: live.lights })
+        JSON.stringify({ studio: live.studio, slots: live.slots, lights: live.lights, wave: live.wave })
       )
     } catch {
       /* private mode, a full quota — not worth breaking the page over */
@@ -391,5 +487,20 @@ export function useCastTuning() {
     ])
   )
 
-  return { store, studio: values as unknown as CastStudio, slots, lights }
+  const wave: CastWave = {
+    ...CAST_WAVE,
+    on: values['wave.on'] as unknown as boolean,
+    amp: values['wave.amp'],
+    scale: values['wave.scale'],
+    speed: values['wave.speed'],
+    y: values['wave.y'],
+    depth: values['wave.depth'],
+    cells: values['wave.cells'],
+    fade: values['wave.fade'],
+    opacity: values['wave.opacity'],
+    low: values['wave.low'] as unknown as string,
+    high: values['wave.high'] as unknown as string
+  }
+
+  return { store, studio: values as unknown as CastStudio, slots, lights, wave }
 }

@@ -1303,6 +1303,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
                   studio={cast.studio}
                   slots={cast.slots}
                   lights={cast.lights}
+                  wave={cast.wave}
                   focusHeroId={eyed ? (HERO_BY_PROJECT.get(eyed) ?? null) : null}
                   /* The retarget's own cover, which is already true for the
                      whole of an exit — so the cast retracts on the way out
