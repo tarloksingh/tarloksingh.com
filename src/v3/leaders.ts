@@ -52,7 +52,7 @@ export const mediaBox = (aspect: number) => {
 
 export type Box = { x: number; y: number; w: number; h: number }
 
-export const boxOf = (frame: Frame): Box => (frame.kind === 'model' ? MODEL_BOX : mediaBox(frame.aspect))
+export const boxOf = (frame: Frame): Box => (frame.kind === 'flat' ? mediaBox(frame.aspect) : MODEL_BOX)
 
 /** A fraction of the subject's box, in frame coordinates. */
 export const pointIn = (box: Box, at: readonly [number, number]) => [box.x + at[0] * box.w, box.y + at[1] * box.h]

@@ -7,6 +7,7 @@ import MechCursor from './MechCursor'
 import MechLaser from './MechLaser'
 import MechHud from './MechHud'
 import { useModelTuning } from './modelTuning'
+import { useProductTuning } from './productTuning'
 import MechDeck from './MechDeck'
 import MechMenu from './MechMenu'
 import { useNarrowTuning } from './narrowTuning'
@@ -20,6 +21,7 @@ import SplitReveal from './SplitReveal'
 import './Mech.css'
 
 const MechModel = lazy(() => import('./MechModel'))
+const MechProduct = lazy(() => import('./MechProduct'))
 /* Development only — the render is behind `import.meta.env.DEV`, so a visitor
    never fetches this chunk. See `MechPins.tsx`. */
 const MechPins = lazy(() => import('./MechPins'))
@@ -156,7 +158,7 @@ const buffering: HTMLVideoElement[] = []
 const BUFFERS = 4
 
 const warm = (frame: Frame | undefined) => {
-  if (!frame || frame.kind === 'model' || warmed.has(frame.id)) return
+  if (!frame || frame.kind !== 'flat' || warmed.has(frame.id)) return
   warmed.add(frame.id)
 
   if (frame.type === 'image') {
@@ -204,8 +206,8 @@ const whenIdle = (run: () => void) => {
  *  what you step to afterwards — `model.ts` appends it because the index
  *  screen wants it last. */
 const modelFirst = (entry: Entry): Frame[] => [
-  ...entry.frames.filter((frame) => frame.kind === 'model'),
-  ...entry.frames.filter((frame) => frame.kind !== 'model')
+  ...entry.frames.filter((frame) => frame.kind !== 'flat'),
+  ...entry.frames.filter((frame) => frame.kind === 'flat')
 ]
 
 interface LeadersProps {
@@ -699,6 +701,9 @@ export default function Mech({ id, onProject, onHome }: Props) {
      way the frame trails the tile you picked. Retargeting is the readout
      swinging over to something else, not a page being replaced. */
   const [shownId, setShownId] = useState(id)
+  /* The pieces' own studio, on its own panel. Keyed on the project because
+     the per-piece folder shows one piece at a time — see `productTuning.ts`. */
+  const pieces = useProductTuning(shownId)
   const [booting, setBooting] = useState(true)
   const [lit, setLit] = useState<string | null>(null)
   const entry = entries.find((item) => item.project.id === shownId) ?? null
@@ -735,6 +740,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
 
   const current = frames[shown]
   const modelFrame = frames.find((frame) => frame.kind === 'model')
+  const pieceFrame = frames.find((frame) => frame.kind === 'piece')
   const covered = phase !== 'in' || booting
   /* `covered` also spans `hold`, which is when the next frame's housing first
      mounts — a fresh set of brackets, label and transport that have no exit to
@@ -789,7 +795,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
   // else lifts the cover when it says it is ready, or when the cap runs out.
   useEffect(() => {
     if (phase !== 'hold') return
-    if (frames[shown]?.kind === 'model') {
+    if (frames[shown] && frames[shown].kind !== 'flat') {
       setPhase('in')
       return
     }
@@ -804,7 +810,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
      reasoning as `dissolveBox`. A still is not a target: shooting a
      photograph of something is shooting a photograph. */
   useEffect(() => {
-    if (current?.kind !== 'model') return
+    if (!current || current.kind === 'flat') return
     quarry.subject = {
       rect: () => {
         const box = stage.current?.getBoundingClientRect()
@@ -969,6 +975,14 @@ export default function Mech({ id, onProject, onHome }: Props) {
                   <LevaPanel store={labels} collapsed fill titleBar={{ title: 'Labels', drag: false }} theme={PANEL} />
                 </div>
               )}
+              {/* Only for a project that actually has one. A panel of piece
+                  controls on a screen with no piece is a panel nobody can
+                  check their work against. */}
+              {import.meta.env.DEV && !narrow && pieceFrame && (
+                <div className="mech-pieces-panel">
+                  <LevaPanel store={pieces.store} collapsed fill titleBar={{ title: 'Piece', drag: false }} theme={PANEL} />
+                </div>
+              )}
               {import.meta.env.DEV && narrow && (
                 <div className="mech-narrow-panel">
                   <LevaPanel store={narrowStore} collapsed fill titleBar={{ title: 'Scale', drag: false }} theme={PANEL} />
@@ -1110,7 +1124,25 @@ export default function Mech({ id, onProject, onHome }: Props) {
               </Suspense>
             </div>
           )}
-          {current.kind !== 'model' && (
+          {/* A project has a model or a piece, never both — but the two are
+              mounted the same way and for the same reason: hidden rather than
+              unmounted while a still is on the stage, because a WebGL context
+              and its shaders cost most of a hundred milliseconds to build
+              again. See `MechProduct.tsx`, which is a studio of its own and
+              shares nothing with the face's rig. */}
+          {pieceFrame && (
+            <div className="mech-model-layer" data-on={current.kind === 'piece'}>
+              <Suspense fallback={null}>
+                <MechProduct
+                  project={pieceFrame.project}
+                  tuning={pieces.studio}
+                  piece={narrow ? { ...pieces.piece, size: pieces.piece.size * narrowScale.model } : pieces.piece}
+                  live={current.kind === 'piece'}
+                />
+              </Suspense>
+            </div>
+          )}
+          {current.kind === 'flat' && (
             <Flat
               // Prefixed: the leaders below are keyed on the same frame, and
               // two siblings under one parent with the same key is a duplicate
@@ -1138,7 +1170,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
               key={`leaders-${current.id}`}
               notes={notes}
               box={boxOf(current)}
-              floats={current.kind === 'model'}
+              floats={current.kind !== 'flat'}
               lit={lit}
               onLit={setLit}
             />

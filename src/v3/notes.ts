@@ -49,7 +49,7 @@ export const NOTES: Record<string, Note[]> = {
  *  of every frame, and the tool it was made in if the project names one. */
 export const derive = (entry: Entry, frame: Frame): Note[] => {
   const tools = entry.project.sections.find((section) => section.id === 'tools')?.tags ?? []
-  const kind = frame.kind === 'model' ? 'model' : frame.type === 'video' ? 'clip' : 'still'
+  const kind = frame.kind === 'flat' ? (frame.type === 'video' ? 'clip' : 'still') : frame.kind
   return [
     { label: kind, value: (frame.label ?? entry.project.title).toLowerCase() },
     ...(tools.length > 0 ? [{ label: 'made in', value: tools[0].toLowerCase(), fold: 'tools' }] : [])

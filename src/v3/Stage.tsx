@@ -1,7 +1,9 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import type { Entry, Frame } from './model'
+import { pieceFor } from './productTuning'
 
 const ModelFrame = lazy(() => import('./ModelFrame'))
+const MechProduct = lazy(() => import('./MechProduct'))
 
 /* The right-hand pane: one caption row and one box.
 
@@ -100,6 +102,15 @@ function Slide({ frame, active }: { frame: Frame; active: boolean }) {
           active && (
             <Suspense fallback={<div className="v3-empty v3-small">loading model…</div>}>
               <ModelFrame src={frame.src} />
+            </Suspense>
+          )
+        ) : frame.kind === 'piece' ? (
+          // Same trade, and the project screen's own mount rather than
+          // `ModelFrame`: a piece has no GLB to hand `drei/Stage`, it is a
+          // subtree of primitives that needs the studio built around it.
+          active && (
+            <Suspense fallback={<div className="v3-empty v3-small">loading piece…</div>}>
+              <MechProduct project={frame.project} piece={pieceFor(frame.project)} />
             </Suspense>
           )
         ) : frame.type === 'video' ? (

@@ -22,10 +22,40 @@ const MODELS: Record<string, { file: string; label: string }> = {
   'mr-takahashi': { file: '/models/adam-face.glb', label: 'Mr. Takahashi — character' }
 }
 
-/** A media item, plus the model case the base `MediaItem` has no room for. */
+/* ---- pieces ----
+
+   Eight of the ten projects have no model and had a photograph where the
+   subject should be. What they do have — and have had since v2 — is a piece
+   built for each of them in `src/site/products.tsx`: a video-texture monitor,
+   a phone, two disc cases, a card, a stacking loop, a flipbook of fish. This
+   is the list of the ones worth standing on a project screen.
+
+   Not derived from `products.tsx`'s own registry, deliberately. Importing it
+   here would pull three.js and a dozen components into the module every
+   screen reads to know what a project *is* — the piece itself is fetched by
+   `MechProduct`, which is lazy, and this is only the fact that there is one. */
+const PIECES: Record<string, string> = {
+  'mecha-station': 'Mecha Station — the terminal',
+  openup: 'OpenUp — the app',
+  stitchfam: 'StitchFam — the loop',
+  'red-dead-redemption-2': 'Red Dead Redemption 2 — the case',
+  'grand-theft-auto-v': 'Grand Theft Auto V — the case',
+  'wyte-card': 'Wyte — the card',
+  'block-builder': 'Block Builder — the pieces',
+  'slider-engine': 'Slider Engine — fish man'
+}
+
+/** A media item, plus the two things the base `MediaItem` has no room for: a
+ *  model, and a piece built out of primitives.
+ *
+ *  Three kinds rather than two because they mount three different things —
+ *  a still or a clip, `MechModel` (one face's rig), `MechProduct` (a neutral
+ *  studio). Everything that only cares whether a frame is a picture asks
+ *  `kind === 'flat'`. */
 export type Frame =
   | (MediaItem & { kind: 'flat' })
   | { kind: 'model'; id: string; src: string; label: string; type: 'model'; aspect: number }
+  | { kind: 'piece'; id: string; project: string; label: string; type: 'model'; aspect: number }
 
 /** One project, flattened into what the three panes actually draw. */
 export interface Entry {
@@ -37,11 +67,20 @@ export interface Entry {
 const framesOf = (project: Project): Frame[] => {
   const flat: Frame[] = project.media.map((item) => ({ ...item, kind: 'flat' as const }))
   const model = MODELS[project.id]
-  if (!model) return flat
-  return [
-    ...flat,
-    { kind: 'model', id: `${project.id}/model`, src: model.file, label: model.label, type: 'model', aspect: 1 }
-  ]
+  if (model) {
+    return [
+      ...flat,
+      { kind: 'model', id: `${project.id}/model`, src: model.file, label: model.label, type: 'model', aspect: 1 }
+    ]
+  }
+  const piece = PIECES[project.id]
+  if (piece) {
+    return [
+      ...flat,
+      { kind: 'piece', id: `${project.id}/piece`, project: project.id, label: piece, type: 'model', aspect: 1 }
+    ]
+  }
+  return flat
 }
 
 /** Every project that has something to show, newest first. A project with no
@@ -68,7 +107,7 @@ export const byYear = (visible: Entry[]): Array<{ year: number; entries: Entry[]
  *  seventy pixels is most of what a project screen costs to open. See
  *  `MediaItem.thumb`. */
 export const thumbOf = (frame: Frame): string | null => {
-  if (frame.kind === 'model') return null
+  if (frame.kind !== 'flat') return null
   return frame.thumb ?? (frame.type === 'video' ? (frame.poster ?? null) : frame.src)
 }
 
@@ -93,7 +132,7 @@ export interface WallItem {
 export const wallItems: WallItem[] = (() => {
   const flat = entries.flatMap((entry) =>
     entry.frames.flatMap((frame): WallItem[] => {
-      if (frame.kind === 'model') return []
+      if (frame.kind !== 'flat') return []
       // The wall draws a few hundred pixels wide at most — the 1600 copy, not
       // the master.
       const image = frame.type === 'video' ? frame.poster : (frame.still ?? frame.src)

@@ -1,0 +1,272 @@
+import { Suspense, useEffect, useMemo, useRef } from 'react'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { Center, Float, Resize } from '@react-three/drei'
+import { ACESFilmicToneMapping, MathUtils, PMREMGenerator, SRGBColorSpace, Vector3 } from 'three'
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
+import BlockBuilder from '../three/BlockBuilder'
+import DiscHolder from '../three/DiscHolder'
+import Phone3D from '../three/Phone3D'
+import PosStation from '../three/PosStation'
+import VideoFrame from '../three/VideoFrame'
+import WyteCard from '../three/WyteCard'
+import { SpriteFlipbook } from '../three/CapsuleStage'
+import { resolveVideo } from '../data/media'
+import { drift, gaze } from './subject'
+import { PIECE_FALLBACK, PRODUCT_DEFAULTS, type PieceTuning, type ProductTuning } from './productTuning'
+import type { ReactNode } from 'react'
+import type { Group, PerspectiveCamera } from 'three'
+
+/* The subject of a project screen that has no model: the piece that was
+   built for it back in v2.
+
+   Eight of the ten projects on this site are here — a video-texture monitor,
+   a phone, two disc cases, a card, a stacking loop, a flipbook of fish. All
+   of them already existed, already tuned, and reusing them is the whole point
+   of this file: the alternative was a photograph of the work where the
+   subject should be, or ten new pieces nobody asked for.
+
+   **Nothing here is Mr. Takahashi's rig.** `MechModel.tsx` is built for one
+   face and shares `MODEL_DEFAULTS` with Capsule C1; feeding a monitor through
+   it would mean either forking its lighting per piece or quietly changing
+   numbers a model is already lit by. So this is a studio of its own, at its
+   own exposure, with its own lens and its own panel — see `productTuning.ts`.
+   The two files do not read each other.
+
+   What *is* shared is the arithmetic, because it is generic camera geometry
+   rather than anything about a subject: a lens quoted in millimetres, and how
+   far back a camera has to stand to hold a given fraction of the frame. */
+
+/** World units a piece's longest edge is normalised to before framing. Every
+ *  piece is a different real size and several of them are not real objects at
+ *  all, so what the camera is framing has to be decided here rather than
+ *  inherited from an export's units. */
+const TARGET_HEIGHT = 1
+
+const fovForFocalLength = (mm: number) => (2 * Math.atan(24 / (2 * mm)) * 180) / Math.PI
+
+const distanceFor = (focalLength: number, fill: number) =>
+  TARGET_HEIGHT / fill / (2 * Math.tan((fovForFocalLength(focalLength) * Math.PI) / 360))
+
+/** Where the piece has floated to, in the 1920×1080 frame coordinates the
+ *  leaders are drawn in, so the lines pointing at it can ride along.
+ *
+ *  Same job as `Drift` in MechModel and the same sum — the exchange rate
+ *  falls out of the framing, and both stages frame one world unit of height
+ *  across `fill` of 1080. Copied rather than shared: importing it would drag
+ *  the face's whole module, and its lighting constants with it, into this
+ *  chunk. */
+function Drift({ fill }: { fill: number }) {
+  const ref = useRef<Group>(null)
+  const at = useMemo(() => new Vector3(), [])
+
+  useFrame(() => {
+    if (!ref.current) return
+    ref.current.getWorldPosition(at)
+    const perUnit = 1080 * fill
+    drift.x = at.x * perUnit
+    // Frame coordinates count downward and world units count up.
+    drift.y = -at.y * perUnit
+  })
+
+  return <group ref={ref} />
+}
+
+/** Turns the piece a few degrees toward the pointer, on top of whatever face
+ *  it was set to. Not the face's lean — that tips a head; this swings a
+ *  product on its stand, which is the gesture a thing in a case makes. */
+function Swing({ turn, children }: { turn: number; children: React.ReactNode }) {
+  const ref = useRef<Group>(null)
+  const to = useRef({ x: 0, y: 0 })
+  const at = useRef({ x: 0, y: 0 })
+
+  useEffect(() => {
+    const onMove = (event: PointerEvent) => {
+      to.current.x = (event.clientX / window.innerWidth) * 2 - 1
+      to.current.y = (event.clientY / window.innerHeight) * 2 - 1
+    }
+    window.addEventListener('pointermove', onMove)
+    return () => window.removeEventListener('pointermove', onMove)
+  }, [])
+
+  useFrame((_, delta) => {
+    const group = ref.current
+    if (!group) return
+    /* The bird wins when it is in the air, the same way the face prefers it:
+       a thing crossing the room is more interesting than a cursor sitting
+       still, and the two subjects should not disagree about that. */
+    const target = gaze.bird.active
+      ? {
+          x: (gaze.bird.x / window.innerWidth) * 2 - 1,
+          y: (gaze.bird.y / window.innerHeight) * 2 - 1
+        }
+      : to.current
+    const k = 1 - Math.pow(0.004, delta)
+    at.current.x = MathUtils.lerp(at.current.x, target.x, k)
+    at.current.y = MathUtils.lerp(at.current.y, target.y, k)
+    group.rotation.y = MathUtils.degToRad(turn) + at.current.x * 0.34
+    group.rotation.x = -at.current.y * 0.12
+  })
+
+  return <group ref={ref}>{children}</group>
+}
+
+/** Built inside three rather than fetched, so the page still makes no
+ *  third-party request for an HDRI. The same room v2's gallery lit these
+ *  pieces in — see `ROOM_LIGHT` in products.tsx — at this file's own
+ *  exposure rather than the face's. */
+function Studio({ intensity, exposure }: { intensity: number; exposure: number }) {
+  const gl = useThree((state) => state.gl)
+  const scene = useThree((state) => state.scene)
+
+  useEffect(() => {
+    const pmrem = new PMREMGenerator(gl)
+    const target = pmrem.fromScene(new RoomEnvironment(), 0.04)
+    scene.environment = target.texture
+    return () => {
+      scene.environment = null
+      target.dispose()
+      pmrem.dispose()
+    }
+  }, [gl, scene])
+
+  useEffect(() => {
+    scene.environmentIntensity = intensity
+  }, [scene, intensity])
+
+  useEffect(() => {
+    gl.toneMappingExposure = exposure
+  }, [gl, exposure])
+
+  return null
+}
+
+/** The camera is moved rather than remounted: a `camera` prop is only read on
+ *  the first render, so dragging the lens slider would otherwise do nothing
+ *  until a reload. */
+function Lens({ focalLength, fill }: { focalLength: number; fill: number }) {
+  const camera = useThree((state) => state.camera) as PerspectiveCamera
+
+  useEffect(() => {
+    camera.fov = fovForFocalLength(focalLength)
+    camera.position.set(0, 0, distanceFor(focalLength, fill))
+    camera.near = camera.position.z * 0.05
+    camera.far = camera.position.z * 6
+    camera.updateProjectionMatrix()
+  }, [camera, focalLength, fill])
+
+  return null
+}
+
+/** Fish Man is a hand-animated PNG sequence exported from Unity at 12fps
+ *  rather than a glTF, so it flips through on a billboard. Same glob as
+ *  `products.tsx` builds; fourteen filenames are not worth a shared module. */
+const FISH_MAN_FRAMES = Array.from(
+  { length: 14 },
+  (_, i) => `/sprites/fish-man-idle/Fish_Man_Idle_${String(i).padStart(5, '0')}.png`
+)
+
+const clipFor = (projectId: string, filename: string) => resolveVideo(projectId, filename)?.src
+
+/* ---- which piece stands for which project ----
+
+   Pointed at the same components `src/site/products.tsx` mounts, rather than
+   at `products.tsx` itself, and that is not a preference — it is a cycle.
+   `products.tsx` imports `AdamFace`, `CapsuleC1` and `BlockBuilder`; all
+   three import `EXTRA_CONTROLS` from `Gallery3D`; and `Gallery3D` calls
+   `specDefaults()` from `products.tsx` at module scope. That resolves when
+   `Gallery3D` is what starts the chain, which is the only way it was ever
+   entered before — but entering from `products.tsx` reaches that top-level
+   call while `SPECS` is still in its temporal dead zone, and the module
+   throws before it has finished loading.
+
+   The other half of the reason is that there is nothing left to reuse.
+   `exhibitFor` hands back a piece already scaled, lit for a case and turned
+   for a room; the stage here normalises the bounding box itself (see `Piece`
+   below), lights it in its own studio and takes its turn off a panel. What
+   was actually wanted from that file is the eight components, and this is
+   the shortest way to name them. */
+const PIECES: Record<string, () => ReactNode> = {
+  'mecha-station': () => <PosStation videoUrl="/videos/mecha-station-hero.mp4" scale={1} />,
+  openup: () => {
+    const src = clipFor('openup', 'One.mp4')
+    return src ? <Phone3D videoUrl={src} scale={1} /> : null
+  },
+  stitchfam: () => {
+    const src = clipFor('stitchfam', 'hero.mp4')
+    return src ? <VideoFrame videoUrl={src} scale={1} /> : null
+  },
+  'red-dead-redemption-2': () => <DiscHolder scale={1} />,
+  'grand-theft-auto-v': () => <DiscHolder scale={1} />,
+  'wyte-card': () => <WyteCard scale={1} />,
+  'block-builder': () => <BlockBuilder scale={1} />,
+  'slider-engine': () => <SpriteFlipbook frames={FISH_MAN_FRAMES} fps={12} scale={1} />
+}
+
+/** Held still across a re-render. Building one of these is where a glTF gets
+ *  requested and a video element gets made, and rebuilding it on every tick
+ *  of a Leva slider is a fetch per frame. */
+function Piece({ project }: { project: string }) {
+  const node = useMemo(() => PIECES[project]?.() ?? null, [project])
+  if (!node) return null
+
+  /* Centred and normalised rather than placed. Every piece was built at
+     whatever size suited the thing it is — a phone in phone units, a monitor
+     in monitor units — and the gallery they came from fitted them into a case
+     for exactly this reason. `size` on the panel is how a card gets to read
+     as a card again afterwards. */
+  return (
+    <Center>
+      <Resize>{node}</Resize>
+    </Center>
+  )
+}
+
+export default function MechProduct({
+  project,
+  tuning = PRODUCT_DEFAULTS,
+  piece = PIECE_FALLBACK,
+  live = true
+}: {
+  project: string
+  tuning?: ProductTuning
+  piece?: PieceTuning
+  live?: boolean
+}) {
+  const fill = tuning.fill * piece.size
+  const distance = distanceFor(PRODUCT_DEFAULTS.focalLength, PRODUCT_DEFAULTS.fill)
+
+  return (
+    <Canvas
+      dpr={[1, 2]}
+      /* Stopped rather than unmounted while a still is on the stage — the
+         same trade `MechModel` makes, and for the same reason: tearing down a
+         WebGL context, a compiled shader set and a generated environment map
+         costs most of a hundred milliseconds to build again. */
+      frameloop={live ? 'always' : 'never'}
+      camera={{ fov: fovForFocalLength(PRODUCT_DEFAULTS.focalLength), position: [0, 0, distance] }}
+      gl={{ alpha: true, antialias: true, toneMapping: ACESFilmicToneMapping, outputColorSpace: SRGBColorSpace }}
+      style={{ background: 'transparent' }}
+    >
+      <Lens focalLength={tuning.focalLength} fill={fill} />
+      <Studio intensity={tuning.envIntensity} exposure={tuning.exposure} />
+      <directionalLight position={[3, 4, 5]} intensity={tuning.keyIntensity} />
+      <directionalLight position={[-4, 1, -3]} intensity={tuning.fillIntensity} />
+
+      <Suspense fallback={null}>
+        <group position={[0, piece.liftY / fill, 0]}>
+          <Float
+            speed={tuning.floatSpeed}
+            rotationIntensity={tuning.floatRotation}
+            floatIntensity={0.5}
+            floatingRange={[-tuning.floatRange, tuning.floatRange]}
+          >
+            <Drift fill={fill} />
+            <Swing turn={piece.turn}>
+              <Piece project={project} />
+            </Swing>
+          </Float>
+        </group>
+      </Suspense>
+    </Canvas>
+  )
+}

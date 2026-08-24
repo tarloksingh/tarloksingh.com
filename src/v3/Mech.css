@@ -2045,6 +2045,16 @@
   width: min(340px, calc(100vw - 20px));
 }
 
+/* Under the labels panel, which is under the subject's. Leva stacks the
+   global panel itself; the two `LevaPanel` stores have to be told where. */
+.mech-pieces-panel {
+  position: fixed;
+  top: 380px;
+  right: 10px;
+  z-index: 1000;
+  width: min(340px, calc(100vw - 20px));
+}
+
 /* ---- the source, on screen ----
 
    Portalled to `body`, so none of `.mech`'s rules reach it: the cursor is a

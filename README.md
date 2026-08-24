@@ -276,6 +276,58 @@ knobs, subject scale and picture scale, in the same shape as every other
 tuning panel here (a `_DEFAULTS` constant, a localStorage scratchpad, a copy
 button that hands back source).
 
+### The subject, when there is no model
+
+Two of the ten projects have a model — Capsule C1 and Mr. Takahashi. The other
+eight had a photograph where the subject should be, which on a screen built
+around *the thing itself* is the one frame that isn't one.
+
+They do all have a piece, though, and have since v2: a video-texture monitor
+for Mecha Station, a phone for OpenUp, a disc case for the two game credits,
+Wyte's card, Block Builder's flying blocks, Slider Engine's fish man.
+`MechProduct.tsx` stands those on the project screen's stage, as a third
+`Frame` kind (`piece`) beside `model` and `flat` — three kinds because they
+mount three different things, and everything that only cares whether a frame
+is a picture asks `kind === 'flat'`.
+
+**It is not `MechModel`.** That component is built for one face: its lens, its
+lighting and its morph driving are tuned around that head, and
+`MODEL_DEFAULTS` is shared with Capsule C1, which is already lit to look right
+under them. Feeding a monitor through it would mean forking its lighting per
+piece or quietly changing numbers a model is already lit by. So `MechProduct`
+is a studio of its own — its own exposure, its own lens, its own panel
+(`productTuning.ts`) — and the two files do not read each other. What they do
+share is arithmetic: a lens quoted in millimetres and how far back a camera
+stands to hold a fraction of the frame are generic camera geometry, not
+anything about a subject.
+
+It also points at the eight components directly rather than at
+`src/site/products.tsx`, and that is not a preference — it's a cycle.
+`products.tsx` imports `AdamFace`, `CapsuleC1` and `BlockBuilder`; all three
+import `EXTRA_CONTROLS` from `Gallery3D`; and `Gallery3D` calls
+`specDefaults()` from `products.tsx` at module scope. That resolves when
+`Gallery3D` starts the chain, which is the only way it was ever entered — but
+entering from `products.tsx` reaches that top-level call while `SPECS` is
+still in its temporal dead zone, and the module throws before it finishes
+loading. There is nothing much left to reuse anyway: `exhibitFor` hands back a
+piece already scaled, lit for a case and turned for a room, and this stage
+normalises the bounding box itself, lights it in its own studio and takes its
+turn off a panel.
+
+Each piece is `Center`ed and `Resize`d to one world unit before framing —
+every one of them was built at whatever size suited the thing it is, and the
+gallery they came from fitted them into a case for the same reason. Which is
+also why they each need a `size` afterwards: a flat card and a tall monitor
+fitted to the same bounding box do not read as the same size, they read as a
+card blown up. `PIECE_DEFAULTS` carries `size`, `turn` and `liftY` per project
+— `turn` seeded from the value each piece already carried in `products.tsx`,
+since those were settled by eye against a real render.
+
+Four projects (`a-game`, `mr-grocery`, `visa`, `3d-printing`) never reach any
+of this: `entries` in `model.ts` drops a project with no media, and those four
+have none. They are write-ups waiting for assets, and adding a piece for them
+would put a subject on a screen with nothing else on it.
+
 ### Getting to another project
 
 The header's tag row is a way *through* the work — press one and the readout
