@@ -8,6 +8,8 @@ import MechLaser from './MechLaser'
 import MechHud from './MechHud'
 import { useModelTuning } from './modelTuning'
 import MechDeck from './MechDeck'
+import MechMenu from './MechMenu'
+import { useNarrowTuning } from './narrowTuning'
 import { sound } from './sound'
 import { drift, flinch, quarry } from './subject'
 import { entries, thumbOf, type Entry, type Frame } from './model'
@@ -412,10 +414,14 @@ interface FrameProps {
   frame: Extract<Frame, { kind: 'flat' }>
   index: number
   count: number
+  /** Narrow, the housing has no frame coordinates to sit at: the stage is a
+   *  real box of its own rather than a 16:9 island inside a 1920-unit frame,
+   *  and the picture fills it. See `narrow viewports` in Mech.css. */
+  narrow: boolean
   onReady: () => void
 }
 
-function Flat({ frame, index, count, onReady }: FrameProps) {
+function Flat({ frame, index, count, narrow, onReady }: FrameProps) {
   const box = mediaBox(frame.aspect)
   const shell = useRef<HTMLDivElement>(null)
   const video = useRef<HTMLVideoElement>(null)
@@ -463,7 +469,7 @@ function Flat({ frame, index, count, onReady }: FrameProps) {
   }
 
   return (
-    <div className="mech-housing" data-full={full} style={place} ref={shell}>
+    <div className="mech-housing" data-full={full} style={narrow ? undefined : place} ref={shell}>
       <div className="mech-housing-label">
         <span>{frame.type === 'video' ? 'clip' : 'still'}</span>
         <span className="mech-housing-count">
@@ -680,6 +686,10 @@ function Typed({ text, run }: { text: string; run: string }) {
 
 export default function Mech({ id, onProject, onHome }: Props) {
   const tuning = useModelTuning()
+  /* The phone's two knobs — how large the subject and the pictures sit in a
+     stage that is no longer a 16:9 island. Its own panel, because the other
+     two are hidden at this width. See `narrowTuning.ts`. */
+  const { store: narrowStore, values: narrowScale } = useNarrowTuning()
   /* The label maker's half that belongs on the panel rather than over the
      picture: copying out, reverting, and adding a line without having a
      picture to click on. See `labelTuning.ts`. */
@@ -717,6 +727,11 @@ export default function Mech({ id, onProject, onHome }: Props) {
      a drag moves the real line rather than a preview of one. */
   const drafts = useSyncExternalStore(pins.subscribe, pins.snapshot, pins.snapshot)
   const [pinning, setPinning] = useState(false)
+  const [menu, setMenu] = useState(false)
+
+  useEffect(() => {
+    if (!narrow) setMenu(false)
+  }, [narrow])
 
   const current = frames[shown]
   const modelFrame = frames.find((frame) => frame.kind === 'model')
@@ -849,8 +864,15 @@ export default function Mech({ id, onProject, onHome }: Props) {
   // A project with a dozen frames outruns the rail's height (or, narrow, its
   // width), so stepping with the arrow keys has to bring the tile back into
   // view on whichever axis it now scrolls.
+  //
+  // Both axes are named either way. `block` defaults to `'start'` when it is
+  // left out, and narrow the page itself is the vertical scroller — so asking
+  // only for `inline: 'nearest'` scrolled the whole screen down to put the
+  // tile strip at the top of the window, taking the subject off it.
   useEffect(() => {
-    rail.current?.children[index]?.scrollIntoView(narrow ? { inline: 'nearest' } : { block: 'nearest' })
+    rail.current?.children[index]?.scrollIntoView(
+      narrow ? { inline: 'nearest', block: 'nearest' } : { block: 'nearest', inline: 'nearest' }
+    )
   }, [index, narrow])
 
   // The rail's own scrubber: a thumb sized and placed off the tile strip's
@@ -927,18 +949,29 @@ export default function Mech({ id, onProject, onHome }: Props) {
       {typeof document !== 'undefined'
         ? createPortal(
             <>
+              {/* Both of the big panels are off at phone width. Leva's own
+                  minimum is most of a 390-point window, and two of them
+                  stacked cover the subject, the deck and the title — the
+                  screenshot that started this pass is mostly panel. What is
+                  left is the one adjustment the narrow layout needs by eye:
+                  how large the subject and the pictures sit. */}
               <Leva
                 collapsed
-                hidden={!import.meta.env.DEV}
+                hidden={!import.meta.env.DEV || narrow}
                 titleBar={{ title: 'Subject tuning' }}
                 theme={PANEL}
               />
               {/* Its own panel, not a folder under the subject's lighting:
                   they have nothing to do with each other. Sits under the
                   first one, which is where Leva stacks a second. */}
-              {import.meta.env.DEV && (
+              {import.meta.env.DEV && !narrow && (
                 <div className="mech-labels-panel">
                   <LevaPanel store={labels} collapsed fill titleBar={{ title: 'Labels', drag: false }} theme={PANEL} />
+                </div>
+              )}
+              {import.meta.env.DEV && narrow && (
+                <div className="mech-narrow-panel">
+                  <LevaPanel store={narrowStore} collapsed fill titleBar={{ title: 'Scale', drag: false }} theme={PANEL} />
                 </div>
               )}
             </>,
@@ -953,47 +986,104 @@ export default function Mech({ id, onProject, onHome }: Props) {
       <MechBird />
       <MechLaser />
 
+      {menu && (
+        <MechMenu shownId={shownId} onProject={onProject} onHome={onHome} onClose={() => setMenu(false)} />
+      )}
+
       <div className="mech-frame">
         <header className="mech-head">
           <button className="mech-wordmark" onClick={onHome}>
             Tarlok Singh
           </button>
-          {/* Each tag steps to the next project carrying it, wrapping — the
-              row is a way through the work rather than a legend for it. A tag
-              nothing else answers to is left inert rather than looking
-              pressable and doing nothing. */}
-          <nav className="mech-nav">
-            <span className="mech-nav-here">{project.title.toLowerCase()}</span>
-            {TAGS.filter((tag) => tag !== 'work').map((tag) => {
-              const along = entries.filter((item) => item.project.tags.includes(tag))
-              const next = along[(along.findIndex((item) => item.project.id === shownId) + 1) % Math.max(along.length, 1)]
-              return (
-                <button
-                  key={tag}
-                  data-on={project.tags.includes(tag)}
-                  disabled={along.length === 0 || (along.length === 1 && next?.project.id === shownId)}
-                  onClick={() => {
-                    if (!next) return
-                    sound.select()
-                    onProject(next.project.id)
-                  }}
-                >
-                  {tag}
-                </button>
-              )
-            })}
-          </nav>
+
+          {narrow ? (
+            /* One control instead of a tag row and a strip of fourteen
+               names. See `MechMenu.tsx` for why this screen is the exception
+               to "no menu behind a button". */
+            <button
+              className="mech-menu-key"
+              onClick={() => {
+                sound.select()
+                setMenu(true)
+              }}
+              aria-label="Open the index"
+            >
+              <i />
+              <i />
+              <i />
+            </button>
+          ) : (
+            /* Each tag steps to the next project carrying it, wrapping — the
+               row is a way through the work rather than a legend for it. A
+               tag nothing else answers to is left inert rather than looking
+               pressable and doing nothing. */
+            <nav className="mech-nav">
+              <span className="mech-nav-here">{project.title.toLowerCase()}</span>
+              {TAGS.filter((tag) => tag !== 'work').map((tag) => {
+                const along = entries.filter((item) => item.project.tags.includes(tag))
+                const next =
+                  along[(along.findIndex((item) => item.project.id === shownId) + 1) % Math.max(along.length, 1)]
+                return (
+                  <button
+                    key={tag}
+                    data-on={project.tags.includes(tag)}
+                    disabled={along.length === 0 || (along.length === 1 && next?.project.id === shownId)}
+                    onClick={() => {
+                      if (!next) return
+                      sound.select()
+                      onProject(next.project.id)
+                    }}
+                  >
+                    {tag}
+                  </button>
+                )
+              })}
+            </nav>
+          )}
         </header>
 
+        {/* Every project, named, on the panel — not behind anything. The tag
+            row in the header is a way *through* the work and this is a way
+            *to* it, which is the one thing the screen could not do before:
+            there was no route from one project to a named other without going
+            back out to the index first. Along the bottom edge, in the band
+            this composition has always left empty — see `.mech-projects`. */}
+        {!narrow && (
+          <nav className="mech-projects" aria-label="Projects">
+            {entries.map((item) => (
+              <button
+                key={item.project.id}
+                aria-current={item.project.id === shownId}
+                onClick={() => {
+                  if (item.project.id === shownId) return
+                  sound.select()
+                  onProject(item.project.id)
+                }}
+              >
+                {item.project.title.toLowerCase()}
+              </button>
+            ))}
+          </nav>
+        )}
+
         {/* Docked between the header and the rail rather than down in the
-            footer — the same right edge as the tile strip below it. */}
+            footer — the same right edge as the tile strip below it. Narrow,
+            it comes off the frame entirely and floats at the bottom of the
+            window: see `.mech-deck-slot` under `narrow viewports`. */}
         <div className="mech-deck-slot">
-          <MechDeck />
+          <MechDeck narrow={narrow} />
         </div>
 
         {/* The subject and its labels share one box so that scaling the window
             moves them together. */}
-        <div className="mech-stage" ref={stage} data-covered={covered} data-leaving={leaving}>
+        <div
+          className="mech-stage"
+          ref={stage}
+          data-covered={covered}
+          data-leaving={leaving}
+          data-kind={current.kind}
+          style={narrow ? { ['--media-scale' as string]: narrowScale.media } : undefined}
+        >
           {/* The model is mounted for as long as the project has one, and
               hidden rather than unmounted while a still is on the stage.
 
@@ -1006,7 +1096,17 @@ export default function Mech({ id, onProject, onHome }: Props) {
           {modelFrame && (
             <div className="mech-model-layer" data-on={current.kind === 'model'}>
               <Suspense fallback={null}>
-                <MechModel src={modelFrame.src} tuning={tuning} live={current.kind === 'model'} />
+                {/* The same lens, framed larger. `fill` is how much of the
+                    stage's height the subject takes, and on a phone the stage
+                    is a tall box rather than a wide one — a head framed for
+                    the middle of a 16:9 island is a speck in it. Nothing
+                    about `MODEL_DEFAULTS` moves; the multiplier is narrow's
+                    own, on its own panel. */}
+                <MechModel
+                  src={modelFrame.src}
+                  tuning={narrow ? { ...tuning, fill: tuning.fill * narrowScale.model } : tuning}
+                  live={current.kind === 'model'}
+                />
               </Suspense>
             </div>
           )}
@@ -1019,6 +1119,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
               frame={current}
               index={shown}
               count={frames.length}
+              narrow={narrow}
               onReady={() => setPhase((at) => (at === 'hold' ? 'in' : at))}
             />
           )}
@@ -1032,7 +1133,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
               to the frame that is leaving — and the ones arriving mount at the
               moment the next picture starts, which is what their own draw-in
               is timed against. */}
-          {!booting && phase !== 'hold' && (
+          {!booting && phase !== 'hold' && !narrow && (
             <Leaders
               key={`leaders-${current.id}`}
               notes={notes}
@@ -1050,55 +1151,25 @@ export default function Mech({ id, onProject, onHome }: Props) {
           )}
         </div>
 
-        <section className="mech-side">
-          <h1 className="mech-title">
-            <Typed text={project.title} run={shownId} />
-          </h1>
-          {project.tagline && (
-            <p className="mech-tagline">
-              <SplitReveal text={project.tagline} run={shownId} delay={0.3} />
-            </p>
-          )}
+        {/* What the leaders say, when there are no leaders.
 
-          {/* Sized to its own content and sandwiched between two flexible
-              spacers (`.mech-folds-wrap`'s ::before/::after) rather than
-              stretched to fill the space under the title — that is what
-              lets it sit centred in whatever room is left, biased a little
-              above true middle. */}
-          <div className="mech-folds-wrap">
-            <div className="mech-folds">
-              {folds.map((fold, i) => {
-                const isOpen = open === fold.id
-                return (
-                  <div className="mech-fold" key={fold.id} data-open={isOpen}>
-                    <button
-                      onClick={() => {
-                        sound.select()
-                        setOpen(isOpen ? null : fold.id)
-                      }}
-                      onPointerEnter={() => setLit(fold.id)}
-                      onPointerLeave={() => setLit(null)}
-                      aria-expanded={isOpen}
-                    >
-                      <span className="mech-pip" />
-                      <SplitReveal text={fold.title} run={shownId} delay={0.5 + i * 0.05} />
-                    </button>
-
-                    {/* Always mounted, and opened by growing its row from 0fr to
-                        1fr — the only way a panel of unknown height can animate
-                        shut as well as open. */}
-                    <div className="mech-fold-body">
-                      <div>
-                        <span className="mech-fold-rule" />
-                        <p>{fold.tags ? fold.tags.join(', ').toLowerCase() : fold.text}</p>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </section>
+            Narrow, the lines are off: at this width the fan is drawn into a
+            box a few hundred points across, and three labels with their
+            values set under them land on top of each other and on top of the
+            subject — which is exactly what the readout is for and exactly
+            what it stopped doing. The same notes are set out flat instead,
+            under the picture they name, which is the shape the rest of this
+            layout is in anyway. */}
+        {narrow && notes.length > 0 && (
+          <dl className="mech-readout">
+            {notes.map((note) => (
+              <div key={note.label}>
+                <dt>{note.label}</dt>
+                <dd>{note.value}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
 
         <div className="mech-rail-wrap" ref={railWrap}>
           <div className="mech-rail" ref={rail}>
@@ -1130,6 +1201,79 @@ export default function Mech({ id, onProject, onHome }: Props) {
             <div className="mech-rail-thumb" />
           </div>
         </div>
+
+        <section className="mech-side">
+          {/* The title is set to one line, and on a phone that is a promise
+              the type size cannot keep on its own: "mr. takahashi" fits at
+              the size the frame asks for and "red dead redemption 2" is two
+              lines of it, which is what the split in the middle of a name
+              was. `--title-len` hands the stylesheet the character count so
+              it can cap the size against the width — measured off the count
+              rather than the rendered box because the title types itself in
+              a character at a time, and a box measured mid-type is a box
+              that is still growing. See `.mech-title` in Mech.css. */}
+          <h1 className="mech-title" style={{ ['--title-len' as string]: project.title.length }}>
+            <Typed text={project.title} run={shownId} />
+          </h1>
+          {project.tagline && (
+            <p className="mech-tagline">
+              <SplitReveal text={project.tagline} run={shownId} delay={0.3} />
+            </p>
+          )}
+
+          {/* Sized to its own content and sandwiched between two flexible
+              spacers (`.mech-folds-wrap`'s ::before/::after) rather than
+              stretched to fill the space under the title — that is what
+              lets it sit centred in whatever room is left, biased a little
+              above true middle. */}
+          <div className="mech-folds-wrap">
+            <div className="mech-folds">
+              {folds.map((fold, i) => {
+                /* Narrow, nothing folds. A phone has one column and no
+                   competing use for it, so the whole write-up is laid out
+                   open — every section under its own heading, split apart,
+                   which is the shape v2's project page had and the thing
+                   worth keeping out of it. The accordion exists on the
+                   desktop layout because there the copy has to live in a
+                   380-unit column beside the subject, not under it. */
+                const isOpen = narrow || open === fold.id
+                return (
+                  <div className="mech-fold" key={fold.id} data-open={isOpen}>
+                    {narrow ? (
+                      <h2>
+                        <span className="mech-pip" />
+                        <SplitReveal text={fold.title} run={shownId} delay={0.5 + i * 0.05} />
+                      </h2>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          sound.select()
+                          setOpen(isOpen ? null : fold.id)
+                        }}
+                        onPointerEnter={() => setLit(fold.id)}
+                        onPointerLeave={() => setLit(null)}
+                        aria-expanded={isOpen}
+                      >
+                        <span className="mech-pip" />
+                        <SplitReveal text={fold.title} run={shownId} delay={0.5 + i * 0.05} />
+                      </button>
+                    )}
+
+                    {/* Always mounted, and opened by growing its row from 0fr to
+                        1fr — the only way a panel of unknown height can animate
+                        shut as well as open. */}
+                    <div className="mech-fold-body">
+                      <div>
+                        <span className="mech-fold-rule" />
+                        <p>{fold.tags ? fold.tags.join(', ').toLowerCase() : fold.text}</p>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </section>
 
         <footer className="mech-foot">
           <a href="mailto:hello@tarloksingh.com">designed by Tarlok Singh</a>

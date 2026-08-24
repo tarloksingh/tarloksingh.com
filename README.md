@@ -215,21 +215,90 @@ portrait, where the frame's width collapses to fit but its height doesn't,
 the two side columns keep their full height and shrink to a sliver of width
 instead — and end up sitting on top of the stage rather than beside it.
 
-Below 700px, `data-narrow` on `.mech` — a `matchMedia` store in `Mech.tsx`,
-not a plain CSS breakpoint, because the rail's scroll axis has to agree with
-it — switches every one of those absolutely-positioned pieces to normal
-document flow: header, deck, stage, title/tagline/folds, rail, footer, top to
-bottom, and the page scrolls instead of everything being confined to one
-fixed-height box. `.mech-stage` keeps its existing width/height formula
-untouched — at a narrow `--px` it already computes to the full viewport
-width, correctly proportioned — only its position changes, so the leader
-line math, which reads the stage's real `getBoundingClientRect()` rather
-than a hardcoded box, never needs to know a narrow layout exists. The rail
-turns sideways — a swipe strip instead of a list — which is the one place
-behaviour has to know about the breakpoint too: `Mech.tsx`'s scrubber
-measures `scrollWidth`/`scrollLeft` instead of `scrollHeight`/`scrollTop`
-under the same flag, and writes a different pair of custom properties for
-the CSS to read.
+Moving the boxes was only half of it. **The other half is the unit.** `--px`
+is `min(0.0749rem, 0.0520833vw, 0.0925926vh)`, so on a 390-point window the
+`vw` term wins at a fifth of a pixel: every gutter, gap and bracket in
+`Mech.css` is a multiple of that fifth (a 28-unit gutter comes out at five
+real pixels) while `--type` is floored at a rem and holds its full size.
+Type at desktop size on a layout with no space left in it is what a phone
+was showing — a title split across two lines, three leader labels stacked on
+each other over a subject the size of a thumbnail.
+
+So below 700px `data-narrow` on `.mech` — a `matchMedia` store in
+`Mech.tsx`, not a plain CSS breakpoint, because two behaviours have to agree
+with it — **re-bases `--px` to a 500-unit frame instead of a 1920-unit one**
+and gives `--type` a lower floor of its own. Every ratio in the file lands
+back where it was drawn, and from there the layout is one column, in this
+order:
+
+| | |
+|---|---|
+| header | sticky, folded into one control — `MechMenu.tsx` |
+| stage | the subject, large |
+| `.mech-readout` | what the leaders would have said, set out flat |
+| rail | the tile strip, sideways, above the title |
+| `.mech-side` | title, tagline, and every section open |
+| footer | the contact line |
+| deck | floating over all of it, centred at the bottom of the window |
+
+The subject is the change worth naming. The stage is no longer a 16:9 island
+in the middle of the frame: it's a tall box the width of the window, the
+model's `fill` is multiplied on the way into `MechModel` (`narrowTuning.ts`,
+never `MODEL_DEFAULTS`), and a picture fills the box rather than sitting in a
+780-unit rectangle inside it — `Flat` drops its inline frame-coordinate
+`left/top/width/height` when narrow, which is what leaves the stylesheet
+anything to set. The leaders are off entirely: a fan laid out for a
+1920-wide frame has nowhere to land in 390, which is what put three labels on
+top of each other and on top of the face. Their notes are set out flat under
+the picture instead.
+
+Nothing folds, either. Every section stands open under its own heading with a
+rule above it — the accordion exists on the desktop layout because there the
+copy has to live in a 380-unit column *beside* the subject, not under it.
+The title is capped against the width it actually has: `--title-len` hands the
+stylesheet the character count and 0.66 is the average advance of an uppercase
+Clash Display character, counted rather than measured because the title types
+itself in a character at a time and a box measured mid-type is still growing.
+
+Two behaviours branch on the flag. The rail turns sideways — a swipe strip
+instead of a list — so `Mech.tsx`'s scrubber measures
+`scrollWidth`/`scrollLeft` instead of `scrollHeight`/`scrollTop` and writes a
+different pair of custom properties for the CSS to read. And the arrow keys'
+`scrollIntoView` names *both* axes: `block` defaults to `'start'` when it's
+left out, and narrow the page itself is the vertical scroller, so asking only
+for `inline: 'nearest'` scrolled the whole window down to put the tile strip
+at the top and took the subject off the screen.
+
+The dev panels are off at this width — Leva's own minimum is most of a
+390-point window, and the subject panel and the label editor stacked cover
+the subject, the deck and the title. What's left is `narrowTuning.ts`: two
+knobs, subject scale and picture scale, in the same shape as every other
+tuning panel here (a `_DEFAULTS` constant, a localStorage scratchpad, a copy
+button that hands back source).
+
+### Getting to another project
+
+The header's tag row is a way *through* the work — press one and the readout
+swings to the next project carrying it — and for a long time that was the
+only way, so there was no route from Mr. Takahashi to Red Dead by name
+without going back out to the index.
+
+`.mech-projects` is that route: every project, named, always on the panel,
+nothing behind anything. It sits along the bottom edge rather than under the
+header, which is where it was first tried — the header is one line by design
+and a second row of it lands on the title, since `.mech-side` begins at 85.
+The band above the compass is the one part of this composition with nothing
+in it (the subject's box ends at 798, the compass strip starts 118 off the
+bottom) and a strip of chrome is exactly what belongs in air that has been
+air since the Figma. It's the one piece of type on the screen set in `--px`
+rather than `--type`: everything else is words to read and should hold its
+size on a small window, and this is a row that has to fit across the frame
+all at once.
+
+Narrow, both the tag row and the strip fold into `MechMenu.tsx` — the one
+place on the site where a button opens a second button, and the trade a phone
+actually wants. The alternative is spending a third of the screen on
+navigation for a screen whose whole job is one large subject.
 
 ### The leaders
 

@@ -410,12 +410,89 @@
   color: var(--dim);
 }
 
+/* ---- every project, on the panel ----
+
+   The tag row in the header is a way *through* the work: press one and the
+   readout swings to the next project carrying it. What the screen could not
+   do was go somewhere by name — from Mr. Takahashi to Visa there was no
+   route except back out to the index — and the project you were in was a
+   word in the corner rather than a place in a list.
+
+   So the list is on the panel, always there, nothing behind anything: the
+   same voice as the tile strip down the right-hand side, one level up.
+   Names rather than initials, because fourteen monograms is a puzzle and
+   fourteen short titles fit.
+
+   Along the bottom edge rather than under the header, which is where it
+   started. The header is one line by design and a second row of it lands on
+   the title — `.mech-side` begins at 85 and a wrapped tag row plus a strip
+   of fourteen names is past that before it has begun. The band above the
+   compass is the one part of this composition with nothing in it: the
+   subject's box ends at 798, the compass strip starts at 118 off the bottom,
+   and between them is air that has been air since the Figma. A strip of
+   chrome is exactly what belongs in it. */
+.mech-projects {
+  position: absolute;
+  left: calc(101 * var(--px));
+  right: calc(101 * var(--px));
+  bottom: calc(136 * var(--px));
+  z-index: 3;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: calc(14 * var(--px));
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: calc(4 * var(--px));
+  /* The one piece of type on this screen set in frame coordinates rather
+     than in `--type`. Everything else is words to read and holds its size on
+     a small window; this is fourteen names that have to fit across the frame
+     at once, and a floored size turns "fits" into "scrolls" the moment the
+     window is under about 1600. Floored in real pixels instead, so it stops
+     shrinking before it stops being legible. */
+  font-size: max(calc(11 * var(--px)), 10px);
+  letter-spacing: calc(0.2 * var(--px));
+  /* If a longer set of titles ever does outrun the frame, the last one
+     fading out is what says so — a strip that simply stops looks complete. */
+  mask-image: linear-gradient(to right, #000 94%, transparent);
+  /* Held back with the rest of the chrome while the machine comes up. */
+  transition: opacity 500ms var(--ease) 120ms;
+}
+
+.mech[data-boot='true'] .mech-projects {
+  opacity: 0;
+}
+
+.mech-projects::-webkit-scrollbar {
+  display: none;
+}
+
+.mech-projects button {
+  flex: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  white-space: nowrap;
+  color: var(--dim);
+  transition: color 160ms linear, text-shadow 160ms linear;
+}
+
+.mech-projects button:hover {
+  color: #fff;
+}
+
 /* The project you are in, first in the row and named rather than filtered —
    the tags after it are the vocabulary it sits inside, and the ones it
    actually carries are lit. */
 .mech-nav-here {
   color: var(--accent);
   text-shadow: 0 0 calc(8 * var(--px)) rgba(46, 230, 196, 0.5);
+}
+
+.mech-projects button[aria-current='true'] {
+  color: var(--accent);
+  text-shadow: 0 0 calc(8 * var(--px)) rgba(var(--accent-rgb), 0.5);
 }
 
 .mech-nav button {
@@ -2418,110 +2495,349 @@
   }
 }
 
+
 /* ---- narrow viewports ----
 
-   Everything above this point assumes there's room either side of the
-   centred 16:9 stage for `.mech-side` and `.mech-rail-wrap` to sit in. Both
-   are `position: absolute` at frame-unit insets from `.mech-frame`'s edges,
-   and `.mech-frame` is always full viewport height — so on a narrow window
-   they keep that full height while shrinking to a sliver of it, and end up
-   sitting on top of the stage instead of beside it rather than getting
-   smaller the way the rest of the composition does. See PLAN.md, Phase 1,
-   for the full arithmetic.
+   Everything above this point is drawn in a 1920×1080 frame with room either
+   side of a centred 16:9 stage: `.mech-side` (title, tagline, folds) and
+   `.mech-rail-wrap` (the tile strip) are absolutely positioned in those
+   margins, and `--px` — one frame coordinate in real pixels — is the unit all
+   of it is written in.
 
-   Below `NARROW_QUERY` in Mech.tsx (700px), `data-narrow` on `.mech` switches
-   every one of those absolutely-positioned pieces to normal document flow
-   instead: header, deck, stage, title/tagline/folds, rail, footer, top to
-   bottom. `.mech-stage` keeps its existing width/height formula untouched —
-   at this width it already computes to the full viewport width, correctly
-   proportioned — only its *position* changes, so the leader-line math in
-   leaders.ts (which reads the stage's real `getBoundingClientRect()`, not a
-   hardcoded box) keeps working without needing to know narrow layouts exist.
+   None of that survives a phone, and the first pass at this only moved the
+   boxes. What it left alone was the unit, and the unit is where the damage
+   was: `--px` is `min(0.0749rem, 0.0520833vw, 0.0925926vh)`, so on a 390-point
+   window the `vw` term wins at a fifth of a pixel. Every gutter, every gap and
+   every bracket in the file is a multiple of that fifth — a 28-unit gutter
+   comes out at five real pixels — while `--type` is floored at a rem and
+   holds. Type at full size on a layout with no space left in it is what the
+   screenshot was: a title split across two lines, three leader labels stacked
+   on each other over a subject the size of a thumbnail, and the chrome sitting
+   in whatever was left.
 
-   One deliberate trade-off: the stage runs edge to edge with no side gutter,
-   so the corner brackets' 13-unit overhang (see the file header comment) can
-   clip by a couple of physical pixels at the very edge under `overflow-x:
-   hidden` below. Full-bleed hero media is the normal mobile pattern and a
-   gutter here would mean giving the stage a width formula independent of
-   `--px`'s — i.e. breaking the one relationship every child coordinate in
-   this file depends on — to buy back a handful of pixels on a decoration
-   nothing can click. Not worth it; flagged rather than silently accepted.
+   So narrow re-bases the unit rather than fighting it. `--px` becomes a
+   fraction of the window (a 500-unit frame instead of a 1920-unit one), which
+   puts every ratio in the file back where it was drawn, and `--type` keeps a
+   floor of its own so the words stay readable while the drawing shrinks. From
+   there the layout is one column, top to bottom, in this order:
 
-   Nothing above this rule is affected — every property here is scoped under
-   `.mech[data-narrow='true']`, which is only ever true below the breakpoint. */
+     the header, sticky, folded into one control (see `MechMenu.tsx`)
+     the subject, large — the reason anyone opened the page
+     what the leaders would have said, set out flat (`.mech-readout`)
+     the tile strip, sideways
+     the title, the tagline, and every section open
+     the contact line
+     the deck, floating over all of it at the bottom of the window
+
+   The subject is the change worth naming. The stage is no longer a 16:9
+   island: it is a tall box the width of the window, the model's `fill` is
+   multiplied on the way in (`narrowTuning.ts`), and a picture fills the box
+   rather than sitting in a 780-unit rectangle inside it. The leaders are off —
+   a fan drawn for a 1920-wide frame has nowhere to land in 390, which is what
+   put three labels on top of each other and on top of the face.
+
+   Nothing above this rule is affected: every property here is scoped under
+   `.mech[data-narrow='true']`, which is only ever true below the breakpoint
+   in `NARROW_QUERY`. */
 
 .mech[data-narrow='true'] {
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  --gutter: calc(28 * var(--px));
+
+  /* The frame coordinate, re-based. 500 rather than 1920, so a number written
+     for the wide layout keeps roughly the proportion of the window it was
+     drawn with — the same reason `--px` is a fraction of the viewport at all.
+     Still capped by the rem, so the unit stops growing at the top of the
+     range instead of turning a small tablet into a poster. */
+  --px: min(0.0749rem, 100vw / 500);
+  /* Type's own floor, lower than the wide layout's: at this width the frame
+     unit and the type unit are close enough that the rem cap was setting a
+     46-unit title at fifty-five real pixels in a 390-point window. */
+  --type: max(var(--px), 0.065rem);
+  --gutter: calc(30 * var(--px));
 }
 
 .mech[data-narrow='true'] .mech-frame {
+  width: 100%;
   height: auto;
   min-height: 100%;
-  /* `.mech-coords` (the compass HUD's X/Y readout) lives on `.mech-hud`,
-     which stays `position: fixed` over the scrolling frame on purpose — see
-     the file header comment. Generous so the footer's resting scroll
-     position clears it rather than sitting behind it. */
-  padding-bottom: calc(100 * var(--px));
+  /* Clears the deck floating at the bottom of the window, plus the home
+     indicator on a phone that has one. */
+  padding-bottom: calc(150 * var(--px) + env(safe-area-inset-bottom, 0px));
 }
 
+/* ---- the header, folded ---- */
+
+/* Sticky rather than static: the way to every other project is behind this
+   one control now, and a control you have to scroll back up to is a control
+   you stop using. It sits on its own scrim so the copy passes under it
+   rather than through it. */
 .mech[data-narrow='true'] .mech-head {
-  position: static;
-  padding: calc(20 * var(--px)) var(--gutter) 0;
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(16 * var(--px)) var(--gutter) calc(14 * var(--px));
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.92) 55%, rgba(0, 0, 0, 0));
 }
 
-.mech[data-narrow='true'] .mech-deck-slot {
-  position: static;
-  margin: calc(16 * var(--px)) var(--gutter) 0;
+.mech[data-narrow='true'] .mech-wordmark {
+  font-size: calc(19 * var(--type));
+  color: #fff;
 }
 
+/* Three rules of the same weight as everything else drawn on this panel. */
+.mech-menu-key {
+  display: grid;
+  justify-items: end;
+  align-content: center;
+  gap: calc(6 * var(--px));
+  width: calc(52 * var(--px));
+  height: calc(44 * var(--px));
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.mech-menu-key i {
+  display: block;
+  height: calc(2 * var(--px));
+  min-height: 1.5px;
+  background: var(--accent);
+  box-shadow: 0 0 calc(8 * var(--px)) rgba(var(--accent-rgb), 0.6);
+}
+
+.mech-menu-key i:nth-child(1) {
+  width: calc(34 * var(--px));
+}
+
+.mech-menu-key i:nth-child(2) {
+  width: calc(23 * var(--px));
+}
+
+.mech-menu-key i:nth-child(3) {
+  width: calc(34 * var(--px));
+}
+
+/* ---- the sheet ---- */
+
+.mech-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: calc(18 * var(--px));
+  padding: calc(20 * var(--px)) var(--gutter) calc(40 * var(--px) + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  /* Opaque, not nearly-opaque. Under the sheet is a lit face, a phosphor
+     grid and a bloom, and three per cent of all of that is still a face. */
+  background: #040b09;
+  animation: mech-menu-in 220ms var(--ease) both;
+}
+
+@keyframes mech-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(-10 * var(--px)));
+  }
+}
+
+.mech-menu-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: calc(12 * var(--px));
+  border-bottom: 1px solid rgba(var(--accent-rgb), 0.2);
+  font-size: calc(13 * var(--type));
+  letter-spacing: calc(1.4 * var(--type));
+  color: var(--dim);
+}
+
+.mech-menu-close {
+  background: none;
+  border: 0;
+  padding: calc(6 * var(--px)) 0 calc(6 * var(--px)) calc(20 * var(--px));
+  font: inherit;
+  color: var(--accent);
+}
+
+.mech-menu-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.mech-menu-list button {
+  display: flex;
+  align-items: baseline;
+  gap: calc(14 * var(--px));
+  width: 100%;
+  padding: calc(13 * var(--px)) 0;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  background: none;
+  text-align: left;
+  font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-weight: 400;
+  font-size: calc(21 * var(--type));
+  color: var(--mid);
+}
+
+.mech-menu-n {
+  flex: none;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: calc(11.5 * var(--type));
+  letter-spacing: calc(1 * var(--type));
+  font-variant-numeric: tabular-nums;
+  color: var(--dim);
+}
+
+.mech-menu-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.mech-menu-year {
+  flex: none;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: calc(11.5 * var(--type));
+  font-variant-numeric: tabular-nums;
+  color: var(--dim);
+}
+
+.mech-menu-list button[aria-current='true'] {
+  color: var(--accent);
+  text-shadow: 0 0 calc(10 * var(--px)) rgba(var(--accent-rgb), 0.45);
+}
+
+.mech-menu-list button[aria-current='true'] .mech-menu-n {
+  color: var(--accent);
+}
+
+.mech-menu-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(10 * var(--px)) calc(14 * var(--px));
+}
+
+.mech-menu-tags button {
+  padding: calc(7 * var(--px)) calc(13 * var(--px));
+  border: 1px solid rgba(var(--accent-rgb), 0.28);
+  background: none;
+  font: inherit;
+  font-size: calc(12.5 * var(--type));
+  color: var(--mid);
+}
+
+.mech-menu-home {
+  align-self: flex-start;
+  padding: calc(9 * var(--px)) calc(20 * var(--px));
+  border: 1px solid var(--accent);
+  background: rgba(var(--accent-rgb), 0.08);
+  font: inherit;
+  font-size: calc(13 * var(--type));
+  letter-spacing: calc(1.4 * var(--type));
+  color: var(--accent);
+}
+
+/* ---- the subject, front and centre ---- */
+
+/* A tall box the width of the window instead of a 16:9 island in the middle
+   of a wide frame — the one thing a phone has plenty of is height, and the
+   subject is what the screen is for. Capped against the viewport as well as
+   the width so a short window (a phone held sideways, a small tablet) does
+   not hand the whole screen to the picture and push the title off the end. */
 .mech[data-narrow='true'] .mech-stage {
   position: relative;
-  top: auto;
   left: auto;
+  top: auto;
   transform: none;
-  margin: calc(24 * var(--px)) auto 0;
+  width: 100%;
+  height: min(56vh, calc(100vw * 1.05));
+  margin: 0;
 }
 
-/* The title/tagline/folds column. Full width instead of a 380-unit sliver,
-   and no longer pinned between a `top` and a `bottom` inset — it sizes to
-   its content and the page scrolls, rather than the fold list scrolling in
-   its own confined box the way it does in the desktop three-column layout. */
-.mech[data-narrow='true'] .mech-side {
-  position: static;
-  width: auto;
+/* The picture fills the stage rather than sitting at `mediaBox()`'s
+   coordinates inside it — those are frame coordinates, and there is no frame
+   here. `Flat` in Mech.tsx drops its inline `left/top/width/height` when
+   narrow, which is what leaves this rule anything to set. `contain`, not
+   `cover`: a portrait phone capture cropped to a landscape box is most of the
+   picture missing. */
+.mech[data-narrow='true'] .mech-housing {
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  transform: scale(var(--media-scale, 1));
+}
+
+.mech[data-narrow='true'] .mech-media {
+  object-fit: contain;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* The strip and the transport hang above and below the picture in the wide
+   layout, in the air either side of it. Here the picture is the whole stage
+   and there is no air, so both come inside — over the picture's own edges,
+   on a scrim dark enough to read against anything. */
+.mech[data-narrow='true'] .mech-housing-label {
+  top: var(--label-gap);
   bottom: auto;
-  padding: calc(28 * var(--px)) var(--gutter) 0;
 }
 
-/* The two flex spacers that bias the fold list above true middle in a tall,
-   height-constrained column have nothing to centre in an auto-height one —
-   left in, they'd just be empty flex items with `flex: 1` and no space to
-   claim, which is harmless, but hiding them is one line and reads clearer. */
-.mech[data-narrow='true'] .mech-folds-wrap::before,
-.mech[data-narrow='true'] .mech-folds-wrap::after {
+.mech[data-narrow='true'] .mech-transport {
+  top: auto;
+  bottom: var(--label-gap);
+  padding: calc(6 * var(--px)) calc(10 * var(--px));
+  border-radius: calc(8 * var(--px));
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* The corner brackets are drawn thirteen units outside the picture. Outside
+   the picture is outside the window now. */
+.mech[data-narrow='true'] .mech-corner {
   display: none;
 }
 
-/* Rail tiles are sized as a fraction of the frame like everything else on
-   this page, which is correct for a composition and wrong for a touch
-   target: at a phone's `--px` a 68-unit tile is well under the ~44px a
-   thumb can reliably hit. Fixed real pixels here, the same reasoning as
-   `--type`'s floor. */
-.mech[data-narrow='true'] .mech-tile {
-  width: 76px;
-  height: 64px;
+/* ---- what the leaders would have said ---- */
+
+.mech-readout {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(calc(150 * var(--px)), 1fr));
+  gap: calc(2 * var(--px)) calc(24 * var(--px));
+  margin: calc(20 * var(--px)) 0 0;
+  padding: 0 var(--gutter);
 }
 
-/* The rail itself turns sideways: a horizontal swipe strip reads as the
-   natural mobile control for "step through this project's frames," and it
-   costs far less vertical room than the desktop list does. Mech.tsx's
-   scrubber effect measures the other axis and writes `--thumb-w`/
-   `--thumb-left` instead of `--thumb-h`/`--thumb-top` under this same
-   `data-narrow` flag, so the two never disagree about which way the rail
-   scrolls. */
+.mech-readout > div {
+  padding: calc(9 * var(--px)) 0;
+  border-top: 1px solid rgba(var(--accent-rgb), 0.18);
+}
+
+.mech-readout dt {
+  font-size: calc(11 * var(--type));
+  letter-spacing: calc(1.3 * var(--type));
+  text-transform: lowercase;
+  color: rgba(var(--accent-rgb), 0.8);
+}
+
+.mech-readout dd {
+  margin: calc(2 * var(--px)) 0 0;
+  font-size: calc(14 * var(--type));
+  color: #fff;
+}
+
+/* ---- the tile strip, above the title ---- */
+
+/* Sideways, and above the words rather than below them: on a phone the
+   picture and the way to the next picture belong together, and putting the
+   strip under a screen of copy is putting it somewhere nobody scrolls back
+   to. */
 .mech[data-narrow='true'] .mech-rail-wrap {
   position: static;
   right: auto;
@@ -2529,7 +2845,7 @@
   transform: none;
   flex-direction: column;
   max-height: none;
-  margin: calc(32 * var(--px)) 0 0;
+  margin: calc(22 * var(--px)) 0 0;
   padding: 0 var(--gutter);
 }
 
@@ -2537,12 +2853,38 @@
   flex-direction: row;
   overflow-x: auto;
   overflow-y: hidden;
+  gap: calc(12 * var(--px));
+  padding: calc(12 * var(--px));
+  scroll-snap-type: x proximity;
+}
+
+/* Rail tiles are a fraction of the frame like everything else on this page,
+   which is right for a composition and wrong for a touch target. Real pixels
+   with a floor, the same reasoning as `--type`'s. */
+.mech[data-narrow='true'] .mech-tile {
+  width: max(92px, calc(120 * var(--px)));
+  height: max(68px, calc(88 * var(--px)));
+  border-radius: calc(10 * var(--px));
+  scroll-snap-align: center;
+  opacity: 0.72;
+}
+
+/* The wide layout marks the current tile by flooding it with a 60-unit inset
+   shadow, which at the wide frame's `--px` is a wash over a 58-unit tile. At
+   this width that number is most of a *bigger* tile, so the thumbnail — the
+   only thing that tells one tile from another — disappears under it. A ring
+   instead, which is what the wash was standing in for. */
+.mech[data-narrow='true'] .mech-tile[aria-pressed='true'] {
+  opacity: 1;
+  box-shadow:
+    inset 0 0 0 calc(2 * var(--px)) var(--accent),
+    0 0 calc(20 * var(--px)) rgba(var(--accent-rgb), 0.35);
 }
 
 .mech[data-narrow='true'] .mech-rail-track {
   width: 100%;
   height: calc(3 * var(--px));
-  margin-top: calc(6 * var(--px));
+  margin-top: calc(8 * var(--px));
   transform: scaleX(0);
   transform-origin: left;
   animation-name: mech-rail-track-in-x;
@@ -2563,8 +2905,293 @@
   width: var(--thumb-w, 30%);
 }
 
+/* ---- the title and the write-up ---- */
+
+.mech[data-narrow='true'] .mech-side {
+  position: static;
+  width: auto;
+  bottom: auto;
+  padding: calc(30 * var(--px)) var(--gutter) 0;
+}
+
+/* One line, and the type size is what has to keep that promise: at the size
+   the frame asks for, "mr. takahashi" fits a 390-point window and "red dead
+   redemption 2" is two lines of it — which is where the break in the middle
+   of a name came from.
+
+   So the size is capped against the width the words actually have. The
+   character count comes in on `--title-len` from Mech.tsx, and 0.66 is the
+   average advance of an uppercase Clash Display character as a fraction of
+   its size, allowing for the negative tracking. Counted rather than measured
+   because the title types itself in a character at a time, and a box measured
+   while it is still being written is a box that is still growing. */
+.mech[data-narrow='true'] .mech-title {
+  font-size: min(
+    calc(44 * var(--type)),
+    calc((100vw - 2 * var(--gutter) - 26 * var(--px)) / (var(--title-len, 14) * 0.66))
+  );
+}
+
+.mech[data-narrow='true'] .mech-tagline {
+  margin-top: calc(12 * var(--px));
+  min-height: 0;
+  font-size: calc(15 * var(--type));
+  line-height: calc(21 * var(--type));
+}
+
+/* The fold list is a scroll box on the desktop layout because it lives in a
+   column of fixed height. Here the page scrolls and it does not. */
+.mech[data-narrow='true'] .mech-folds-wrap::before,
+.mech[data-narrow='true'] .mech-folds-wrap::after {
+  display: none;
+}
+
+.mech[data-narrow='true'] .mech-folds {
+  flex: none;
+  overflow: visible;
+  margin: 0;
+  padding: 0;
+}
+
+/* Nothing folds. Every section stands open under its own heading with a rule
+   above it — the shape v2's project page had, and the thing worth keeping out
+   of it: on one column with nothing competing for the space, a row of closed
+   drawers is a row of things you have to ask for. */
+.mech[data-narrow='true'] .mech-fold {
+  margin-top: calc(20 * var(--px));
+  padding-top: calc(18 * var(--px));
+  border-top: 1px solid rgba(var(--accent-rgb), 0.16);
+}
+
+.mech[data-narrow='true'] .mech-fold h2 {
+  display: flex;
+  align-items: center;
+  gap: calc(9 * var(--px));
+  margin: 0;
+  font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-weight: 400;
+  font-size: calc(18 * var(--type));
+  line-height: calc(26 * var(--type));
+  color: var(--accent);
+  text-shadow: 0 0 calc(9 * var(--px)) rgba(var(--accent-rgb), 0.4);
+}
+
+.mech[data-narrow='true'] .mech-fold h2 .mech-pip {
+  transform: rotate(45deg) scale(1.3);
+}
+
+.mech[data-narrow='true'] .mech-fold-body > div {
+  padding-left: 0;
+}
+
+.mech[data-narrow='true'] .mech-fold-body p {
+  font-size: calc(15 * var(--type));
+  line-height: calc(23 * var(--type));
+  padding-bottom: 0;
+}
+
+/* ---- the contact line ---- */
+
 .mech[data-narrow='true'] .mech-foot {
   position: static;
   justify-content: center;
-  padding: calc(24 * var(--px)) var(--gutter) calc(20 * var(--px));
+  margin-top: calc(34 * var(--px));
+  padding: calc(26 * var(--px)) var(--gutter) calc(10 * var(--px));
+}
+
+/* ---- the deck, floating ---- */
+
+/* Centred at the bottom of the window rather than docked in the frame's top
+   right corner: it is the one control on this screen that has nothing to do
+   with where you are in the page, and the top right belongs to the way out of
+   it. Fixed, so it stays put while the page scrolls under it. */
+.mech[data-narrow='true'] .mech-deck-slot {
+  position: fixed;
+  left: 50%;
+  right: auto;
+  top: auto;
+  bottom: calc(18 * var(--px) + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  margin: 0;
+  z-index: 8;
+}
+
+/* A soft floor under it. Anything fixed over a scrolling page eventually
+   lands on a headline, and a lit key sitting directly on a title reads as
+   two things fighting; this is the shadow the key casts on the page. */
+.mech[data-narrow='true'] .mech-deck-slot::before {
+  content: '';
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(150 * var(--px));
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(
+    120% 100% at 50% 100%,
+    rgba(0, 0, 0, 0.92) 0%,
+    rgba(0, 0, 0, 0.72) 42%,
+    rgba(0, 0, 0, 0) 100%
+  );
+}
+
+.mech-deck-float {
+  position: relative;
+  display: block;
+}
+
+/* One round key, and the level meter drawn faintly across the bottom of it —
+   the same live analyser signal the strip has, in the one place on this
+   layout where there is room for it. */
+.mech-deck-disc {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: max(62px, calc(74 * var(--px)));
+  height: max(62px, calc(74 * var(--px)));
+  padding: 0;
+  border: 1px solid var(--warn);
+  border-radius: 50%;
+  background: rgba(10, 5, 3, 0.86);
+  box-shadow:
+    0 0 calc(24 * var(--px)) rgba(var(--warn-rgb), 0.45),
+    inset 0 0 calc(22 * var(--px)) rgba(var(--warn-rgb), 0.16);
+  overflow: hidden;
+}
+
+.mech-deck-disc:disabled {
+  opacity: 0.5;
+}
+
+.mech-deck-disc .mech-meter {
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  bottom: 16%;
+  width: auto;
+  height: 26%;
+  opacity: 0.4;
+}
+
+.mech-deck-glyph {
+  position: relative;
+  font-size: calc(19 * var(--type));
+  line-height: 1;
+  color: var(--accent);
+  text-shadow: 0 0 calc(12 * var(--px)) rgba(var(--accent-rgb), 0.7);
+}
+
+.mech-deck-float[data-playing='true'] .mech-deck-disc {
+  border-color: var(--accent);
+  box-shadow:
+    0 0 calc(26 * var(--px)) rgba(var(--accent-rgb), 0.4),
+    inset 0 0 calc(22 * var(--px)) rgba(var(--accent-rgb), 0.14);
+}
+
+/* Attached to the key rather than sitting beside it: one floating control
+   with a way into the rest of itself, not two floating controls. */
+.mech-deck-more {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% - 3 * var(--px));
+  transform: translateX(-50%);
+  width: calc(46 * var(--px));
+  padding: calc(2 * var(--px)) 0 calc(5 * var(--px));
+  border: 1px solid var(--warn);
+  border-bottom: 0;
+  border-radius: calc(6 * var(--px)) calc(6 * var(--px)) 0 0;
+  background: rgba(10, 5, 3, 0.86);
+  font: inherit;
+  font-size: calc(13 * var(--type));
+  line-height: 1;
+  color: #f28a63;
+}
+
+.mech-deck-sheet {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 22 * var(--px));
+  transform: translateX(-50%);
+  width: min(86vw, calc(360 * var(--px)));
+  display: flex;
+  flex-direction: column;
+  gap: calc(10 * var(--px));
+  padding: calc(12 * var(--px)) calc(14 * var(--px));
+  border: 1px solid rgba(var(--warn-rgb), 0.55);
+  border-radius: calc(10 * var(--px));
+  background: rgba(4, 10, 9, 0.96);
+  box-shadow: 0 0 calc(30 * var(--px)) rgba(var(--warn-rgb), 0.25);
+  animation: mech-deck-open 220ms var(--ease) both;
+}
+
+.mech-deck-sheet-head,
+.mech-deck-sheet-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(12 * var(--px));
+  font-size: calc(12.5 * var(--type));
+}
+
+.mech-deck-now {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-align: center;
+  font-size: calc(14 * var(--type));
+  color: #fff;
+}
+
+.mech-deck-float .mech-deck-key {
+  font-size: calc(17 * var(--type));
+  padding: calc(4 * var(--px)) calc(8 * var(--px));
+}
+
+.mech-deck-float .mech-deck-level {
+  width: 100%;
+  height: calc(3 * var(--px));
+}
+
+/* Part of the sheet rather than a panel opening off the strip. */
+.mech-deck-float .mech-deck-list {
+  position: static;
+  min-width: 0;
+  max-height: calc(180 * var(--px));
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  border-top: 1px solid rgba(var(--accent-rgb), 0.18);
+  padding-top: calc(6 * var(--px));
+}
+
+.mech-deck-float .mech-deck-list button {
+  padding: calc(8 * var(--px)) 0;
+  font-size: calc(13.5 * var(--type));
+}
+
+/* ---- the dashboard, quieted ---- */
+
+/* The compass and its coordinate readout only ever say anything with a fine
+   pointer over the page — see the `matchMedia` guard in MechHud.tsx. On a
+   phone they are a static "000" and a pair of zeroed coordinates sitting
+   across the bottom of the window, which is exactly where the deck now
+   floats. */
+.mech[data-narrow='true'] .mech-strip,
+.mech[data-narrow='true'] .mech-coords {
+  display: none;
+}
+
+/* Small, out of the way, and the only panel on a narrow screen. See
+   `narrowTuning.ts` — two knobs, both of them about how large things sit. */
+.mech-narrow-panel {
+  position: fixed;
+  left: 8px;
+  bottom: 8px;
+  z-index: 1000;
+  width: min(200px, calc(100vw - 16px));
 }

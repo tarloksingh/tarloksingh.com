@@ -37,7 +37,15 @@ const read = (): Stored => {
  *  waveform because this is a dashboard and a dashboard has gauges. */
 const BARS = 16
 
-function MechDeck() {
+interface Props {
+  /** Narrow, the deck is not a strip docked in the frame's top right — it is
+   *  a floating key at the bottom of the window, and the rest of the
+   *  transport lives in a sheet above it. Same state, same meter, same audio
+   *  element; a different shape around them. */
+  narrow?: boolean
+}
+
+function MechDeck({ narrow = false }: Props) {
   const initial = useRef(read())
   const audio = useRef<HTMLAudioElement>(null)
   const meter = useRef<HTMLDivElement>(null)
@@ -127,26 +135,125 @@ function MechDeck() {
     }
   }
 
+  const element = track && (
+    <audio
+      ref={audio}
+      src={track.src}
+      onEnded={() => setIndex((at) => (at + 1) % tracks.length)}
+      onPlay={() => setPlaying(true)}
+      onPause={() => setPlaying(false)}
+    />
+  )
+
+  /* The meter is one node written to from one frame loop, so it cannot be
+     rendered twice — narrow and wide hand the same element to different
+     places rather than each drawing their own. */
+  const meterBars = (
+    <div className="mech-meter" ref={meter}>
+      {Array.from({ length: BARS }, (_, i) => (
+        <i key={i} />
+      ))}
+    </div>
+  )
+
+  if (narrow) {
+    return (
+      <div className="mech-deck mech-deck-float" data-open={open} data-playing={playing}>
+        {element}
+
+        {/* The sheet, above the key. Everything the strip has except the
+            level meter, which stays on the key itself where it reads as the
+            thing being played rather than as a control. */}
+        {open && (
+          <div className="mech-deck-sheet">
+            <div className="mech-deck-sheet-head">
+              <span className="mech-deck-tag">audio</span>
+              <button className="mech-deck-key" data-off={muted} onClick={() => setMuted(!sound.toggle())}>
+                {muted ? '⊘' : '≋'}
+              </button>
+            </div>
+
+            {tracks.length === 0 ? (
+              <span className="mech-deck-empty">no signal</span>
+            ) : (
+              <>
+                <div className="mech-deck-sheet-row">
+                  <button className="mech-deck-key" onClick={() => step(-1)} aria-label="Previous track">
+                    ⟨
+                  </button>
+                  <span className="mech-deck-now">{track?.title ?? '—'}</span>
+                  <button className="mech-deck-key" onClick={() => step(1)} aria-label="Next track">
+                    ⟩
+                  </button>
+                </div>
+
+                <input
+                  className="mech-deck-level"
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={volume}
+                  onChange={(event) => setVolume(Number(event.target.value))}
+                  aria-label="Volume"
+                />
+
+                <ul className="mech-deck-list">
+                  {tracks.map((item, i) => (
+                    <li key={item.file}>
+                      <button
+                        aria-current={i === index}
+                        onClick={() => {
+                          sound.select()
+                          setIndex(i)
+                        }}
+                      >
+                        <span>{String(i + 1).padStart(2, '0')}</span>
+                        {item.title}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </div>
+        )}
+
+        <button
+          className="mech-deck-disc"
+          onClick={toggle}
+          aria-label={playing ? 'Pause' : 'Play'}
+          disabled={tracks.length === 0}
+        >
+          {meterBars}
+          <span className="mech-deck-glyph">{playing ? '❙❙' : '▶'}</span>
+        </button>
+
+        {/* Attached to the key rather than beside it — one floating control
+            with a way into the rest of it, not two floating controls. */}
+        <button
+          className="mech-deck-more"
+          onClick={() => {
+            sound.select()
+            setOpen((was) => !was)
+          }}
+          aria-expanded={open}
+          aria-label={open ? 'Close the deck' : 'Open the deck'}
+        >
+          {open ? '⌄' : '⌃'}
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div className="mech-deck" data-open={open}>
-      {track && (
-        <audio
-          ref={audio}
-          src={track.src}
-          onEnded={() => setIndex((at) => (at + 1) % tracks.length)}
-          onPlay={() => setPlaying(true)}
-          onPause={() => setPlaying(false)}
-        />
-      )}
+      {element}
 
       <div className="mech-deck-row">
         <span className="mech-deck-tag">audio</span>
 
-        <div className="mech-meter" ref={meter}>
-          {Array.from({ length: BARS }, (_, i) => (
-            <i key={i} />
-          ))}
-        </div>
+        {meterBars}
 
         {tracks.length === 0 ? (
           <span className="mech-deck-empty">no signal</span>
