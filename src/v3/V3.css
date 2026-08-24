@@ -808,18 +808,20 @@
   width: min(1180px, 94vw);
   margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
   gap: 10px;
   padding-bottom: 10px;
 }
 
 .v3-project-box {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 13px 15px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(0, 0, 0, 0.45);
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 10px 10px 15px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(0, 0, 0, 0.6);
   text-align: left;
   color: var(--secondary);
   transition: color 160ms linear, border-color 160ms linear, background-color 160ms linear, box-shadow 160ms linear;
@@ -834,24 +836,46 @@
   }
 }
 
+.v3-project-text {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.v3-project-title {
+  font-size: 14px;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  color: var(--white);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .v3-project-n {
   font-size: 10px;
   letter-spacing: 0.18em;
   font-variant-numeric: tabular-nums;
-  opacity: 0.75;
-}
-
-.v3-project-title {
-  font-size: 15px;
-  letter-spacing: -0.02em;
   color: inherit;
+  opacity: 0.7;
 }
 
-.v3-project-year {
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  font-variant-numeric: tabular-nums;
-  opacity: 0.6;
+/* The rectangle a project's own PNG drops into — see `portraitOf` in
+   `model.ts`. Empty (just the border) until that file exists. */
+.v3-project-portrait {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+}
+
+.v3-project-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .v3-project-box:hover {
@@ -863,8 +887,16 @@
 .v3-project-box[aria-pressed='true'] {
   color: var(--hero-accent);
   border-color: var(--hero-accent);
-  background: rgba(var(--hero-accent-rgb), 0.1);
-  box-shadow: 0 0 22px rgba(var(--hero-accent-rgb), 0.22);
+  background: rgba(var(--hero-accent-rgb), 0.3);
+  box-shadow: 0 0 22px rgba(var(--hero-accent-rgb), 0.3);
+}
+
+.v3-project-box[aria-pressed='true'] .v3-project-title {
+  color: var(--white);
+}
+
+.v3-project-box[aria-pressed='true'] .v3-project-portrait {
+  border-color: rgba(var(--hero-accent-rgb), 0.6);
 }
 
 /* ---- the tally ---- */
@@ -970,7 +1002,7 @@
   .v3-projects {
     width: 100%;
     padding: 0 16px 6px;
-    grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   }
 
   /* The one thing on this screen with nowhere else to be. It shares the

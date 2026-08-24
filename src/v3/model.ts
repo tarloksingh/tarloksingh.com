@@ -102,6 +102,12 @@ export const byYear = (visible: Entry[]): Array<{ year: number; entries: Entry[]
   return [...buckets.entries()].sort((a, b) => b[0] - a[0]).map(([year, group]) => ({ year, entries: group }))
 }
 
+/** The portrait a project's box shows on the home screen, by convention
+ *  rather than by data — drop a file in `public/portraits/<project-id>.png`
+ *  and it appears; nothing to wire up. Until it exists the `<img>` 404s and
+ *  the box's `onError` handler leaves the rectangle empty. */
+export const portraitOf = (projectId: string): string => `/portraits/${projectId}.png`
+
 /** A poster for a 36px timeline square or a 68px rail tile. Never the master:
  *  a dozen tiles each decoding a twelve-megapixel photograph to draw it at
  *  seventy pixels is most of what a project screen costs to open. See

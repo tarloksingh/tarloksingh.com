@@ -12,7 +12,7 @@ import { poseFor, useHeroTuning } from './heroTuning'
 import { useModelTuning } from './modelTuning'
 import { useNarrow } from './narrow'
 import { kills } from './kills'
-import { entries } from './model'
+import { entries, portraitOf } from './model'
 import { sound } from './sound'
 
 const MechModel = lazy(() => import('./MechModel'))
@@ -218,9 +218,20 @@ export default function Home({ onOpen, onBrowse }: Props) {
             onPointerEnter={() => sound.tick()}
             onClick={() => pick(item.project.id)}
           >
-            <span className="v3-project-n">{String(i + 1).padStart(2, '0')}</span>
-            <span className="v3-project-title">{item.project.title}</span>
-            <span className="v3-project-year">{item.year}</span>
+            <span className="v3-project-text">
+              <span className="v3-project-title">{item.project.title}</span>
+              <span className="v3-project-n">{String(i + 1).padStart(2, '0')}</span>
+            </span>
+            <span className="v3-project-portrait">
+              <img
+                src={portraitOf(item.project.id)}
+                alt=""
+                loading="lazy"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none'
+                }}
+              />
+            </span>
           </button>
         ))}
       </nav>
