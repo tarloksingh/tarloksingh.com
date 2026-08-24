@@ -109,6 +109,66 @@ the work is duplicated, and re-tagging a project re-cuts both.
 | `subject.ts` | Two live facts about the thing on stage, shared across the Canvas |
 | `modelTuning.ts`, `wallTuning.ts` | Leva panels, and the source they paste back into |
 
+### The hero select
+
+`/v3` used to be the wall on its own: two hundred small tiles, every clip
+playing, and two words of chrome over the top. It is a good answer to *how
+much of this is there* and a bad one to *what is this*, because two hundred
+thumbnails is a contact sheet and a home screen is a front door.
+
+So the wall moved behind a character select. Five subjects, one at a time,
+large, in the middle of the window; a roster of five along the bottom, always
+visible, nothing behind anything; the name and the class in the top right. It
+is a shape everybody already knows how to read, which is the whole reason for
+borrowing it — nothing on that screen needs explaining. The wall is still
+mounted and still drifting, dimmed and blurred, because the grain of two
+hundred small tiles competing with one large subject is a focus problem rather
+than a brightness one.
+
+The five are Mr. Takahashi, Capsule C1, the Solomon rider, the StitchFam loop
+and Slider Engine's fish man — between them a character, a product, a game, a
+piece of film and a sprite out of an engine. Not a sample of the work, a
+sample of the *kinds* of work, which is a different and much shorter list.
+Four of the five are assets that already existed on this site; the fifth is a
+motorcycle copied in from a sibling checkout as a file and nothing more.
+
+**One context, not five.** Every subject except the face is a sibling inside
+one `<Canvas>`, hidden rather than unmounted when it is not up — the same
+trade the project screen makes, because a WebGL context, a compiled shader set
+and a generated environment map cost most of a hundred milliseconds and paying
+that on every press of the roster is a hitch. Hidden, but not *loaded* until
+asked for: a 4.5MB motorcycle and a 2.3MB head arriving on first paint for two
+subjects nobody has looked at yet is most of a home screen's budget, so a
+subject mounts the first time it is picked and is never unmounted after
+(`seen` in `Home.tsx`).
+
+**Mr. Takahashi is the exception, deliberately.** He is `MechModel` mounted as
+its own layer over the shared stage — the same component, the same rig, the
+same `MODEL_DEFAULTS` — because he is the one subject here with a lighting
+setup built around him, and lighting him a second way would be a second face.
+Two contexts, both persistent, one running at a time.
+
+The rider carries **no baked animation of any kind** — `gltf.animations` on
+that export is an empty array — so "at max speed" is built out of the only two
+things the node graph gives: separate wheel nodes and a body to shake. Two
+details that cost an afternoon each. `wheel` is a *group* holding
+`wheel_wheel_0` and `wheel_wheel_0.001`, and the second sits 25 local units
+from the first, so turning the group orbits the rear wheel around the front
+one and sails it off the top of the frame; only the leaves turn. And the spin
+axis is *measured* — a wheel is a disc, so its axle is whichever of its own
+three dimensions is shortest, which is true of any wheel in any export and
+does not depend on knowing this file was authored Z-up. The rider also has to
+be cloned with `SkeletonUtils.clone`, not `Object3D.clone`: a plain clone
+copies skinned meshes without rebinding them to the copied skeleton, and what
+that looks like is a pair of legs hanging in the air a foot above the bike.
+
+Switching subjects runs the same four beats the project screen settled on —
+out, hold, in, and the name drawing itself in a character at a time behind it
+— at its own lengths (`EXIT_MS` and `HOLD_MS` in `Home.tsx`, the rest timed in
+`V3.css` beside the rules that use them). Not a new transition language: that
+argument was had once, on the project screen, and the answer was that a fade
+in a deliberate order beats anything more literal. See **The swap**.
+
 ### The housing
 
 A still is not laid on the page, it is mounted in something: corner brackets, a
@@ -676,6 +736,45 @@ hitbox and one function that says whether the shot landed, the same trick as
 `gaze`, for the same reason: two things on opposite branches of the tree that
 have to agree every frame and never render anything.
 
+### Two animals, and a tally
+
+The bird is a clean thing: it enters at one edge, crosses on a bezier, leaves
+at the other. You lead it and you hit it. A second bird with different wings
+would be a recolour, so the moth is built around the other half of hunting —
+the part where something is already there and you have not noticed it.
+
+A moth settles somewhere on the panel and sits still, dim, wings shut, at a
+size you could easily take for another mark on the readout. Bring the reticle
+within about 120px and it *startles*: it bursts off its perch and flies a
+jittery path — a random walk with a drift away from whatever startled it, and
+a fresh heading every time it reaches the last one — until it is off an edge.
+Some seconds later there is another one somewhere else. So the two are two
+different shots: the bird is a timing shot at something that has not seen you,
+the moth is a snap shot at something that has, and it is much harder.
+
+Both live on the home screen and on every project screen, and both are still
+`pointer: fine` only — startling something with a cursor requires a cursor,
+and what shooting should mean on touch is a real design question rather than a
+default (see `PLAN.md`).
+
+Adding the second one meant generalising the gun. `quarry.hit` used to be a
+single slot a creature claimed on mount, which works for exactly one creature:
+the second to mount silently replaces the first and only one of them is ever
+shootable. It is `quarry.creatures`, a `Set`, now — each creature registers
+`{ at, hit }` and removes itself on unmount, and the gun walks the set without
+knowing what is in it, exactly as it never knew before.
+
+**The tally** (`kills.ts`) counts what has come down, across every screen and
+across a reload. It cannot be React state on a screen: `V3.tsx` swaps `Home`,
+`Browse` and `Mech` as siblings and unmounts whichever you are leaving, so a
+count kept on one of them resets at exactly the moment that matters. So it is
+`localStorage`-backed, read through `useSyncExternalStore` — the hook the
+label-pin store already uses — with the count cached in the module because
+`snapshot` has to be referentially stable between changes or that hook loops
+forever. It renders as one more digit readout on the instrument panel, and not
+at all at zero, because a counter saying nothing has happened is a counter
+advertising a feature.
+
 ### Nothing stutters on a swap
 
 Four things were doing work at the exact moment the frame changed, which is the
@@ -766,6 +865,33 @@ up with no list to keep in sync. With the folder empty the deck reads
 nobody knows exists.
 
 ---
+
+### The deck has colour
+
+Every readout on this panel is green. The deck was green too — which made the
+one thing on the screen that is *actually reacting to something* look like the
+compass, which is not reacting to anything.
+
+So the meter is a spectrum: `--n` (set once, in markup) is where a bar sits
+across the band and picks its hue between the panel's warm end and its green
+end; `--v` (written every frame from that bar's own analyser bin) lights it.
+The mix is in `oklab`, because interpolating orange to green through sRGB goes
+via a muddy olive and through oklab it does not. The housing has a `--level`
+of its own — the average of the band, one property write a frame — so the box
+breathes with whatever is playing.
+
+All three colours are the ones already defined on `.mech`: `--warn`, `--shot`,
+`--accent`. This is the palette turned up, not a new one. And none of it is
+canned: at silence the meter is dark, because the numbers it draws are the
+numbers coming out of the `AnalyserNode`.
+
+### Comms
+
+The way to reach anybody was "designed by Tarlok Singh" in grey in the corner,
+which is a credit line and not a contact. Same address and the same `mailto:`
+— this is a static site and a contact *form* would need a backend nobody asked
+for — given the shape every other readout here has: a strip naming what it is,
+and the value beside it.
 
 ## One number
 

@@ -2295,8 +2295,13 @@
   gap: calc(10 * var(--px));
   padding: calc(6 * var(--px)) calc(12 * var(--px));
   border: 1px solid var(--warn);
-  background: rgba(var(--warn-rgb), 0.1);
-  box-shadow: 0 0 calc(10 * var(--px)) rgba(var(--warn-rgb), 0.35);
+  /* `--level` is the average of the band, written on `.mech-deck` every frame
+     — so the housing breathes with whatever is actually playing rather than
+     on a loop of its own. At silence this is exactly the box it was. */
+  background: rgba(var(--warn-rgb), calc(0.1 + var(--level, 0) * 0.16));
+  box-shadow:
+    0 0 calc((10 + var(--level, 0) * 26) * var(--px)) rgba(var(--warn-rgb), calc(0.35 + var(--level, 0) * 0.35)),
+    inset 0 0 calc(var(--level, 0) * 20 * var(--px)) rgba(var(--shot-rgb), calc(var(--level, 0) * 0.18));
 }
 
 .mech-deck-tag {
@@ -2328,15 +2333,26 @@
   width: calc(66 * var(--px));
 }
 
+/* A spectrum, not a colour. `--n` is where the bar sits across the band (set
+   once, in markup) and `--v` is what that band is doing right now (written
+   every frame from the analyser). The first picks the hue, out of the two
+   ends of the panel's own palette; the second lights it.
+
+   `oklab` rather than sRGB for the mix: interpolating orange to green through
+   sRGB goes via a muddy olive, and through oklab it does not. */
 .mech-meter i {
   flex: 1;
   height: 100%;
   transform: scaleY(0.06);
   transform-origin: bottom;
-  background: linear-gradient(to top, rgba(var(--accent-rgb), 0.5), var(--accent));
+  --bar: color-mix(in oklab, var(--warn) calc((1 - var(--n, 0.5)) * 100%), var(--accent));
+  background: linear-gradient(to top, color-mix(in oklab, var(--bar) 55%, #000), var(--bar));
+  /* Loud bands run hot. The top of the range tips toward the one colour on
+     this page hotter than the warning lamp — what comes out of the gun. */
+  filter: brightness(calc(0.55 + var(--v, 0) * 1.05)) saturate(calc(0.85 + var(--v, 0) * 0.7));
   /* Written every frame from the analyser, so the transition is only here to
      stop a dropped frame reading as a stutter. */
-  transition: transform 60ms linear;
+  transition: transform 60ms linear, filter 60ms linear;
 }
 
 .mech-deck-key {
@@ -2486,6 +2502,43 @@
   color: #fff;
 }
 
+/* ---- comms ----
+
+   The way to reach anybody was "designed by Tarlok Singh", set in grey in the
+   corner — a credit line, which is a different thing from a contact. It is
+   the same `mailto:` (there is no backend here and no reason to want one),
+   given the shape every other readout on this panel has: a strip that names
+   what it is, and the value beside it. */
+
+.mech-comms {
+  display: inline-flex;
+  align-items: baseline;
+  gap: calc(12 * var(--px));
+  padding: calc(5 * var(--px)) calc(13 * var(--px));
+  border: 1px solid rgba(var(--accent-rgb), 0.28);
+  transition: border-color 200ms linear, background-color 200ms linear;
+}
+
+.mech-comms:hover {
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.07);
+}
+
+.mech-comms-tag {
+  font-size: calc(11 * var(--type));
+  letter-spacing: calc(1.6 * var(--type));
+  color: rgba(var(--accent-rgb), 0.8);
+}
+
+.mech-comms-to {
+  color: #fff;
+}
+
+.mech-comms:hover .mech-comms-to {
+  color: var(--accent);
+  text-shadow: 0 0 calc(9 * var(--px)) rgba(var(--accent-rgb), 0.5);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .mech-leader,
   .mech-leader-label,
@@ -2505,6 +2558,147 @@
   }
 }
 
+
+/* ---- the moth ----
+
+   The other animal. Where the bird crosses the sky on a clean arc and can be
+   led, this one is already on the panel and has to be found — it sits still
+   with its wings shut until the reticle comes near, and then it panics. Two
+   different shots, which is the only reason to have a second creature at all.
+
+   Cool where the bird is warm: it reads as one more mark on a green readout
+   until it moves, which is exactly what a moth on a lit panel should look
+   like. See `MechMoth.tsx`. */
+
+.mech-moths {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+
+  --beat: 0.08333s;
+}
+
+.mech-moth-wrap {
+  position: absolute;
+  left: 0;
+  top: 0;
+  will-change: transform;
+  transition: opacity 260ms linear;
+}
+
+.mech-moths[data-mode='away'] .mech-moth-wrap {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.mech-moth {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  pointer-events: auto;
+  color: rgba(var(--accent-rgb), 0.75);
+  transition: color 200ms linear;
+}
+
+.mech-moth svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  filter: drop-shadow(0 0 4px rgba(var(--accent-rgb), 0.35));
+}
+
+.mech-moth path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Perched, it is dim and shut — a shape you could take for part of the
+   readout, which is the whole trick. */
+.mech-moths[data-mode='perched'] .mech-moth {
+  color: rgba(var(--accent-rgb), 0.45);
+}
+
+.mech-moths[data-mode='perched'] .mech-moth-wing {
+  transform: scaleX(0.34);
+  transform-origin: 12px 10px;
+}
+
+.mech-moth-wing {
+  transition: transform 140ms cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+/* And in the air it is lit, and beating — stepped, at the same twelve frames
+   a second as the bird's wings and everything else drawn by hand here. */
+.mech-moths[data-mode='flying'] .mech-moth {
+  color: var(--accent);
+}
+
+.mech-moths[data-mode='flying'] .mech-moth-left {
+  animation: mech-moth-beat calc(var(--beat) * 2) steps(2, end) infinite;
+  transform-origin: 12px 10px;
+}
+
+.mech-moths[data-mode='flying'] .mech-moth-right {
+  animation: mech-moth-beat calc(var(--beat) * 2) steps(2, end) infinite;
+  animation-delay: calc(var(--beat) * -0.5);
+  transform-origin: 12px 10px;
+}
+
+@keyframes mech-moth-beat {
+  0% {
+    transform: scaleX(1);
+  }
+  50% {
+    transform: scaleX(0.45);
+  }
+}
+
+.mech-moths[data-mode='hit'] .mech-moth {
+  color: var(--shot);
+}
+
+.mech-moths[data-mode='hit'] .mech-burst {
+  animation: mech-burst 520ms cubic-bezier(0.1, 0.7, 0.3, 1) forwards;
+  border-color: var(--shot);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mech-moth-wing {
+    animation: none !important;
+  }
+}
+
+/* ---- the tally ----
+
+   What you have shot, across every screen and across a reload. On the
+   instrument panel rather than in a corner as a score: it is one more digit
+   readout beside the compass's, which is where a number like this belongs on
+   a page that already has three of them. Hidden at zero — a counter saying
+   nothing has happened is a counter advertising a feature. See `kills.ts`. */
+
+.mech-tally {
+  position: absolute;
+  right: calc(101 * var(--px));
+  bottom: calc(48 * var(--px));
+  z-index: 3;
+  display: flex;
+  gap: calc(9 * var(--px));
+  align-items: baseline;
+  font-size: calc(12.5 * var(--type));
+  letter-spacing: calc(1.5 * var(--type));
+  color: rgba(var(--accent-rgb), 0.7);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 calc(9 * var(--px)) rgba(var(--accent-rgb), 0.5);
+}
+
+.mech-tally span:last-child {
+  color: #fff;
+}
 
 /* ---- narrow viewports ----
 
@@ -3002,6 +3196,12 @@
 
 /* ---- the contact line ---- */
 
+.mech[data-narrow='true'] .mech-tally {
+  position: static;
+  justify-content: center;
+  margin-top: calc(10 * var(--px));
+}
+
 .mech[data-narrow='true'] .mech-foot {
   position: static;
   justify-content: center;
@@ -3064,9 +3264,11 @@
   border: 1px solid var(--warn);
   border-radius: 50%;
   background: rgba(10, 5, 3, 0.86);
+  /* The same live level the strip's housing uses. On a phone the key *is*
+     the deck, so it is the thing that has to look like it is playing. */
   box-shadow:
-    0 0 calc(24 * var(--px)) rgba(var(--warn-rgb), 0.45),
-    inset 0 0 calc(22 * var(--px)) rgba(var(--warn-rgb), 0.16);
+    0 0 calc((24 + var(--level, 0) * 30) * var(--px)) rgba(var(--warn-rgb), calc(0.45 + var(--level, 0) * 0.35)),
+    inset 0 0 calc(22 * var(--px)) rgba(var(--warn-rgb), calc(0.16 + var(--level, 0) * 0.22));
   overflow: hidden;
 }
 
@@ -3076,12 +3278,12 @@
 
 .mech-deck-disc .mech-meter {
   position: absolute;
-  left: 18%;
-  right: 18%;
-  bottom: 16%;
+  left: 16%;
+  right: 16%;
+  bottom: 14%;
   width: auto;
-  height: 26%;
-  opacity: 0.4;
+  height: 30%;
+  opacity: 0.75;
 }
 
 .mech-deck-glyph {

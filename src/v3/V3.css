@@ -554,3 +554,357 @@
   height: 100%;
   color: var(--secondary);
 }
+
+/* ---- the hero select ----
+
+   The home screen. A character-select arrangement: the roster along the
+   bottom, the subject in the middle, its name and class in the corner, and
+   the whole body of work drifting past behind all of it.
+
+   The chrome that was already here — wordmark, index, the email — is
+   untouched and still in normal flow. Everything new is either absolute over
+   it (the wall, the subject, the readout) or slotted between the index link
+   and the footer (the roster), so the three-line skeleton this screen has
+   always had still reads the same way. */
+
+.v3-home {
+  --hero-accent: #86e2b4;
+  --hero-accent-rgb: 134, 226, 180;
+  --hero-ease: cubic-bezier(0.22, 0.85, 0.25, 1);
+}
+
+/* The reticle replaces the native arrow here the same way it does on the
+   project screen, which means every hit target on the page has to be one the
+   reticle can sit over — and this whole screen is. Without this the page has
+   two cursors on it. */
+@media (pointer: fine) {
+  .v3-home,
+  .v3-home * {
+    cursor: none;
+  }
+}
+
+/* Pushed back. `dim` is on the wall's own panel (`wallTuning.ts`), so how far
+   back it sits is a number somebody can move; this is the rest of it — the
+   grain of two hundred small tiles competing with one large subject is a
+   focus problem, not a brightness one, and blur is what actually fixes it. */
+.v3-wall-back {
+  filter: blur(3px) saturate(0.65);
+  opacity: 0.42;
+  transform: scale(1.05);
+}
+
+.v3-hero {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.v3-hero-stage {
+  position: absolute;
+  left: 50%;
+  top: 47%;
+  transform: translate(-50%, -50%);
+  width: min(78vw, 900px);
+  /* Tall enough for a standing figure and short enough to leave the roster
+     and the readout their own air. */
+  height: min(62vh, 640px);
+  pointer-events: none;
+}
+
+.v3-hero-stage canvas {
+  display: block;
+}
+
+/* The face's own layer, over the shared stage. `visibility` rather than
+   `display`: a canvas in a box that has been laid out keeps its size, and one
+   in `display: none` has none to come back to. */
+.v3-hero-face {
+  position: absolute;
+  inset: 0;
+}
+
+.v3-hero-face[data-on='false'] {
+  visibility: hidden;
+}
+
+/* ---- the swap ----
+
+   Four beats, the same shape the project screen settled on: the subject fades
+   out, the stage holds empty for a moment, the next subject fades in, and its
+   name draws itself in a character at a time behind it. Nothing here paints —
+   every beat is a transition on `opacity`, and the draw-in is `SplitReveal`,
+   which is what every other title on this site is written with.
+
+   Out is quicker than in. A subject leaving is a thing being taken away and
+   wants to be brisk; a subject arriving is the one you asked for. `EXIT_MS`
+   and `HOLD_MS` in Home.tsx are the two halves of this the machine has to
+   know about. */
+.v3-hero-stage,
+.v3-hero-read {
+  transition: opacity 420ms linear;
+}
+
+.v3-hero[data-covered='true'] .v3-hero-stage,
+.v3-hero[data-covered='true'] .v3-hero-read {
+  opacity: 0;
+  transition-duration: 300ms;
+}
+
+/* ---- the readout ---- */
+
+.v3-hero-read {
+  position: absolute;
+  right: 40px;
+  top: 96px;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  text-align: right;
+  pointer-events: auto;
+}
+
+.v3-hero-name {
+  font-size: 40px;
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+  color: var(--hero-accent);
+  text-shadow:
+    0 0 10px rgba(var(--hero-accent-rgb), 0.5),
+    0 0 34px rgba(var(--hero-accent-rgb), 0.22);
+}
+
+.v3-hero-role {
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  text-transform: lowercase;
+  color: #9aa5a0;
+}
+
+.v3-hero-open,
+.v3-hero-note {
+  margin-top: 12px;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+}
+
+.v3-hero-open {
+  padding: 7px 14px;
+  border: 1px solid rgba(var(--hero-accent-rgb), 0.45);
+  background: rgba(var(--hero-accent-rgb), 0.06);
+  color: var(--hero-accent);
+  transition: background-color 160ms linear, border-color 160ms linear;
+}
+
+.v3-hero-open:hover {
+  background: rgba(var(--hero-accent-rgb), 0.16);
+  border-color: var(--hero-accent);
+}
+
+.v3-hero-note {
+  color: var(--secondary);
+}
+
+/* ---- the roster ---- */
+
+/* Five tiles, always on the page. Not a menu and not a carousel — the whole
+   argument of a character select is that you can see the cast. */
+.v3-roster {
+  position: relative;
+  z-index: 2;
+  width: var(--col);
+  max-width: calc(100vw - 48px);
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex: none;
+}
+
+.v3-roster-tile {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 11px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.45);
+  text-align: left;
+  color: var(--secondary);
+  transition: color 160ms linear, border-color 160ms linear, background-color 160ms linear, box-shadow 160ms linear;
+}
+
+.v3-roster-n {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+
+.v3-roster-name {
+  font-size: 14px;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: inherit;
+}
+
+.v3-roster-tile:hover {
+  color: var(--white);
+  border-color: rgba(var(--hero-accent-rgb), 0.5);
+}
+
+/* Lit, not moved. A tile that slides out from under the pointer is a tile you
+   have to chase, and the reticle is already measuring it. */
+.v3-roster-tile[aria-pressed='true'] {
+  color: var(--hero-accent);
+  border-color: var(--hero-accent);
+  background: rgba(var(--hero-accent-rgb), 0.1);
+  box-shadow: 0 0 22px rgba(var(--hero-accent-rgb), 0.22);
+}
+
+/* ---- the tally ---- */
+
+/* What has been shot, everywhere, ever. Bottom left, in the instrument
+   panel's own voice rather than as a score — see `kills.ts`. Hidden entirely
+   at zero: a counter that says nothing has happened is a counter advertising
+   a feature. */
+.v3-tally {
+  position: absolute;
+  left: 40px;
+  bottom: 30px;
+  z-index: 2;
+  display: flex;
+  gap: 9px;
+  align-items: baseline;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: rgba(var(--hero-accent-rgb), 0.7);
+  text-shadow: 0 0 9px rgba(var(--hero-accent-rgb), 0.4);
+  animation: v3-tally-in 300ms var(--hero-ease) both;
+}
+
+.v3-tally span:last-child {
+  color: var(--white);
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes v3-tally-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+/* Well below the readout it would otherwise sit on. Development only. */
+.v3-hero-panel {
+  position: fixed;
+  top: 340px;
+  right: 10px;
+  z-index: 1000;
+  width: min(340px, calc(100vw - 20px));
+}
+
+/* ---- narrow ----
+
+   The same call the project screen makes: one column, the subject large, and
+   the roster a swipe strip rather than five tiles competing for 390 points.
+   The readout comes out of the corner and sits under the subject, where there
+   is room for it. */
+@media (max-width: 700px) {
+  .v3-hero-stage {
+    top: 42%;
+    width: 94vw;
+    height: min(52vh, 460px);
+  }
+
+  .v3-hero-read {
+    right: auto;
+    left: 0;
+    top: auto;
+    bottom: 116px;
+    width: 100%;
+    max-width: none;
+    align-items: center;
+    text-align: center;
+    padding: 0 20px;
+  }
+
+  .v3-hero-name {
+    font-size: 30px;
+  }
+
+  .v3-roster {
+    max-width: none;
+    width: 100%;
+    justify-content: flex-start;
+    gap: 8px;
+    padding: 0 16px 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .v3-roster::-webkit-scrollbar {
+    display: none;
+  }
+
+  .v3-roster-tile {
+    flex: none;
+    min-width: 132px;
+  }
+
+  .v3-tally {
+    left: 16px;
+    bottom: 26px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v3-hero-stage,
+  .v3-hero-read {
+    transition-duration: 1ms;
+  }
+}
+
+/* ---- comms ----
+
+   The email was a grey line in the corner. Same address, same `mailto:` —
+   there is no backend here and no reason to want one — in the shape the rest
+   of this screen's chrome has. */
+
+.v3-comms {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 6px 13px;
+  border: 1px solid rgba(var(--hero-accent-rgb), 0.28);
+  text-decoration: none;
+  transition: border-color 200ms linear, background-color 200ms linear;
+}
+
+.v3-comms:hover {
+  border-color: var(--hero-accent);
+  background: rgba(var(--hero-accent-rgb), 0.07);
+}
+
+.v3-comms-tag {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: rgba(var(--hero-accent-rgb), 0.8);
+}
+
+.v3-comms-to {
+  font-size: 14px;
+  letter-spacing: -0.04em;
+  color: var(--white);
+}
+
+.v3-comms:hover .v3-comms-to {
+  color: var(--hero-accent);
+}

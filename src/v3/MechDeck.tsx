@@ -34,7 +34,20 @@ const read = (): Stored => {
 }
 
 /** Sixteen bars of a level meter, driven off the analyser. Bars rather than a
- *  waveform because this is a dashboard and a dashboard has gauges. */
+ *  waveform because this is a dashboard and a dashboard has gauges.
+ *
+ *  The deck is the one instrument on this panel allowed to be loud about it.
+ *  Every other readout here is green, and the deck was green too — which
+ *  made the one thing on the screen that is *actually reacting to something*
+ *  look like the compass, which is not reacting to anything. So the meter is
+ *  a spectrum: the low bands sit at the panel's warm end and the high ones at
+ *  its green end, each bar's brightness written from its own live bin, and
+ *  the whole housing's glow written from the overall level. All three
+ *  colours are the ones already defined on `.mech` — `--warn`, `--shot`,
+ *  `--accent` — so this is the palette turned up rather than a new one.
+ *
+ *  Nothing here is canned. If the track is silent the meter is dark, because
+ *  the numbers it is drawing are the numbers coming out of the analyser. */
 const BARS = 16
 
 interface Props {
@@ -100,17 +113,31 @@ function MechDeck({ narrow = false }: Props) {
       const node = meter.current
       const tap = graph.current
       if (!node) return
+      let sum = 0
       if (tap && playing) {
         tap.analyser.getByteFrequencyData(tap.data)
         for (let i = 0; i < node.children.length; i++) {
           const bin = tap.data[Math.floor((i / BARS) * tap.data.length)] ?? 0
-          ;(node.children[i] as HTMLElement).style.transform = `scaleY(${Math.max(0.06, bin / 255)})`
+          const level = bin / 255
+          sum += level
+          const bar = node.children[i] as HTMLElement
+          bar.style.transform = `scaleY(${Math.max(0.06, level)})`
+          // What the stylesheet lights the bar with. A property rather than a
+          // colour written from here: the palette lives in Mech.css and this
+          // loop should not be a second place it is decided.
+          bar.style.setProperty('--v', level.toFixed(3))
         }
       } else {
         for (let i = 0; i < node.children.length; i++) {
-          ;(node.children[i] as HTMLElement).style.transform = 'scaleY(0.06)'
+          const bar = node.children[i] as HTMLElement
+          bar.style.transform = 'scaleY(0.06)'
+          bar.style.setProperty('--v', '0')
         }
       }
+      // The housing's own glow, off the average of the band. One property
+      // write a frame, and it is what makes the deck read as a thing with
+      // something running through it rather than a box with a gauge in it.
+      node.parentElement?.style.setProperty('--level', (sum / BARS).toFixed(3))
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
@@ -151,7 +178,10 @@ function MechDeck({ narrow = false }: Props) {
   const meterBars = (
     <div className="mech-meter" ref={meter}>
       {Array.from({ length: BARS }, (_, i) => (
-        <i key={i} />
+        // `--n` is where this bar sits across the band, 0 at the bottom of
+        // the spectrum and 1 at the top. Set once, in markup; the stylesheet
+        // mixes the colour from it.
+        <i key={i} style={{ ['--n' as string]: (i / (BARS - 1)).toFixed(3) }} />
       ))}
     </div>
   )

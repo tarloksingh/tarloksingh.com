@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, memo } from 'react'
 import { BIRD_BODY, BIRD_WING_DOWN, BIRD_WING_UP } from '../site/frames'
 import { sound } from './sound'
-import { gaze, quarry } from './subject'
+import { kills } from './kills'
+import { gaze, quarry, type Creature } from './subject'
 
 /* A bird crosses the readout, and you can shoot it.
 
@@ -109,14 +110,19 @@ function MechBird() {
        at, and the bird has no idea anything is shooting. Returns whether the
        shot actually landed, so a second bolt arriving on a bird already
        falling does not fire a second burst. */
-    quarry.hit = () => {
-      if (phase !== 'flying') return false
-      fell = 0
-      drop = rand(-120, -40)
-      sound.hit()
-      enter('hit')
-      return true
+    const self: Creature = {
+      at: () => (gaze.bird.active ? { x: gaze.bird.x, y: gaze.bird.y } : null),
+      hit: () => {
+        if (phase !== 'flying') return false
+        fell = 0
+        drop = rand(-120, -40)
+        sound.hit()
+        kills.add()
+        enter('hit')
+        return true
+      }
     }
+    quarry.creatures.add(self)
 
     const tick = (now: number) => {
       raf = requestAnimationFrame(tick)
@@ -165,7 +171,7 @@ function MechBird() {
     raf = requestAnimationFrame(tick)
     return () => {
       gaze.bird.active = false
-      quarry.hit = null
+      quarry.creatures.delete(self)
       cancelAnimationFrame(raf)
     }
   }, [])

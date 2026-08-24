@@ -1,6 +1,6 @@
 import { useEffect, useRef, memo } from 'react'
 import { sound } from './sound'
-import { gaze, quarry } from './subject'
+import { quarry } from './subject'
 
 /* The gun.
 
@@ -126,18 +126,25 @@ function MechLaser() {
         bolt.node.style.transform =
           `translate3d(${x}px, ${y}px, 0) rotate(${bolt.angle}deg) scale(${size}) translate(-100%, -50%)`
 
-        /* Tested against where the bird is *now* rather than where it was
-           when you pressed. A bolt takes a couple of hundred milliseconds to
-           cross the screen and the bird keeps flying the whole time, so
-           leading it slightly is a real thing you can do. */
-        if (gaze.bird.active && quarry.hit) {
-          const near = Math.hypot(gaze.bird.x - x, gaze.bird.y - y)
-          if (near <= quarry.radius && quarry.hit()) {
-            mark(gaze.bird.x, gaze.bird.y, 'hit')
-            finish(bolt)
-            continue
-          }
+        /* Tested against where each creature is *now* rather than where it
+           was when you pressed. A bolt takes a couple of hundred milliseconds
+           to cross the screen and nothing on the page holds still for it, so
+           leading a target slightly is a real thing you can do.
+
+           A set, not one target: there is more than one animal on the page
+           now, and the gun has never known what it is shooting at. */
+        let downed = false
+        for (const creature of quarry.creatures) {
+          const at = creature.at()
+          if (!at) continue
+          if (Math.hypot(at.x - x, at.y - y) > quarry.radius) continue
+          if (!creature.hit()) continue
+          mark(at.x, at.y, 'hit')
+          finish(bolt)
+          downed = true
+          break
         }
+        if (downed) continue
 
         if (at >= 1) {
           /* Landed. If the subject is on the stage and the bolt came down

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { Leva, LevaPanel } from 'leva'
 import { TAGS } from '../data/projects'
 import MechBird from './MechBird'
+import MechMoth from './MechMoth'
 import MechCursor from './MechCursor'
 import MechLaser from './MechLaser'
 import MechHud from './MechHud'
@@ -13,6 +14,7 @@ import MechMenu from './MechMenu'
 import { useNarrowTuning } from './narrowTuning'
 import { sound } from './sound'
 import { drift, flinch, quarry } from './subject'
+import { kills } from './kills'
 import { entries, thumbOf, type Entry, type Frame } from './model'
 import { focus, notesFor, pins, type Note } from './notes'
 import { useLabelTuning, type Handed } from './labelTuning'
@@ -686,6 +688,19 @@ function Typed({ text, run }: { text: string; run: string }) {
   )
 }
 
+/** What has been shot, everywhere, ever. Its own component so the number
+ *  changing does not re-render the readout under it — see `kills.ts`. */
+function Tally() {
+  const count = useSyncExternalStore(kills.subscribe, kills.snapshot, kills.snapshot)
+  if (count === 0) return null
+  return (
+    <div className="mech-tally" aria-label="Downed">
+      <span>downed</span>
+      <span>{String(count).padStart(3, '0')}</span>
+    </div>
+  )
+}
+
 export default function Mech({ id, onProject, onHome }: Props) {
   const tuning = useModelTuning()
   /* The phone's two knobs — how large the subject and the pictures sit in a
@@ -998,6 +1013,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
       <MechHud />
       <MechCursor />
       <MechBird />
+      <MechMoth />
       <MechLaser />
 
       {menu && (
@@ -1307,8 +1323,13 @@ export default function Mech({ id, onProject, onHome }: Props) {
           </div>
         </section>
 
+        <Tally />
+
         <footer className="mech-foot">
-          <a href="mailto:hello@tarloksingh.com">designed by Tarlok Singh</a>
+          <a className="mech-comms" href="mailto:hello@tarloksingh.com">
+            <span className="mech-comms-tag">comms</span>
+            <span className="mech-comms-to">hello@tarloksingh.com</span>
+          </a>
         </footer>
       </div>
     </div>

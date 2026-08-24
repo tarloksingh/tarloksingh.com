@@ -47,10 +47,26 @@ export const quarry = {
    *  in that time, so a shot aimed dead at it lands where it *was*. Leading
    *  the target is the skill; needing to lead it to hit it at all is not. */
   radius: 46,
-  /** Set by whatever is shootable while it is in the air. Returns true if the
-   *  shot brought it down, so a bolt that arrives a frame after something
-   *  else killed it does not fire a second burst. */
-  hit: null as null | (() => boolean)
+
+  /** Everything on the page a bolt can bring down.
+   *
+   *  A set rather than the single slot this used to be. One creature could
+   *  own `quarry.hit` outright; two cannot — the second to mount would
+   *  quietly replace the first, and only one of them would ever be
+   *  shootable. Each registers itself on mount and removes itself on
+   *  unmount, and the gun walks the set without knowing what is in it. */
+  creatures: new Set<Creature>()
+}
+
+/** Something that can be shot. */
+export interface Creature {
+  /** Where it is right now, in client pixels, or null while it is not on the
+   *  page. Read from inside the gun's own frame loop, several times a frame,
+   *  and never rendered — which is why this is a function rather than state. */
+  at: () => { x: number; y: number } | null
+  /** Returns true if this shot is what brought it down, so a bolt arriving a
+   *  frame after something else killed it does not fire a second burst. */
+  hit: () => boolean
 }
 
 /** When the subject was last hit, on the `performance.now()` clock. Read from
