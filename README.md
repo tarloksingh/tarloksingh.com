@@ -195,6 +195,54 @@ the pixels it was drawn at instead of drawing more of them.
 Nothing is dimmed. The old roster faded every subject that was not selected,
 which made a cast of five read as one subject and four rejected candidates.
 
+**Every subject has its own lighting, and it is genuinely its own.** A
+`directionalLight` is infinite — it lights the whole scene — so five subjects
+sharing one scene cannot have five rigs: turning Capsule C1's key up lit
+Solomon with it. three tests `light.layers` against `object.layers` before
+illuminating, so each subject and the two lights aimed at it go on a layer of
+their own and the camera enables all of them. Layer 0 is deliberately left
+empty: anything that misses its assignment comes out unlit rather than
+silently borrowing a neighbour's rig. The layer has to be re-applied when the
+GLB actually resolves out of Suspense, which is long after the group mounts —
+`Placed` notices by watching its own node count, which only changes when
+something loads.
+
+What stays shared is the room: `scene.environment` and the tone map are one
+each, and layers do not touch either. So the per-subject handle on the
+environment is each material's own `envMapIntensity` (`env` on `CastLight`),
+applied by traversal.
+
+**Hover moves the cast in depth.** Pointing at a subject — or at its box in
+the index, which is the same signal arriving from the other end — brings it
+forward and pushes the others back, damped. Small numbers; it is parallax, not
+a carousel. A direct pointer-over beats the index, because the pointer is the
+more specific answer.
+
+**The cast comes and goes in a stagger**, in three rather than in CSS, because
+there is nothing in the DOM to stagger — the whole line-up is one canvas. It
+grows in place one subject after another and retracts in the opposite order
+when a project is opened, last in first away, the same shape the leaders'
+cascades have. Scale rather than opacity: fading a mesh means making every
+material transparent, which is a different render path with its own sorting
+problems for a beat nobody sees the inside of.
+
+**Two frame-one bugs, both the same shape.** A `camera` prop is read once at
+mount and the `Lens` effect corrects it a frame later — and that frame is
+painted. The face is framed much smaller on home than on his own project
+screen, so with the shipped constant in the `camera` prop the first frame drew
+him at project size and the second at cast size: the "flashes large" on the
+way back to home. `toneMappingExposure` is set in an effect too, and the
+renderer's default of 1 against this page's 0.6 is a visibly brighter frame:
+the "flashes white". Both are now computed from the tuning actually in force,
+before anything is drawn.
+
+**And the flickering on Capsule C1's shell was the depth buffer.** Precision is
+spent almost entirely near the near plane, and near was `z * 0.05` on a
+subject sitting at `z` — almost no resolution where the subject actually is,
+so two coincident faces of a moulded part swapped which one was in front,
+frame to frame. The planes are wrapped tight around the cast now
+(`CAST_DEPTH`).
+
 The rider carries **no baked animation of any kind** — `gltf.animations` on
 that export is an empty array — so "at max speed" is built out of the only two
 things the node graph gives: separate wheel nodes and a body to shake. Two
@@ -228,10 +276,36 @@ or not it has frames — a **restricted card** stands in for the subject, saying
 so in the panel's own voice, because an empty stage reads as a failure to
 load. The tile rail does not draw at all for those, for the same reason.
 
-The boxes are wide enough that no name is ellipsised, which is why the row
-takes most of the frame's width and the type comes down to meet it rather than
-holding its size. A box narrow enough to need an ellipsis has stopped naming
-the thing, which is its only job.
+No name is ellipsised, and all twelve boxes are the same width — the width of
+the *longest* name and no wider. Six `1fr` columns do not do that on their
+own: in an intrinsically sized grid each column takes its own content's width,
+which is why the row came out as six different widths. What does it is a
+gauge — every name, rendered in every box, at zero height. Each box's natural
+width becomes the widest name, so they match exactly and the row stops there
+instead of being stretched to the frame's margins with every short name
+swimming in it. Measuring the longest string in JS would be the other way, and
+would be wrong the first time a name with wide letters was added; this is
+exact because it is the real type.
+
+### The wave
+
+Home and a project screen being the same machine is the point, and also the
+risk: with the same grid, the same bloom and the same chrome, the front door
+reads as a project you have not picked yet. `.mech-wave` is what makes it
+somewhere else — a wide colour field under the instrument surface, warm purple
+against the panel's green, so the two screens are the same room with the
+lights changed rather than the same screen twice.
+
+Under the grid, never over it. The grid is what the readout is printed on; a
+picture on top of it turns the page into a desktop wallpaper with widgets.
+`mix-blend-mode: screen` keeps it additive against the black. And it is masked
+off below about 62% of the frame: the source is bottom-heavy and its bright
+mesh landed exactly where the index, the compass strip and the coordinate
+readout are, which is small green type on a lit purple field — unreadable. The
+index boxes went to 78% black for the same reason.
+
+The `background-image` is set inside the home rule, so a visitor landing on a
+project URL never fetches the file.
 
 The wall is gone. `DriftWall.tsx` and `wallTuning.ts` are untouched and
 unmounted, not deleted, in case it is wanted somewhere else later.

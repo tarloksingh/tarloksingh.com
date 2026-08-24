@@ -135,6 +135,12 @@ function MechHud() {
 
   return (
     <div className="mech-hud" ref={hud} aria-hidden>
+      {/* Home only, and off everywhere else — the stylesheet decides, so this
+          component stays propless and memoised. It sits *under* the grid
+          rather than over it: the grid is the instrument surface and has to
+          stay the top layer, or the whole page stops reading as something
+          printed on glass. See `.mech-wave` in Mech.css. */}
+      <div className="mech-wave" />
       <div className="mech-grid" />
       <div className="mech-bloom" />
       <div className="mech-sweep" />

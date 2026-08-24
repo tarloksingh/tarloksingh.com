@@ -499,15 +499,32 @@ export default function MechModel({
   tuning?: ModelTuning
   live?: boolean
 }) {
-  const distance = distanceFor(MODEL_DEFAULTS.focalLength, MODEL_DEFAULTS.fill)
+  /* From the tuning actually in force, not from the shipped constant.
+ 
+     A `camera` prop is read once at mount; `Lens` below corrects it in an
+     effect, which is a frame later — and that frame is painted. On the home
+     screen the face is framed much smaller than on his own project screen
+     (his slot's `scale` multiplies `fill`), so with the constant here the
+     first frame drew him at project size and the second at cast size. That
+     is the "flashes large" on the way back to home, and the exposure below
+     is the "flashes white": `Studio` sets `toneMappingExposure` in an effect
+     too, and the renderer's default of 1 against this page's 0.6 is a
+     visibly brighter frame. Both are now right before anything is drawn. */
+  const distance = distanceFor(tuning.focalLength, tuning.fill)
   const look = useGaze(tuning.watchBird, tuning.watchCatch)
 
   return (
     <Canvas
       dpr={[1, 2]}
       frameloop={live ? 'always' : 'never'}
-      camera={{ fov: fovForFocalLength(MODEL_DEFAULTS.focalLength), position: [0, 0, distance] }}
-      gl={{ alpha: true, antialias: true, toneMapping: ACESFilmicToneMapping, outputColorSpace: SRGBColorSpace }}
+      camera={{ fov: fovForFocalLength(tuning.focalLength), position: [0, 0, distance] }}
+      gl={{
+        alpha: true,
+        antialias: true,
+        toneMapping: ACESFilmicToneMapping,
+        toneMappingExposure: tuning.exposure,
+        outputColorSpace: SRGBColorSpace
+      }}
       style={{ background: 'transparent' }}
     >
       <Lens focalLength={tuning.focalLength} fill={tuning.fill} />

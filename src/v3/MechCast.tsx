@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo, useRef } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Center, Float, Resize, useGLTF } from '@react-three/drei'
 import { ACESFilmicToneMapping, MathUtils, PMREMGenerator, SRGBColorSpace, Vector3 } from 'three'
@@ -7,7 +7,7 @@ import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js
 import VideoFrame from '../three/VideoFrame'
 import { SpriteFlipbook } from '../three/CapsuleStage'
 import { CAST, FISH_MAN_FRAMES, type Hero } from './heroes'
-import { CAST_STUDIO, slotFor, type CastSlot, type CastStudio } from './castTuning'
+import { CAST_STUDIO, lightFor, slotFor, type CastLight, type CastSlot, type CastStudio } from './castTuning'
 import type { Group, Mesh, PerspectiveCamera } from 'three'
 
 /* The home screen's cast: every subject on one stage, at once, arranged.
@@ -92,14 +92,51 @@ function Lens({ focalLength, fill }: { focalLength: number; fill: number }) {
 
   useEffect(() => {
     camera.fov = fovForFocalLength(focalLength)
-    camera.position.set(0, 0, distanceFor(focalLength, held))
-    camera.near = camera.position.z * 0.05
-    camera.far = camera.position.z * 8
+    const z = distanceFor(focalLength, held)
+    camera.position.set(0, 0, z)
+    /* Wrapped tight around the cast rather than 5% to 800% of the camera
+       distance. Depth buffer precision is spent almost entirely near the near
+       plane, so a near of `z * 0.05` on a subject sitting at `z` leaves
+       almost no resolution where the subject actually is — which is what the
+       flickering on Capsule C1's shell was: two coincident faces of a moulded
+       part swapping which one is in front, frame to frame. The cast lives
+       within a couple of units of the origin, and `CAST_DEPTH` is the room
+       hover gives it.
+ 
+       Floored, because a near plane at or below zero is not a projection. */
+    camera.near = Math.max(0.05, z - CAST_DEPTH)
+    camera.far = z + CAST_DEPTH
     camera.updateProjectionMatrix()
   }, [camera, focalLength, held])
 
   return null
 }
+
+/** How far either side of the origin the cast is allowed to sit — the depth
+ *  the near and far planes are wrapped around, and the budget hover has to
+ *  move a subject in. */
+const CAST_DEPTH = 4
+
+/* ---- coming and going ----
+
+   Subjects grow in place, one after another, and retract in the opposite
+   order when a project is opened — last in, first away, the same shape the
+   leaders' two cascades have on the project screen.
+
+   In three rather than in CSS, because there is nothing in the DOM to
+   stagger: the whole cast is one canvas. Scale rather than opacity for the
+   same reason — fading a mesh means making every material transparent, and a
+   transparent material is a different render path with its own sorting
+   problems for the sake of a beat nobody sees the inside of. */
+const IN_STAGGER = 0.1
+const OUT_STAGGER = 0.06
+/** How far under its mark a subject starts, in world units. */
+const RISE = 0.45
+
+/** Hover: the one being looked at comes forward, everything else drops back.
+ *  Small numbers — this is parallax, not a carousel. */
+const FORWARD = 0.55
+const BACK = 0.35
 
 /** Leans a subject toward the pointer, from whatever it has been turned to.
  *  The whole cast gets it, so the stage reads as one place with things
@@ -269,58 +306,246 @@ function Subject({ hero, studio }: { hero: Hero; studio: CastStudio }) {
   return null
 }
 
+/* ---- one subject's place on the stage ----
+
+   Layers are the whole reason this is a component. A `directionalLight` is
+   infinite: it lights every object in the scene, so five subjects sharing one
+   scene cannot have five rigs — turning Capsule C1's key up would light
+   Solomon with it, which is exactly the complaint. three tests
+   `light.layers` against `object.layers` before illuminating, so putting a
+   subject and its two lights on a layer of their own makes the rig genuinely
+   private. The camera enables every layer, so it still sees all of them.
+
+   The layer has to be re-applied when the subject actually arrives — a GLB
+   resolves out of Suspense long after this mounts, and a mesh that missed the
+   assignment is on layer 0, which no light is on any more, which is a subject
+   rendered black. Cheaper to notice than to subscribe to: the node count only
+   changes when something loads. */
+function Placed({
+  slot,
+  light,
+  layer,
+  index,
+  count,
+  shown,
+  focus,
+  onHover,
+  children
+}: {
+  slot: CastSlot
+  light: CastLight
+  layer: number
+  index: number
+  count: number
+  /** Whether the cast is on the stage at all. False retracts it. */
+  shown: boolean
+  /** `true` this one, `false` another one, `null` nothing. */
+  focus: boolean | null
+  onHover: (over: boolean) => void
+  children: React.ReactNode
+}) {
+  const outer = useRef<Group>(null)
+  const inner = useRef<Group>(null)
+  const grow = useRef(0)
+  const depth = useRef(0)
+  const since = useRef(0)
+  const nodes = useRef(-1)
+
+  // Restart the stagger clock whenever the cast is asked to come or go.
+  useEffect(() => {
+    since.current = 0
+  }, [shown])
+
+  useFrame((_, delta) => {
+    const group = outer.current
+    const body = inner.current
+    if (!group || !body) return
+
+    /* Whatever has arrived under here belongs on this subject's layer,
+       lights included — they are children of `outer` so they travel with it. */
+    let n = 0
+    group.traverse(() => n++)
+    if (n !== nodes.current) {
+      nodes.current = n
+      group.traverse((node) => node.layers.set(layer))
+    }
+
+    since.current += delta
+    // Last in, first away.
+    const delay = shown ? index * IN_STAGGER : (count - 1 - index) * OUT_STAGGER
+    if (since.current >= delay) {
+      const to = shown ? 1 : 0
+      grow.current = MathUtils.lerp(grow.current, to, 1 - Math.pow(0.0015, delta))
+    }
+    const eased = grow.current
+
+    const forward = focus === true ? FORWARD : focus === false ? -BACK : 0
+    depth.current = MathUtils.lerp(depth.current, forward, 1 - Math.pow(0.002, delta))
+
+    group.position.set(slot.x, slot.y - (1 - eased) * RISE, slot.z + depth.current)
+    body.scale.setScalar(Math.max(0.0001, slot.scale * eased))
+    body.visible = eased > 0.005
+  })
+
+  return (
+    <group
+      ref={outer}
+      onPointerOver={(event) => {
+        event.stopPropagation()
+        onHover(true)
+      }}
+      onPointerOut={() => onHover(false)}
+    >
+      {/* Outside the scaled group, so a subject at scale 0.5 is not lit from
+          half the distance — and so the lights survive the entrance, which
+          scales `inner` from nothing. */}
+      <directionalLight
+        position={[light.keyX, light.keyY, light.keyZ]}
+        intensity={light.keyIntensity}
+      />
+      <directionalLight
+        position={[light.fillX, light.fillY, light.fillZ]}
+        intensity={light.fillIntensity}
+      />
+      <group ref={inner}>{children}</group>
+    </group>
+  )
+}
+
+/** How hard this subject alone picks up the shared room. `scene.environment`
+ *  is one texture for the whole scene and layers do not touch it, so the only
+ *  per-subject handle is each material's own `envMapIntensity`. */
+function Env({ amount, children }: { amount: number; children: React.ReactNode }) {
+  const ref = useRef<Group>(null)
+  const nodes = useRef(-1)
+  const last = useRef(-1)
+
+  useFrame(() => {
+    const group = ref.current
+    if (!group) return
+    let n = 0
+    group.traverse(() => n++)
+    if (n === nodes.current && amount === last.current) return
+    nodes.current = n
+    last.current = amount
+    group.traverse((node) => {
+      const mesh = node as Mesh
+      if (!mesh.isMesh) return
+      for (const material of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
+        if (material && 'envMapIntensity' in material) {
+          ;(material as { envMapIntensity: number }).envMapIntensity = amount
+        }
+      }
+    })
+  })
+
+  return <group ref={ref}>{children}</group>
+}
+
+/** Every layer the cast uses, switched on for the camera — without this a
+ *  subject moved off layer 0 stops being rendered at all. */
+function SeeEverything() {
+  const camera = useThree((state) => state.camera)
+  useEffect(() => {
+    camera.layers.enableAll()
+  }, [camera])
+  return null
+}
+
 interface Props {
   studio?: CastStudio
   /** Every subject's placement, keyed by hero id. Whatever is missing falls
    *  back to what is in source — so a panel that has not been opened and a
    *  panel that has been reset draw the same stage. */
   slots?: Record<string, CastSlot>
+  /** Every subject's own rig, keyed the same way. */
+  lights?: Record<string, CastLight>
+  /** Which project is being looked at, if any — the hero whose `project`
+   *  matches comes forward and the rest drop back. Hovering a subject
+   *  directly does the same thing and wins while it lasts. */
+  focusHeroId?: string | null
+  /** On the stage, or leaving it. False retracts the cast, staggered. */
+  shown?: boolean
   /** Off entirely while the page is not looking at the stage. A cast of five
    *  idling behind a project screen is five subjects' worth of frame loop
    *  spent on something nobody can see. */
   live?: boolean
 }
 
-export default function MechCast({ studio = CAST_STUDIO, slots, live = true }: Props) {
-  const distance = distanceFor(CAST_STUDIO.focalLength, CAST_STUDIO.fill)
+export default function MechCast({ studio = CAST_STUDIO, slots, lights, focusHeroId, shown = true, live = true }: Props) {
+  /* Built from the studio actually in force, not from the shipped constant.
+     A `camera` prop is read once at mount and `Lens` corrects it in an
+     effect — which is a frame later, and that frame is painted. With the
+     constant here, the first frame of the home screen was drawn through the
+     project screen's lens: everything at the wrong distance, for one frame,
+     which is what the flash on the way back to home was. */
+  const distance = distanceFor(studio.focalLength, studio.fill)
+
+  /** A subject the pointer is actually over. Beats whatever the index says,
+   *  for as long as it lasts — the pointer is the more specific answer. */
+  const [over, setOver] = useState<string | null>(null)
+  const focused = over ?? focusHeroId ?? null
 
   return (
     <Canvas
       dpr={[1, 2]}
       frameloop={live ? 'always' : 'never'}
-      camera={{ fov: fovForFocalLength(CAST_STUDIO.focalLength), position: [0, 0, distance] }}
-      gl={{ alpha: true, antialias: true, toneMapping: ACESFilmicToneMapping, outputColorSpace: SRGBColorSpace }}
+      camera={{ fov: fovForFocalLength(studio.focalLength), position: [0, 0, distance] }}
+      gl={{
+        alpha: true,
+        antialias: true,
+        toneMapping: ACESFilmicToneMapping,
+        // Also frame one: `Studio` sets this in an effect, and the default of
+        // 1 against an exposure of 0.6 is the "white" half of that flash.
+        toneMappingExposure: studio.exposure,
+        outputColorSpace: SRGBColorSpace
+      }}
       style={{ background: 'transparent' }}
     >
+      <SeeEverything />
       <Lens focalLength={studio.focalLength} fill={studio.fill} />
       <Studio intensity={studio.envIntensity} exposure={studio.exposure} />
-      <directionalLight position={[3, 4, 5]} intensity={studio.keyIntensity} />
-      <directionalLight position={[-4, 1, -3]} intensity={studio.fillIntensity} />
 
-      {CAST.map((hero) => {
+      {CAST.map((hero, index) => {
         // The face is a layer of its own over this canvas — see the note at
         // the top, and `CastSlot` for how his slot is read instead.
         if (hero.kind === 'face') return null
         const slot = slots?.[hero.id] ?? slotFor(hero.id)
+        const light = lights?.[hero.id] ?? lightFor(hero.id)
         return (
-          <group key={hero.id} position={[slot.x, slot.y, slot.z]} scale={slot.scale}>
+          <Placed
+            key={hero.id}
+            slot={slot}
+            light={light}
+            // Layer 0 is left empty on purpose: anything that misses its
+            // assignment is then invisibly unlit rather than lit by whichever
+            // subject's rig happens to share the default.
+            layer={index + 1}
+            index={index}
+            count={CAST.length}
+            shown={shown}
+            focus={focused === null ? null : focused === hero.id}
+            onHover={(on) => setOver((was) => (on ? hero.id : was === hero.id ? null : was))}
+          >
             {/* Per subject rather than one around the cast: a suspended
                 sibling would hold the whole line-up off the screen until the
                 slowest file in it had arrived. Each one appears as it
                 lands. */}
             <Suspense fallback={null}>
-              <Float
-                speed={studio.floatSpeed}
-                rotationIntensity={studio.floatRotation}
-                floatIntensity={0.5}
-                floatingRange={[-studio.floatRange, studio.floatRange]}
-              >
-                <Lean degrees={studio.lean} turn={slot.turn} tilt={slot.tilt}>
-                  <Subject hero={hero} studio={studio} />
-                </Lean>
-              </Float>
+              <Env amount={light.env}>
+                <Float
+                  speed={studio.floatSpeed}
+                  rotationIntensity={studio.floatRotation}
+                  floatIntensity={0.5}
+                  floatingRange={[-studio.floatRange, studio.floatRange]}
+                >
+                  <Lean degrees={studio.lean} turn={slot.turn} tilt={slot.tilt}>
+                    <Subject hero={hero} studio={studio} />
+                  </Lean>
+                </Float>
+              </Env>
             </Suspense>
-          </group>
+          </Placed>
         )
       })}
     </Canvas>

@@ -43,10 +43,12 @@ export interface CastStudio {
    *  alone in a cell, and this one has to leave room for the whole cast
    *  alongside each other. */
   fill: number
+  /* Renderer-level, so it cannot be per-subject: there is one tone map.
+     Same for the environment — `scene.environment` is one room. What *is*
+     per-subject is how strongly each subject picks the room up (`env` on
+     `CastLight`) and the two lights aimed at it. */
   exposure: number
   envIntensity: number
-  keyIntensity: number
-  fillIntensity: number
   floatSpeed: number
   floatRange: number
   floatRotation: number
@@ -63,8 +65,6 @@ export const CAST_STUDIO: CastStudio = {
   fill: 0.3,
   exposure: 0.6,
   envIntensity: 2.4,
-  keyIntensity: 2.6,
-  fillIntensity: 1,
   floatSpeed: 1,
   floatRange: 0.05,
   floatRotation: 0.3,
@@ -103,6 +103,59 @@ export interface CastSlot {
 
 export const CAST_SLOT_FALLBACK: CastSlot = { x: 0, y: 0, z: 0, scale: 1, turn: 0, tilt: 0 }
 
+/** One subject's own lighting.
+ *
+ *  Genuinely its own: each subject and the two lights aimed at it are put on
+ *  a three.js layer of their own, and a light only illuminates what shares a
+ *  layer with it. So Capsule C1's key does not spill onto Solomon, and
+ *  turning one of them up cannot quietly wreck the other — which is what a
+ *  single shared pair of directional lights meant, because a directional
+ *  light is infinite and lights the entire scene.
+ *
+ *  There is no global key or fill left on the studio for that reason: with
+ *  every subject on its own layer, a light on the default layer would reach
+ *  nothing. What stays shared is the room — `scene.environment` and the tone
+ *  map — and `env` here is how hard this subject alone picks the room up. */
+export interface CastLight {
+  keyIntensity: number
+  keyX: number
+  keyY: number
+  keyZ: number
+  fillIntensity: number
+  fillX: number
+  fillY: number
+  fillZ: number
+  /** Multiplies `envMapIntensity` on every material of this subject. */
+  env: number
+}
+
+export const CAST_LIGHT_FALLBACK: CastLight = {
+  keyIntensity: 2.6,
+  keyX: 3,
+  keyY: 4,
+  keyZ: 5,
+  fillIntensity: 1,
+  fillX: -4,
+  fillY: 1,
+  fillZ: -3,
+  env: 1
+}
+
+/* A starting rig each, not one rig applied five times. The subjects are not
+   the same kind of object and never wanted the same light: the capsule is a
+   glossy moulded shell that shows a key as a long specular streak, the rider
+   is a matte character on a lacquered bike, the loop and the fish man are
+   flat-shaded and mostly want to be legible. Tune from here. */
+export const CAST_LIGHTS: Record<string, CastLight> = {
+  capsule: { keyIntensity: 3.2, keyX: 4, keyY: 3.5, keyZ: 4, fillIntensity: 1.4, fillX: -4, fillY: 1, fillZ: -2, env: 1.3 },
+  rider: { keyIntensity: 2.8, keyX: 2.5, keyY: 4, keyZ: 5, fillIntensity: 1.1, fillX: -4, fillY: 1.5, fillZ: -3, env: 1 },
+  takahashi: { ...CAST_LIGHT_FALLBACK },
+  stitchfam: { keyIntensity: 2.2, keyX: 1, keyY: 3, keyZ: 6, fillIntensity: 1.6, fillX: -3, fillY: 1, fillZ: 2, env: 0.8 },
+  fish: { keyIntensity: 2.4, keyX: 2, keyY: 3, keyZ: 5, fillIntensity: 1.5, fillX: -3, fillY: 2, fillZ: -1, env: 0.9 }
+}
+
+export const lightFor = (id: string): CastLight => CAST_LIGHTS[id] ?? CAST_LIGHT_FALLBACK
+
 /* Five across, reading left to right, in the room to the right of the side
    column — the readout lives at frame x 101–481 and a subject standing in it
    is a subject standing on the writing, which is what the first arrangement
@@ -136,6 +189,7 @@ const STORE_KEY = 'v3.cast.tuning.v1'
 interface Stored {
   studio?: Partial<CastStudio>
   slots?: Record<string, CastSlot>
+  lights?: Record<string, CastLight>
 }
 
 const stored = (): Stored => {
@@ -152,10 +206,12 @@ const start: CastStudio = { ...CAST_STUDIO, ...saved.studio }
 
 const live = {
   studio: { ...start },
-  slots: { ...CAST_SLOTS, ...saved.slots }
+  slots: { ...CAST_SLOTS, ...saved.slots },
+  lights: { ...CAST_LIGHTS, ...saved.lights }
 }
 
 const keys = Object.keys(CAST_STUDIO) as Array<keyof CastStudio>
+const LIGHT_KEYS = Object.keys(CAST_LIGHT_FALLBACK) as Array<keyof CastLight>
 
 const tidy = (value: number) => String(Number(value.toFixed(4)))
 
@@ -170,7 +226,12 @@ const asSource = () => {
       .join(', ')
     return `  ${hero.id}: { ${body} }`
   }).join(',\n')}\n}`
-  return `${studio}\n\n${slots}`
+  const lights = `export const CAST_LIGHTS: Record<string, CastLight> = {\n${CAST.map((hero) => {
+    const light = live.lights[hero.id] ?? CAST_LIGHT_FALLBACK
+    const body = LIGHT_KEYS.map((key) => `${key}: ${tidy(light[key])}`).join(', ')
+    return `  ${hero.id}: { ${body} }`
+  }).join(',\n')}\n}`
+  return `${studio}\n\n${slots}\n\n${lights}`
 }
 
 /** Every subject's placement at once, plus the shared studio.
@@ -200,6 +261,7 @@ export function useCastTuning() {
       ...Object.fromEntries(
         CAST.map((hero) => {
           const seed = live.slots[hero.id] ?? CAST_SLOT_FALLBACK
+          const lit = live.lights[hero.id] ?? CAST_LIGHT_FALLBACK
           return [
             hero.title,
             folder(
@@ -209,7 +271,24 @@ export function useCastTuning() {
                 [`${hero.id}.z`]: { value: seed.z, min: -6, max: 6, step: 0.01, label: 'Z' },
                 [`${hero.id}.scale`]: { value: seed.scale, min: 0.05, max: 4, step: 0.01, label: 'Scale' },
                 [`${hero.id}.turn`]: { value: seed.turn, min: -180, max: 180, step: 0.5, label: 'Turn' },
-                [`${hero.id}.tilt`]: { value: seed.tilt, min: -90, max: 90, step: 0.5, label: 'Tilt' }
+                [`${hero.id}.tilt`]: { value: seed.tilt, min: -90, max: 90, step: 0.5, label: 'Tilt' },
+
+                /* This subject's own rig, on its own layer — nothing here
+                   reaches any other subject. See `CastLight`. */
+                Light: folder(
+                  {
+                    [`${hero.id}.keyIntensity`]: { value: lit.keyIntensity, min: 0, max: 12, step: 0.05, label: 'Key' },
+                    [`${hero.id}.keyX`]: { value: lit.keyX, min: -10, max: 10, step: 0.1, label: 'Key X' },
+                    [`${hero.id}.keyY`]: { value: lit.keyY, min: -10, max: 10, step: 0.1, label: 'Key Y' },
+                    [`${hero.id}.keyZ`]: { value: lit.keyZ, min: -10, max: 10, step: 0.1, label: 'Key Z' },
+                    [`${hero.id}.fillIntensity`]: { value: lit.fillIntensity, min: 0, max: 12, step: 0.05, label: 'Fill' },
+                    [`${hero.id}.fillX`]: { value: lit.fillX, min: -10, max: 10, step: 0.1, label: 'Fill X' },
+                    [`${hero.id}.fillY`]: { value: lit.fillY, min: -10, max: 10, step: 0.1, label: 'Fill Y' },
+                    [`${hero.id}.fillZ`]: { value: lit.fillZ, min: -10, max: 10, step: 0.1, label: 'Fill Z' },
+                    [`${hero.id}.env`]: { value: lit.env, min: 0, max: 4, step: 0.02, label: 'Env' }
+                  },
+                  { collapsed: true }
+                )
               },
               { collapsed: true }
             )
@@ -226,12 +305,12 @@ export function useCastTuning() {
         { collapsed: true }
       ),
 
-      Lighting: folder(
+      /* Only what genuinely is shared. The key and fill that used to live
+         here are per-subject now — see `CastLight`. */
+      Room: folder(
         {
           exposure: { value: start.exposure, min: 0.01, max: 2, step: 0.01 },
-          envIntensity: { value: start.envIntensity, min: 0, max: 8, step: 0.05, label: 'Env' },
-          keyIntensity: { value: start.keyIntensity, min: 0, max: 12, step: 0.05, label: 'Key' },
-          fillIntensity: { value: start.fillIntensity, min: 0, max: 12, step: 0.05, label: 'Fill' }
+          envIntensity: { value: start.envIntensity, min: 0, max: 8, step: 0.05, label: 'Env' }
         },
         { collapsed: true }
       ),
@@ -272,9 +351,15 @@ export function useCastTuning() {
         turn: values[`${hero.id}.turn`],
         tilt: values[`${hero.id}.tilt`]
       }
+      live.lights[hero.id] = Object.fromEntries(
+        LIGHT_KEYS.map((key) => [key, values[`${hero.id}.${key}`]])
+      ) as unknown as CastLight
     }
     try {
-      window.localStorage.setItem(STORE_KEY, JSON.stringify({ studio: live.studio, slots: live.slots }))
+      window.localStorage.setItem(
+        STORE_KEY,
+        JSON.stringify({ studio: live.studio, slots: live.slots, lights: live.lights })
+      )
     } catch {
       /* private mode, a full quota — not worth breaking the page over */
     }
@@ -299,5 +384,12 @@ export function useCastTuning() {
     ])
   )
 
-  return { store, studio: values as unknown as CastStudio, slots }
+  const lights: Record<string, CastLight> = Object.fromEntries(
+    CAST.map((hero) => [
+      hero.id,
+      Object.fromEntries(LIGHT_KEYS.map((key) => [key, values[`${hero.id}.${key}`]])) as unknown as CastLight
+    ])
+  )
+
+  return { store, studio: values as unknown as CastStudio, slots, lights }
 }

@@ -242,6 +242,32 @@ const whenIdle = (run: () => void) => {
   return () => window.clearTimeout(timer)
 }
 
+/** Who this is, for the home screen's side column when nothing in the index
+ *  is being pointed at. The project screen never shows it: there the column
+ *  belongs to the project.
+ *
+ *  The default state of a portfolio's front page should say what the person
+ *  does, not describe whichever project happens to be first in the list —
+ *  which is what filling the readout in with `MENU[0]` on arrival did. */
+const INTRO = {
+  name: 'Tarlok Singh',
+  line: 'product designer',
+  text:
+    'Product designer with 8+ years building 0→1 developer tools, AI applications, and consumer products. ' +
+    'I rapidly ship working products from concept to launch. I\u2019ve scaled a business from $800K to $1.5M+ ' +
+    'by putting design at the center of growth. My passion is building multi-sensory experiences and turning ' +
+    'ideas into products. I\u2019m in love with the craft of building and designing.'
+}
+
+/** Which subject on the home stage belongs to which project — the reverse of
+ *  `Hero.project`. Pointing at a project's box in the index brings its
+ *  subject forward on the stage, so the two halves of the screen are
+ *  obviously about the same thing. Solomon's hero has `project: 'a-game'`
+ *  now that the project is in the index. */
+const HERO_BY_PROJECT = new Map(
+  CAST.filter((hero) => hero.project).map((hero) => [hero.project as string, hero.id])
+)
+
 /** The first paragraph of a project's `intro`, trimmed to something the home
  *  readout can hold without turning into the case study itself. `intro` is
  *  prose written for a full write-up; this is the same words, just not all of
@@ -835,7 +861,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
      index swings it over; pressing that box opens what is already being
      described, which is what makes the transition read as continuous rather
      than as an answer arriving after the question. */
-  const [eyed, setEyed] = useState<string>(MENU[0]?.project.id ?? '')
+  const [eyed, setEyed] = useState<string | null>(null)
   const [index, setIndex] = useState(0)
   /* What is actually on the stage, which trails `index` by the swap. Picking
      a tile lights it immediately — the feedback is instant — while the frame
@@ -1109,7 +1135,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
      is the project; at home it is whichever box in the index the pointer is
      over, which is what lets the title stay put across the press that opens
      it. */
-  const eyedItem = home ? (MENU.find((item) => item.project.id === eyed) ?? MENU[0] ?? null) : null
+  const eyedItem = home && eyed ? (MENU.find((item) => item.project.id === eyed) ?? null) : null
   const lede = project ?? eyedItem?.project ?? null
   /* Mr. Takahashi on the home stage. He is not in the cast's canvas — his rig
      is his own, and always has been — so he is laid over it as a second layer
@@ -1273,7 +1299,17 @@ export default function Mech({ id, onProject, onHome }: Props) {
           {home && (
             <div className="mech-model-layer" data-on>
               <Suspense fallback={null}>
-                <MechCast studio={cast.studio} slots={cast.slots} live={home} />
+                <MechCast
+                  studio={cast.studio}
+                  slots={cast.slots}
+                  lights={cast.lights}
+                  focusHeroId={eyed ? (HERO_BY_PROJECT.get(eyed) ?? null) : null}
+                  /* The retarget's own cover, which is already true for the
+                     whole of an exit — so the cast retracts on the way out
+                     rather than being switched off at the end of it. */
+                  shown={!covered}
+                  live={home}
+                />
               </Suspense>
             </div>
           )}
@@ -1404,7 +1440,9 @@ export default function Mech({ id, onProject, onHome }: Props) {
                   sound.tick()
                   setEyed(item.project.id)
                 }}
+                onPointerLeave={() => setEyed((was) => (was === item.project.id ? null : was))}
                 onFocus={() => setEyed(item.project.id)}
+                onBlur={() => setEyed((was) => (was === item.project.id ? null : was))}
                 onClick={() => {
                   sound.select()
                   onProject(item.project.id)
@@ -1413,6 +1451,20 @@ export default function Mech({ id, onProject, onHome }: Props) {
                 <span className="mech-index-text">
                   <span className="mech-index-title">{item.project.title}</span>
                   <span className="mech-index-n">{String(i + 1).padStart(2, '0')}</span>
+                  {/* Every name, in every box, at zero height — so each box's
+                      natural width is the width of the *longest* name and all
+                      twelve come out identical. Six `1fr` columns do not do
+                      this on their own: in an intrinsically sized grid each
+                      column takes its own content's width, which is why the
+                      row used to be six different widths. Measuring the
+                      longest string in JS would be the other way, and would
+                      be wrong the first time a name with wide letters was
+                      added — this is exact because it is the real type. */}
+                  <span className="mech-index-gauge" aria-hidden>
+                    {MENU.map((other) => (
+                      <span key={other.project.id}>{other.project.title}</span>
+                    ))}
+                  </span>
                 </span>
                 {/* Empty until a file is dropped in — see `portraitOf`. The
                     rectangle is drawn either way so the row of boxes keeps
@@ -1498,7 +1550,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
                 the title, it stops it changing. `run` is keyed on what is
                 being described rather than on `shownId` so the home readout
                 retypes as the pointer moves. */}
-            {lede && (
+            {lede ? (
               <>
                 <h1 className="mech-title" style={{ ['--title-len' as string]: lede.title.length }}>
                   <Typed text={lede.title} run={lede.id} />
@@ -1508,6 +1560,16 @@ export default function Mech({ id, onProject, onHome }: Props) {
                     <SplitReveal text={lede.tagline} run={lede.id} delay={0.3} />
                   </p>
                 )}
+              </>
+            ) : (
+              /* Home, with nothing in the index being pointed at. */
+              <>
+                <h1 className="mech-title" style={{ ['--title-len' as string]: INTRO.name.length }}>
+                  <Typed text={INTRO.name} run="intro" />
+                </h1>
+                <p className="mech-tagline">
+                  <SplitReveal text={INTRO.line} run="intro" delay={0.3} />
+                </p>
               </>
             )}
           </div>
@@ -1522,9 +1584,9 @@ export default function Mech({ id, onProject, onHome }: Props) {
                 cannot: what it actually was. The folds are the write-up and
                 the write-up belongs to the project screen — an index that
                 unfolded a case study in place would be the case study. */}
-            {home && lede && (
-              <p className="mech-brief" key={lede.id}>
-                {briefOf(lede.intro)}
+            {home && (
+              <p className="mech-brief" key={lede?.id ?? 'intro'} data-intro={!lede}>
+                {lede ? briefOf(lede.intro) : INTRO.text}
               </p>
             )}
             <div className="mech-folds">

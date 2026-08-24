@@ -22,6 +22,26 @@ const MODELS: Record<string, { file: string; label: string }> = {
   'mr-takahashi': { file: '/models/adam-face.glb', label: 'Mr. Takahashi — character' }
 }
 
+/* ---- waiting on files ----
+
+   Two subjects that are wanted and do not exist yet: an AK-pattern rifle for
+   Grand Theft Auto V and a revolver for Red Dead Redemption 2, to stand where
+   those two currently show a disc case.
+
+   Listed rather than wired, deliberately. `useGLTF` suspends on a fetch and a
+   404 never resolves it, so pointing `MODELS` at a file that is not there is
+   a project screen that stays under its cover forever — a worse failure than
+   not having the model, because it looks like the page is broken rather than
+   like the model is missing.
+
+   Dropping either one in is: put the GLB in `public/models/` under the name
+   below, and move that line up into `MODELS`. Nothing else — the stage, the
+   tile rail and the leaders all read the same map. */
+export const PENDING_MODELS: Record<string, { file: string; label: string }> = {
+  'grand-theft-auto-v': { file: '/models/gta-v-rifle.glb', label: 'Grand Theft Auto V — the rifle' },
+  'red-dead-redemption-2': { file: '/models/rdr2-revolver.glb', label: 'Red Dead Redemption 2 — the revolver' }
+}
+
 /* ---- pieces ----
 
    Eight of the ten projects have no model and had a photograph where the
