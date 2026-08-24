@@ -8,6 +8,8 @@ import MechLaser from './MechLaser'
 import MechHud from './MechHud'
 import { useModelTuning } from './modelTuning'
 import { useProductTuning } from './productTuning'
+import { useCastTuning, slotFor } from './castTuning'
+import { CAST } from './heroes'
 import MechDeck from './MechDeck'
 import MechMenu from './MechMenu'
 import { useNarrowTuning } from './narrowTuning'
@@ -16,7 +18,7 @@ import { useNarrow } from './narrow'
 import { useReveal } from './reveal'
 import { drift, flinch, quarry } from './subject'
 import { kills } from './kills'
-import { entries, thumbOf, type Entry, type Frame } from './model'
+import { findProject, MENU, portraitOf, thumbOf, type Entry, type Frame } from './model'
 import { focus, notesFor, pins, type Note } from './notes'
 import { useLabelTuning, type Handed } from './labelTuning'
 import { boxOf, FRAME_SPACE, leadersFor, mediaBox, type Space } from './leaders'
@@ -25,6 +27,9 @@ import './Mech.css'
 
 const MechModel = lazy(() => import('./MechModel'))
 const MechProduct = lazy(() => import('./MechProduct'))
+/* The home screen's line-up. Lazy for the same reason the other two are: a
+   visitor who lands straight on a project URL never pays for it. */
+const MechCast = lazy(() => import('./MechCast'))
 /* Development only — the render is behind `import.meta.env.DEV`, so a visitor
    never fetches this chunk. See `MechPins.tsx`. */
 const MechPins = lazy(() => import('./MechPins'))
@@ -235,6 +240,16 @@ const whenIdle = (run: () => void) => {
   }
   const timer = window.setTimeout(run, 600)
   return () => window.clearTimeout(timer)
+}
+
+/** The first paragraph of a project's `intro`, trimmed to something the home
+ *  readout can hold without turning into the case study itself. `intro` is
+ *  prose written for a full write-up; this is the same words, just not all of
+ *  them. */
+const briefOf = (intro: string): string => {
+  const first = (intro.split('\n\n')[0] ?? intro).trim()
+  if (first.length <= 240) return first
+  return `${first.slice(0, 237).trimEnd()}…`
 }
 
 /** The project's write-up, in the order it is read.
@@ -714,7 +729,21 @@ const PANEL = {
 const BOOT_MS = 1200
 
 interface Props {
-  id: string
+  /** The project on screen, or `null` for the home screen.
+   *
+   *  Home is a *state of this component*, not a screen beside it. The whole
+   *  page — the dashboard, the grid, the compass, the header, the footer, the
+   *  bird and the reticle — is one machine that is already running, and
+   *  opening a project should be that machine retargeting rather than a new
+   *  page being built. Two components meant two of everything and a black
+   *  frame between them where the second one booted; the background flicker
+   *  was the second `.mech` painting over the first.
+   *
+   *  So there is one. Home puts the cast on the stage, the readout in the
+   *  side column and the index across the bottom; a project puts its subject,
+   *  its write-up and its tile rail in the same three places. Everything else
+   *  never moves, because it is never remounted. */
+  id: string | null
   /** Retarget to another project without unmounting: the readout swings over
    *  rather than the page being replaced. */
   onProject: (id: string) => void
@@ -783,14 +812,30 @@ export default function Mech({ id, onProject, onHome }: Props) {
   /* The project on screen trails the one in the URL by a transit, the same
      way the frame trails the tile you picked. Retargeting is the readout
      swinging over to something else, not a page being replaced. */
-  const [shownId, setShownId] = useState(id)
+  const [shownId, setShownId] = useState<string | null>(id)
   /* The pieces' own studio, on its own panel. Keyed on the project because
      the per-piece folder shows one piece at a time — see `productTuning.ts`. */
-  const pieces = useProductTuning(shownId)
+  const pieces = useProductTuning(shownId ?? '')
+  /* Where every subject on the home stage stands. Its own panel, and nothing
+     to do with the two above it: those describe one subject alone at case
+     study size, this one describes a group portrait. See `castTuning.ts`. */
+  const cast = useCastTuning()
   const [booting, setBooting] = useState(true)
   const [lit, setLit] = useState<string | null>(null)
-  const entry = entries.find((item) => item.project.id === shownId) ?? null
+  /* `home` is the whole difference between the two states, and it is read
+     off what is on screen rather than off the prop — during a retarget the
+     prop has already changed and the page has not, which is the entire point
+     of `shownId`. */
+  const home = shownId === null
+  const found = shownId ? findProject(shownId) : null
+  const project = found?.project ?? null
+  const entry = found?.entry ?? null
   const frames = useMemo(() => (entry ? modelFirst(entry) : []), [entry])
+  /* Which project the home readout is filled in for. Hovering a box in the
+     index swings it over; pressing that box opens what is already being
+     described, which is what makes the transition read as continuous rather
+     than as an answer arriving after the question. */
+  const [eyed, setEyed] = useState<string>(MENU[0]?.project.id ?? '')
   const [index, setIndex] = useState(0)
   /* What is actually on the stage, which trails `index` by the swap. Picking
      a tile lights it immediately — the feedback is instant — while the frame
@@ -846,7 +891,14 @@ export default function Mech({ id, onProject, onHome }: Props) {
 
   /* Retargeting. The subject comes apart, the project underneath changes, and
      the rail goes back to the model — reusing the same cover the frame swap
-     uses, because it is the same gesture at a larger scale. */
+     uses, because it is the same gesture at a larger scale.
+
+     Home is one more target, not a special case. Going home and going to a
+     different project run the identical beat: what is on the stage leaves,
+     `shownId` changes underneath, and what replaces it draws itself in. The
+     dashboard, the header and the footer are never told any of it happened,
+     which is what "seamless" means here — not a transition between two
+     screens, but the absence of a second screen to transition to. */
   useEffect(() => {
     if (id === shownId) return
     sound.dissolve()
@@ -857,6 +909,10 @@ export default function Mech({ id, onProject, onHome }: Props) {
       setShown(0)
       setOpen('overview')
       setPhase('hold')
+      // Arriving on a project from the index leaves the readout where it
+      // already was, so the title in the side column does not blink over to
+      // something else on the way in.
+      if (id) setEyed(id)
     }, EXIT_MS)
     return () => window.clearTimeout(timer)
   }, [id, shownId])
@@ -872,8 +928,8 @@ export default function Mech({ id, onProject, onHome }: Props) {
      Which is also the arrangement that was there before, and the desktop
      composition is not this pass's to redraw. */
   useEffect(() => {
-    if (!narrow) return
-    setOpen(foldsFor(entries.find((item) => item.project.id === shownId)?.project)[0]?.id ?? null)
+    if (!narrow || !shownId) return
+    setOpen(foldsFor(findProject(shownId)?.project)[0]?.id ?? null)
   }, [shownId, narrow])
 
   useEffect(() => {
@@ -896,7 +952,10 @@ export default function Mech({ id, onProject, onHome }: Props) {
   // else lifts the cover when it says it is ready, or when the cap runs out.
   useEffect(() => {
     if (phase !== 'hold') return
-    if (frames[shown] && frames[shown].kind !== 'flat') {
+    // A model, the cast, or a project with nothing on its stage at all: none
+    // of them have a picture to decode, so none of them have anything to wait
+    // for.
+    if (!frames[shown] || frames[shown].kind !== 'flat') {
       setPhase('in')
       return
     }
@@ -1034,15 +1093,58 @@ export default function Mech({ id, onProject, onHome }: Props) {
     return () => window.removeEventListener('keydown', onKey)
   }, [frames.length])
 
-  if (!entry || !current) return <div className="mech" />
+  // A project id that matches nothing at all. Home is not this case: it has
+  // no project on purpose.
+  if (!home && !project) return <div className="mech" />
 
-  const { project } = entry
-  const notes = notesFor(entry, current, drafts)
-
-  const folds = foldsFor(project)
+  const notes = entry && current ? notesFor(entry, current, drafts) : []
+  const folds = foldsFor(project ?? undefined)
+  /* A project in the index with nothing to put on the stage — Visa, under an
+     NDA, and Solomon, whose write-up is still to come. Both are real work and
+     both are listed, so opening one has to land somewhere: the `restricted`
+     note on its own card, in place of the subject. See `MENU` in `model.ts`
+     for why a project with no media is in the index at all. */
+  const bare = !home && !current
+  /* What the readout in the side column is currently about. On a project that
+     is the project; at home it is whichever box in the index the pointer is
+     over, which is what lets the title stay put across the press that opens
+     it. */
+  const eyedItem = home ? (MENU.find((item) => item.project.id === eyed) ?? MENU[0] ?? null) : null
+  const lede = project ?? eyedItem?.project ?? null
+  /* Mr. Takahashi on the home stage. He is not in the cast's canvas — his rig
+     is his own, and always has been — so he is laid over it as a second layer
+     and placed from the same slot the rest of the line-up uses. Only two of
+     its six numbers reach him; see `CastSlot`. */
+  const faceHero = CAST.find((hero) => hero.kind === 'face')
+  const faceSlot = faceHero ? (cast.slots[faceHero.id] ?? slotFor(faceHero.id)) : null
+  /* His slot's `x`/`y` are the cast's world units like everyone else's, and
+     this is where they are converted — the one place the canvas's world and
+     the frame's coordinates have to be reconciled by hand, because he is not
+     in the canvas.
+ 
+     One world unit is `fill` of the stage's *height*. The layer is the stage,
+     so a percentage translate on it is a percentage of the stage: vertically
+     that is `fill` straight through, and horizontally the same length has to
+     be divided by the stage's aspect to stay the same number of pixels. */
+  const faceShift = faceSlot
+    ? {
+        x: (faceSlot.x * cast.studio.fill * 100) / (1920 / 1080),
+        y: -faceSlot.y * cast.studio.fill * 100
+      }
+    : null
 
   return (
-    <div className="mech" ref={root} data-boot={booting} data-pins={pinning} data-narrow={narrow}>
+    <div
+      className="mech"
+      ref={root}
+      data-boot={booting}
+      data-pins={pinning}
+      data-narrow={narrow}
+      data-home={home}
+      /* The whole retarget, not just the stage's part of it. The index and the
+         tile rail take their exit off this — see `the exchange` in Mech.css. */
+      data-covered={covered}
+    >
       {/* Sized by both units at once, so the ratio between them can be read
           off one box. See `useTypeScale`. */}
       <i className="mech-scale" ref={scale} aria-hidden />
@@ -1078,6 +1180,15 @@ export default function Mech({ id, onProject, onHome }: Props) {
               {import.meta.env.DEV && !narrow && pieceFrame && (
                 <div className="mech-pieces-panel">
                   <LevaPanel store={pieces.store} collapsed fill titleBar={{ title: 'Piece', drag: false }} theme={PANEL} />
+                </div>
+              )}
+              {/* Home's own panel, and only at home: a cast of five has
+                  nothing to say on a project screen, and a panel whose
+                  sliders move something on a different page is a panel
+                  nobody can check their work against. */}
+              {import.meta.env.DEV && !narrow && home && (
+                <div className="mech-labels-panel">
+                  <LevaPanel store={cast.store} collapsed fill titleBar={{ title: 'Cast', drag: false }} theme={PANEL} />
                 </div>
               )}
               {import.meta.env.DEV && narrow && (
@@ -1144,7 +1255,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
           ref={stage}
           data-covered={covered}
           data-leaving={leaving}
-          data-kind={current.kind}
+          data-kind={home ? 'cast' : (current?.kind ?? 'bare')}
           style={narrow ? { ['--media-scale' as string]: narrowScale.media } : undefined}
         >
           {/* The model is mounted for as long as the project has one, and
@@ -1156,8 +1267,48 @@ export default function Mech({ id, onProject, onHome }: Props) {
               on the main thread — a hitch, every single time you stepped back
               to the model. Hidden and stopped it costs nothing per frame: see
               `live` in MechModel, which puts the render loop to sleep. */}
+          {/* The home line-up: one canvas holding every subject at once,
+              each placed by its slot. Six separate contexts is what this
+              replaces — see the note at the top of `MechCast.tsx`. */}
+          {home && (
+            <div className="mech-model-layer" data-on>
+              <Suspense fallback={null}>
+                <MechCast studio={cast.studio} slots={cast.slots} live={home} />
+              </Suspense>
+            </div>
+          )}
+
+          {/* And the face over it, in his own rig. `fill` rather than a CSS
+              scale: the layer is a canvas, and magnifying a canvas magnifies
+              the pixels it was drawn at. Placed by the same slot, in percent
+              of the stage — the one place the cast's world units and the
+              frame's coordinates have to be reconciled by hand. */}
+          {home && faceHero?.src && faceSlot && (
+            <div
+              className="mech-cast-face"
+              style={{ transform: `translate(${faceShift?.x ?? 0}%, ${faceShift?.y ?? 0}%)` }}
+            >
+              <Suspense fallback={null}>
+                <MechModel
+                  src={faceHero.src}
+                  tuning={{ ...tuning, fill: tuning.fill * faceSlot.scale }}
+                  live={home}
+                />
+              </Suspense>
+            </div>
+          )}
+
+          {/* Nothing to put on the stage, and that is the truth about the
+              project rather than a failure to load one. */}
+          {bare && project && (
+            <div className="mech-bare">
+              <span className="mech-bare-tag">no material</span>
+              <p>{project.restricted ?? project.intro}</p>
+            </div>
+          )}
+
           {modelFrame && (
-            <div className="mech-model-layer" data-on={current.kind === 'model'}>
+            <div className="mech-model-layer" data-on={current?.kind === 'model'}>
               <Suspense fallback={null}>
                 {/* The same lens, framed larger. `fill` is how much of the
                     stage's height the subject takes, and on a phone the stage
@@ -1168,7 +1319,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
                 <MechModel
                   src={modelFrame.src}
                   tuning={narrow ? { ...tuning, fill: tuning.fill * narrowScale.model } : tuning}
-                  live={current.kind === 'model'}
+                  live={current?.kind === 'model'}
                 />
               </Suspense>
             </div>
@@ -1180,18 +1331,18 @@ export default function Mech({ id, onProject, onHome }: Props) {
               again. See `MechProduct.tsx`, which is a studio of its own and
               shares nothing with the face's rig. */}
           {pieceFrame && (
-            <div className="mech-model-layer" data-on={current.kind === 'piece'}>
+            <div className="mech-model-layer" data-on={current?.kind === 'piece'}>
               <Suspense fallback={null}>
                 <MechProduct
                   project={pieceFrame.project}
                   tuning={pieces.studio}
                   piece={narrow ? { ...pieces.piece, size: pieces.piece.size * narrowScale.model } : pieces.piece}
-                  live={current.kind === 'piece'}
+                  live={current?.kind === 'piece'}
                 />
               </Suspense>
             </div>
           )}
-          {current.kind === 'flat' && (
+          {current?.kind === 'flat' && (
             <Flat
               // Prefixed: the leaders below are keyed on the same frame, and
               // two siblings under one parent with the same key is a duplicate
@@ -1214,7 +1365,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
               to the frame that is leaving — and the ones arriving mount at the
               moment the next picture starts, which is what their own draw-in
               is timed against. */}
-          {!booting && phase !== 'hold' && (
+          {!booting && phase !== 'hold' && current && (
             <Leaders
               key={`leaders-${current.id}`}
               notes={notes}
@@ -1226,13 +1377,73 @@ export default function Mech({ id, onProject, onHome }: Props) {
             />
           )}
 
-          {import.meta.env.DEV && pinning && (
+          {import.meta.env.DEV && pinning && current && (
             <Suspense fallback={null}>
               <MechPins frame={current} notes={notes} onClose={() => setPinning(false)} />
             </Suspense>
           )}
         </div>
 
+        {/* The index, across the bottom — home's answer to the tile rail, in
+            the same slot in the machine. One box per project: its name, its
+            number, and a portrait. Pressing one opens it; the box the pointer
+            is over fills in the readout in the side column first, so the
+            press lands on something already being described.
+
+            Not `entries`. Two of the twelve have nothing to put on a stage
+            and belong in an index anyway — see `MENU` in `model.ts`. */}
+        {home && (
+          <nav className="mech-index" aria-label="Every project" data-arrive>
+            {MENU.map((item, i) => (
+              <button
+                key={item.project.id}
+                className="mech-index-box"
+                aria-pressed={item.project.id === eyed}
+                style={{ ['--i' as string]: i }}
+                onPointerEnter={() => {
+                  sound.tick()
+                  setEyed(item.project.id)
+                }}
+                onFocus={() => setEyed(item.project.id)}
+                onClick={() => {
+                  sound.select()
+                  onProject(item.project.id)
+                }}
+              >
+                <span className="mech-index-text">
+                  <span className="mech-index-title">{item.project.title}</span>
+                  <span className="mech-index-n">{String(i + 1).padStart(2, '0')}</span>
+                </span>
+                {/* Empty until a file is dropped in — see `portraitOf`. The
+                    rectangle is drawn either way so the row of boxes keeps
+                    its shape while the set is being filled in. */}
+                <span className="mech-index-portrait">
+                  <img
+                    src={portraitOf(item.project.id)}
+                    alt=""
+                    loading="lazy"
+                    /* Hidden until it loads, rather than shown until it
+                       fails. Most of these files do not exist yet, and a 404
+                       paints the browser's own broken-image glyph in the
+                       frame a beat before `onError` can hide it — twelve
+                       boxes each flashing a torn-page icon. */
+                    style={{ display: 'none' }}
+                    onLoad={(event) => {
+                      event.currentTarget.style.display = 'block'
+                    }}
+                  />
+                </span>
+              </button>
+            ))}
+          </nav>
+        )}
+
+        {/* The tile strip, which is a project's own thing — home has the
+            index in this slot instead. Unmounted rather than hidden: the two
+            never overlap, and whichever one is up fades out on `data-covered`
+            before the swap and the other fades in after it, so the exchange
+            reads as one control changing rather than two appearing. */}
+        {!home && frames.length > 0 && (
         <div className="mech-rail-wrap" ref={railWrap} data-arrive>
           <div className="mech-rail" ref={rail}>
             {frames.map((frame, i) => {
@@ -1242,8 +1453,8 @@ export default function Mech({ id, onProject, onHome }: Props) {
                   key={frame.id}
                   className="mech-tile"
                   aria-pressed={i === index}
-                  aria-label={frame.label ?? project.title}
-                  title={frame.label ?? project.title}
+                  aria-label={frame.label ?? project?.title}
+                  title={frame.label ?? project?.title}
                   style={{ ...(thumb ? { backgroundImage: `url(${thumb})` } : {}), ['--i' as string]: i }}
                   /* Hovering is the earliest honest signal that a frame is
                      about to be wanted, and it buys a few hundred milliseconds
@@ -1263,6 +1474,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
             <div className="mech-rail-thumb" />
           </div>
         </div>
+        )}
 
         <section className="mech-side">
           {/* Its own block, which on the wide layout is simply the first two
@@ -1280,13 +1492,23 @@ export default function Mech({ id, onProject, onHome }: Props) {
                 rather than the rendered box because the title types itself in
                 a character at a time, and a box measured mid-type is a box
                 that is still growing. See `.mech-title` in Mech.css. */}
-            <h1 className="mech-title" style={{ ['--title-len' as string]: project.title.length }}>
-              <Typed text={project.title} run={shownId} />
-            </h1>
-            {project.tagline && (
-              <p className="mech-tagline">
-                <SplitReveal text={project.tagline} run={shownId} delay={0.3} />
-              </p>
+            {/* At home this is whichever box the pointer is over; on a
+                project it is the project. Same element either way, which is
+                the point — opening something from the index does not replace
+                the title, it stops it changing. `run` is keyed on what is
+                being described rather than on `shownId` so the home readout
+                retypes as the pointer moves. */}
+            {lede && (
+              <>
+                <h1 className="mech-title" style={{ ['--title-len' as string]: lede.title.length }}>
+                  <Typed text={lede.title} run={lede.id} />
+                </h1>
+                {lede.tagline && (
+                  <p className="mech-tagline">
+                    <SplitReveal text={lede.tagline} run={lede.id} delay={0.3} />
+                  </p>
+                )}
+              </>
             )}
           </div>
 
@@ -1296,6 +1518,15 @@ export default function Mech({ id, onProject, onHome }: Props) {
               lets it sit centred in whatever room is left, biased a little
               above true middle. */}
           <div className="mech-folds-wrap">
+            {/* Home says the one thing about a project that a name and a line
+                cannot: what it actually was. The folds are the write-up and
+                the write-up belongs to the project screen — an index that
+                unfolded a case study in place would be the case study. */}
+            {home && lede && (
+              <p className="mech-brief" key={lede.id}>
+                {briefOf(lede.intro)}
+              </p>
+            )}
             <div className="mech-folds">
               {folds.map((fold, i) => {
                 const isOpen = open === fold.id
@@ -1311,7 +1542,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
                       aria-expanded={isOpen}
                     >
                       <span className="mech-pip" />
-                      <SplitReveal text={fold.title} run={shownId} delay={0.5 + i * 0.05} />
+                      <SplitReveal text={fold.title} run={shownId ?? 'home'} delay={0.5 + i * 0.05} />
                     </button>
 
                     {/* Always mounted, and opened by growing its row from 0fr to

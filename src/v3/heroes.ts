@@ -76,3 +76,12 @@ export const FISH_MAN_FRAMES = Array.from(
   { length: 14 },
   (_, i) => `/sprites/fish-man-idle/Fish_Man_Idle_${String(i).padStart(5, '0')}.png`
 )
+
+/** The subjects standing on the home stage, in the order their folders appear
+ *  on the cast panel — see `castTuning.ts`.
+ *
+ *  Its own export rather than `HEROES` itself so the line-up can be re-cut —
+ *  added to, reordered, cut down to two — without touching what a hero *is*
+ *  or what the rest of the site reads out of one. Adding a subject to the
+ *  home page is this list plus a slot in `CAST_SLOTS`; nothing else. */
+export const CAST: Hero[] = HEROES

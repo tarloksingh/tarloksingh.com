@@ -139,7 +139,7 @@ const drafts: Draft[] = [
   },
   {
     id: 'a-game',
-    title: "A Game I'm Making",
+    title: 'Solomon',
     tagline: 'Personal Project',
     role: 'Designer & Developer',
     company: 'Independent',
@@ -577,7 +577,7 @@ const drafts: Draft[] = [
   },
   {
     id: 'openup',
-    title: 'OpenUp',
+    title: 'Plus One',
     tagline: 'Make New Friends',
     role: 'Founder & Product Designer',
     company: 'Openup Technologies Inc.',

@@ -224,7 +224,10 @@ function MechLaser() {
       // shot nobody can see is a sound with no picture.
       if (event.button !== 0 || document.fullscreenElement) return false
       const target = event.target as Element | null
-      if (!target?.closest?.('.mech, .v3-home')) return false
+      // One screen now: home and a project are the same `.mech`, so the
+      // second selector this used to carry (`.v3-home`) has nothing left to
+      // match. See the note on `Props.id` in Mech.tsx.
+      if (!target?.closest?.('.mech')) return false
       // The panel and the pin editor are tools, not the page. While the
       // editor is open every press is a placement, so the gun is out.
       if (target.closest('#leva__root, .mech-pins, .mech[data-pins="true"]')) return false

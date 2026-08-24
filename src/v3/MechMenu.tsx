@@ -1,12 +1,12 @@
 import { useEffect } from 'react'
 import { TAGS } from '../data/projects'
-import { entries } from './model'
+import { MENU } from './model'
 import { sound } from './sound'
 import SplitReveal from './SplitReveal'
 
 /* ---- the index sheet ----
 
-   Ten projects is too many for a tag row to stand in for and too many to
+   Twelve projects is too many for a tag row to stand in for and too many to
    spell out along the header or a bottom-edge strip — both existed once, on
    the wide layout, and neither one told you where you actually were. So the
    whole index folds into one control, on both layouts now: every project,
@@ -20,7 +20,10 @@ import SplitReveal from './SplitReveal'
    readout behind it. */
 
 interface Props {
-  shownId: string
+  /** Whichever project is on screen behind the sheet, or `null` at home —
+   *  where nothing is current, and the tag shortcuts step to the first
+   *  project carrying each tag rather than the one after it. */
+  shownId: string | null
   onProject: (id: string) => void
   onHome: () => void
   onClose: () => void
@@ -63,18 +66,21 @@ export default function MechMenu({ shownId, onProject, onHome, onClose }: Props)
       </div>
 
       <ul className="mech-menu-list">
-        {entries.map((entry, i) => (
-          <li key={entry.project.id}>
-            <button aria-current={entry.project.id === shownId} onClick={() => go(entry.project.id)}>
+        {/* The same twelve the home screen's index lists, in the same order.
+            Two of them have nothing to put on a stage and are named here
+            anyway — see `MENU` in `model.ts`. */}
+        {MENU.map((item, i) => (
+          <li key={item.project.id}>
+            <button aria-current={item.project.id === shownId} onClick={() => go(item.project.id)}>
               <span className="mech-menu-n">{String(i + 1).padStart(2, '0')}</span>
               <span className="mech-menu-name">
                 <SplitReveal
-                  text={entry.project.title.toLowerCase()}
-                  run={entry.project.id}
+                  text={item.project.title.toLowerCase()}
+                  run={item.project.id}
                   delay={0.06 + i * 0.045}
                 />
               </span>
-              <span className="mech-menu-year">{entry.year}</span>
+              <span className="mech-menu-year">{item.project.year}</span>
             </button>
           </li>
         ))}
@@ -88,7 +94,7 @@ export default function MechMenu({ shownId, onProject, onHome, onClose }: Props)
            full row read as clutter above a list that already names every
            project by title. */}
         {TAGS.filter((tag) => !['work', 'video games', 'hardware', '3d', 'film'].includes(tag)).map((tag, i) => {
-          const along = entries.filter((item) => item.project.tags.includes(tag))
+          const along = MENU.filter((item) => item.project.tags.includes(tag))
           const next = along[(along.findIndex((item) => item.project.id === shownId) + 1) % Math.max(along.length, 1)]
           if (!next || (along.length === 1 && next.project.id === shownId)) return null
           return (

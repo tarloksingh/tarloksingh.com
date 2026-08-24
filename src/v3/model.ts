@@ -36,7 +36,7 @@ const MODELS: Record<string, { file: string; label: string }> = {
    `MechProduct`, which is lazy, and this is only the fact that there is one. */
 const PIECES: Record<string, string> = {
   'mecha-station': 'Mecha Station — the terminal',
-  openup: 'OpenUp — the app',
+  openup: 'Plus One — the app',
   stitchfam: 'StitchFam — the loop',
   'red-dead-redemption-2': 'Red Dead Redemption 2 — the case',
   'grand-theft-auto-v': 'Grand Theft Auto V — the case',
@@ -100,6 +100,63 @@ export const byYear = (visible: Entry[]): Array<{ year: number; entries: Entry[]
     buckets.set(entry.year, [...(buckets.get(entry.year) ?? []), entry])
   }
   return [...buckets.entries()].sort((a, b) => b[0] - a[0]).map(([year, group]) => ({ year, entries: group }))
+}
+
+/* ---- the index ----
+
+   What the home screen's bottom menu lists, and in what order.
+
+   Written out rather than derived, which is the one place on this site where
+   that is the right answer. `entries` is "every project with something to put
+   on a stage", and that is the correct rule for the timeline and the tile
+   rail — a screen whose whole job is showing frames cannot show a project
+   that has none. It is the wrong rule for an index. Visa is the largest piece
+   of work here and it is under an NDA, so it has no media and never will;
+   Solomon is a sibling checkout with a write-up still to come. Both belong in
+   a list of the work, and a filter that reads `media.length` cannot know
+   that.
+
+   So the order is a decision, and it lives here as one. A project named in
+   this list opens whether or not it has frames — see the restricted card in
+   `Mech.tsx`, which is what a project screen draws when there is nothing to
+   put on the stage. */
+const MENU_IDS = [
+  'visa',
+  'a-game',
+  'mr-takahashi',
+  'capsule-c1',
+  'slider-engine',
+  'mecha-station',
+  'red-dead-redemption-2',
+  'openup',
+  'grand-theft-auto-v',
+  'stitchfam',
+  'block-builder',
+  'wyte-card'
+]
+
+export interface MenuItem {
+  project: Project
+  /** What the project screen would put on the stage, if the project has
+   *  anything at all. `null` is a real state, not a missing lookup. */
+  entry: Entry | null
+}
+
+export const MENU: MenuItem[] = MENU_IDS.flatMap((id) => {
+  const project = projects.find((item) => item.id === id)
+  if (!project) return []
+  return [{ project, entry: entries.find((item) => item.project.id === id) ?? null }]
+})
+
+/** A project by id, whether or not it is in the menu and whether or not it
+ *  has frames — an old link to something since dropped from the index should
+ *  still open the write-up rather than a blank screen. */
+export const findProject = (id: string): MenuItem | null => {
+  const listed = MENU.find((item) => item.project.id === id)
+  if (listed) return listed
+  const project = projects.find((item) => item.id === id)
+  if (!project) return null
+  return { project, entry: entries.find((item) => item.project.id === id) ?? null }
 }
 
 /** The portrait a project's box shows on the home screen, by convention

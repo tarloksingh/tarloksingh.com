@@ -6,31 +6,36 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import VideoFrame from '../three/VideoFrame'
 import { SpriteFlipbook } from '../three/CapsuleStage'
-import { FISH_MAN_FRAMES, type Hero } from './heroes'
-import { HERO_POSE_FALLBACK, HERO_STUDIO, poseFor, type HeroPose, type HeroStudio } from './heroTuning'
+import { CAST, FISH_MAN_FRAMES, type Hero } from './heroes'
+import { CAST_STUDIO, slotFor, type CastSlot, type CastStudio } from './castTuning'
 import type { Group, Mesh, PerspectiveCamera } from 'three'
 
-/* The home screen's stage: whichever of the five subjects is currently up,
-   large, in the middle of the window.
+/* The home screen's cast: every subject on one stage, at once, arranged.
 
-   **One context, not five.** Every subject except the face is a sibling in
-   this single `<Canvas>`, hidden rather than unmounted when it is not the one
-   on the stage — the same trade the project screen makes, and for the same
-   reason: a WebGL context, a compiled shader set and a generated environment
-   map cost most of a hundred milliseconds to build, and paying that on every
-   press of the roster is the hitch the project screen already solved once.
+   **This used to be five stages.** `HeroStage` — what this file grew out of —
+   drew one subject at a time and the home screen mounted five copies of it
+   side by side, plus Mr. Takahashi's own context over the top: six WebGL
+   contexts, six environment maps, six cameras, each one centring its occupant
+   in a box of its own. That is why the line-up never looked composed. Nothing
+   anywhere described the group, because there was no group — there were six
+   separate photographs hung in a row, and the only number any of them had
+   for "where does this sit" was a lift and a turn inside its own cell.
 
-   Hidden, but not loaded until it has been asked for. A 4.5MB motorcycle, a
-   2.3MB head, a clip and fourteen sprites arriving together on first paint is
-   most of a home screen's budget spent on four subjects nobody has looked at
-   yet. A subject is mounted the first time it is selected and never unmounted
-   after — `seen` in `Home.tsx`.
+   So: one context, one camera, and every subject placed in its world by a
+   slot on a panel — three axes, a scale, two rotations. See `castTuning.ts`.
+   Arranging the home page is now a thing that can be done by dragging, which
+   was the whole complaint.
 
-   **Mr. Takahashi is not in here.** He is `MechModel`, mounted as its own
-   layer over this one by `Home.tsx`: the same component, the same rig, the
-   same `MODEL_DEFAULTS`. He is the one subject on this site with a lighting
-   setup built around him, and lighting him a second way here would be a
-   second face. Two contexts, both persistent, one running at a time. */
+   **Mr. Takahashi is still not in here**, and for the reason he never was: he
+   is the one subject on this site with a lighting rig built around him
+   (`modelTuning.ts`, and v2's gallery before it), and lighting him a second
+   way here would be a second face. `Mech.tsx` lays `MechModel` over this
+   canvas as its own layer and places it from the same slot — see the note on
+   `CastSlot` for which two of its six numbers reach him.
+
+   Everything is mounted at full opacity. The old roster dimmed whichever
+   subjects were not selected, which made a cast of five read as one subject
+   and four rejected candidates. */
 
 const fovForFocalLength = (mm: number) => (2 * Math.atan(24 / (2 * mm)) * 180) / Math.PI
 
@@ -66,20 +71,22 @@ function Studio({ intensity, exposure }: { intensity: number; exposure: number }
 }
 
 /** Moved rather than remounted: a `camera` prop is read once, so dragging the
- *  lens would otherwise do nothing until a reload. */
+ *  lens would otherwise do nothing until a reload.
+ *
+ *  Unlike the single-subject stage this replaces, `fill` here is the studio's
+ *  alone — it sets how much of the frame one world unit is worth, and every
+ *  subject's own size is its slot's `scale`. Folding a subject's size into the
+ *  camera distance is exactly what stopped the old roster from being able to
+ *  describe a group: moving one subject's size moved the lens, and therefore
+ *  everything else. */
 function Lens({ focalLength, fill }: { focalLength: number; fill: number }) {
   const camera = useThree((state) => state.camera) as PerspectiveCamera
   const size = useThree((state) => state.size)
 
-  /* `fill` is a fraction of the frame's *height*, and a subject is normalised on
-     its longest edge — so a wide one asked to fill more of the height than
-     the frame is wide runs off the sides. Which is exactly what a phone is:
-     the stage there is about as wide as it is tall, and a monitor framed for
-     a 16:9 island came out cropped at both ends.
-
-     Capped against the frame's own aspect rather than hidden behind a
-     narrow-only number, because it is not about phones — it is true of any
-     window shape and any subject. */
+  /* `fill` is a fraction of the frame's *height*, so a stage that is wider
+     than it is tall shows more world sideways and one that is taller shows
+     less. Capped against the frame's own aspect so a cast spread across the
+     x axis is not run off the sides of a narrow window. */
   const aspect = size.width / Math.max(1, size.height)
   const held = Math.min(fill, aspect * 0.92)
 
@@ -94,10 +101,20 @@ function Lens({ focalLength, fill }: { focalLength: number; fill: number }) {
   return null
 }
 
-/** Leans the subject toward the pointer. The whole roster gets it, so the
- *  stage reads as one place with different things standing in it rather than
- *  as five separate presentations. */
-function Lean({ degrees, turn, children }: { degrees: number; turn: number; children: React.ReactNode }) {
+/** Leans a subject toward the pointer, from whatever it has been turned to.
+ *  The whole cast gets it, so the stage reads as one place with things
+ *  standing in it rather than as a row of separate presentations. */
+function Lean({
+  degrees,
+  turn,
+  tilt,
+  children
+}: {
+  degrees: number
+  turn: number
+  tilt: number
+  children: React.ReactNode
+}) {
   const ref = useRef<Group>(null)
   const to = useRef({ x: 0, y: 0 })
   const at = useRef({ x: 0, y: 0 })
@@ -124,7 +141,7 @@ function Lean({ degrees, turn, children }: { degrees: number; turn: number; chil
     at.current.y = MathUtils.lerp(at.current.y, to.current.y, k)
     const limit = MathUtils.degToRad(degrees)
     group.rotation.y = MathUtils.degToRad(turn) + at.current.x * limit
-    group.rotation.x = -at.current.y * limit * 0.45
+    group.rotation.x = MathUtils.degToRad(tilt) - at.current.y * limit * 0.45
   })
 
   return <group ref={ref}>{children}</group>
@@ -138,7 +155,8 @@ function Lean({ degrees, turn, children }: { degrees: number; turn: number; chil
 const DRACO_PATH = '/draco/'
 
 /** A GLB, centred and normalised to one world unit. Generic: the file is a
- *  prop and nothing here knows what is in it. */
+ *  prop and nothing here knows what is in it. Normalising is what makes a
+ *  slot's `scale` mean the same thing for a motorcycle and a business card. */
 function Gltf({ src }: { src: string }) {
   const { scene } = useGLTF(src, DRACO_PATH)
   const copy = useMemo(() => cloneSkinned(scene), [scene])
@@ -173,13 +191,13 @@ function Rider({ src, rpm, shake }: { src: string; rpm: number; shake: number })
   const body = useRef<Group>(null)
 
   /* The two wheel meshes, and the axis each one turns about.
- 
+
      By name, because the export names them — but only the leaves. `wheel` is
      a *group* holding `wheel_wheel_0` and `wheel_wheel_0.001`, and the second
      of those sits 25 local units from the first: turning the group orbits the
      rear wheel around the front one, which on screen is a wheel leaving the
      bike and sailing off the top of the frame.
- 
+
      The axis is measured rather than assumed. A wheel is a disc, so the axle
      is whichever of its own three dimensions is the shortest — which is true
      of any wheel in any export, and does not depend on knowing that this file
@@ -222,7 +240,7 @@ function Rider({ src, rpm, shake }: { src: string; rpm: number; shake: number })
   )
 }
 
-function Subject({ hero, studio }: { hero: Hero; studio: HeroStudio }) {
+function Subject({ hero, studio }: { hero: Hero; studio: CastStudio }) {
   if (hero.kind === 'gltf' && hero.src) {
     return hero.id === 'rider' ? (
       <Rider src={hero.src} rpm={studio.wheelRpm} shake={studio.shake} />
@@ -252,65 +270,55 @@ function Subject({ hero, studio }: { hero: Hero; studio: HeroStudio }) {
 }
 
 interface Props {
-  heroes: Hero[]
-  /** Which subject is on the stage. */
-  shownId: string
-  /** Which have ever been on the stage — see the note at the top about why
-   *  this is not simply "all of them". */
-  seen: ReadonlySet<string>
-  studio?: HeroStudio
-  /** The one being tuned right now, if a panel is open. Every other subject
-   *  keeps its own pose from `HERO_POSES`. */
-  pose?: HeroPose
-  /** Off entirely while the page is not looking at the stage — an empty hold
-   *  between two subjects still costs a frame loop otherwise. */
+  studio?: CastStudio
+  /** Every subject's placement, keyed by hero id. Whatever is missing falls
+   *  back to what is in source — so a panel that has not been opened and a
+   *  panel that has been reset draw the same stage. */
+  slots?: Record<string, CastSlot>
+  /** Off entirely while the page is not looking at the stage. A cast of five
+   *  idling behind a project screen is five subjects' worth of frame loop
+   *  spent on something nobody can see. */
   live?: boolean
 }
 
-export default function HeroStage({
-  heroes,
-  shownId,
-  seen,
-  studio = HERO_STUDIO,
-  pose = HERO_POSE_FALLBACK,
-  live = true
-}: Props) {
-  const distance = distanceFor(HERO_STUDIO.focalLength, HERO_STUDIO.fill)
+export default function MechCast({ studio = CAST_STUDIO, slots, live = true }: Props) {
+  const distance = distanceFor(CAST_STUDIO.focalLength, CAST_STUDIO.fill)
 
   return (
     <Canvas
       dpr={[1, 2]}
       frameloop={live ? 'always' : 'never'}
-      camera={{ fov: fovForFocalLength(HERO_STUDIO.focalLength), position: [0, 0, distance] }}
+      camera={{ fov: fovForFocalLength(CAST_STUDIO.focalLength), position: [0, 0, distance] }}
       gl={{ alpha: true, antialias: true, toneMapping: ACESFilmicToneMapping, outputColorSpace: SRGBColorSpace }}
       style={{ background: 'transparent' }}
     >
-      <Lens focalLength={studio.focalLength} fill={studio.fill * pose.size} />
+      <Lens focalLength={studio.focalLength} fill={studio.fill} />
       <Studio intensity={studio.envIntensity} exposure={studio.exposure} />
       <directionalLight position={[3, 4, 5]} intensity={studio.keyIntensity} />
       <directionalLight position={[-4, 1, -3]} intensity={studio.fillIntensity} />
 
-      {heroes.map((hero) => {
-        if (hero.kind === 'face' || !seen.has(hero.id)) return null
-        const on = hero.id === shownId
-        // The one on the stage is being tuned; the rest keep what they were
-        // set to in source.
-        const its = on ? pose : poseFor(hero.id)
+      {CAST.map((hero) => {
+        // The face is a layer of its own over this canvas — see the note at
+        // the top, and `CastSlot` for how his slot is read instead.
+        if (hero.kind === 'face') return null
+        const slot = slots?.[hero.id] ?? slotFor(hero.id)
         return (
-          <group key={hero.id} visible={on}>
+          <group key={hero.id} position={[slot.x, slot.y, slot.z]} scale={slot.scale}>
+            {/* Per subject rather than one around the cast: a suspended
+                sibling would hold the whole line-up off the screen until the
+                slowest file in it had arrived. Each one appears as it
+                lands. */}
             <Suspense fallback={null}>
-              <group position={[0, its.liftY / (studio.fill * its.size), 0]}>
-                <Float
-                  speed={studio.floatSpeed}
-                  rotationIntensity={studio.floatRotation}
-                  floatIntensity={0.5}
-                  floatingRange={[-studio.floatRange, studio.floatRange]}
-                >
-                  <Lean degrees={studio.lean} turn={its.turn}>
-                    <Subject hero={hero} studio={studio} />
-                  </Lean>
-                </Float>
-              </group>
+              <Float
+                speed={studio.floatSpeed}
+                rotationIntensity={studio.floatRotation}
+                floatIntensity={0.5}
+                floatingRange={[-studio.floatRange, studio.floatRange]}
+              >
+                <Lean degrees={studio.lean} turn={slot.turn} tilt={slot.tilt}>
+                  <Subject hero={hero} studio={studio} />
+                </Lean>
+              </Float>
             </Suspense>
           </group>
         )

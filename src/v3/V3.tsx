@@ -1,15 +1,23 @@
 import { useEffect, useState } from 'react'
 import Browse from './Browse'
-import Home from './Home'
 import Mech from './Mech'
 import './V3.css'
 
-/* Three screens, and fifty lines of routing between them.
+/* Two screens, and fifty lines of routing between them.
 
-   `/v3` is the wall, `/v3/index` is the browse view, and `/v3/p/<project>` is
-   a project. Real URLs rather than component state, for the same reason the
+   `/v3` is home, `/v3/index` is the browse view, and `/v3/p/<project>` is a
+   project. Real URLs rather than component state, for the same reason the
    current site bothers: a portfolio is made to be linked to, and the back
-   button has to work. */
+   button has to work.
+
+   Home and a project are the *same component* — `Mech`, with `id` either a
+   project or `null`. They used to be two, and the seam showed: opening a
+   project unmounted an entire screen and built another one, so the dashboard,
+   the compass and the grid all blinked out and came back, and the machine
+   restarted every time you pressed anything. One component means the
+   background never repaints, the boot happens once, and going into a project
+   is the readout retargeting — which is what it always looked like it was
+   supposed to be. See the note on `Props.id` in `Mech.tsx`. */
 
 type Screen =
   | { name: 'home' }
@@ -44,29 +52,20 @@ export default function V3() {
     setScreen(next)
   }
 
-  if (screen.name === 'project') {
-    // Deliberately not keyed on the project. Remounting would make every move
-    // between two projects a fresh boot; the readout retargets instead, and
-    // owns that transition itself.
-    return (
-      <Mech
-        id={screen.project}
-        onProject={(project) => go({ name: 'project', project })}
-        onHome={() => go({ name: 'home' })}
-      />
-    )
-  }
-
   if (screen.name === 'browse') {
     // Keyed on the project so arriving from a tile mounts the browse view
     // already pinned, rather than opening on a drift and jumping.
     return <Browse key={screen.project ?? 'none'} initial={screen.project} onHome={() => go({ name: 'home' })} />
   }
 
+  /* Deliberately not keyed on anything. Remounting would make every move —
+     home to a project, one project to the next — a fresh boot; the readout
+     retargets instead, and owns that transition itself. */
   return (
-    <Home
-      onOpen={(project) => go({ name: 'project', project })}
-      onBrowse={() => go({ name: 'browse', project: null })}
+    <Mech
+      id={screen.name === 'project' ? screen.project : null}
+      onProject={(project) => go({ name: 'project', project })}
+      onHome={() => go({ name: 'home' })}
     />
   )
 }

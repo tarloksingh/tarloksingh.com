@@ -3381,3 +3381,232 @@
   z-index: 1000;
   width: min(200px, calc(100vw - 16px));
 }
+
+/* ---- home ----
+
+   Home is the same machine with three of its slots filled differently: the
+   cast on the stage, the readout in the side column, the index across the
+   bottom. Everything else on this page — the grid, the bloom, the compass,
+   the header, the footer, the tally — is the same DOM in the same place, and
+   is never told that anything happened. That is the whole trick, and it is
+   why there is no flicker: there is nothing to repaint.
+
+   See the note on `Props.id` in Mech.tsx. */
+
+/* Mr. Takahashi's own layer over the cast's canvas. He is not in it — his rig
+   is his own — so he is laid over it and placed from the same slot, in
+   percent of the stage rather than in the cast's world units. His *size* is
+   his `fill`, set in Mech.tsx, not a transform here: this layer is a canvas,
+   and scaling a canvas in CSS magnifies the pixels it was drawn at instead of
+   drawing more of them. See `CastSlot` in castTuning.ts. */
+.mech-cast-face {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  transition: opacity 300ms linear;
+}
+
+.mech-stage[data-covered='true'] .mech-cast-face {
+  opacity: 0;
+  transition-duration: 240ms;
+}
+
+/* ---- the exchange ----
+
+   The index and the tile rail are the same slot in the machine holding two
+   different controls, and only ever one at a time. Both take their exit from
+   `data-covered` on the root — which is already true for the whole length of
+   a retarget — so whichever one is up has faded before `shownId` changes
+   underneath it, and whichever one replaces it fades in after. Neither is
+   ever caught mid-swap, and nothing has to know which direction the move
+   was. */
+.mech-index,
+.mech-rail-wrap {
+  transition: opacity 300ms var(--ease);
+}
+
+.mech[data-covered='true'] .mech-index,
+.mech[data-covered='true'] .mech-rail-wrap {
+  opacity: 0;
+  pointer-events: none;
+  transition-duration: 240ms;
+}
+
+/* ---- the index ----
+
+   Every project, named and numbered, in two rows of six along the bottom
+   edge — above the compass strip, which is at 74 and 44 tall.
+
+   Wider than the stage's own margins on purpose. The names are the content
+   here and several of them are long ("red dead redemption 2" is twenty-one
+   characters); a box narrow enough to need an ellipsis is a box that has
+   stopped naming the thing, which is its only job. So the row takes most of
+   the frame's width and the type comes down to meet it, rather than the type
+   holding its size and the names being cut. */
+.mech-index {
+  position: absolute;
+  left: calc(150 * var(--px));
+  right: calc(150 * var(--px));
+  bottom: calc(140 * var(--px));
+  z-index: 3;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: calc(20 * var(--px)) calc(19 * var(--px));
+}
+
+.mech-index-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(8 * var(--px));
+  padding: calc(9 * var(--px)) calc(9 * var(--px)) calc(9 * var(--px)) calc(14 * var(--px));
+  border: 1px solid rgba(var(--accent-rgb), 0.22);
+  border-radius: var(--round);
+  background: rgba(0, 0, 0, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.06);
+  text-align: left;
+  color: var(--mid);
+  transition:
+    color 160ms linear,
+    border-color 160ms linear,
+    background-color 160ms linear,
+    box-shadow 160ms linear;
+  animation: mech-index-in 420ms var(--ease) both;
+  /* Staggered along the row, and started after the machine is up — 1200ms is
+     `BOOT_MS`. The index arriving is the last beat of the boot, the same way
+     the tile rail's frame is on a project screen. */
+  animation-delay: calc(1200ms + var(--i) * 32ms);
+}
+
+@keyframes mech-index-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(8 * var(--px)));
+  }
+}
+
+.mech-index-text {
+  display: flex;
+  flex-direction: column;
+  gap: calc(5 * var(--px));
+  min-width: 0;
+}
+
+.mech-index-title {
+  font-size: calc(9.5 * var(--type));
+  letter-spacing: calc(0.2 * var(--type));
+  line-height: 1.1;
+  text-transform: uppercase;
+  color: #fff;
+  /* One line, never ellipsised — the boxes are sized so it fits. If a longer
+     name is ever added and this overflows, it should be visible rather than
+     silently trimmed, which is what tells you the box needs to grow. */
+  white-space: nowrap;
+}
+
+.mech-index-n {
+  font-size: calc(8 * var(--type));
+  letter-spacing: calc(1.4 * var(--type));
+  font-variant-numeric: tabular-nums;
+  color: inherit;
+  opacity: 0.8;
+}
+
+/* The rectangle a project's own PNG drops into — see `portraitOf` in
+   `model.ts`. Drawn empty until that file exists so the row keeps its shape
+   while the set is being filled in. */
+.mech-index-portrait {
+  flex: none;
+  width: calc(42 * var(--px));
+  height: calc(42 * var(--px));
+  border: 1px solid rgba(var(--accent-rgb), 0.18);
+  border-radius: calc(4 * var(--px));
+  background: rgba(var(--accent-rgb), 0.05);
+  overflow: hidden;
+}
+
+.mech-index-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.mech-index-box:hover {
+  color: #fff;
+  border-color: rgba(var(--accent-rgb), 0.55);
+  background: rgba(var(--accent-rgb), 0.08);
+}
+
+/* The one the readout is currently about. Lit the way everything else on this
+   panel is lit — the accent, turned up, with the black around it picking some
+   of it up. */
+.mech-index-box[aria-pressed='true'] {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.16);
+  box-shadow:
+    0 0 calc(22 * var(--px)) rgba(var(--accent-rgb), 0.28),
+    inset 0 0 calc(30 * var(--px)) rgba(var(--accent-rgb), 0.08);
+}
+
+.mech-index-box[aria-pressed='true'] .mech-index-portrait {
+  border-color: rgba(var(--accent-rgb), 0.6);
+}
+
+/* ---- the home readout ----
+
+   The side column says the same three things it says on a project screen —
+   name, line, and what it was — for whichever box the pointer is over. The
+   folds are the write-up and stay on the project screen: an index that
+   unfolded a case study in place would be the case study.
+
+   Pulled up off the bottom so it cannot reach the index below it. On a
+   project this column runs to 120 from the bottom because the folds need the
+   room; here there are no folds. */
+.mech[data-home='true'] .mech-side {
+  bottom: calc(320 * var(--px));
+}
+
+.mech-brief {
+  max-width: calc(360 * var(--px));
+  font-size: calc(13 * var(--type));
+  line-height: 1.55;
+  color: var(--mid);
+  animation: mech-in 620ms var(--ease) both;
+}
+
+/* ---- nothing to show ----
+
+   A project in the index with no material — Visa, under an NDA; Solomon,
+   whose write-up is still to come. The card says so in the panel's own voice
+   rather than the stage being left empty, which reads as a failure to load.
+   See `MENU` in model.ts for why a project with no media is in the index. */
+.mech-bare {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(560 * var(--px));
+  padding: calc(30 * var(--px)) calc(34 * var(--px));
+  border: 1px solid rgba(var(--accent-rgb), 0.28);
+  border-radius: var(--round);
+  background: rgba(0, 0, 0, 0.5);
+  box-shadow: inset 0 0 calc(40 * var(--px)) rgba(var(--accent-rgb), 0.05);
+  animation: mech-in 620ms var(--ease) both;
+}
+
+.mech-bare-tag {
+  display: block;
+  margin-bottom: calc(14 * var(--px));
+  font-size: calc(10.5 * var(--type));
+  letter-spacing: calc(1.8 * var(--type));
+  text-transform: uppercase;
+  color: var(--warn);
+}
+
+.mech-bare p {
+  font-size: calc(14 * var(--type));
+  line-height: 1.6;
+  color: var(--mid);
+}

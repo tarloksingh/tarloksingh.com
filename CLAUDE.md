@@ -44,11 +44,11 @@ being false (which is why `navigator.clipboard` does not exist — see
 
 | File | What it does |
 |---|---|
-| `V3.tsx` | Three screens and fifty lines of routing |
-| `model.ts` | Projects flattened into what the panes draw |
-| `Home.tsx` | The character select: the cast, the readout, every project as a grid |
+| `V3.tsx` | Two screens and fifty lines of routing |
+| `model.ts` | Projects flattened into what the panes draw; `MENU` is the index |
 | `Browse.tsx`, `Detail.tsx`, `Stage.tsx` | The timeline screen |
-| `Mech.tsx` | The project screen: layout, the swap, transit |
+| `Mech.tsx` | **Home and a project both** — layout, the swap, transit |
+| `MechCast.tsx`, `castTuning.ts` | The home line-up, and where each one stands |
 | `leaders.ts`, `notes.ts` | Where the label lines go, and what they say |
 | `MechPins.tsx`, `labelTuning.ts` | Placing labels (**P**) and copying them out |
 | `MechModel.tsx` | The subject: one GLB, lit, drifting, watching, shootable |
@@ -91,9 +91,11 @@ larger than about 1600. Use `MediaItem.still` and `MediaItem.thumb`, never
 ## Dev-only tools
 
 - **P** on a project screen opens the label pin editor (placing and dragging).
-- Two Leva panels, top right, both opening collapsed: **Subject tuning** (the
-  model's lens, lighting and eyes) and **Labels** (copies pinned labels out as
-  source). A second panel is `useCreateStore` + `<LevaPanel store>`.
+- Leva panels, top right, all opening collapsed: **Subject tuning** (the
+  model's lens, lighting and eyes), **Labels** (copies pinned labels out as
+  source), **Piece** (a project's built object), and — at home only — **Cast**
+  (where every subject on the home stage stands). A second panel is
+  `useCreateStore` + `<LevaPanel store>`.
 
 ## Where this is up to
 
@@ -109,6 +111,14 @@ in `Mech.tsx` covering the first two. Every exit has **its own keyframes** —
 `animation-name` changes, so reusing the name leaves the finished entry running
 and the exit never plays. The canvas and its grid are gone; see
 **The swap** in `README.md`, and `50629fd` for the dissolve if it is wanted.
+
+**Home is not a separate screen.** `/v3` and `/v3/p/<id>` are the same
+component: `Mech` with `id` either a project or `null`. Three slots swap — the
+stage, the side column, the bottom strip — and everything else is never
+remounted, which is why the background does not flicker when you open a
+project. Do not reintroduce a second root component for home; the flash that
+used to be there was the second one painting over the first. See **Home is the
+project screen** in `README.md`.
 
 **Type is on its own unit.** `--type: max(var(--px), 0.0651rem)` — the same rem
 that caps `--px`, but a `max()`, so type has a floor on a small window and

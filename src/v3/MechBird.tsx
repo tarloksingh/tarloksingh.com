@@ -31,17 +31,23 @@ const HEIGHT = (SIZE * 30) / 44
 /** Seconds. How long the first crossing waits, and how long the bird stays
  *  gone between them — a range each, so it never reads as being on a timer.
  *  A bird that was shot stays down longer. */
-const FIRST = [5, 11]
-const GAP = [11, 24]
-const DOWNED = [16, 30]
+const FIRST = [3, 7]
+const GAP = [6, 14]
+const DOWNED = [10, 18]
 
 /** Pixels a second the crossing travels at. A crossing used to be a fixed
  *  span of seconds regardless of how wide the window was — fine on a desktop
  *  monitor, but on a 390px phone the same 7.5-13s crossing works out to a
  *  bird moving four or five times slower in actual pixels, which is the
  *  "dumb slow" it read as. Speed-based instead, the same way the moth's DASH
- *  already is, so the bird covers ground at the same pace on any screen. */
-const SPEED = [150, 260]
+ *  already is, so the bird covers ground at the same pace on any screen.
+ *
+ *  Roughly doubled from the first pass at this. 150-260 covered ground evenly
+ *  but it was still a bird you could walk the reticle onto and wait for —
+ *  there was no lead to work out and nothing to miss. At this speed a
+ *  crossing of a 1600px window is three or four seconds, which is long enough
+ *  to see him arrive and short enough that a shot has to be aimed ahead. */
+const SPEED = [380, 620]
 
 /** Seconds a hit takes to play out before the bird is gone. */
 const FALL = 1.1

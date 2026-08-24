@@ -85,17 +85,18 @@ the work is duplicated, and re-tagging a project re-cuts both.
 
 | URL | What it is |
 |---|---|
-| `/v3` | The character select: five subjects, a readout, every project as a grid |
+| `/v3` | Home: the cast on the stage, a readout, every project as an index |
 | `/v3/index` | The timeline — one square per project, by year |
 | `/v3/p/<project-id>` | A project, as a readout |
 
 | File | What it does |
 |---|---|
-| `V3.tsx` | Three screens and fifty lines of routing |
+| `V3.tsx` | Two screens and fifty lines of routing |
 | `model.ts` | The view model — projects flattened into what the panes draw |
-| `Home.tsx` | The cast, the readout, and the grid of every project |
 | `Browse.tsx`, `Detail.tsx`, `Stage.tsx` | The timeline screen |
-| `Mech.tsx` | The project screen: layout, disintegration, transit |
+| `Mech.tsx` | **Home and a project both** — layout, the swap, transit |
+| `MechCast.tsx` | The home line-up: every subject on one stage, placed |
+| `castTuning.ts` | Where each of them stands — its own panel, home only |
 | `leaders.ts`, `notes.ts` | Where the lines go, and what they say |
 | `MechPins.tsx` | Placing them by hand — press **P**, development only |
 | `MechModel.tsx` | The subject — one GLB, lit, drifting, watching you |
@@ -109,50 +110,90 @@ the work is duplicated, and re-tagging a project re-cuts both.
 | `subject.ts` | Two live facts about the thing on stage, shared across the Canvas |
 | `modelTuning.ts`, `wallTuning.ts` | Leva panels, and the source they paste back into |
 
-### The hero select
+### Home is the project screen
 
 `/v3` used to be the wall on its own: two hundred small tiles, every clip
 playing, and two words of chrome over the top. It is a good answer to *how
 much of this is there* and a bad one to *what is this*, because two hundred
 thumbnails is a contact sheet and a home screen is a front door.
 
-It then became a character select that swapped one subject in for another as
-the roster was pressed — an improvement on the wall, but a press cut straight
-to a different character with no beat to actually look at what you had picked,
-and picking one always *replaced* the one before it, which read as a slot
-machine rather than a cast.
+It then became a character select — five subjects up at once, a readout
+between them and the work, and a grid of every project underneath. Which was
+the right composition and the wrong construction, in two ways that only showed
+up once you used it.
 
-What is there now is the cast, all up at once, and a grid of every project
-underneath standing in for the roster. Picking a box no longer swaps anything;
-it *selects* — the subject it belongs to, if it has one, rings with light, and
-a readout between the two fills in with the project's name, its line, a brief
-overview and an obvious way in. Pressing the box a second time — or the button
-the readout just grew — is what actually opens it. The wall is gone entirely:
-with five stages and a ten-box grid already on the screen there was nowhere
-left for it to sit that was not in the way, and `.v3-scifi-bg` — a phosphor
-grid and a bloom in the project screen's own voice, in plain CSS rather than
-three.js — replaces it. `DriftWall.tsx` and `wallTuning.ts` are untouched and
-unmounted, not deleted, in case the wall is wanted somewhere else later.
+**It was a second screen.** `Home.tsx` and `Mech.tsx` were separate
+components with separate DOM, so opening a project unmounted an entire page
+and built another one. The dashboard, the phosphor grid, the compass and the
+bloom all blinked out and came back; the boot sequence ran again; the bird
+restarted. That flash between two screens was not a transition anybody
+designed, it was the second component painting over the first, and no amount
+of easing on either side could have hidden it.
 
-The five subjects are Mr. Takahashi, Capsule C1, the Solomon rider, the
-StitchFam loop and Slider Engine's fish man — between them a character, a
-product, a game, a piece of film and a sprite out of an engine. Not a sample
-of the work, a sample of the *kinds* of work, which is a different and much
-shorter list, and shorter still than the ten projects the grid actually opens:
-Solomon has no case study of its own (`project: null` on the `Hero`) and so
-never lights up, and the grid below draws from every project with something to
-show, not from the five on the stage. Four of the five subjects are assets
-that already existed on this site; the fifth is a motorcycle copied in from a
-sibling checkout as a file and nothing more.
+So there is one component. `Mech` takes `id: string | null`, and `null` is
+home. Three slots hold different things depending on which it is — the stage
+holds the cast or a subject, the side column holds the readout or the
+write-up, the bottom holds the index or the tile rail — and *everything else
+never moves, because it is never remounted*. Opening a project is the same
+retarget that moving between two projects already was: what is on the stage
+leaves, `shownId` changes underneath it, what replaces it draws itself in.
+Same `EXIT_MS`, same four beats, same code path. The background cannot flicker
+because nothing repaints it.
 
-**Five stages, not one.** Each subject gets its own `HeroStage` — a `Canvas` of
-its own, framed and normalised independently of what its neighbours are —
-rather than five things sharing a single camera, which is what "all in the
-middle" actually meant: five subjects large enough to be looked at, side by
-side, not five subjects competing for one frame sized for one of them. The
-face is `MechModel` in its own slot for the same reason it always was: it is
-the one subject here with a lighting setup built around it, and lighting it a
-second way would be a second face.
+The index and the rail take their exit from `data-covered` on the root, which
+is already true for the whole length of a retarget — so whichever one is up
+has faded before the swap and the other fades in after it, and neither is ever
+caught mid-exchange. Hovering a box in the index fills the readout in with
+that project *before* you press it, which is what makes the press feel like it
+lands on something already open rather than like a question being answered.
+
+### The cast
+
+Five subjects: Mr. Takahashi, Capsule C1, the Solomon rider, the StitchFam
+loop and Slider Engine's fish man — between them a character, a product, a
+game, a piece of film and a sprite out of an engine. Not a sample of the work,
+a sample of the *kinds* of work.
+
+**One canvas, not six.** This is the second thing the character select got
+wrong. Each subject had its own `HeroStage` — its own `Canvas`, its own
+camera, its own environment map — plus Mr. Takahashi's own context over the
+top. Six WebGL contexts, and each one centred its occupant in a box of its
+own. Which is exactly why the line-up never looked *composed*: there was no
+group, there were six photographs hung in a row, and the only numbers any of
+them had for "where does this sit" were a size and a turn inside its own cell.
+Nothing anywhere described the arrangement, so the arrangement could not be
+adjusted.
+
+`MechCast.tsx` is one context with every subject placed in it, and
+`castTuning.ts` is the panel that places them: three axes, a scale and two
+rotations per subject, one folder each, all of them on the panel at once
+rather than a folder for whichever one is selected. Arranging a group means
+dragging one thing while watching its neighbours, and a panel that only shows
+you the numbers for the current selection cannot do that. Copy button hands
+back `CAST_STUDIO` and `CAST_SLOTS` to paste over source, like every other
+panel here — nothing set on it reaches a visitor until it is pasted.
+
+A slot's `scale` is *how big this should read*, not how big the file is:
+`Resize` normalises every subject to one unit on its longest edge, and the
+subjects are not the same shape. Capsule C1 is a long enclosure, and at scale
+1 it is a metre of cylinder lying across the whole left half of the screen —
+which is what the first arrangement did.
+
+Adding a subject to the home page is one entry in `CAST` (`heroes.ts`) and one
+in `CAST_SLOTS`. Nothing else.
+
+**Mr. Takahashi is still not in that canvas**, for the reason he never was: he
+is the one subject on this site with a lighting rig built around him, and
+lighting him a second way would be a second face. `MechModel` is laid over the
+cast as its own layer and placed from the same slot — but only two of its six
+numbers reach him. `x`/`y` are converted from the cast's world units into a
+percentage of the stage (one world unit is `fill` of its *height*, so across
+it has to be divided by the aspect), and `scale` multiplies his own `fill`
+rather than transforming the layer, because scaling a canvas in CSS magnifies
+the pixels it was drawn at instead of drawing more of them.
+
+Nothing is dimmed. The old roster faded every subject that was not selected,
+which made a cast of five read as one subject and four rejected candidates.
 
 The rider carries **no baked animation of any kind** — `gltf.animations` on
 that export is an empty array — so "at max speed" is built out of the only two
@@ -168,19 +209,32 @@ be cloned with `SkeletonUtils.clone`, not `Object3D.clone`: a plain clone
 copies skinned meshes without rebinding them to the copied skeleton, and what
 that looks like is a pair of legs hanging in the air a foot above the bike.
 
-**`.v3` says the page does not scroll — this screen is the one exception.** A
-roster of five small tiles fit inside one viewport; a cast of five full
-stages, a readout and a ten-box grid does not, and `.v3`'s flex column used to
-answer that by *shrinking every child to fit*, which squeezed the stages down
-to a sliver rather than actually not fitting. `.v3-home` carries its own
-`height: auto; overflow-y: auto`, later in the cascade than `.v3`'s
-`height: 100vh; overflow: hidden` and winning for exactly this element —
-Browse and a project's Detail screen never carry `.v3-home` and keep the
-one-viewport rule.
+### The index
 
-Narrow, the cast becomes the swipe strip the roster used to be: the same idea
-as every other rail on this site, snapping rather than continuous, because
-five stages side by side is not a size worth looking at on a phone.
+Twelve projects, named and numbered, in two rows of six along the bottom edge,
+each with a rectangle for a portrait (`public/portraits/<project-id>.png` —
+drop a file in and it appears; the rectangle is drawn empty until then).
+
+The list is **written out** rather than derived, which is the one place on
+this site where that is the right answer. `entries` is "every project with
+something to put on a stage", and that is correct for the timeline and the
+tile rail — a screen whose whole job is showing frames cannot show a project
+that has none. It is wrong for an index. Visa is the largest piece of work
+here and it is under an NDA, so it has no media and never will; Solomon is a
+sibling checkout with a write-up still to come. Both belong in a list of the
+work, and a filter that reads `media.length` cannot know that. So `MENU` in
+`model.ts` is an ordered list of ids, and a project named in it opens whether
+or not it has frames — a **restricted card** stands in for the subject, saying
+so in the panel's own voice, because an empty stage reads as a failure to
+load. The tile rail does not draw at all for those, for the same reason.
+
+The boxes are wide enough that no name is ellipsised, which is why the row
+takes most of the frame's width and the type comes down to meet it rather than
+holding its size. A box narrow enough to need an ellipsis has stopped naming
+the thing, which is its only job.
+
+The wall is gone. `DriftWall.tsx` and `wallTuning.ts` are untouched and
+unmounted, not deleted, in case it is wanted somewhere else later.
 
 ### The housing
 
