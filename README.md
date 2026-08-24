@@ -204,6 +204,33 @@ leader lines share a 16:9 box, and they have to, because a label that misses
 what it names is not a readout. A wider window buys the leaders clearance,
 never less.
 
+### Narrow viewports
+
+That column assumes there's room either side of the centred stage —
+`.mech-side` and `.mech-rail-wrap` sit in the margins a 16:9-ish window
+leaves. Neither shrinks the way the frame does, though: both are absolutely
+positioned off `.mech-frame`'s edges, and `.mech-frame` is always full
+viewport height regardless of what `--px` comes out to. So on a phone in
+portrait, where the frame's width collapses to fit but its height doesn't,
+the two side columns keep their full height and shrink to a sliver of width
+instead — and end up sitting on top of the stage rather than beside it.
+
+Below 700px, `data-narrow` on `.mech` — a `matchMedia` store in `Mech.tsx`,
+not a plain CSS breakpoint, because the rail's scroll axis has to agree with
+it — switches every one of those absolutely-positioned pieces to normal
+document flow: header, deck, stage, title/tagline/folds, rail, footer, top to
+bottom, and the page scrolls instead of everything being confined to one
+fixed-height box. `.mech-stage` keeps its existing width/height formula
+untouched — at a narrow `--px` it already computes to the full viewport
+width, correctly proportioned — only its position changes, so the leader
+line math, which reads the stage's real `getBoundingClientRect()` rather
+than a hardcoded box, never needs to know a narrow layout exists. The rail
+turns sideways — a swipe strip instead of a list — which is the one place
+behaviour has to know about the breakpoint too: `Mech.tsx`'s scrubber
+measures `scrollWidth`/`scrollLeft` instead of `scrollHeight`/`scrollTop`
+under the same flag, and writes a different pair of custom properties for
+the CSS to read.
+
 ### The leaders
 
 The lines that fan out of the subject and name its parts. A note that says
