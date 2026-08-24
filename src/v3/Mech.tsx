@@ -698,6 +698,13 @@ export default function Mech({ id, onProject, onHome }: Props) {
   const current = frames[shown]
   const modelFrame = frames.find((frame) => frame.kind === 'model')
   const covered = phase !== 'in' || booting
+  /* `covered` also spans `hold`, which is when the next frame's housing first
+     mounts — a fresh set of brackets, label and transport that have no exit to
+     play. Scoping the exit animations to `leaving` instead keeps `hold` from
+     handing them `data-covered`'s "true" and having them open on the wrong
+     keyframe: `mech-unpop`'s first frame is full opacity, held there by
+     `animation-fill-mode: both` until its delay runs out, which is the flash. */
+  const leaving = phase === 'out'
 
   // The machine coming up, once, on arrival.
   useEffect(() => {
@@ -954,7 +961,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
 
         {/* The subject and its labels share one box so that scaling the window
             moves them together. */}
-        <div className="mech-stage" ref={stage} data-covered={covered}>
+        <div className="mech-stage" ref={stage} data-covered={covered} data-leaving={leaving}>
           {/* The model is mounted for as long as the project has one, and
               hidden rather than unmounted while a still is on the stage.
 

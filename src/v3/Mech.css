@@ -541,10 +541,20 @@
    `mech-fade`/`mech-out`. Forward, so the curve means what it says.
 
    All of it waits out the picture's own fade first: the housing goes after the
-   thing it was holding, the same way the leaders do. */
-.mech-stage[data-covered='true'] .mech-housing-label,
-.mech-stage[data-covered='true'] .mech-transport,
-.mech-stage[data-covered='true'] .mech-corner {
+   thing it was holding, the same way the leaders do.
+
+   Scoped to `data-leaving`, not `data-covered` — `covered` is also true for
+   the whole `hold` phase in between, which is when the *next* frame's housing
+   first mounts. Keyed off `data-covered` there, a brand new set of brackets
+   would open on `mech-unpop`'s first keyframe (full opacity, held by
+   `animation-fill-mode: both` until its delay runs out) instead of `mech-pop`'s
+   — a flash of the thing that just arrived, before it corrects itself into
+   fading in properly once `phase` reaches `in`. `leaving` is only true while
+   the outgoing frame — same DOM nodes, not a fresh mount — is actually on its
+   way out. */
+.mech-stage[data-leaving='true'] .mech-housing-label,
+.mech-stage[data-leaving='true'] .mech-transport,
+.mech-stage[data-leaving='true'] .mech-corner {
   animation: mech-unpop 240ms var(--ease) 140ms both;
 }
 
@@ -812,9 +822,9 @@
     animation: mech-fade 400ms 220ms both;
   }
 
-  .mech-stage[data-covered='true'] .mech-corner,
-  .mech-stage[data-covered='true'] .mech-housing-label,
-  .mech-stage[data-covered='true'] .mech-transport {
+  .mech-stage[data-leaving='true'] .mech-corner,
+  .mech-stage[data-leaving='true'] .mech-housing-label,
+  .mech-stage[data-leaving='true'] .mech-transport {
     animation: mech-out 240ms 140ms both;
   }
 }

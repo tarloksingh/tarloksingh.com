@@ -332,7 +332,17 @@ with — and the housing is furniture, so it should read as being *placed* and
 then *taken*. The corner brackets, the strip naming the frame and the transport
 under it pop in on `mech-pop` and leave on `mech-unpop`; a leader is drawn on
 with `mech-draw` and taken back off with `mech-undraw`, retracting to the tip it
-grew from. `[data-covered]` is the whole mechanism — no timers, no second state.
+grew from.
+
+The housing's exits key off `[data-leaving]`, not `[data-covered]`. `covered`
+spans both beats the picture is off — the frame leaving *and* `hold`, the gap
+before the next one arrives — and `hold` is when the next frame's own housing
+first mounts, a fresh set of brackets with no exit to play. Keyed off `covered`
+there, they open on `mech-unpop`'s first keyframe — full opacity, held by
+`animation-fill-mode: both` until the delay runs out — before correcting into
+fading in once the frame reaches `in`: a flash of the thing that just arrived.
+`leaving` is only true for the beat the outgoing frame — the same DOM nodes,
+not a fresh mount — is actually on its way out, so a new housing never sees it.
 
 **Each exit is its own keyframes, and that is not a style choice.** The obvious
 way to write this is the entry with `animation-direction: reverse`, and it fails
