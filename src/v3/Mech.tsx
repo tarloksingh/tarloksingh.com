@@ -87,6 +87,28 @@ const useTypeScale = (root: RefObject<HTMLDivElement | null>, probe: RefObject<H
   }, [root, probe])
 }
 
+/* ---- narrow viewports ----
+
+   Below this the frame has nowhere to put `.mech-side` and `.mech-rail-wrap`
+   beside `.mech-stage`: both keep the frame's full height at any width, so
+   on a narrow one they shrink to a sliver and sit on top of the stage
+   instead of next to it, rather than getting smaller the way the rest of the
+   composition does. Mech.css restacks the chrome into normal document flow
+   under `[data-narrow='true']` on the root; this is the one thing the CSS
+   can't decide on its own, because the rail also has to swap which axis it
+   scrolls on. See PLAN.md, Phase 1. */
+const NARROW_QUERY = '(max-width: 700px)'
+
+const subscribeNarrow = (onChange: () => void) => {
+  const mql = window.matchMedia(NARROW_QUERY)
+  mql.addEventListener('change', onChange)
+  return () => mql.removeEventListener('change', onChange)
+}
+
+const snapshotNarrow = () => window.matchMedia(NARROW_QUERY).matches
+
+const useNarrow = () => useSyncExternalStore(subscribeNarrow, snapshotNarrow, snapshotNarrow)
+
 /* ---- the swap ----
 
    Frames do not cross-fade and they no longer come apart either. It is four
@@ -689,6 +711,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
   const root = useRef<HTMLDivElement>(null)
   const scale = useRef<HTMLElement>(null)
   useTypeScale(root, scale)
+  const narrow = useNarrow()
   /* What has been pinned in this browser, if anything. Subscribed rather than
      read once: the editor writes to the same store the leaders read from, so
      a drag moves the real line rather than a preview of one. */
@@ -823,26 +846,35 @@ export default function Mech({ id, onProject, onHome }: Props) {
     })
   }, [frames, shown])
 
-  // A project with a dozen frames outruns the rail's height, so stepping with
-  // the arrow keys has to bring the tile back into view.
+  // A project with a dozen frames outruns the rail's height (or, narrow, its
+  // width), so stepping with the arrow keys has to bring the tile back into
+  // view on whichever axis it now scrolls.
   useEffect(() => {
-    rail.current?.children[index]?.scrollIntoView({ block: 'nearest' })
-  }, [index])
+    rail.current?.children[index]?.scrollIntoView(narrow ? { inline: 'nearest' } : { block: 'nearest' })
+  }, [index, narrow])
 
   // The rail's own scrubber: a thumb sized and placed off the tile strip's
   // real scroll state, and a track that only shows itself once there is
-  // somewhere for the thumb to go.
+  // somewhere for the thumb to go. Narrow, the rail scrolls sideways instead
+  // of down — see the `NARROW_QUERY` comment above — so the same measurement
+  // is taken off the other axis and written to a different pair of custom
+  // properties, which Mech.css only reads under `[data-narrow='true']`.
   useEffect(() => {
     const el = rail.current
     const wrap = railWrap.current
     if (!el || !wrap) return
 
     const update = () => {
-      const scrollable = el.scrollHeight > el.clientHeight + 1
+      const scrollable = narrow ? el.scrollWidth > el.clientWidth + 1 : el.scrollHeight > el.clientHeight + 1
       wrap.dataset.scrollable = String(scrollable)
       if (!scrollable) return
-      wrap.style.setProperty('--thumb-h', `${(el.clientHeight / el.scrollHeight) * 100}%`)
-      wrap.style.setProperty('--thumb-top', `${(el.scrollTop / el.scrollHeight) * 100}%`)
+      if (narrow) {
+        wrap.style.setProperty('--thumb-w', `${(el.clientWidth / el.scrollWidth) * 100}%`)
+        wrap.style.setProperty('--thumb-left', `${(el.scrollLeft / el.scrollWidth) * 100}%`)
+      } else {
+        wrap.style.setProperty('--thumb-h', `${(el.clientHeight / el.scrollHeight) * 100}%`)
+        wrap.style.setProperty('--thumb-top', `${(el.scrollTop / el.scrollHeight) * 100}%`)
+      }
     }
 
     update()
@@ -853,7 +885,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
       el.removeEventListener('scroll', update)
       ro.disconnect()
     }
-  }, [frames])
+  }, [frames, narrow])
 
   // The arrow keys step the rail, the same as clicking it.
   useEffect(() => {
@@ -885,7 +917,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
   ]
 
   return (
-    <div className="mech" ref={root} data-boot={booting} data-pins={pinning}>
+    <div className="mech" ref={root} data-boot={booting} data-pins={pinning} data-narrow={narrow}>
       {/* Sized by both units at once, so the ratio between them can be read
           off one box. See `useTypeScale`. */}
       <i className="mech-scale" ref={scale} aria-hidden />

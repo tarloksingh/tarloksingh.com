@@ -2417,3 +2417,154 @@
     transition-duration: 1ms;
   }
 }
+
+/* ---- narrow viewports ----
+
+   Everything above this point assumes there's room either side of the
+   centred 16:9 stage for `.mech-side` and `.mech-rail-wrap` to sit in. Both
+   are `position: absolute` at frame-unit insets from `.mech-frame`'s edges,
+   and `.mech-frame` is always full viewport height — so on a narrow window
+   they keep that full height while shrinking to a sliver of it, and end up
+   sitting on top of the stage instead of beside it rather than getting
+   smaller the way the rest of the composition does. See PLAN.md, Phase 1,
+   for the full arithmetic.
+
+   Below `NARROW_QUERY` in Mech.tsx (700px), `data-narrow` on `.mech` switches
+   every one of those absolutely-positioned pieces to normal document flow
+   instead: header, deck, stage, title/tagline/folds, rail, footer, top to
+   bottom. `.mech-stage` keeps its existing width/height formula untouched —
+   at this width it already computes to the full viewport width, correctly
+   proportioned — only its *position* changes, so the leader-line math in
+   leaders.ts (which reads the stage's real `getBoundingClientRect()`, not a
+   hardcoded box) keeps working without needing to know narrow layouts exist.
+
+   One deliberate trade-off: the stage runs edge to edge with no side gutter,
+   so the corner brackets' 13-unit overhang (see the file header comment) can
+   clip by a couple of physical pixels at the very edge under `overflow-x:
+   hidden` below. Full-bleed hero media is the normal mobile pattern and a
+   gutter here would mean giving the stage a width formula independent of
+   `--px`'s — i.e. breaking the one relationship every child coordinate in
+   this file depends on — to buy back a handful of pixels on a decoration
+   nothing can click. Not worth it; flagged rather than silently accepted.
+
+   Nothing above this rule is affected — every property here is scoped under
+   `.mech[data-narrow='true']`, which is only ever true below the breakpoint. */
+
+.mech[data-narrow='true'] {
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  --gutter: calc(28 * var(--px));
+}
+
+.mech[data-narrow='true'] .mech-frame {
+  height: auto;
+  min-height: 100%;
+  /* `.mech-coords` (the compass HUD's X/Y readout) lives on `.mech-hud`,
+     which stays `position: fixed` over the scrolling frame on purpose — see
+     the file header comment. Generous so the footer's resting scroll
+     position clears it rather than sitting behind it. */
+  padding-bottom: calc(100 * var(--px));
+}
+
+.mech[data-narrow='true'] .mech-head {
+  position: static;
+  padding: calc(20 * var(--px)) var(--gutter) 0;
+}
+
+.mech[data-narrow='true'] .mech-deck-slot {
+  position: static;
+  margin: calc(16 * var(--px)) var(--gutter) 0;
+}
+
+.mech[data-narrow='true'] .mech-stage {
+  position: relative;
+  top: auto;
+  left: auto;
+  transform: none;
+  margin: calc(24 * var(--px)) auto 0;
+}
+
+/* The title/tagline/folds column. Full width instead of a 380-unit sliver,
+   and no longer pinned between a `top` and a `bottom` inset — it sizes to
+   its content and the page scrolls, rather than the fold list scrolling in
+   its own confined box the way it does in the desktop three-column layout. */
+.mech[data-narrow='true'] .mech-side {
+  position: static;
+  width: auto;
+  bottom: auto;
+  padding: calc(28 * var(--px)) var(--gutter) 0;
+}
+
+/* The two flex spacers that bias the fold list above true middle in a tall,
+   height-constrained column have nothing to centre in an auto-height one —
+   left in, they'd just be empty flex items with `flex: 1` and no space to
+   claim, which is harmless, but hiding them is one line and reads clearer. */
+.mech[data-narrow='true'] .mech-folds-wrap::before,
+.mech[data-narrow='true'] .mech-folds-wrap::after {
+  display: none;
+}
+
+/* Rail tiles are sized as a fraction of the frame like everything else on
+   this page, which is correct for a composition and wrong for a touch
+   target: at a phone's `--px` a 68-unit tile is well under the ~44px a
+   thumb can reliably hit. Fixed real pixels here, the same reasoning as
+   `--type`'s floor. */
+.mech[data-narrow='true'] .mech-tile {
+  width: 76px;
+  height: 64px;
+}
+
+/* The rail itself turns sideways: a horizontal swipe strip reads as the
+   natural mobile control for "step through this project's frames," and it
+   costs far less vertical room than the desktop list does. Mech.tsx's
+   scrubber effect measures the other axis and writes `--thumb-w`/
+   `--thumb-left` instead of `--thumb-h`/`--thumb-top` under this same
+   `data-narrow` flag, so the two never disagree about which way the rail
+   scrolls. */
+.mech[data-narrow='true'] .mech-rail-wrap {
+  position: static;
+  right: auto;
+  top: auto;
+  transform: none;
+  flex-direction: column;
+  max-height: none;
+  margin: calc(32 * var(--px)) 0 0;
+  padding: 0 var(--gutter);
+}
+
+.mech[data-narrow='true'] .mech-rail {
+  flex-direction: row;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.mech[data-narrow='true'] .mech-rail-track {
+  width: 100%;
+  height: calc(3 * var(--px));
+  margin-top: calc(6 * var(--px));
+  transform: scaleX(0);
+  transform-origin: left;
+  animation-name: mech-rail-track-in-x;
+}
+
+@keyframes mech-rail-track-in-x {
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.mech[data-narrow='true'] .mech-rail-thumb {
+  left: var(--thumb-left, 0%);
+  right: auto;
+  top: 0;
+  bottom: 0;
+  height: auto;
+  width: var(--thumb-w, 30%);
+}
+
+.mech[data-narrow='true'] .mech-foot {
+  position: static;
+  justify-content: center;
+  padding: calc(24 * var(--px)) var(--gutter) calc(20 * var(--px));
+}
