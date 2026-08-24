@@ -32,6 +32,11 @@
      root, which puts the frame's natural width at 2300 — its cap. Past that
      the page would be a poster seen from across a room. */
   --px: min(0.0749rem, 0.0520833vw, 0.0925926vh);
+  /* Side padding for full-bleed overlays — the index sheet, on the wide
+     layout. The same inset the header and rail already sit at, so the sheet
+     lines up with the chrome it covers. Narrow redefines this smaller of its
+     own, once there is no rail or 101-unit margin left to match. */
+  --gutter: calc(101 * var(--px));
   /* The green off an eighties instrument cluster rather than a terminal
      cyan: paler, further toward the yellow side, and it reads as something
      lit from behind instead of something emitting. */
@@ -46,6 +51,10 @@
      than as something leaving the page. */
   --shot: #ff8f3a;
   --shot-rgb: 255, 143, 58;
+  /* The moth, on its own colour rather than the panel's green — it needs to
+     read as a different kind of target from the bird at a glance. */
+  --moth: #ff4d4d;
+  --moth-rgb: 255, 77, 77;
   /* The room the panel is lit in: a cold blue off one side and a lime sign
      off the other. Both stay under the readout, never in it. Kept off the
      warm half of the wheel on purpose — red down here reads as a warning,
@@ -365,7 +374,7 @@
   right: calc(101 * var(--px));
   top: calc(24 * var(--px));
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: calc(24 * var(--px));
   z-index: 3;
@@ -392,130 +401,10 @@
   color: #fff;
 }
 
-.mech-nav {
-  /* Takes whatever the wordmark doesn't, and wraps rather than running past
-     the frame's right edge — a full tag row plus the current project's name
-     is wider than the header at the frame's own larger sizes. */
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: flex-end;
-  gap: calc(19 * var(--px));
-  row-gap: calc(6 * var(--px));
-  font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  font-weight: 400;
-  font-size: calc(15.5 * var(--type));
-  color: var(--dim);
-}
-
-/* ---- every project, on the panel ----
-
-   The tag row in the header is a way *through* the work: press one and the
-   readout swings to the next project carrying it. What the screen could not
-   do was go somewhere by name — from Mr. Takahashi to Visa there was no
-   route except back out to the index — and the project you were in was a
-   word in the corner rather than a place in a list.
-
-   So the list is on the panel, always there, nothing behind anything: the
-   same voice as the tile strip down the right-hand side, one level up.
-   Names rather than initials, because fourteen monograms is a puzzle and
-   fourteen short titles fit.
-
-   Along the bottom edge rather than under the header, which is where it
-   started. The header is one line by design and a second row of it lands on
-   the title — `.mech-side` begins at 85 and a wrapped tag row plus a strip
-   of fourteen names is past that before it has begun. The band above the
-   compass is the one part of this composition with nothing in it: the
-   subject's box ends at 798, the compass strip starts at 118 off the bottom,
-   and between them is air that has been air since the Figma. A strip of
-   chrome is exactly what belongs in it. */
-.mech-projects {
-  position: absolute;
-  left: calc(101 * var(--px));
-  right: calc(101 * var(--px));
-  bottom: calc(136 * var(--px));
-  z-index: 3;
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: calc(14 * var(--px));
-  overflow-x: auto;
-  scrollbar-width: none;
-  padding-bottom: calc(4 * var(--px));
-  /* The one piece of type on this screen set in frame coordinates rather
-     than in `--type`. Everything else is words to read and holds its size on
-     a small window; this is fourteen names that have to fit across the frame
-     at once, and a floored size turns "fits" into "scrolls" the moment the
-     window is under about 1600. Floored in real pixels instead, so it stops
-     shrinking before it stops being legible. */
-  font-size: max(calc(11 * var(--px)), 10px);
-  letter-spacing: calc(0.2 * var(--px));
-  /* If a longer set of titles ever does outrun the frame, the last one
-     fading out is what says so — a strip that simply stops looks complete. */
-  mask-image: linear-gradient(to right, #000 94%, transparent);
-  /* Held back with the rest of the chrome while the machine comes up. */
-  transition: opacity 500ms var(--ease) 120ms;
-}
-
-.mech[data-boot='true'] .mech-projects {
-  opacity: 0;
-}
-
-.mech-projects::-webkit-scrollbar {
-  display: none;
-}
-
-.mech-projects button {
-  flex: none;
-  background: none;
-  border: 0;
-  padding: 0;
-  font: inherit;
-  white-space: nowrap;
-  color: var(--dim);
-  transition: color 160ms linear, text-shadow 160ms linear;
-}
-
-.mech-projects button:hover {
-  color: #fff;
-}
-
-/* The project you are in, first in the row and named rather than filtered —
-   the tags after it are the vocabulary it sits inside, and the ones it
-   actually carries are lit. */
-.mech-nav-here {
-  color: var(--accent);
-  text-shadow: 0 0 calc(8 * var(--px)) rgba(46, 230, 196, 0.5);
-}
-
-.mech-projects button[aria-current='true'] {
-  color: var(--accent);
-  text-shadow: 0 0 calc(8 * var(--px)) rgba(var(--accent-rgb), 0.5);
-}
-
-.mech-nav button {
-  background: none;
-  border: 0;
-  padding: 0;
-  font: inherit;
-  color: var(--dim);
-  transition: color 160ms linear, text-shadow 160ms linear;
-}
-
-.mech-nav button[data-on='true'] {
-  color: var(--mid);
-}
-
-.mech-nav button:hover:not(:disabled) {
-  color: var(--accent);
-  text-shadow: 0 0 calc(8 * var(--px)) rgba(var(--accent-rgb), 0.5);
-}
-
-.mech-nav button:disabled {
-  opacity: 0.45;
-}
+/* `.mech-nav` and `.mech-projects` — the tag row and the bottom-edge title
+   strip this header used to carry — are gone. Ten projects made both of them
+   clutter rather than navigation; what replaced them is `.mech-menu-key`
+   below, opening the same index sheet a phone gets. See `MechMenu.tsx`. */
 
 /* ---- the subject ---- */
 
@@ -2625,7 +2514,7 @@
   border: 0;
   background: none;
   pointer-events: auto;
-  color: rgba(var(--accent-rgb), 0.75);
+  color: rgba(var(--moth-rgb), 0.75);
   transition: color 200ms linear;
 }
 
@@ -2633,7 +2522,7 @@
   width: 100%;
   height: 100%;
   overflow: visible;
-  filter: drop-shadow(0 0 4px rgba(var(--accent-rgb), 0.35));
+  filter: drop-shadow(0 0 4px rgba(var(--moth-rgb), 0.35));
 }
 
 .mech-moth path {
@@ -2647,7 +2536,7 @@
 /* Perched, it is dim and shut — a shape you could take for part of the
    readout, which is the whole trick. */
 .mech-moths[data-mode='perched'] .mech-moth {
-  color: rgba(var(--accent-rgb), 0.45);
+  color: rgba(var(--moth-rgb), 0.45);
 }
 
 .mech-moths[data-mode='perched'] .mech-moth-wing {
@@ -2662,7 +2551,7 @@
 /* And in the air it is lit, and beating — stepped, at the same twelve frames
    a second as the bird's wings and everything else drawn by hand here. */
 .mech-moths[data-mode='flying'] .mech-moth {
-  color: var(--accent);
+  color: var(--moth);
 }
 
 .mech-moths[data-mode='flying'] .mech-moth-left {

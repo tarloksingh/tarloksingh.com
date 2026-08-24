@@ -1,7 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { Leva, LevaPanel } from 'leva'
-import { TAGS } from '../data/projects'
 import MechBird from './MechBird'
 import MechMoth from './MechMoth'
 import MechCursor from './MechCursor'
@@ -20,7 +19,7 @@ import { kills } from './kills'
 import { entries, thumbOf, type Entry, type Frame } from './model'
 import { focus, notesFor, pins, type Note } from './notes'
 import { useLabelTuning, type Handed } from './labelTuning'
-import { boxOf, FRAME_SPACE, leadersFor, mediaBox, MODEL_BOX, type Space } from './leaders'
+import { boxOf, FRAME_SPACE, leadersFor, mediaBox, type Space } from './leaders'
 import SplitReveal from './SplitReveal'
 import './Mech.css'
 
@@ -917,13 +916,20 @@ export default function Mech({ id, onProject, onHome }: Props) {
       rect: () => {
         const box = stage.current?.getBoundingClientRect()
         if (!box) return null
-        const px = box.width / 1920
-        const pad = { x: MODEL_BOX.w * PAD.x, y: MODEL_BOX.h * PAD.y }
+        // `space` is the frame the subject is actually drawn in — 1920×1080
+        // wide, a narrower box of its own on a phone (`useStageSpace`). This
+        // used to assume 1920 unconditionally, which on narrow put the
+        // hitbox at the wrong scale and offset entirely: shots low on the
+        // stage — the bottom half of the face — landed below where the box
+        // actually was.
+        const model = boxOf(current, space)
+        const px = box.width / space.w
+        const pad = { x: model.w * PAD.x, y: model.h * PAD.y }
         return new DOMRect(
-          box.left + (MODEL_BOX.x - pad.x) * px,
-          box.top + (MODEL_BOX.y - pad.y) * px,
-          (MODEL_BOX.w + pad.x * 2) * px,
-          (MODEL_BOX.h + pad.y * 2) * px
+          box.left + (model.x - pad.x) * px,
+          box.top + (model.y - pad.y) * px,
+          (model.w + pad.x * 2) * px,
+          (model.h + pad.y * 2) * px
         )
       },
       hit: () => {
@@ -934,7 +940,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
     return () => {
       quarry.subject = null
     }
-  }, [current])
+  }, [current, space])
 
   // What the panel's label buttons act on.
   useEffect(() => {
@@ -1102,75 +1108,26 @@ export default function Mech({ id, onProject, onHome }: Props) {
             Tarlok Singh
           </button>
 
-          {narrow ? (
-            /* One control instead of a tag row and a strip of fourteen
-               names. See `MechMenu.tsx` for why this screen is the exception
-               to "no menu behind a button". */
-            <button
-              className="mech-menu-key"
-              onClick={() => {
-                sound.select()
-                setMenu(true)
-              }}
-              aria-label="Open the index"
-            >
-              <i />
-              <i />
-              <i />
-            </button>
-          ) : (
-            /* Each tag steps to the next project carrying it, wrapping — the
-               row is a way through the work rather than a legend for it. A
-               tag nothing else answers to is left inert rather than looking
-               pressable and doing nothing. */
-            <nav className="mech-nav">
-              <span className="mech-nav-here">{project.title.toLowerCase()}</span>
-              {TAGS.filter((tag) => tag !== 'work').map((tag) => {
-                const along = entries.filter((item) => item.project.tags.includes(tag))
-                const next =
-                  along[(along.findIndex((item) => item.project.id === shownId) + 1) % Math.max(along.length, 1)]
-                return (
-                  <button
-                    key={tag}
-                    data-on={project.tags.includes(tag)}
-                    disabled={along.length === 0 || (along.length === 1 && next?.project.id === shownId)}
-                    onClick={() => {
-                      if (!next) return
-                      sound.select()
-                      onProject(next.project.id)
-                    }}
-                  >
-                    {tag}
-                  </button>
-                )
-              })}
-            </nav>
-          )}
+          {/* One control, on both layouts. Ten projects is too many for a tag
+              row to stand in for and too many to spell out along the header —
+              it used to be a row of tag chips here and a second strip of
+              every title along the bottom edge, and neither one told you
+              where you actually were. This opens the same index sheet
+              `MechMenu` draws on a phone: every project, named and typed in,
+              one control to reach any of them. */}
+          <button
+            className="mech-menu-key"
+            onClick={() => {
+              sound.select()
+              setMenu(true)
+            }}
+            aria-label="Open the index"
+          >
+            <i />
+            <i />
+            <i />
+          </button>
         </header>
-
-        {/* Every project, named, on the panel — not behind anything. The tag
-            row in the header is a way *through* the work and this is a way
-            *to* it, which is the one thing the screen could not do before:
-            there was no route from one project to a named other without going
-            back out to the index first. Along the bottom edge, in the band
-            this composition has always left empty — see `.mech-projects`. */}
-        {!narrow && (
-          <nav className="mech-projects" aria-label="Projects">
-            {entries.map((item) => (
-              <button
-                key={item.project.id}
-                aria-current={item.project.id === shownId}
-                onClick={() => {
-                  if (item.project.id === shownId) return
-                  sound.select()
-                  onProject(item.project.id)
-                }}
-              >
-                {item.project.title.toLowerCase()}
-              </button>
-            ))}
-          </nav>
-        )}
 
         {/* Docked between the header and the rail rather than down in the
             footer — the same right edge as the tile strip below it. Narrow,

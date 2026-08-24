@@ -230,35 +230,44 @@ narrow the page itself is the vertical scroller — asking only for
 `inline: 'nearest'` scrolls the whole window down to put the tile strip at the
 top and takes the subject off the screen entirely.
 
-## Phase 2 — Getting to another project · **done**
+## Phase 2 — Getting to another project · **done, then redone**
 
-`.mech-projects`: every project, named, always on the panel. Along the bottom
-edge rather than under the header — the header is one line by design and a
-second row of it lands on the title, since `.mech-side` starts at 85. The band
-above the compass has been empty since the Figma.
+First pass: `.mech-projects`, every project named along the bottom edge, and a
+tag row in the header that stepped to the next project carrying whichever tag
+was pressed. That held up to about ten projects and then read as clutter —
+neither one told you where you actually were, and the tag row wrapped onto the
+title at the frame's own larger sizes.
 
-The "no menu behind a button" constraint holds on desktop. **On a phone it is
-explicitly overridden**, at the user's instruction ("just stick the stuff into
-a menu come on") — `MechMenu.tsx`. The trade a phone wants is different: the
-alternative is spending a third of the screen on navigation for a screen whose
-whole job is one large subject.
+**Both are gone now.** `.mech-menu-key` is the only route, on both layouts:
+the same three-line control that already opened `MechMenu.tsx` on a phone
+opens it on a desktop window too. The "no menu behind a button" constraint
+that held on desktop and was explicitly overridden on a phone ("just stick the
+stuff into a menu come on") turned out to be the right call for any window
+once there are enough projects that a row can't hold them — it just took a
+second round to see that ten was that number on *every* layout, not only a
+narrow one. **README.md → "Getting to another project"**.
 
-## Phase 3/4/5 — The home hero select · **done**
+## Phase 3/4/5 — The home hero select · **done, then redone**
 
-`/v3` is a character select over the dimmed wall: five subjects, one at a
-time, a roster along the bottom, name and class in the corner. The wall is
-still mounted and still drifting — it was always good at saying *how much of
-this there is* and bad at saying *what this is*.
+First pass: a character select over the dimmed wall, one subject up at a time,
+a roster of five along the bottom swapping which was shown. Said explicitly to
+read as "switching characters" rather than a cast, and the wall — good at *how
+much of this there is*, bad at *what this is* — was still competing with it.
 
-Full writeup: **README.md → "The hero select"**, including the one-context
-trade, the load-on-first-pick rule, the face's own layer, and everything the
-rider needed.
+**What's there now:** all five subjects up together, each on its own
+`HeroStage` rather than sharing a camera; a grid of every project underneath,
+standing in for the roster; and a readout between the two that fills in on a
+press rather than a swap. Picking a project box *selects* — the matching
+subject, if it has one, rings with light, the readout draws in its name, line,
+a brief overview and an obvious way in — and pressing the box again is the way
+in. The wall is gone; `.v3-scifi-bg` (a phosphor grid and a bloom, the project
+screen's own voice, plain CSS) is what the stage sits in front of now.
+`DriftWall.tsx`/`wallTuning.ts` are untouched, just unmounted.
 
-The swap is the same four beats the project screen settled on (out, hold, in,
-name drawing itself in), at its own lengths. It is deliberately **not** a new
-transition language: that argument was had once, several more literal
-"sci-fi" treatments were tried and rejected, and the answer was a fade in a
-deliberate order.
+Full writeup: **README.md → "The hero select"**, including the five-stages
+trade, why `.v3-home` is the one screen that overrides "`.v3` does not
+scroll" (a cast this size and a ten-box grid do not fit one viewport the way
+five small tiles did), and everything the rider needed.
 
 ## Phase 6 — Every project's own piece · **done**
 
@@ -342,6 +351,33 @@ procedurally-synthesised placeholder loop, generated with `ffmpeg` so there is
 no licensing question. It exists so the deck could be seen playing at all.
 Real tracks drop into that folder and appear with nothing else to wire.
 
+## Phase 12 — A third round of mobile and creature fixes · **done**
+
+- **Mr. Takahashi's hit box was wrong on narrow.** `quarry.subject.rect()` in
+  `Mech.tsx` scaled off a hardcoded `MODEL_BOX` and `box.width / 1920`
+  regardless of layout — correct on the wide frame, but the narrow stage is
+  its own `space` (see `leaders.ts`), and the model's actual box there is
+  `boxOf(current, space)` centred at a different fraction of it entirely. The
+  hit box and the drawn face disagreed enough that a bolt low on the stage —
+  the bottom half of the face — never registered. Fixed to use `boxOf` and
+  `space.w`, the same sum the leaders already draw against.
+- **The moth was too fast to hit.** `DASH` (its panic speed) was 340–620px/s;
+  slowed to 150–280. Recoloured off `--accent` (the panel's own green, which
+  is what "the green bug thing" was) onto its own `--moth`/`--moth-rgb` token,
+  red, so it reads as a different kind of target from the bird at a glance
+  rather than reusing the panel's colour for something you're meant to be
+  annoyed at.
+- **The bird was "dumb slow" on a phone.** `CROSS` was a fixed 7.5–13 seconds
+  regardless of window width — fine on a 1920px monitor, but the same
+  crossing on a 390px phone is four or five times slower in actual pixels.
+  Replaced with a `SPEED` in px/s (the same units the moth's `DASH` already
+  uses) and a `took` derived from the crossing distance, so the bird covers
+  ground at the same pace on any screen.
+- **The mobile menu's tag row trimmed.** `video games`, `hardware`, `3d` and
+  `film` dropped from `MechMenu.tsx`'s shortcut row, leaving `tools`, `motion`
+  and `music` — the ones actually worth a shortcut above a list that already
+  names every project by title.
+
 ---
 
 ## What is actually left
@@ -350,11 +386,15 @@ Everything below needs either an asset or a decision. None of it is blocked on
 code.
 
 1. **`a-game`, `mr-grocery`, `visa`, `3d-printing` have no media**, so they do
-   not exist anywhere in v3. Add stills or clips to `src/assets/<id>/` and run
-   the pipeline (see CLAUDE.md → "Adding media") and they appear on the wall,
-   the index and their own screen with nothing else to do. `visa` and
-   `3d-printing` already have pieces built in `src/site/products.tsx` that
-   could then be wired the same way the other eight are.
+   not exist anywhere in v3 — including the home screen's project grid, which
+   like the index draws only from projects with something to show. Add stills
+   or clips to `src/assets/<id>/` and run the pipeline (see CLAUDE.md →
+   "Adding media") and they appear on the home grid, the index and their own
+   screen with nothing else to do. `visa` and `3d-printing` already have
+   pieces built in `src/site/products.tsx` that could then be wired the same
+   way the other eight are. It is also why the home screen's tag shortcuts
+   (`tools`, `motion`) can come up empty for some projects: the only projects
+   carrying those tags are among the four with no media yet.
 2. **Cover art for `DiscHolder`** — Red Dead and GTA both render a blank case.
 3. **Real audio.**
 4. **The per-piece and per-subject sizes** want the user's eye. Every one is a

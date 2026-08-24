@@ -43,10 +43,12 @@ const DOWNED = [4, 9] as const
 /** Seconds it falls for once it is hit. */
 const FALL = 0.9
 
-/** Pixels a second at a panic. Fast, and it does not hold this — the whole
- *  path is a random walk with a drift on it, so the speed is what it has
- *  *this* moment rather than a constant to lead. */
-const DASH = [340, 620] as const
+/** Pixels a second at a panic. It does not hold this — the whole path is a
+ *  random walk with a drift on it, so the speed is what it has *this* moment
+ *  rather than a constant to lead. Slower than the first pass: at 340-620 it
+ *  was a panic nobody could actually land a shot on; this is still erratic,
+ *  just erratic at a speed a reticle can follow. */
+const DASH = [150, 280] as const
 
 /** How far in from the window's edges a moth will settle. It should be on the
  *  panel, not tucked under the chrome at the very edge where nothing would

@@ -46,7 +46,7 @@ being false (which is why `navigator.clipboard` does not exist — see
 |---|---|
 | `V3.tsx` | Three screens and fifty lines of routing |
 | `model.ts` | Projects flattened into what the panes draw |
-| `Home.tsx`, `DriftWall.tsx` | The wall |
+| `Home.tsx` | The character select: the cast, the readout, every project as a grid |
 | `Browse.tsx`, `Detail.tsx`, `Stage.tsx` | The timeline screen |
 | `Mech.tsx` | The project screen: layout, the swap, transit |
 | `leaders.ts`, `notes.ts` | Where the label lines go, and what they say |

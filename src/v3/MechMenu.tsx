@@ -4,30 +4,20 @@ import { entries } from './model'
 import { sound } from './sound'
 import SplitReveal from './SplitReveal'
 
-/* ---- the menu, on a phone ----
+/* ---- the index sheet ----
 
-   The header's two rows — a signature, a tag row and a strip naming every
-   project — are the instrument panel's own index, and they fit across a
-   nineteen-hundred-unit frame because that is what they were drawn for. At
-   three hundred and ninety points they are a paragraph of tiny words above
-   the thing you came to look at, which is what they had become.
-
-   So on a narrow screen the whole index folds into one control and opens as a
-   sheet: every project, spelled out at a size a thumb can hit, the tags
-   underneath, and the way home. This is the one place on the site where a
-   button opens a second button, and it is the trade a phone actually wants —
-   the alternative is spending a third of the screen on navigation for a
-   screen whose whole job is one large subject.
+   Ten projects is too many for a tag row to stand in for and too many to
+   spell out along the header or a bottom-edge strip — both existed once, on
+   the wide layout, and neither one told you where you actually were. So the
+   whole index folds into one control, on both layouts now: every project,
+   named, the tags that are actually worth a shortcut, and the way home.
 
    Every line of it draws itself in a character at a time, staggered down the
    list — the same `SplitReveal` the taglines and the section titles are set
    with, which is the one bit of motion this site has that reads as *writing*
    rather than as sliding. A sheet that is simply there the instant it opens
    is a sheet; a sheet that types itself is part of the same machine as the
-   readout behind it.
-
-   Desktop never mounts this. See `.mech-projects` in Mech.tsx for what it
-   replaces. */
+   readout behind it. */
 
 interface Props {
   shownId: string
@@ -94,7 +84,10 @@ export default function MechMenu({ shownId, onProject, onHome, onClose }: Props)
           to the next project carrying it, so the row is a way through the work
           rather than a legend for it. */}
       <nav className="mech-menu-tags">
-        {TAGS.filter((tag) => tag !== 'work').map((tag, i) => {
+        {/* Trimmed to the tags actually worth a shortcut on a phone — the
+           full row read as clutter above a list that already names every
+           project by title. */}
+        {TAGS.filter((tag) => !['work', 'video games', 'hardware', '3d', 'film'].includes(tag)).map((tag, i) => {
           const along = entries.filter((item) => item.project.tags.includes(tag))
           const next = along[(along.findIndex((item) => item.project.id === shownId) + 1) % Math.max(along.length, 1)]
           if (!next || (along.length === 1 && next.project.id === shownId)) return null

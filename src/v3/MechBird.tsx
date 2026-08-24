@@ -28,13 +28,20 @@ import { gaze, quarry, type Creature } from './subject'
 const SIZE = 38
 const HEIGHT = (SIZE * 30) / 44
 
-/** Seconds. How long the first crossing waits, how long a crossing takes, and
- *  how long the bird stays gone between them — a range each, so it never
- *  reads as being on a timer. A bird that was shot stays down longer. */
+/** Seconds. How long the first crossing waits, and how long the bird stays
+ *  gone between them — a range each, so it never reads as being on a timer.
+ *  A bird that was shot stays down longer. */
 const FIRST = [5, 11]
-const CROSS = [7.5, 13]
 const GAP = [11, 24]
 const DOWNED = [16, 30]
+
+/** Pixels a second the crossing travels at. A crossing used to be a fixed
+ *  span of seconds regardless of how wide the window was — fine on a desktop
+ *  monitor, but on a 390px phone the same 7.5-13s crossing works out to a
+ *  bird moving four or five times slower in actual pixels, which is the
+ *  "dumb slow" it read as. Speed-based instead, the same way the moth's DASH
+ *  already is, so the bird covers ground at the same pace on any screen. */
+const SPEED = [150, 260]
 
 /** Seconds a hit takes to play out before the bird is gone. */
 const FALL = 1.1
@@ -93,7 +100,7 @@ function MechBird() {
         x: (from.x + to.x) / 2,
         y: (from.y + to.y) / 2 + rand(-0.2, 0.2) * h * (Math.random() < 0.5 ? 1 : -1)
       }
-      took = rand(CROSS[0], CROSS[1])
+      took = Math.hypot(to.x - from.x, to.y - from.y) / rand(SPEED[0], SPEED[1])
       at = 0
       facing = rightward ? 1 : -1
       enter('flying')

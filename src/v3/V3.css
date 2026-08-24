@@ -105,18 +105,12 @@
 
 /* ---- home ----
 
-   The wall fills the screen and the chrome sits over it. The overlay layer
-   does not take the pointer, so the whole background stays hoverable right up
-   to the edges of the two words printed on it. */
+   The background fills the screen and the chrome sits over it. The overlay
+   layer does not take the pointer, so the whole background stays hoverable
+   right up to the edges of the two words printed on it. */
 
 .v3-home {
   position: relative;
-}
-
-.v3-wall {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
 }
 
 .v3-over {
@@ -557,20 +551,36 @@
 
 /* ---- the hero select ----
 
-   The home screen. A character-select arrangement: the roster along the
-   bottom, the subject in the middle, its name and class in the corner, and
-   the whole body of work drifting past behind all of it.
+   The home screen. All five subjects up at once — a cast rather than a
+   carousel — a readout between them and the work, and every project that has
+   something to show underneath as a grid of boxes. Picking a box selects
+   rather than swaps: the subject it belongs to, if it has one, rings with
+   light, and the readout fills in with its name, its line, a brief overview
+   and an obvious way in. Pressing the box again — or the button the readout
+   just grew — is what actually opens it.
 
    The chrome that was already here — wordmark, index, the email — is
    untouched and still in normal flow. Everything new is either absolute over
-   it (the wall, the subject, the readout) or slotted between the index link
-   and the footer (the roster), so the three-line skeleton this screen has
+   it (the background, the cast) or slotted between the index link and the
+   footer (the readout, the grid), so the three-line skeleton this screen has
    always had still reads the same way. */
 
 .v3-home {
   --hero-accent: #86e2b4;
   --hero-accent-rgb: 134, 226, 180;
   --hero-ease: cubic-bezier(0.22, 0.85, 0.25, 1);
+  /* The one exception to ".v3 does not scroll" (see the top of this file).
+     `.v3` sizes to exactly one viewport and shrinks its flex children to
+     fit — fine for a roster of five small tiles, not for a cast of five
+     full stages, a readout and a ten-box project grid, which shrank the
+     stages to a sliver rather than actually not fitting. Both classes are
+     on the same element, and this rule is later in the cascade, so it wins
+     over `.v3`'s `height`/`overflow` here without touching Browse or a
+     project's Detail screen, which never carry `.v3-home`. */
+  height: auto;
+  min-height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 /* The reticle replaces the native arrow here the same way it does on the
@@ -584,92 +594,160 @@
   }
 }
 
-/* Pushed back. `dim` is on the wall's own panel (`wallTuning.ts`), so how far
-   back it sits is a number somebody can move; this is the rest of it — the
-   grain of two hundred small tiles competing with one large subject is a
-   focus problem, not a brightness one, and blur is what actually fixes it. */
-.v3-wall-back {
-  filter: blur(3px) saturate(0.65);
-  opacity: 0.42;
-  transform: scale(1.05);
-}
+/* ---- the background ----
 
-.v3-hero {
+   A phosphor grid and a bloom off the middle — the same two layers the
+   project screen's `.mech-grid` and `.mech-bloom` are built from, in this
+   screen's own tokens rather than the frame-coordinate ones, since nothing
+   here is drawn to a 1920 frame. Replaces two hundred drifting tiles that
+   used to sit behind the cast: with five subjects and a project grid already
+   on the screen there was nowhere left for a wall of clips that wasn't in
+   the way. */
+.v3-scifi-bg {
   position: absolute;
   inset: 0;
-  z-index: 1;
-  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+  background: #030504;
 }
 
-.v3-hero-stage {
+.v3-scifi-grid,
+.v3-scifi-grid::after {
+  background-image:
+    linear-gradient(to right, rgba(var(--hero-accent-rgb), 0.14) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(var(--hero-accent-rgb), 0.14) 1px, transparent 1px);
+  background-size: 46px 46px;
+}
+
+.v3-scifi-grid {
   position: absolute;
-  left: 50%;
-  top: 47%;
-  transform: translate(-50%, -50%);
-  width: min(78vw, 900px);
-  /* Tall enough for a standing figure and short enough to leave the roster
-     and the readout their own air. */
-  height: min(62vh, 640px);
+  inset: -6%;
+  mask-image: radial-gradient(ellipse 78% 72% at 50% 42%, #000 20%, transparent 78%);
+  animation: v3-grid-drift 50s linear infinite;
+}
+
+.v3-scifi-grid::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  filter: blur(3px);
+  opacity: 0.8;
+}
+
+@keyframes v3-grid-drift {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 0 -920px;
+  }
+}
+
+.v3-scifi-bloom {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 55% 48% at 50% 40%, rgba(var(--hero-accent-rgb), 0.09), transparent 72%),
+    radial-gradient(ellipse 46% 60% at 6% 92%, rgba(60, 150, 255, 0.1), transparent 70%),
+    radial-gradient(ellipse 42% 55% at 96% 10%, rgba(150, 255, 170, 0.06), transparent 70%);
+  animation: v3-bloom-drift 26s ease-in-out infinite alternate;
+}
+
+@keyframes v3-bloom-drift {
+  from {
+    transform: scale(1) translate(0, 0);
+  }
+  to {
+    transform: scale(1.06) translate(-10px, 6px);
+  }
+}
+
+/* ---- the cast ----
+
+   Five slots in a row, each its own stage — a mini `HeroStage` per subject
+   rather than five things sharing one camera, so each is framed and
+   normalised on its own regardless of what its neighbours are. The face is
+   `MechModel` in its slot the same way it always was, for the same reason:
+   it is the one subject with a lighting rig built around it. */
+.v3-hero-row {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 14px;
+  width: min(1400px, 94vw);
+  margin: 0 auto;
+  height: min(42vh, 420px);
   pointer-events: none;
 }
 
-.v3-hero-stage canvas {
+.v3-hero-slot {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  transition: opacity 300ms var(--hero-ease), filter 300ms var(--hero-ease);
+}
+
+.v3-hero-slot canvas {
   display: block;
 }
 
-/* The face's own layer, over the shared stage. `visibility` rather than
-   `display`: a canvas in a box that has been laid out keeps its size, and one
-   in `display: none` has none to come back to. */
-.v3-hero-face {
+/* Dimmed rather than hidden — the rest of the cast is still there, just not
+   what the readout is currently about. */
+.v3-hero-row[data-focused='true'] .v3-hero-slot:not([data-selected='true']) {
+  opacity: 0.38;
+  filter: saturate(0.55) brightness(0.85);
+}
+
+.v3-hero-slot[data-selected='true']::after {
+  content: '';
   position: absolute;
-  inset: 0;
+  inset: 4%;
+  border: 1px solid rgba(var(--hero-accent-rgb), 0.55);
+  box-shadow:
+    0 0 26px rgba(var(--hero-accent-rgb), 0.32),
+    inset 0 0 30px rgba(var(--hero-accent-rgb), 0.12);
+  animation: v3-slot-glow 1.8s ease-in-out infinite alternate;
+  pointer-events: none;
 }
 
-.v3-hero-face[data-on='false'] {
-  visibility: hidden;
-}
-
-/* ---- the swap ----
-
-   Four beats, the same shape the project screen settled on: the subject fades
-   out, the stage holds empty for a moment, the next subject fades in, and its
-   name draws itself in a character at a time behind it. Nothing here paints —
-   every beat is a transition on `opacity`, and the draw-in is `SplitReveal`,
-   which is what every other title on this site is written with.
-
-   Out is quicker than in. A subject leaving is a thing being taken away and
-   wants to be brisk; a subject arriving is the one you asked for. `EXIT_MS`
-   and `HOLD_MS` in Home.tsx are the two halves of this the machine has to
-   know about. */
-.v3-hero-stage,
-.v3-hero-read {
-  transition: opacity 420ms linear;
-}
-
-.v3-hero[data-covered='true'] .v3-hero-stage,
-.v3-hero[data-covered='true'] .v3-hero-read {
-  opacity: 0;
-  transition-duration: 300ms;
+@keyframes v3-slot-glow {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* ---- the readout ---- */
 
-.v3-hero-read {
-  position: absolute;
-  right: 40px;
-  top: 96px;
-  max-width: 340px;
+.v3-readout {
+  position: relative;
+  z-index: 2;
+  width: min(760px, 92vw);
+  min-height: 128px;
+  margin: 14px auto 20px;
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
-  text-align: right;
+  align-items: center;
+  gap: 7px;
+  text-align: center;
   pointer-events: auto;
 }
 
-.v3-hero-name {
-  font-size: 40px;
-  line-height: 1.02;
+.v3-readout-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+}
+
+.v3-readout-name {
+  font-size: 36px;
+  line-height: 1.04;
   letter-spacing: -0.03em;
   text-transform: uppercase;
   color: var(--hero-accent);
@@ -678,91 +756,111 @@
     0 0 34px rgba(var(--hero-accent-rgb), 0.22);
 }
 
-.v3-hero-role {
+.v3-readout-role {
   font-size: 13px;
   letter-spacing: 0.16em;
   text-transform: lowercase;
   color: #9aa5a0;
 }
 
-.v3-hero-open,
-.v3-hero-note {
-  margin-top: 12px;
-  font-size: 12px;
-  letter-spacing: 0.14em;
-}
-
-.v3-hero-open {
-  padding: 7px 14px;
-  border: 1px solid rgba(var(--hero-accent-rgb), 0.45);
-  background: rgba(var(--hero-accent-rgb), 0.06);
-  color: var(--hero-accent);
-  transition: background-color 160ms linear, border-color 160ms linear;
-}
-
-.v3-hero-open:hover {
-  background: rgba(var(--hero-accent-rgb), 0.16);
-  border-color: var(--hero-accent);
-}
-
-.v3-hero-note {
+.v3-readout-brief {
+  max-width: 540px;
+  margin-top: 4px;
+  font-size: 14px;
+  line-height: 1.55;
   color: var(--secondary);
 }
 
-/* ---- the roster ---- */
-
-/* Five tiles, always on the page. Not a menu and not a carousel — the whole
-   argument of a character select is that you can see the cast. */
-.v3-roster {
-  position: relative;
-  z-index: 2;
-  width: var(--col);
-  max-width: calc(100vw - 48px);
-  margin: 0 auto;
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  flex: none;
+.v3-readout-open {
+  margin-top: 14px;
+  padding: 11px 24px;
+  border: 1px solid var(--hero-accent);
+  background: rgba(var(--hero-accent-rgb), 0.1);
+  color: var(--hero-accent);
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transition: background-color 160ms linear, box-shadow 160ms linear;
 }
 
-.v3-roster-tile {
-  flex: 1 1 0;
-  min-width: 0;
+.v3-readout-open:hover {
+  background: rgba(var(--hero-accent-rgb), 0.22);
+  box-shadow: 0 0 24px rgba(var(--hero-accent-rgb), 0.32);
+}
+
+.v3-readout-empty {
+  padding-top: 40px;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  color: var(--secondary);
+}
+
+/* ---- every project ----
+
+   The five on the stage above are a sample of the *kinds* of work; this is
+   all of it. Boxes rather than a list, in the same voice the old roster
+   tiles had — a grid reads as a cast of its own, the way a shelf of cases
+   does, and it is what makes ten projects feel like a body of work instead
+   of a dropdown. */
+.v3-projects {
+  position: relative;
+  z-index: 2;
+  width: min(1180px, 94vw);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: 10px;
+  padding-bottom: 10px;
+}
+
+.v3-project-box {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: 11px 14px;
+  gap: 4px;
+  padding: 13px 15px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(0, 0, 0, 0.45);
   text-align: left;
   color: var(--secondary);
   transition: color 160ms linear, border-color 160ms linear, background-color 160ms linear, box-shadow 160ms linear;
+  animation: v3-project-in 420ms var(--hero-ease) both;
+  animation-delay: calc(var(--i) * 35ms);
 }
 
-.v3-roster-n {
+@keyframes v3-project-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.v3-project-n {
   font-size: 10px;
   letter-spacing: 0.18em;
   font-variant-numeric: tabular-nums;
   opacity: 0.75;
 }
 
-.v3-roster-name {
-  font-size: 14px;
+.v3-project-title {
+  font-size: 15px;
   letter-spacing: -0.02em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   color: inherit;
 }
 
-.v3-roster-tile:hover {
+.v3-project-year {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.6;
+}
+
+.v3-project-box:hover {
   color: var(--white);
   border-color: rgba(var(--hero-accent-rgb), 0.5);
 }
 
-/* Lit, not moved. A tile that slides out from under the pointer is a tile you
-   have to chase, and the reticle is already measuring it. */
-.v3-roster-tile[aria-pressed='true'] {
+/* The one picked, and lit the same way its subject is above. */
+.v3-project-box[aria-pressed='true'] {
   color: var(--hero-accent);
   border-color: var(--hero-accent);
   background: rgba(var(--hero-accent-rgb), 0.1);
@@ -813,10 +911,10 @@
 
 /* ---- narrow ----
 
-   The same call the project screen makes: one column, the subject large, and
-   the roster a swipe strip rather than five tiles competing for 390 points.
-   The readout comes out of the corner and sits under the subject, where there
-   is room for it. */
+   Five stages side by side do not fit a phone at a size worth looking at, so
+   the row becomes the swipe strip the old roster was — same idea as every
+   other rail on this site, snapping rather than continuous. Everything below
+   it stacks in one column, same as it already did. */
 @media (max-width: 700px) {
   /* The chrome hangs off a 952-unit column, which is two and a half times a
      phone. Centred, that puts the wordmark and the index link off both edges
@@ -841,47 +939,38 @@
     padding-bottom: 18px;
   }
 
-  .v3-hero-stage {
-    top: 38%;
-    width: 96vw;
-    height: min(46vh, 400px);
-  }
-
-  /* Out of the corner and under the subject, where there is room for it —
-     and clear of the roster below, which is what it used to land on. */
-  .v3-hero-read {
-    right: auto;
-    left: 0;
-    top: auto;
-    bottom: 158px;
+  .v3-hero-row {
     width: 100%;
-    max-width: none;
-    align-items: center;
-    text-align: center;
-    padding: 0 20px;
-  }
-
-  .v3-hero-name {
-    font-size: 30px;
-  }
-
-  .v3-roster {
-    max-width: none;
-    width: 100%;
+    height: min(38vh, 340px);
     justify-content: flex-start;
-    gap: 8px;
-    padding: 0 16px 6px;
     overflow-x: auto;
+    scroll-snap-type: x proximity;
+    padding: 0 16px;
     scrollbar-width: none;
   }
 
-  .v3-roster::-webkit-scrollbar {
+  .v3-hero-row::-webkit-scrollbar {
     display: none;
   }
 
-  .v3-roster-tile {
+  .v3-hero-slot {
     flex: none;
-    min-width: 132px;
+    width: 62vw;
+    scroll-snap-align: center;
+  }
+
+  .v3-readout-name {
+    font-size: 28px;
+  }
+
+  .v3-readout-brief {
+    padding: 0 12px;
+  }
+
+  .v3-projects {
+    width: 100%;
+    padding: 0 16px 6px;
+    grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
   }
 
   /* The one thing on this screen with nowhere else to be. It shares the
@@ -894,9 +983,15 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .v3-hero-stage,
-  .v3-hero-read {
+  .v3-hero-slot {
     transition-duration: 1ms;
+  }
+
+  .v3-scifi-grid,
+  .v3-scifi-bloom,
+  .v3-hero-slot[data-selected='true']::after,
+  .v3-project-box {
+    animation: none !important;
   }
 }
 

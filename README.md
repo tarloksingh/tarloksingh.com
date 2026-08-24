@@ -85,7 +85,7 @@ the work is duplicated, and re-tagging a project re-cuts both.
 
 | URL | What it is |
 |---|---|
-| `/v3` | The wall: every clip and still in the body of work, drifting |
+| `/v3` | The character select: five subjects, a readout, every project as a grid |
 | `/v3/index` | The timeline — one square per project, by year |
 | `/v3/p/<project-id>` | A project, as a readout |
 
@@ -93,7 +93,7 @@ the work is duplicated, and re-tagging a project re-cuts both.
 |---|---|
 | `V3.tsx` | Three screens and fifty lines of routing |
 | `model.ts` | The view model — projects flattened into what the panes draw |
-| `Home.tsx`, `DriftWall.tsx` | The wall, and its tuning panel's worth of numbers |
+| `Home.tsx` | The cast, the readout, and the grid of every project |
 | `Browse.tsx`, `Detail.tsx`, `Stage.tsx` | The timeline screen |
 | `Mech.tsx` | The project screen: layout, disintegration, transit |
 | `leaders.ts`, `notes.ts` | Where the lines go, and what they say |
@@ -116,37 +116,43 @@ playing, and two words of chrome over the top. It is a good answer to *how
 much of this is there* and a bad one to *what is this*, because two hundred
 thumbnails is a contact sheet and a home screen is a front door.
 
-So the wall moved behind a character select. Five subjects, one at a time,
-large, in the middle of the window; a roster of five along the bottom, always
-visible, nothing behind anything; the name and the class in the top right. It
-is a shape everybody already knows how to read, which is the whole reason for
-borrowing it — nothing on that screen needs explaining. The wall is still
-mounted and still drifting, dimmed and blurred, because the grain of two
-hundred small tiles competing with one large subject is a focus problem rather
-than a brightness one.
+It then became a character select that swapped one subject in for another as
+the roster was pressed — an improvement on the wall, but a press cut straight
+to a different character with no beat to actually look at what you had picked,
+and picking one always *replaced* the one before it, which read as a slot
+machine rather than a cast.
 
-The five are Mr. Takahashi, Capsule C1, the Solomon rider, the StitchFam loop
-and Slider Engine's fish man — between them a character, a product, a game, a
-piece of film and a sprite out of an engine. Not a sample of the work, a
-sample of the *kinds* of work, which is a different and much shorter list.
-Four of the five are assets that already existed on this site; the fifth is a
-motorcycle copied in from a sibling checkout as a file and nothing more.
+What is there now is the cast, all up at once, and a grid of every project
+underneath standing in for the roster. Picking a box no longer swaps anything;
+it *selects* — the subject it belongs to, if it has one, rings with light, and
+a readout between the two fills in with the project's name, its line, a brief
+overview and an obvious way in. Pressing the box a second time — or the button
+the readout just grew — is what actually opens it. The wall is gone entirely:
+with five stages and a ten-box grid already on the screen there was nowhere
+left for it to sit that was not in the way, and `.v3-scifi-bg` — a phosphor
+grid and a bloom in the project screen's own voice, in plain CSS rather than
+three.js — replaces it. `DriftWall.tsx` and `wallTuning.ts` are untouched and
+unmounted, not deleted, in case the wall is wanted somewhere else later.
 
-**One context, not five.** Every subject except the face is a sibling inside
-one `<Canvas>`, hidden rather than unmounted when it is not up — the same
-trade the project screen makes, because a WebGL context, a compiled shader set
-and a generated environment map cost most of a hundred milliseconds and paying
-that on every press of the roster is a hitch. Hidden, but not *loaded* until
-asked for: a 4.5MB motorcycle and a 2.3MB head arriving on first paint for two
-subjects nobody has looked at yet is most of a home screen's budget, so a
-subject mounts the first time it is picked and is never unmounted after
-(`seen` in `Home.tsx`).
+The five subjects are Mr. Takahashi, Capsule C1, the Solomon rider, the
+StitchFam loop and Slider Engine's fish man — between them a character, a
+product, a game, a piece of film and a sprite out of an engine. Not a sample
+of the work, a sample of the *kinds* of work, which is a different and much
+shorter list, and shorter still than the ten projects the grid actually opens:
+Solomon has no case study of its own (`project: null` on the `Hero`) and so
+never lights up, and the grid below draws from every project with something to
+show, not from the five on the stage. Four of the five subjects are assets
+that already existed on this site; the fifth is a motorcycle copied in from a
+sibling checkout as a file and nothing more.
 
-**Mr. Takahashi is the exception, deliberately.** He is `MechModel` mounted as
-its own layer over the shared stage — the same component, the same rig, the
-same `MODEL_DEFAULTS` — because he is the one subject here with a lighting
-setup built around him, and lighting him a second way would be a second face.
-Two contexts, both persistent, one running at a time.
+**Five stages, not one.** Each subject gets its own `HeroStage` — a `Canvas` of
+its own, framed and normalised independently of what its neighbours are —
+rather than five things sharing a single camera, which is what "all in the
+middle" actually meant: five subjects large enough to be looked at, side by
+side, not five subjects competing for one frame sized for one of them. The
+face is `MechModel` in its own slot for the same reason it always was: it is
+the one subject here with a lighting setup built around it, and lighting it a
+second way would be a second face.
 
 The rider carries **no baked animation of any kind** — `gltf.animations` on
 that export is an empty array — so "at max speed" is built out of the only two
@@ -162,12 +168,19 @@ be cloned with `SkeletonUtils.clone`, not `Object3D.clone`: a plain clone
 copies skinned meshes without rebinding them to the copied skeleton, and what
 that looks like is a pair of legs hanging in the air a foot above the bike.
 
-Switching subjects runs the same four beats the project screen settled on —
-out, hold, in, and the name drawing itself in a character at a time behind it
-— at its own lengths (`EXIT_MS` and `HOLD_MS` in `Home.tsx`, the rest timed in
-`V3.css` beside the rules that use them). Not a new transition language: that
-argument was had once, on the project screen, and the answer was that a fade
-in a deliberate order beats anything more literal. See **The swap**.
+**`.v3` says the page does not scroll — this screen is the one exception.** A
+roster of five small tiles fit inside one viewport; a cast of five full
+stages, a readout and a ten-box grid does not, and `.v3`'s flex column used to
+answer that by *shrinking every child to fit*, which squeezed the stages down
+to a sliver rather than actually not fitting. `.v3-home` carries its own
+`height: auto; overflow-y: auto`, later in the cascade than `.v3`'s
+`height: 100vh; overflow: hidden` and winning for exactly this element —
+Browse and a project's Detail screen never carry `.v3-home` and keep the
+one-viewport rule.
+
+Narrow, the cast becomes the swipe strip the roster used to be: the same idea
+as every other rail on this site, snapping rather than continuous, because
+five stages side by side is not a size worth looking at on a phone.
 
 ### The housing
 
@@ -448,27 +461,21 @@ readout behind it.
 
 ### Getting to another project
 
-The header's tag row is a way *through* the work — press one and the readout
-swings to the next project carrying it — and for a long time that was the
-only way, so there was no route from Mr. Takahashi to Red Dead by name
-without going back out to the index.
+There used to be two routes here, both in the header: a tag row that stepped
+to the next project carrying whichever tag you pressed, and — tried once,
+found to collide with the title, and moved to a strip along the bottom edge —
+every project spelled out by name. Ten projects made both of them read as
+clutter rather than navigation, and neither one told you where you actually
+were.
 
-`.mech-projects` is that route: every project, named, always on the panel,
-nothing behind anything. It sits along the bottom edge rather than under the
-header, which is where it was first tried — the header is one line by design
-and a second row of it lands on the title, since `.mech-side` begins at 85.
-The band above the compass is the one part of this composition with nothing
-in it (the subject's box ends at 798, the compass strip starts 118 off the
-bottom) and a strip of chrome is exactly what belongs in air that has been
-air since the Figma. It's the one piece of type on the screen set in `--px`
-rather than `--type`: everything else is words to read and should hold its
-size on a small window, and this is a row that has to fit across the frame
-all at once.
-
-Narrow, both the tag row and the strip fold into `MechMenu.tsx` — the one
-place on the site where a button opens a second button, and the trade a phone
-actually wants. The alternative is spending a third of the screen on
-navigation for a screen whose whole job is one large subject.
+Both are gone now. `.mech-menu-key` is the only route, on *both* layouts: the
+same three-line control that already opened `MechMenu.tsx` on a phone. Press
+it and the whole index folds open as a sheet — every project, named and typed
+in a character at a time, the tags actually worth a shortcut, and the way
+home. It's the one place on the site where a button opens a second button,
+and it turned out to be the trade every window wants once there are enough
+projects that a row can't hold them: the alternative is spending a strip of
+the screen on navigation for a screen whose whole job is one large subject.
 
 ### The leaders
 
