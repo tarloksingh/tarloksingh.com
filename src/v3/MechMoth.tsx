@@ -97,6 +97,10 @@ function MechMoth() {
       at.x = rand(INSET, 1 - INSET) * window.innerWidth
       at.y = rand(INSET, 1 - INSET) * window.innerHeight
       place(0)
+      // Whatever moved the page while it was away is not what startles it
+      // now — without this a single scroll before it lands means it never
+      // gets to sit down.
+      stirred = false
       enter('perched')
     }
 
