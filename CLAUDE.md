@@ -92,11 +92,17 @@ larger than about 1600. Use `MediaItem.still` and `MediaItem.thumb`, never
 ## Dev-only tools
 
 - **P** on a project screen opens the label pin editor (placing and dragging).
-- Leva panels, top right, all opening collapsed: **Subject tuning** (the
-  model's lens, lighting and eyes), **Labels** (copies pinned labels out as
-  source), **Piece** (a project's built object), and — at home only — **Cast**
-  (where every subject on the home stage stands). A second panel is
-  `useCreateStore` + `<LevaPanel store>`.
+- **One dev panel, top right, with tabs** — `MechPanel.tsx`. The tabs are
+  whatever the current screen can actually change: home gets **Cast** (every
+  subject's placement and its own rig, plus the camera and whole-stage
+  handles), **Takahashi** (his lighting) and **Wave**; a project gets
+  **Subject** / **Piece** / **Labels** as they apply; narrow gets **Scale**.
+  Every tuning hook makes its own store with `useCreateStore` — nothing writes
+  into Leva's default store, and there is no `<Leva>` element.
+- **Never put a `.` in a Leva key or folder label.** Leva reads it as a folder
+  separator: `wave.on` silently nests a phantom `wave` folder, and a subject
+  titled "Mr. Takahashi" becomes `Mr` containing `Takahashi`. `castTuning.ts`
+  namespaces with `__` and strips dots out of labels.
 
 ## Where this is up to
 

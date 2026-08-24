@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
-import { Leva, LevaPanel } from 'leva'
+import MechPanel, { type PanelTab } from './MechPanel'
 import MechBird from './MechBird'
 import MechMoth from './MechMoth'
 import MechCursor from './MechCursor'
@@ -8,7 +8,7 @@ import MechLaser from './MechLaser'
 import MechHud from './MechHud'
 import { useModelTuning } from './modelTuning'
 import { useProductTuning } from './productTuning'
-import { useCastTuning, slotFor } from './castTuning'
+import { useCastTuning, useWaveTuning, slotFor } from './castTuning'
 import { CAST } from './heroes'
 import MechDeck from './MechDeck'
 import MechMenu from './MechMenu'
@@ -743,13 +743,6 @@ function Source({ handed, onClose }: { handed: Handed; onClose: () => void }) {
   )
 }
 
-/** Both panels wear the same dark theme as the readout rather than Leva's
- *  default blue-on-grey. */
-const PANEL = {
-  colors: { elevation1: '#161616', elevation2: '#1d1d1d', elevation3: '#292929' },
-  sizes: { rootWidth: 'min(340px, calc(100vw - 20px))' }
-}
-
 /** How long the machine takes to come up: the grid strikes on, the compass
  *  spins and settles, and only then do the leaders extend. Trimmed down from
  *  1500 — the subject (the model or the first still) uncovers at the same
@@ -851,6 +844,9 @@ export default function Mech({ id, onProject, onHome }: Props) {
      to do with the two above it: those describe one subject alone at case
      study size, this one describes a group portrait. See `castTuning.ts`. */
   const cast = useCastTuning()
+  /* Its own tab: the ground has nothing to do with where a subject stands and
+     should not have to be scrolled past to reach one. */
+  const waveTuning = useWaveTuning()
   const [booting, setBooting] = useState(true)
   const [lit, setLit] = useState<string | null>(null)
   /* `home` is the whole difference between the two states, and it is read
@@ -1146,6 +1142,26 @@ export default function Mech({ id, onProject, onHome }: Props) {
      is his own, and always has been — so he is laid over it as a second layer
      and placed from the same slot the rest of the line-up uses. Only two of
      its six numbers reach him; see `CastSlot`. */
+  /* Which panels belong to what is on screen. This is the whole reason the
+     panel is tabbed: the home page used to offer a project subject's lighting
+     rig and a project screen used to offer none of the cast's, because every
+     panel was mounted all the time regardless of what it could reach. */
+  const panels: PanelTab[] = import.meta.env.DEV
+    ? narrow
+      ? [{ id: 'scale', label: 'Scale', store: narrowStore }]
+      : home
+        ? [
+            { id: 'cast', label: 'Cast', store: cast.store },
+            { id: 'face', label: 'Takahashi', store: tuning.store },
+            { id: 'wave', label: 'Wave', store: waveTuning.store }
+          ]
+        : [
+            ...(modelFrame ? [{ id: 'subject', label: 'Subject', store: tuning.store }] : []),
+            ...(pieceFrame ? [{ id: 'piece', label: 'Piece', store: pieces.store }] : []),
+            { id: 'labels', label: 'Labels', store: labels }
+          ]
+    : []
+
   const faceHero = CAST.find((hero) => hero.kind === 'face')
   const faceSlot = faceHero ? (cast.slots[faceHero.id] ?? slotFor(faceHero.id)) : null
   /* His slot's `x`/`y` are the cast's world units like everyone else's, and
@@ -1182,54 +1198,16 @@ export default function Mech({ id, onProject, onHome }: Props) {
       {/* Development only, and portalled to `body` for the same reason the
           gallery's panel is: rendered in place it would sit inside the
           readout's stacking context and paint under the chrome. */}
-      {typeof document !== 'undefined'
-        ? createPortal(
-            <>
-              {/* Both of the big panels are off at phone width. Leva's own
-                  minimum is most of a 390-point window, and two of them
-                  stacked cover the subject, the deck and the title — the
-                  screenshot that started this pass is mostly panel. What is
-                  left is the one adjustment the narrow layout needs by eye:
-                  how large the subject and the pictures sit. */}
-              <Leva
-                collapsed
-                hidden={!import.meta.env.DEV || narrow}
-                titleBar={{ title: 'Subject tuning' }}
-                theme={PANEL}
-              />
-              {/* Its own panel, not a folder under the subject's lighting:
-                  they have nothing to do with each other. Sits under the
-                  first one, which is where Leva stacks a second. */}
-              {import.meta.env.DEV && !narrow && (
-                <div className="mech-labels-panel">
-                  <LevaPanel store={labels} collapsed fill titleBar={{ title: 'Labels', drag: false }} theme={PANEL} />
-                </div>
-              )}
-              {/* Only for a project that actually has one. A panel of piece
-                  controls on a screen with no piece is a panel nobody can
-                  check their work against. */}
-              {import.meta.env.DEV && !narrow && pieceFrame && (
-                <div className="mech-pieces-panel">
-                  <LevaPanel store={pieces.store} collapsed fill titleBar={{ title: 'Piece', drag: false }} theme={PANEL} />
-                </div>
-              )}
-              {/* Home's own panel, and only at home: a cast of five has
-                  nothing to say on a project screen, and a panel whose
-                  sliders move something on a different page is a panel
-                  nobody can check their work against. */}
-              {import.meta.env.DEV && !narrow && home && (
-                <div className="mech-labels-panel">
-                  <LevaPanel store={cast.store} collapsed fill titleBar={{ title: 'Cast', drag: false }} theme={PANEL} />
-                </div>
-              )}
-              {import.meta.env.DEV && narrow && (
-                <div className="mech-narrow-panel">
-                  <LevaPanel store={narrowStore} collapsed fill titleBar={{ title: 'Scale', drag: false }} theme={PANEL} />
-                </div>
-              )}
-            </>,
-            document.body
-          )
+      {/* One panel, tabbed, and only the tabs this screen can actually
+          change — see `MechPanel.tsx`. Portalled to `body` for the same
+          reason it always was: rendered in place it would sit inside the
+          readout's stacking context and paint under the chrome.
+
+          Off entirely at phone width. Leva's own minimum is most of a
+          390-point window, and the one adjustment the narrow layout needs is
+          the only tab left. */}
+      {typeof document !== 'undefined' && import.meta.env.DEV
+        ? createPortal(<MechPanel tabs={panels} />, document.body)
         : null}
 
       <Source handed={handed} onClose={() => setHanded(null)} />
@@ -1242,7 +1220,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
       {home && (
         <div className="mech-wave-layer" aria-hidden>
           <Suspense fallback={null}>
-            <MechWave wave={cast.wave} studio={cast.studio} live={home} />
+            <MechWave wave={waveTuning.wave} studio={cast.studio} live={home} />
           </Suspense>
         </div>
       )}
@@ -1322,6 +1300,22 @@ export default function Mech({ id, onProject, onHome }: Props) {
                   slots={cast.slots}
                   lights={cast.lights}
                   focusHeroId={eyed ? (HERO_BY_PROJECT.get(eyed) ?? null) : null}
+                  /* The stage is the other half of the index: pointing at a
+                     box lights its subject, so pointing at a subject has to
+                     fill in the same readout, and pressing it has to open the
+                     same project. */
+                  onHoverHero={(heroId) => {
+                    const hero = heroId ? CAST.find((item) => item.id === heroId) : null
+                    setEyed(hero?.project ?? null)
+                  }}
+                  onPick={(projectId) => {
+                    sound.select()
+                    onProject(projectId)
+                  }}
+                  titleFor={(heroId) => {
+                    const hero = CAST.find((item) => item.id === heroId)
+                    return (hero?.project ? findProject(hero.project)?.project.title : null) ?? hero?.title ?? ''
+                  }}
                   /* The retarget's own cover, which is already true for the
                      whole of an exit — so the cast retracts on the way out
                      rather than being switched off at the end of it. */

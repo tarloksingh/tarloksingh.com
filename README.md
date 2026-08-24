@@ -96,7 +96,9 @@ the work is duplicated, and re-tagging a project re-cuts both.
 | `Browse.tsx`, `Detail.tsx`, `Stage.tsx` | The timeline screen |
 | `Mech.tsx` | **Home and a project both** — layout, the swap, transit |
 | `MechCast.tsx` | The home line-up: every subject on one stage, placed |
-| `castTuning.ts` | Where each of them stands — its own panel, home only |
+| `MechWave.tsx` | The ground it stands over — a shader, not a picture |
+| `castTuning.ts` | Where each stands, how each is lit, and the camera |
+| `MechPanel.tsx` | One dev panel, tabbed, scoped to the screen you are on |
 | `leaders.ts`, `notes.ts` | Where the lines go, and what they say |
 | `MechPins.tsx` | Placing them by hand — press **P**, development only |
 | `MechModel.tsx` | The subject — one GLB, lit, drifting, watching you |
@@ -256,6 +258,36 @@ does not depend on knowing this file was authored Z-up. The rider also has to
 be cloned with `SkeletonUtils.clone`, not `Object3D.clone`: a plain clone
 copies skinned meshes without rebinding them to the copied skeleton, and what
 that looks like is a pair of legs hanging in the air a foot above the bike.
+
+### Pointing at the cast
+
+Hovering a subject names the project it opens, in the same hand the project
+screen's leaders are drawn in: a ring on the thing, a line off it, the name at
+the end. Pressing it opens that project. It is the index arriving from the
+other end — pointing at a box lights its subject and fills in the readout, so
+pointing at the subject has to fill in the same readout and pressing it has to
+open the same project.
+
+Two things had to be untangled for a pointer to reach the stage at all, and
+neither was obvious:
+
+**The face layer was eating every hover.** `MechModel` is a full-stage canvas
+sitting over the cast's, so it captured everything. `pointer-events: none` on
+the layer did nothing, because r3f sets `auto` on the canvas *and* on the two
+wrapper divs it puts around it — and on the wrapper it sets it inline, which
+beats any selector. It takes `!important` on the whole subtree.
+
+**And the raycaster only tests layer 0.** Per-subject lighting works by moving
+each subject onto a layer of its own; a `Raycaster` gates intersections on
+`raycaster.layers` exactly the way a light gates illumination. So the moment
+the lighting started working, nothing on the stage could be hovered or clicked
+any more. Two features that look unrelated, one line of three.js —
+`raycaster.layers.enableAll()`, next to the camera's.
+
+Mr. Takahashi is drawn by his own canvas, so what stands in the cast's scene
+for him is an invisible sphere at the same slot. A hit target in that scene
+rather than a hotspot in the DOM, so all five subjects are picked by one
+raycaster and the tag comes off one code path.
 
 ### The index
 

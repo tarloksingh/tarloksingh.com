@@ -1,4 +1,4 @@
-import { button, folder, useControls } from 'leva'
+import { button, folder, useControls, useCreateStore } from 'leva'
 import { copyText } from './clipboard'
 import { useEffect } from 'react'
 
@@ -141,7 +141,14 @@ const tidy = (value: number | boolean) => (typeof value === 'number' ? String(Nu
 const asSource = (values: ModelTuning) =>
   `export const MODEL_DEFAULTS: ModelTuning = {\n${keys.map((key) => `  ${key}: ${tidy(values[key])}`).join(',\n')}\n}`
 
-export function useModelTuning(): ModelTuning {
+/** Mr. Takahashi's rig, and its own store.
+ *
+ *  A store rather than Leva's default one, so it can be a tab on the single
+ *  dev panel instead of a second window floating over the page — which on the
+ *  home screen was a panel labelled "Subject tuning" with no clue whose
+ *  subject. See `MechPanel.tsx`. */
+export function useModelTuning(): ModelTuning & { store: ReturnType<typeof useCreateStore> } {
+  const store = useCreateStore()
   const values = useControls({
     'Copy for source': button(() => {
       const text = asSource(live)
@@ -221,7 +228,7 @@ export function useModelTuning(): ModelTuning {
       },
       { collapsed: true }
     )
-  }) as unknown as ModelTuning
+  }, { store }) as unknown as ModelTuning
 
   /* Keyed on the serialised values rather than the object: Leva hands back a
      fresh object on renders where nothing moved, and writing localStorage on
@@ -237,5 +244,5 @@ export function useModelTuning(): ModelTuning {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serialised])
 
-  return values
+  return { ...values, store }
 }

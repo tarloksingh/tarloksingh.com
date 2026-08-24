@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { Center, Float, Resize, useGLTF } from '@react-three/drei'
+import { Center, Float, Html, Resize, useGLTF } from '@react-three/drei'
 import { ACESFilmicToneMapping, MathUtils, PMREMGenerator, SRGBColorSpace, Vector3 } from 'three'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js'
@@ -42,9 +42,16 @@ const fovForFocalLength = (mm: number) => (2 * Math.atan(24 / (2 * mm)) * 180) /
 const distanceFor = (focalLength: number, fill: number) =>
   1 / fill / (2 * Math.tan((fovForFocalLength(focalLength) * Math.PI) / 360))
 
-/** Built inside three rather than fetched, so the page still makes no
- *  third-party request for an HDRI. */
-function Studio({ intensity, exposure }: { intensity: number; exposure: number }) {
+/** The room, generated inside three rather than fetched so the page still
+ *  makes no third-party request for an HDRI.
+ *
+ *  Its scene-level intensity is pinned at 1 and is not on the panel. It used
+ *  to be a slider, which made it the one light on this stage nobody could
+ *  aim: a bright studio box lifting every subject at once, exactly the
+ *  "generic lighting effect in the way". How hard any given subject picks the
+ *  room up is `env` on its own `CastLight`, and setting that to 0 removes the
+ *  room from that subject entirely. */
+function Studio({ exposure }: { exposure: number }) {
   const gl = useThree((state) => state.gl)
   const scene = useThree((state) => state.scene)
 
@@ -60,8 +67,8 @@ function Studio({ intensity, exposure }: { intensity: number; exposure: number }
   }, [gl, scene])
 
   useEffect(() => {
-    scene.environmentIntensity = intensity
-  }, [scene, intensity])
+    scene.environmentIntensity = 1
+  }, [scene])
 
   useEffect(() => {
     gl.toneMappingExposure = exposure
@@ -79,7 +86,19 @@ function Studio({ intensity, exposure }: { intensity: number; exposure: number }
  *  camera distance is exactly what stopped the old roster from being able to
  *  describe a group: moving one subject's size moved the lens, and therefore
  *  everything else. */
-function Lens({ focalLength, fill }: { focalLength: number; fill: number }) {
+function Lens({
+  focalLength,
+  fill,
+  dolly,
+  camY,
+  tilt
+}: {
+  focalLength: number
+  fill: number
+  dolly: number
+  camY: number
+  tilt: number
+}) {
   const camera = useThree((state) => state.camera) as PerspectiveCamera
   const size = useThree((state) => state.size)
 
@@ -92,8 +111,11 @@ function Lens({ focalLength, fill }: { focalLength: number; fill: number }) {
 
   useEffect(() => {
     camera.fov = fovForFocalLength(focalLength)
-    const z = distanceFor(focalLength, held)
-    camera.position.set(0, 0, z)
+    const z = distanceFor(focalLength, held) + dolly
+    camera.position.set(0, camY, z)
+    /* Set outright rather than via `lookAt`, so tilt is a number that can be
+       dragged rather than a point that has to be worked backwards from. */
+    camera.rotation.set(MathUtils.degToRad(tilt), 0, 0)
     /* Wrapped tight around the cast rather than 5% to 800% of the camera
        distance. Depth buffer precision is spent almost entirely near the near
        plane, so a near of `z * 0.05` on a subject sitting at `z` leaves
@@ -107,7 +129,7 @@ function Lens({ focalLength, fill }: { focalLength: number; fill: number }) {
     camera.near = Math.max(0.05, z - CAST_DEPTH)
     camera.far = z + CAST_DEPTH
     camera.updateProjectionMatrix()
-  }, [camera, focalLength, held])
+  }, [camera, focalLength, held, dolly, camY, tilt])
 
   return null
 }
@@ -278,6 +300,23 @@ function Rider({ src, rpm, shake }: { src: string; rpm: number; shake: number })
 }
 
 function Subject({ hero, studio }: { hero: Hero; studio: CastStudio }) {
+  /* Mr. Takahashi is drawn by his own canvas over this one, so what stands
+     here is only something to point at: an invisible sphere roughly the size
+     of the head, at the same slot the layer above is placed from.
+ 
+     A hit target in *this* scene rather than a hotspot in the DOM, because
+     then all five subjects are hovered by one raycaster and the tag comes off
+     the same code path — a second, DOM-shaped way of noticing a hover would
+     be a second set of rules about which one wins. `visible={false}` would
+     also stop it being raycast, so it is a transparent material instead. */
+  if (hero.kind === 'face') {
+    return (
+      <mesh>
+        <sphereGeometry args={[0.52, 12, 12]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+    )
+  }
   if (hero.kind === 'gltf' && hero.src) {
     return hero.id === 'rider' ? (
       <Rider src={hero.src} rpm={studio.wheelRpm} shake={studio.shake} />
@@ -329,7 +368,13 @@ function Placed({
   count,
   shown,
   focus,
+  lift,
+  spread,
+  title,
+  openable,
+  unlit,
   onHover,
+  onPick,
   children
 }: {
   slot: CastSlot
@@ -341,11 +386,24 @@ function Placed({
   shown: boolean
   /** `true` this one, `false` another one, `null` nothing. */
   focus: boolean | null
+  /** Added to this subject's own Y, and multiplied into its X — the studio's
+   *  handles for moving the whole line-up without re-placing any of it. */
+  lift: number
+  spread: number
+  /** What the tag says while the pointer is on it. */
+  title: string
+  /** Whether pressing it goes anywhere. A subject that opened nothing would
+   *  be a tag promising a page that is not there. */
+  openable: boolean
+  /** The face: a hit target only, lit by its own canvas. */
+  unlit: boolean
   onHover: (over: boolean) => void
+  onPick: () => void
   children: React.ReactNode
 }) {
   const outer = useRef<Group>(null)
   const inner = useRef<Group>(null)
+  const bare = unlit
   const grow = useRef(0)
   const depth = useRef(0)
   const since = useRef(0)
@@ -382,8 +440,12 @@ function Placed({
     const forward = focus === true ? FORWARD : focus === false ? -BACK : 0
     depth.current = MathUtils.lerp(depth.current, forward, 1 - Math.pow(0.002, delta))
 
-    group.position.set(slot.x, slot.y - (1 - eased) * RISE, slot.z + depth.current)
-    body.scale.setScalar(Math.max(0.0001, slot.scale * eased))
+    group.position.set(
+      slot.x * spread,
+      slot.y + lift - (1 - eased) * RISE,
+      slot.z + depth.current
+    )
+    body.scale.setScalar(Math.max(0.0001, (bare ? 1 : slot.scale) * eased))
     body.visible = eased > 0.005
   })
 
@@ -395,19 +457,53 @@ function Placed({
         onHover(true)
       }}
       onPointerOut={() => onHover(false)}
+      onClick={(event) => {
+        if (!openable) return
+        event.stopPropagation()
+        onPick()
+      }}
     >
       {/* Outside the scaled group, so a subject at scale 0.5 is not lit from
           half the distance — and so the lights survive the entrance, which
-          scales `inner` from nothing. */}
-      <directionalLight
-        position={[light.keyX, light.keyY, light.keyZ]}
-        intensity={light.keyIntensity}
-      />
-      <directionalLight
-        position={[light.fillX, light.fillY, light.fillZ]}
-        intensity={light.fillIntensity}
-      />
+          scales `inner` from nothing.
+ 
+          Not for the face: what stands here for him is an invisible hit
+          target, and his real rig is his own canvas's. Two lights aimed at
+          nothing would be two lights to wonder about on the panel. */}
+      {!unlit && (
+        <>
+          <directionalLight
+            position={[light.keyX, light.keyY, light.keyZ]}
+            intensity={light.keyIntensity}
+          />
+          <directionalLight
+            position={[light.fillX, light.fillY, light.fillZ]}
+            intensity={light.fillIntensity}
+          />
+        </>
+      )}
       <group ref={inner}>{children}</group>
+
+      {/* The tag, in the project screen's own hand: a ring on the thing, a
+          line off it, and the name at the end. Drawn as DOM through `Html`
+          rather than as geometry so it is set in the page's type at the page's
+          size — a label built out of triangles is a label that has to be
+          re-rendered to say anything else, and this one has to stay crisp at
+          whatever distance hover has pushed the subject to.
+
+          Anchored at the subject's origin and offset in CSS, so it travels
+          with the float and the lean instead of being pinned to a screen
+          position that the subject then drifts away from. */}
+      {focus === true && (
+        <Html center distanceFactor={undefined} zIndexRange={[8, 8]} wrapperClass="mech-tag-anchor">
+          <div className="mech-tag" data-open={openable}>
+            <i className="mech-tag-ring" />
+            <i className="mech-tag-line" />
+            <span className="mech-tag-name">{title}</span>
+            {openable && <span className="mech-tag-go">open</span>}
+          </div>
+        </Html>
+      )}
     </group>
   )
 }
@@ -442,13 +538,21 @@ function Env({ amount, children }: { amount: number; children: React.ReactNode }
   return <group ref={ref}>{children}</group>
 }
 
-/** Every layer the cast uses, switched on for the camera — without this a
- *  subject moved off layer 0 stops being rendered at all. */
+/** Every layer the cast uses, switched on for the camera *and the raycaster*.
+ *
+ *  Both, and the second one is the trap. Per-subject lighting works by moving
+ *  each subject off layer 0 onto one of its own, and a `Raycaster` tests
+ *  `raycaster.layers` against `object.layers` exactly the way a light does —
+ *  r3f's has only layer 0 enabled, so the moment the lighting started working
+ *  nothing on the stage could be hovered or clicked any more. The two
+ *  features look unrelated and are the same line of three.js. */
 function SeeEverything() {
   const camera = useThree((state) => state.camera)
+  const raycaster = useThree((state) => state.raycaster)
   useEffect(() => {
     camera.layers.enableAll()
-  }, [camera])
+    raycaster.layers.enableAll()
+  }, [camera, raycaster])
   return null
 }
 
@@ -466,6 +570,15 @@ interface Props {
   focusHeroId?: string | null
   /** On the stage, or leaving it. False retracts the cast, staggered. */
   shown?: boolean
+  /** Told whenever the pointer takes or leaves a subject, so the readout in
+   *  the side column can follow the stage as well as the index. */
+  onHoverHero?: (heroId: string | null) => void
+  /** Pressing a subject opens its project. The stage is the other half of the
+   *  index — pointing at a box lights its subject, so pressing the subject
+   *  has to be the same gesture arriving from the other end. */
+  onPick?: (projectId: string) => void
+  /** How each hero's project is named, for its tag. */
+  titleFor?: (heroId: string) => string
   /** Off entirely while the page is not looking at the stage. A cast of five
    *  idling behind a project screen is five subjects' worth of frame loop
    *  spent on something nobody can see. */
@@ -478,7 +591,10 @@ export default function MechCast({
   lights,
   focusHeroId,
   shown = true,
-  live = true
+  live = true,
+  onHoverHero,
+  onPick,
+  titleFor
 }: Props) {
   /* Built from the studio actually in force, not from the shipped constant.
      A `camera` prop is read once at mount and `Lens` corrects it in an
@@ -492,6 +608,14 @@ export default function MechCast({
    *  for as long as it lasts — the pointer is the more specific answer. */
   const [over, setOver] = useState<string | null>(null)
   const focused = over ?? focusHeroId ?? null
+
+  const take = (heroId: string, on: boolean) => {
+    setOver((was) => {
+      const next = on ? heroId : was === heroId ? null : was
+      if (next !== was) onHoverHero?.(next)
+      return next
+    })
+  }
 
   return (
     <Canvas
@@ -510,13 +634,16 @@ export default function MechCast({
       style={{ background: 'transparent' }}
     >
       <SeeEverything />
-      <Lens focalLength={studio.focalLength} fill={studio.fill} />
-      <Studio intensity={studio.envIntensity} exposure={studio.exposure} />
+      <Lens
+        focalLength={studio.focalLength}
+        fill={studio.fill}
+        dolly={studio.dolly}
+        camY={studio.camY}
+        tilt={studio.tilt}
+      />
+      <Studio exposure={studio.exposure} />
 
       {CAST.map((hero, index) => {
-        // The face is a layer of its own over this canvas — see the note at
-        // the top, and `CastSlot` for how his slot is read instead.
-        if (hero.kind === 'face') return null
         const slot = slots?.[hero.id] ?? slotFor(hero.id)
         const light = lights?.[hero.id] ?? lightFor(hero.id)
         return (
@@ -532,7 +659,13 @@ export default function MechCast({
             count={CAST.length}
             shown={shown}
             focus={focused === null ? null : focused === hero.id}
-            onHover={(on) => setOver((was) => (on ? hero.id : was === hero.id ? null : was))}
+            lift={studio.lift}
+            spread={studio.spread}
+            title={titleFor?.(hero.id) ?? hero.title}
+            openable={Boolean(hero.project)}
+            unlit={hero.kind === 'face'}
+            onHover={(on) => take(hero.id, on)}
+            onPick={() => hero.project && onPick?.(hero.project)}
           >
             {/* Per subject rather than one around the cast: a suspended
                 sibling would hold the whole line-up off the screen until the

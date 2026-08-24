@@ -1935,27 +1935,6 @@
   font-weight: 600;
 }
 
-/* The labels panel, stacked under the subject's. Leva positions its own
-   global panel; a second one is an ordinary element, so it is placed here —
-   at the same width, under the first, out of the readout's way. */
-.mech-labels-panel {
-  position: fixed;
-  top: 320px;
-  right: 10px;
-  z-index: 1000;
-  width: min(340px, calc(100vw - 20px));
-}
-
-/* Under the labels panel, which is under the subject's. Leva stacks the
-   global panel itself; the two `LevaPanel` stores have to be told where. */
-.mech-pieces-panel {
-  position: fixed;
-  top: 380px;
-  right: 10px;
-  z-index: 1000;
-  width: min(340px, calc(100vw - 20px));
-}
-
 /* ---- the source, on screen ----
 
    Portalled to `body`, so none of `.mech`'s rules reach it: the cursor is a
@@ -3372,16 +3351,6 @@
   display: none;
 }
 
-/* Small, out of the way, and the only panel on a narrow screen. See
-   `narrowTuning.ts` — two knobs, both of them about how large things sit. */
-.mech-narrow-panel {
-  position: fixed;
-  left: 8px;
-  bottom: 8px;
-  z-index: 1000;
-  width: min(200px, calc(100vw - 16px));
-}
-
 /* ---- home ----
 
    Home is the same machine with three of its slots filled differently: the
@@ -3404,6 +3373,30 @@
   inset: 0;
   z-index: 2;
   transition: opacity 300ms linear;
+  /* It is a full-stage canvas sitting over the cast's, so left alone it
+     swallows every pointer event on the stage and nothing underneath can be
+     hovered at all. What stands in for the head as something to point at is
+     an invisible sphere in the cast's own scene — see `Subject` in
+     MechCast.tsx. */
+  pointer-events: none;
+}
+
+/* The whole subtree, not just the layer. `pointer-events: none` on a parent
+   does not stop a descendant that sets `auto`, and r3f sets it on both the
+   canvas *and* the two wrapper divs it puts around it — so setting it on the
+   layer alone changed nothing, and setting it on the canvas alone only moved
+   the problem up to the wrappers. Neither of these layers is ever a target:
+   the face is pointed at through an invisible sphere in the cast's own scene
+   (see `Subject` in MechCast.tsx) and the wave is scenery. */
+.mech-cast-face,
+.mech-cast-face *,
+.mech-wave-layer,
+.mech-wave-layer * {
+  /* `!important` because r3f writes `pointer-events: auto` as an *inline*
+     style on the div it wraps the canvas in, and an inline style beats any
+     selector. Three passes to find that: the layer, then the canvas, then the
+     wrapper — each fix moved the capture one element up. */
+  pointer-events: none !important;
 }
 
 .mech-stage[data-covered='true'] .mech-cast-face {
@@ -3695,4 +3688,145 @@
 
 .mech-wave-layer canvas {
   display: block;
+}
+
+/* ---- the dev panel ----
+
+   One window, tabbed, and it scrolls. What it replaces was four Leva panels
+   stacked down this edge — a panel grows to its content and the page behind
+   it does not scroll, so anything past the bottom of the window was simply
+   unreachable. Capped at the viewport with its own scroller, and the tab
+   strip stays put at the top of it.
+
+   Development only. See `MechPanel.tsx`. */
+.mech-panel {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+  width: min(340px, calc(100vw - 20px));
+  display: flex;
+  flex-direction: column;
+  /* Never taller than the window, so there is always a way to reach the
+     bottom of a long tab. */
+  max-height: calc(100vh - 20px);
+  border-radius: 6px;
+  overflow: hidden;
+  background: #141414;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.mech-panel-tabs {
+  flex: none;
+  display: flex;
+  border-bottom: 1px solid #272727;
+  background: #1b1b1b;
+}
+
+.mech-panel-tabs button {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 8px 6px;
+  border: 0;
+  border-right: 1px solid #272727;
+  background: transparent;
+  color: #7a7a7a;
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 120ms linear, background-color 120ms linear;
+}
+
+.mech-panel-tabs button:last-child {
+  border-right: 0;
+}
+
+.mech-panel-tabs button:hover {
+  color: #d0d0d0;
+}
+
+/* The one you are on, marked along its bottom edge — inside the strip, so
+   switching tabs does not move anything. */
+.mech-panel-tabs button[aria-selected='true'] {
+  color: var(--accent);
+  background: #141414;
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.mech-panel-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.mech-panel-body[hidden] {
+  display: none;
+}
+
+/* ---- the tag on a subject ----
+
+   Hovering a subject on the home stage names the project it opens, in the
+   same hand the project screen's leaders are drawn in: a ring on the thing, a
+   line off it, the name at the end. Drawn as DOM through drei's `Html` and
+   anchored at the subject's own origin, so it travels with the float and the
+   lean rather than being pinned to a screen position the subject drifts away
+   from. */
+.mech-tag-anchor {
+  pointer-events: none;
+}
+
+.mech-tag {
+  display: flex;
+  align-items: center;
+  gap: calc(7 * var(--px));
+  /* Up and to the right of the subject's middle, clear of the body. */
+  transform: translate(calc(34 * var(--px)), calc(-64 * var(--px)));
+  white-space: nowrap;
+  animation: mech-tag-in 220ms var(--ease) both;
+}
+
+@keyframes mech-tag-in {
+  from {
+    opacity: 0;
+    transform: translate(calc(26 * var(--px)), calc(-64 * var(--px)));
+  }
+}
+
+.mech-tag-ring {
+  width: calc(9 * var(--px));
+  height: calc(9 * var(--px));
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 calc(8 * var(--px)) rgba(var(--accent-rgb), 0.8);
+}
+
+.mech-tag-line {
+  width: calc(30 * var(--px));
+  height: 1px;
+  background: var(--accent);
+  box-shadow: 0 0 calc(6 * var(--px)) rgba(var(--accent-rgb), 0.6);
+}
+
+.mech-tag-name {
+  font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: calc(17 * var(--type));
+  letter-spacing: calc(-0.3 * var(--type));
+  text-transform: uppercase;
+  color: var(--accent);
+  text-shadow: 0 0 calc(10 * var(--px)) rgba(var(--accent-rgb), 0.6);
+}
+
+/* Only where pressing actually goes somewhere. */
+.mech-tag-go {
+  padding: calc(2 * var(--px)) calc(7 * var(--px));
+  border: 1px solid rgba(var(--accent-rgb), 0.45);
+  border-radius: calc(3 * var(--px));
+  font-size: calc(9 * var(--type));
+  letter-spacing: calc(1.4 * var(--type));
+  text-transform: uppercase;
+  color: rgba(var(--accent-rgb), 0.85);
 }

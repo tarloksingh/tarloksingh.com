@@ -5,50 +5,66 @@ import { CAST } from './heroes'
 
 /* ---- the home cast's tuning panel ----
 
-   Where every subject on the home screen stands, and the studio they all
-   stand in.
+   Where every subject on the home screen stands, how each one is lit, where
+   the camera is, and the ground they stand over.
 
-   This replaces `heroTuning.ts`, which tuned a roster that only ever had one
-   subject up at a time: its `HeroPose` had a size, a turn and a vertical
-   lift, and no way at all to say *where across the stage* anything sat —
-   because nothing needed to. The home screen showed one subject in the middle
-   of its own box, five boxes side by side, five separate WebGL contexts each
-   framing its own occupant. Which is why the cast never looked composed: each
-   one was centred in a cell, and no number anywhere described the group.
-
-   So a slot here is a full placement — three axes, a scale and two
-   rotations — read in the shared stage's world units rather than in a cell.
-   One panel, one folder per subject, and the whole line-up is a thing you can
-   actually arrange.
+   This replaced `heroTuning.ts`, which tuned a roster that only ever had one
+   subject up at a time: its pose had a size, a turn and a lift, and no way to
+   say *where across the stage* anything sat, because nothing needed one. Five
+   separate contexts, each centring its occupant in a cell. Which is why the
+   cast never looked composed — nothing anywhere described the group.
 
    Deliberately separate from the project screens' panels. `modelTuning.ts` is
-   Mr. Takahashi's own lighting rig, `productTuning.ts` is the pieces' studio,
-   and both of those describe a subject alone on a project screen at case
-   study size. The home page is a group portrait; the numbers have nothing to
-   do with each other, and folding them together would mean moving one screen
-   to fix the other. The face is the one subject that appears on both, and
-   even there this panel only says where the layer sits — how he is lit stays
-   `modelTuning.ts`'s business. See `MechCast.tsx`.
+   Mr. Takahashi's own rig and `productTuning.ts` is the pieces' studio; both
+   describe a subject alone at case-study size. The home page is a group
+   portrait. See `MechCast.tsx`, and `MechPanel.tsx` for how the panels are
+   presented.
 
-   Same contract as every other panel here: a `_DEFAULTS` constant that is the
-   shipped value, a localStorage scratchpad so a session survives a reload,
-   and a copy button that hands back source to paste over the constants.
-   Nothing set here reaches a visitor until it is pasted. */
+   **No dots in any key here.** Leva reads `.` in a key as a folder separator,
+   so `wave.on` silently produced a folder called `wave` nested inside the
+   Wave folder, and a subject titled "Mr. Takahashi" became a folder `Mr`
+   containing `Takahashi`. Two levels of phantom nesting is what made the
+   panel overlap itself. Everything namespaced here uses `__`, and folder
+   labels are stripped of dots on the way in. */
+
+const SEP = '__'
+
+/** A subject's key on the panel, without the character Leva would read as a
+ *  folder separator. */
+const key = (id: string, field: string) => `${id}${SEP}${field}`
+
+/** A folder label Leva will not split. */
+const label = (title: string) => title.replace(/\./g, '')
 
 export interface CastStudio {
   /** Millimetres on a 35mm back. */
   focalLength: number
-  /** How much of the stage's height one world unit fills. Smaller than the
-   *  old roster's, and it has to be: that number framed a single subject
-   *  alone in a cell, and this one has to leave room for the whole cast
-   *  alongside each other. */
+  /** How much of the stage's height one world unit fills. */
   fill: number
-  /* Renderer-level, so it cannot be per-subject: there is one tone map.
-     Same for the environment — `scene.environment` is one room. What *is*
-     per-subject is how strongly each subject picks the room up (`env` on
-     `CastLight`) and the two lights aimed at it. */
+  /** Renderer-level, so it cannot be per-subject: there is one tone map for
+   *  the canvas. Every other lighting number on this panel belongs to one
+   *  subject. */
   exposure: number
-  envIntensity: number
+
+  /* ---- the camera ----
+
+     So a composition can be adjusted without re-placing every subject one at
+     a time, which is what "I need to move everything up" used to mean. */
+
+  /** Pushes the camera back (positive) or in (negative), on top of whatever
+   *  `fill` works out to. */
+  dolly: number
+  /** How high the camera sits. */
+  camY: number
+  /** Degrees the camera pitches. Negative looks down. */
+  tilt: number
+  /** Added to every subject's own `y`. The one to reach for to move the whole
+   *  cast up or down. */
+  lift: number
+  /** Multiplies every subject's own `x`, so the line-up can be opened out or
+   *  drawn in without touching any of them. */
+  spread: number
+
   floatSpeed: number
   floatRange: number
   floatRotation: number
@@ -61,13 +77,17 @@ export interface CastStudio {
 }
 
 export const CAST_STUDIO: CastStudio = {
-  focalLength: 55,
-  fill: 0.3,
-  exposure: 0.6,
-  envIntensity: 2.4,
-  floatSpeed: 1,
-  floatRange: 0.05,
-  floatRotation: 0.3,
+  focalLength: 78,
+  fill: 0.34,
+  exposure: 1,
+  dolly: 0,
+  camY: 0,
+  tilt: 0,
+  lift: 0,
+  spread: 1,
+  floatSpeed: 4,
+  floatRange: 0,
+  floatRotation: 0,
   lean: 10,
   wheelRpm: 620,
   shake: 0.006
@@ -76,20 +96,18 @@ export const CAST_STUDIO: CastStudio = {
 /** Where one subject stands.
  *
  *  `x`, `y` and `z` are the shared stage's world units — the same space the
- *  camera is placed in, so `x: 1` is one subject-height to the right and `z`
- *  moves something toward the lens. Everything is measured from the middle of
- *  the stage.
+ *  camera is in, so `x: 1` is one subject-height to the right and `z` moves
+ *  something toward the lens. Measured from the middle of the stage, then
+ *  offset by the studio's `lift` and `spread`.
  *
  *  **The face reads two of these differently.** Mr. Takahashi is not in the
- *  cast's canvas at all — he is `MechModel`, his own context with his own
- *  lighting rig, laid over the stage as a second layer, for the same reason
- *  he has always been separate: he is the one subject on this site with a
- *  setup built around him and lighting him a second way would be a second
- *  face. So for `kind: 'face'` the placement is applied to that layer instead
- *  of to a group inside a scene: `x`/`y` become a fraction of the stage box
- *  and `scale` multiplies his own `fill`, which keeps him sharp — scaling the
- *  canvas element itself would just magnify the pixels he was rendered at.
- *  `z`, `turn` and `tilt` do nothing for him; his rig owns his rotation. */
+ *  cast's canvas — he is `MechModel`, his own context with his own rig, laid
+ *  over the stage as a second layer, because he is the one subject on this
+ *  site with a lighting setup built around him. So for `kind: 'face'` the
+ *  placement is applied to that layer: `x`/`y` become a fraction of the stage
+ *  box and `scale` multiplies his own `fill`, which keeps him sharp — scaling
+ *  the canvas element would magnify the pixels he was drawn at. `z`, `turn`
+ *  and `tilt` do nothing for him; his rig owns those. */
 export interface CastSlot {
   x: number
   y: number
@@ -103,19 +121,30 @@ export interface CastSlot {
 
 export const CAST_SLOT_FALLBACK: CastSlot = { x: 0, y: 0, z: 0, scale: 1, turn: 0, tilt: 0 }
 
+export const CAST_SLOTS: Record<string, CastSlot> = {
+  takahashi: { x: -0.1, y: 0.08, z: 0, scale: 0.65, turn: -180, tilt: 0 },
+  capsule: { x: 0.53, y: 0.42, z: -1.73, scale: 0.64, turn: -53.5, tilt: 25.5 },
+  rider: { x: -0.62, y: -0.27, z: -1.06, scale: 0.81, turn: 130.5, tilt: 27 },
+  stitchfam: { x: -0.53, y: 0.38, z: -0.86, scale: 0.43, turn: 0, tilt: 0 },
+  fish: { x: 0.46, y: -0.1, z: -1.95, scale: 0.63, turn: -180, tilt: -90 }
+}
+
+export const slotFor = (id: string): CastSlot => CAST_SLOTS[id] ?? CAST_SLOT_FALLBACK
+
 /** One subject's own lighting.
  *
- *  Genuinely its own: each subject and the two lights aimed at it are put on
- *  a three.js layer of their own, and a light only illuminates what shares a
- *  layer with it. So Capsule C1's key does not spill onto Solomon, and
- *  turning one of them up cannot quietly wreck the other — which is what a
- *  single shared pair of directional lights meant, because a directional
- *  light is infinite and lights the entire scene.
+ *  Genuinely its own: each subject and the two lights aimed at it go on a
+ *  three.js layer of their own, and a light only illuminates what shares a
+ *  layer with it. So Capsule C1's key cannot spill onto Solomon.
  *
- *  There is no global key or fill left on the studio for that reason: with
- *  every subject on its own layer, a light on the default layer would reach
- *  nothing. What stays shared is the room — `scene.environment` and the tone
- *  map — and `env` here is how hard this subject alone picks the room up. */
+ *  **There is no global light and no global environment left.** The scene's
+ *  environment used to be turned up as one number for the whole cast, which
+ *  is the "generic lighting effect in the way" — a bright studio box lighting
+ *  everything at once, the one thing on this stage nobody could aim. The room
+ *  is still generated (PBR needs something to reflect) but its scene-level
+ *  intensity is pinned at 1, and `env` here is the only thing that decides
+ *  how hard *this* subject picks it up. Set it to 0 and the subject is lit by
+ *  its own two lights and nothing else. */
 export interface CastLight {
   keyIntensity: number
   keyX: number
@@ -125,7 +154,7 @@ export interface CastLight {
   fillX: number
   fillY: number
   fillZ: number
-  /** Multiplies `envMapIntensity` on every material of this subject. */
+  /** This subject's `envMapIntensity`. 0 removes the room from it entirely. */
   env: number
 }
 
@@ -141,28 +170,19 @@ export const CAST_LIGHT_FALLBACK: CastLight = {
   env: 1
 }
 
-/* A starting rig each, not one rig applied five times. The subjects are not
-   the same kind of object and never wanted the same light: the capsule is a
-   glossy moulded shell that shows a key as a long specular streak, the rider
-   is a matte character on a lacquered bike, the loop and the fish man are
-   flat-shaded and mostly want to be legible. Tune from here. */
 export const CAST_LIGHTS: Record<string, CastLight> = {
-  capsule: { keyIntensity: 3.2, keyX: 4, keyY: 3.5, keyZ: 4, fillIntensity: 1.4, fillX: -4, fillY: 1, fillZ: -2, env: 1.3 },
-  rider: { keyIntensity: 2.8, keyX: 2.5, keyY: 4, keyZ: 5, fillIntensity: 1.1, fillX: -4, fillY: 1.5, fillZ: -3, env: 1 },
-  takahashi: { ...CAST_LIGHT_FALLBACK },
+  takahashi: { keyIntensity: 2.6, keyX: 3, keyY: 4, keyZ: 5, fillIntensity: 1, fillX: -4, fillY: 1, fillZ: -3, env: 1 },
+  capsule: { keyIntensity: 2.4, keyX: -3.6, keyY: -2.5, keyZ: 5.5, fillIntensity: 1.4, fillX: -6.5, fillY: -3.6, fillZ: -10, env: 0.35 },
+  rider: { keyIntensity: 2.2, keyX: -10, keyY: -10, keyZ: -10, fillIntensity: 1.1, fillX: -4, fillY: -10, fillZ: -3, env: 1 },
   stitchfam: { keyIntensity: 2.2, keyX: 1, keyY: 3, keyZ: 6, fillIntensity: 1.6, fillX: -3, fillY: 1, fillZ: 2, env: 0.8 },
   fish: { keyIntensity: 2.4, keyX: 2, keyY: 3, keyZ: 5, fillIntensity: 1.5, fillX: -3, fillY: 2, fillZ: -1, env: 0.9 }
 }
 
 export const lightFor = (id: string): CastLight => CAST_LIGHTS[id] ?? CAST_LIGHT_FALLBACK
 
-/** The ground the cast stands over — see `MechWave.tsx`.
- *
- *  Part of the cast's scene rather than a layer behind the page, because it
- *  replaced a picture of a wave and the whole problem with the picture was
- *  that nothing on the stage stood in any relation to it. The geometry
- *  numbers (`size`, `segments`) are not on the panel: they are the cost of
- *  the thing, not the look of it, and changing either rebuilds the buffer. */
+/** The ground the cast stands over — see `MechWave.tsx`. Its own full-window
+ *  canvas rather than part of the cast's, because `.mech-frame` is a 16:9
+ *  column and a horizon cut off at the letterbox is not a horizon. */
 export interface CastWave {
   on: boolean
   /** How high the crests run, in world units. */
@@ -180,80 +200,49 @@ export interface CastWave {
   fade: number
   /** How solid the lines are. */
   opacity: number
-  /** Straight multiplier on the colour. The one to reach for first — past 1
-   *  it blows the crests out, which over black is exactly the look. */
+  /** Straight multiplier on the colour. Past 1 it blows the crests out, which
+   *  over black is exactly the look. */
   gain: number
-  /** How much hotter crests and intersections run than troughs. 0 is a flat
-   *  sheet of one colour; high is a field lit from inside. */
+  /** How much hotter crests and intersections run than troughs. */
   glow: number
   /** Degrees of hue fanned across the width of the field. 0 leaves the three
    *  colours below exactly as set. */
   hue: number
-  /** Degrees a second the whole hue drifts. Slow, or it is a novelty. */
+  /** Degrees a second the whole hue drifts. */
   hueSpeed: number
   /** Troughs, mid-height, crests. Three rather than two because a two-stop
    *  ramp makes every middle height a muddy blend of the ends. */
   low: string
   mid: string
   high: string
-  /** World units square, and vertices per side. Cost, not look. */
+  /** World units square, and vertices per side. Cost, not look — neither is
+   *  on the panel, because changing either rebuilds the buffer. */
   size: number
   segments: number
 }
 
 export const CAST_WAVE: CastWave = {
   on: true,
-  amp: 1.15,
-  scale: 0.34,
-  speed: 0.5,
-  y: -1.9,
-  depth: 18,
-  cells: 90,
-  fade: 62,
-  opacity: 0.95,
-  gain: 1.35,
-  glow: 1.3,
-  hue: 46,
-  hueSpeed: 3,
-  /* Purple against the panel's green, which is the entire point of it: home
-     and a project screen are the same machine, and this is what stops the
-     front door reading as a project nobody has picked yet. */
-  low: '#2b1a86',
-  mid: '#8b3ff0',
-  high: '#ff7ae0',
+  amp: 0.68,
+  scale: 0.14,
+  speed: 0.15,
+  y: -2.45,
+  depth: 45,
+  cells: 167,
+  fade: 120,
+  opacity: 3,
+  gain: 0.18,
+  glow: 5,
+  hue: 162,
+  hueSpeed: -39.5,
+  low: '#8d77b4',
+  mid: '#684596',
+  high: '#c07cff',
   size: 90,
   segments: 200
 }
 
-/* Five across, reading left to right, in the room to the right of the side
-   column — the readout lives at frame x 101–481 and a subject standing in it
-   is a subject standing on the writing, which is what the first arrangement
-   here did.
-
-   One world unit is `fill` of the stage's height: at 0.3 that is 324 frame
-   coordinates, so the whole cast spans about x -1.1 to +2.3 and clears both
-   the readout on the left and the gutter on the right.
-
-   The scales are not all near 1 because `Resize` normalises every subject to
-   one unit *on its longest edge*, and the subjects are not the same shape.
-   Capsule C1 is a long enclosure: at scale 1 it is a metre of cylinder lying
-   across the whole left half of the screen, which is exactly what it did. A
-   number here is "how big should this read", not "how big is the file".
-
-   Still only a first arrangement. The panel above is the point — this is the
-   set of numbers that puts every subject on screen, at a sane size, with
-   nothing overlapping anything, and it is meant to be dragged from. */
-export const CAST_SLOTS: Record<string, CastSlot> = {
-  capsule: { x: -1.1, y: 0, z: 0, scale: 0.5, turn: -48, tilt: 0 },
-  rider: { x: -0.2, y: 0, z: 0, scale: 0.85, turn: -34, tilt: 0 },
-  takahashi: { x: 0.72, y: 0, z: 0, scale: 0.36, turn: 0, tilt: 0 },
-  stitchfam: { x: 1.55, y: 0, z: 0, scale: 0.7, turn: 24, tilt: 0 },
-  fish: { x: 2.3, y: 0, z: 0, scale: 0.8, turn: 0, tilt: 0 }
-}
-
-export const slotFor = (id: string): CastSlot => CAST_SLOTS[id] ?? CAST_SLOT_FALLBACK
-
-const STORE_KEY = 'v3.cast.tuning.v1'
+const STORE_KEY = 'v3.cast.tuning.v2'
 
 interface Stored {
   studio?: Partial<CastStudio>
@@ -272,63 +261,62 @@ const stored = (): Stored => {
 }
 
 const saved = typeof window === 'undefined' ? {} : stored()
-const start: CastStudio = { ...CAST_STUDIO, ...saved.studio }
-
+const startStudio: CastStudio = { ...CAST_STUDIO, ...saved.studio }
 const startWave: CastWave = { ...CAST_WAVE, ...saved.wave }
 
 const live = {
-  studio: { ...start },
+  studio: { ...startStudio },
   slots: { ...CAST_SLOTS, ...saved.slots },
   lights: { ...CAST_LIGHTS, ...saved.lights },
   wave: { ...startWave }
 }
 
-const keys = Object.keys(CAST_STUDIO) as Array<keyof CastStudio>
+const STUDIO_KEYS = Object.keys(CAST_STUDIO) as Array<keyof CastStudio>
+const SLOT_KEYS = ['x', 'y', 'z', 'scale', 'turn', 'tilt'] as const
 const LIGHT_KEYS = Object.keys(CAST_LIGHT_FALLBACK) as Array<keyof CastLight>
+const WAVE_NUMBERS = [
+  'amp', 'scale', 'speed', 'y', 'depth', 'cells', 'fade',
+  'opacity', 'gain', 'glow', 'hue', 'hueSpeed'
+] as const
 
 const tidy = (value: number) => String(Number(value.toFixed(4)))
 
 const asSource = () => {
-  const studio = `export const CAST_STUDIO: CastStudio = {\n${keys
-    .map((key) => `  ${key}: ${tidy(live.studio[key])}`)
+  const studio = `export const CAST_STUDIO: CastStudio = {\n${STUDIO_KEYS
+    .map((k) => `  ${k}: ${tidy(live.studio[k])}`)
     .join(',\n')}\n}`
+
   const slots = `export const CAST_SLOTS: Record<string, CastSlot> = {\n${CAST.map((hero) => {
     const slot = live.slots[hero.id] ?? CAST_SLOT_FALLBACK
-    const body = (['x', 'y', 'z', 'scale', 'turn', 'tilt'] as const)
-      .map((key) => `${key}: ${tidy(slot[key])}`)
-      .join(', ')
-    return `  ${hero.id}: { ${body} }`
+    return `  ${hero.id}: { ${SLOT_KEYS.map((k) => `${k}: ${tidy(slot[k])}`).join(', ')} }`
   }).join(',\n')}\n}`
+
   const lights = `export const CAST_LIGHTS: Record<string, CastLight> = {\n${CAST.map((hero) => {
-    const light = live.lights[hero.id] ?? CAST_LIGHT_FALLBACK
-    const body = LIGHT_KEYS.map((key) => `${key}: ${tidy(light[key])}`).join(', ')
-    return `  ${hero.id}: { ${body} }`
+    const lit = live.lights[hero.id] ?? CAST_LIGHT_FALLBACK
+    return `  ${hero.id}: { ${LIGHT_KEYS.map((k) => `${k}: ${tidy(lit[k])}`).join(', ')} }`
   }).join(',\n')}\n}`
-  const waveKeys = [
-    'on', 'amp', 'scale', 'speed', 'y', 'depth', 'cells', 'fade',
-    'opacity', 'gain', 'glow', 'hue', 'hueSpeed'
-  ] as const
+
   const wave = `export const CAST_WAVE: CastWave = {\n${[
-    ...waveKeys.map((key) =>
-      typeof live.wave[key] === 'boolean' ? `  ${key}: ${live.wave[key]}` : `  ${key}: ${tidy(live.wave[key] as number)}`
-    ),
+    `  on: ${live.wave.on}`,
+    ...WAVE_NUMBERS.map((k) => `  ${k}: ${tidy(live.wave[k])}`),
     `  low: '${live.wave.low}'`,
     `  mid: '${live.wave.mid}'`,
     `  high: '${live.wave.high}'`,
     `  size: ${tidy(live.wave.size)}`,
     `  segments: ${tidy(live.wave.segments)}`
   ].join(',\n')}\n}`
+
   return `${studio}\n\n${slots}\n\n${lights}\n\n${wave}`
 }
 
-/** Every subject's placement at once, plus the shared studio.
+type Flat = Record<string, number | string | boolean>
+
+/** Every subject's placement and rig, the camera, and the ground — one store,
+ *  which `MechPanel` shows as tabs.
  *
  *  One folder per subject rather than a folder for "the selected one", which
  *  is what the roster's panel did and what made it useless for composing:
- *  arranging a group means dragging one thing while watching its neighbours,
- *  and a panel that only ever shows you the numbers for whichever subject is
- *  currently picked cannot do that. Every slot is on the panel, all the
- *  time. */
+ *  arranging a group means dragging one thing while watching its neighbours. */
 export function useCastTuning() {
   const store = useCreateStore()
 
@@ -338,41 +326,61 @@ export function useCastTuning() {
         const text = asSource()
         void copyText(text)
         // eslint-disable-next-line no-console
-        console.log(`[cast] paste over CAST_STUDIO and CAST_SLOTS in src/v3/castTuning.ts:\n\n${text}`)
+        console.log(`[cast] paste over the four constants in src/v3/castTuning.ts:\n\n${text}`)
       }),
       Reset: button(() => {
         window.localStorage.removeItem(STORE_KEY)
         window.location.reload()
       }),
 
+      /* Everything at once, so a composition can be moved without re-placing
+         every subject in it. */
+      Stage: folder(
+        {
+          lift: { value: startStudio.lift, min: -4, max: 4, step: 0.01, label: 'Lift all' },
+          spread: { value: startStudio.spread, min: 0.1, max: 3, step: 0.01, label: 'Spread' },
+          dolly: { value: startStudio.dolly, min: -10, max: 20, step: 0.05, label: 'Dolly' },
+          camY: { value: startStudio.camY, min: -6, max: 6, step: 0.01, label: 'Cam height' },
+          tilt: { value: startStudio.tilt, min: -60, max: 60, step: 0.1, label: 'Cam tilt' },
+          focalLength: { value: startStudio.focalLength, min: 18, max: 200, step: 1, label: 'mm' },
+          fill: { value: startStudio.fill, min: 0.05, max: 0.95, step: 0.01, label: 'Fills' },
+          /* The one light left that is not a subject's own — there is a single
+             tone map for the canvas and it cannot be split. */
+          exposure: { value: startStudio.exposure, min: 0.01, max: 4, step: 0.01, label: 'Exposure' },
+          lean: { value: startStudio.lean, min: 0, max: 40, step: 0.5, label: 'Lean' }
+        },
+        { collapsed: false }
+      ),
+
       ...Object.fromEntries(
         CAST.map((hero) => {
           const seed = live.slots[hero.id] ?? CAST_SLOT_FALLBACK
           const lit = live.lights[hero.id] ?? CAST_LIGHT_FALLBACK
           return [
-            hero.title,
+            label(hero.title),
             folder(
               {
-                [`${hero.id}.x`]: { value: seed.x, min: -6, max: 6, step: 0.01, label: 'X' },
-                [`${hero.id}.y`]: { value: seed.y, min: -4, max: 4, step: 0.01, label: 'Y' },
-                [`${hero.id}.z`]: { value: seed.z, min: -6, max: 6, step: 0.01, label: 'Z' },
-                [`${hero.id}.scale`]: { value: seed.scale, min: 0.05, max: 4, step: 0.01, label: 'Scale' },
-                [`${hero.id}.turn`]: { value: seed.turn, min: -180, max: 180, step: 0.5, label: 'Turn' },
-                [`${hero.id}.tilt`]: { value: seed.tilt, min: -90, max: 90, step: 0.5, label: 'Tilt' },
+                [key(hero.id, 'x')]: { value: seed.x, min: -6, max: 6, step: 0.01, label: 'X' },
+                [key(hero.id, 'y')]: { value: seed.y, min: -4, max: 4, step: 0.01, label: 'Y' },
+                [key(hero.id, 'z')]: { value: seed.z, min: -6, max: 6, step: 0.01, label: 'Z' },
+                [key(hero.id, 'scale')]: { value: seed.scale, min: 0.05, max: 4, step: 0.01, label: 'Scale' },
+                [key(hero.id, 'turn')]: { value: seed.turn, min: -180, max: 180, step: 0.5, label: 'Turn' },
+                [key(hero.id, 'tilt')]: { value: seed.tilt, min: -180, max: 180, step: 0.5, label: 'Tilt' },
 
                 /* This subject's own rig, on its own layer — nothing here
-                   reaches any other subject. See `CastLight`. */
+                   reaches any other subject. The face is the exception: his
+                   lighting is his own tab, since it is his own context. */
                 Light: folder(
                   {
-                    [`${hero.id}.keyIntensity`]: { value: lit.keyIntensity, min: 0, max: 12, step: 0.05, label: 'Key' },
-                    [`${hero.id}.keyX`]: { value: lit.keyX, min: -10, max: 10, step: 0.1, label: 'Key X' },
-                    [`${hero.id}.keyY`]: { value: lit.keyY, min: -10, max: 10, step: 0.1, label: 'Key Y' },
-                    [`${hero.id}.keyZ`]: { value: lit.keyZ, min: -10, max: 10, step: 0.1, label: 'Key Z' },
-                    [`${hero.id}.fillIntensity`]: { value: lit.fillIntensity, min: 0, max: 12, step: 0.05, label: 'Fill' },
-                    [`${hero.id}.fillX`]: { value: lit.fillX, min: -10, max: 10, step: 0.1, label: 'Fill X' },
-                    [`${hero.id}.fillY`]: { value: lit.fillY, min: -10, max: 10, step: 0.1, label: 'Fill Y' },
-                    [`${hero.id}.fillZ`]: { value: lit.fillZ, min: -10, max: 10, step: 0.1, label: 'Fill Z' },
-                    [`${hero.id}.env`]: { value: lit.env, min: 0, max: 4, step: 0.02, label: 'Env' }
+                    [key(hero.id, 'keyIntensity')]: { value: lit.keyIntensity, min: 0, max: 12, step: 0.05, label: 'Key' },
+                    [key(hero.id, 'keyX')]: { value: lit.keyX, min: -10, max: 10, step: 0.1, label: 'Key X' },
+                    [key(hero.id, 'keyY')]: { value: lit.keyY, min: -10, max: 10, step: 0.1, label: 'Key Y' },
+                    [key(hero.id, 'keyZ')]: { value: lit.keyZ, min: -10, max: 10, step: 0.1, label: 'Key Z' },
+                    [key(hero.id, 'fillIntensity')]: { value: lit.fillIntensity, min: 0, max: 12, step: 0.05, label: 'Fill' },
+                    [key(hero.id, 'fillX')]: { value: lit.fillX, min: -10, max: 10, step: 0.1, label: 'Fill X' },
+                    [key(hero.id, 'fillY')]: { value: lit.fillY, min: -10, max: 10, step: 0.1, label: 'Fill Y' },
+                    [key(hero.id, 'fillZ')]: { value: lit.fillZ, min: -10, max: 10, step: 0.1, label: 'Fill Z' },
+                    [key(hero.id, 'env')]: { value: lit.env, min: 0, max: 4, step: 0.02, label: 'Room' }
                   },
                   { collapsed: true }
                 )
@@ -383,54 +391,11 @@ export function useCastTuning() {
         })
       ),
 
-      Lens: folder(
-        {
-          focalLength: { value: start.focalLength, min: 18, max: 200, step: 1, label: 'mm' },
-          fill: { value: start.fill, min: 0.05, max: 0.95, step: 0.01, label: 'Fills' },
-          lean: { value: start.lean, min: 0, max: 40, step: 0.5, label: 'Lean' }
-        },
-        { collapsed: true }
-      ),
-
-      /* Only what genuinely is shared. The key and fill that used to live
-         here are per-subject now — see `CastLight`. */
-      Room: folder(
-        {
-          exposure: { value: start.exposure, min: 0.01, max: 2, step: 0.01 },
-          envIntensity: { value: start.envIntensity, min: 0, max: 8, step: 0.05, label: 'Env' }
-        },
-        { collapsed: true }
-      ),
-
-      /* The ground. Its own folder because it is its own object — see
-         `MechWave.tsx`. */
-      Wave: folder(
-        {
-          'wave.on': { value: startWave.on, label: 'On' },
-          'wave.amp': { value: startWave.amp, min: 0, max: 4, step: 0.01, label: 'Height' },
-          'wave.scale': { value: startWave.scale, min: 0.05, max: 2, step: 0.01, label: 'Tightness' },
-          'wave.speed': { value: startWave.speed, min: 0, max: 3, step: 0.01, label: 'Speed' },
-          'wave.y': { value: startWave.y, min: -8, max: 2, step: 0.05, label: 'Drop' },
-          'wave.depth': { value: startWave.depth, min: 0, max: 60, step: 0.5, label: 'Push back' },
-          'wave.cells': { value: startWave.cells, min: 8, max: 240, step: 1, label: 'Cells' },
-          'wave.fade': { value: startWave.fade, min: 8, max: 120, step: 1, label: 'Reach' },
-          'wave.opacity': { value: startWave.opacity, min: 0, max: 3, step: 0.01, label: 'Lines' },
-          'wave.gain': { value: startWave.gain, min: 0, max: 6, step: 0.01, label: 'Bright' },
-          'wave.glow': { value: startWave.glow, min: 0, max: 5, step: 0.01, label: 'Glow' },
-          'wave.hue': { value: startWave.hue, min: 0, max: 360, step: 1, label: 'Hue spread' },
-          'wave.hueSpeed': { value: startWave.hueSpeed, min: -90, max: 90, step: 0.5, label: 'Hue drift' },
-          'wave.low': { value: startWave.low, label: 'Trough' },
-          'wave.mid': { value: startWave.mid, label: 'Middle' },
-          'wave.high': { value: startWave.high, label: 'Crest' }
-        },
-        { collapsed: true }
-      ),
-
       Drift: folder(
         {
-          floatSpeed: { value: start.floatSpeed, min: 0, max: 4, step: 0.05, label: 'Speed' },
-          floatRange: { value: start.floatRange, min: 0, max: 0.3, step: 0.005, label: 'Range' },
-          floatRotation: { value: start.floatRotation, min: 0, max: 1.5, step: 0.02, label: 'Turn' }
+          floatSpeed: { value: startStudio.floatSpeed, min: 0, max: 4, step: 0.05, label: 'Speed' },
+          floatRange: { value: startStudio.floatRange, min: 0, max: 0.3, step: 0.005, label: 'Range' },
+          floatRotation: { value: startStudio.floatRotation, min: 0, max: 1.5, step: 0.02, label: 'Turn' }
         },
         { collapsed: true }
       ),
@@ -441,49 +406,27 @@ export function useCastTuning() {
          a body to shake. */
       Rider: folder(
         {
-          wheelRpm: { value: start.wheelRpm, min: 0, max: 2000, step: 10, label: 'Wheels' },
-          shake: { value: start.shake, min: 0, max: 0.05, step: 0.001, label: 'Shake' }
+          wheelRpm: { value: startStudio.wheelRpm, min: 0, max: 2000, step: 10, label: 'Wheels' },
+          shake: { value: startStudio.shake, min: 0, max: 0.05, step: 0.001, label: 'Shake' }
         },
         { collapsed: true }
       )
     }),
     { store }
-  ) as unknown as [Record<string, number>]
+  ) as unknown as [Flat]
 
-  const serialised = JSON.stringify(values)
+  const flat = values as Flat
+  const serialised = JSON.stringify(flat)
+
   useEffect(() => {
-    for (const key of keys) (live.studio[key] as number) = values[key]
+    for (const k of STUDIO_KEYS) (live.studio[k] as number) = flat[k] as number
     for (const hero of CAST) {
-      live.slots[hero.id] = {
-        x: values[`${hero.id}.x`],
-        y: values[`${hero.id}.y`],
-        z: values[`${hero.id}.z`],
-        scale: values[`${hero.id}.scale`],
-        turn: values[`${hero.id}.turn`],
-        tilt: values[`${hero.id}.tilt`]
-      }
+      live.slots[hero.id] = Object.fromEntries(
+        SLOT_KEYS.map((k) => [k, flat[key(hero.id, k)]])
+      ) as unknown as CastSlot
       live.lights[hero.id] = Object.fromEntries(
-        LIGHT_KEYS.map((key) => [key, values[`${hero.id}.${key}`]])
+        LIGHT_KEYS.map((k) => [k, flat[key(hero.id, k)]])
       ) as unknown as CastLight
-    }
-    live.wave = {
-      ...live.wave,
-      on: values['wave.on'] as unknown as boolean,
-      amp: values['wave.amp'],
-      scale: values['wave.scale'],
-      speed: values['wave.speed'],
-      y: values['wave.y'],
-      depth: values['wave.depth'],
-      cells: values['wave.cells'],
-      fade: values['wave.fade'],
-      opacity: values['wave.opacity'],
-      gain: values['wave.gain'],
-      glow: values['wave.glow'],
-      hue: values['wave.hue'],
-      hueSpeed: values['wave.hueSpeed'],
-      low: values['wave.low'] as unknown as string,
-      mid: values['wave.mid'] as unknown as string,
-      high: values['wave.high'] as unknown as string
     }
     try {
       window.localStorage.setItem(
@@ -496,50 +439,76 @@ export function useCastTuning() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serialised])
 
-  /* Rebuilt from the flat panel values every render rather than handed back
-     as Leva's own object, because the panel's keys are namespaced
-     (`rider.turn`) to keep one folder per subject from colliding, and nothing
-     downstream should have to know that. */
+  /* Rebuilt from the flat panel values rather than handed back as Leva's own
+     object, because the keys are namespaced to keep one folder per subject
+     from colliding, and nothing downstream should have to know that. */
   const slots: Record<string, CastSlot> = Object.fromEntries(
     CAST.map((hero) => [
       hero.id,
-      {
-        x: values[`${hero.id}.x`],
-        y: values[`${hero.id}.y`],
-        z: values[`${hero.id}.z`],
-        scale: values[`${hero.id}.scale`],
-        turn: values[`${hero.id}.turn`],
-        tilt: values[`${hero.id}.tilt`]
-      }
+      Object.fromEntries(SLOT_KEYS.map((k) => [k, flat[key(hero.id, k)]])) as unknown as CastSlot
     ])
   )
 
   const lights: Record<string, CastLight> = Object.fromEntries(
     CAST.map((hero) => [
       hero.id,
-      Object.fromEntries(LIGHT_KEYS.map((key) => [key, values[`${hero.id}.${key}`]])) as unknown as CastLight
+      Object.fromEntries(LIGHT_KEYS.map((k) => [k, flat[key(hero.id, k)]])) as unknown as CastLight
     ])
   )
 
-  const wave: CastWave = {
-    ...CAST_WAVE,
-    on: values['wave.on'] as unknown as boolean,
-    amp: values['wave.amp'],
-    scale: values['wave.scale'],
-    speed: values['wave.speed'],
-    y: values['wave.y'],
-    depth: values['wave.depth'],
-    cells: values['wave.cells'],
-    fade: values['wave.fade'],
-    opacity: values['wave.opacity'],
-    gain: values['wave.gain'],
-    glow: values['wave.glow'],
-    hue: values['wave.hue'],
-    hueSpeed: values['wave.hueSpeed'],
-    low: values['wave.low'] as unknown as string,
-    mid: values['wave.mid'] as unknown as string,
-    high: values['wave.high'] as unknown as string
-  }
+  return { store, studio: flat as unknown as CastStudio, slots, lights }
+}
 
-  return { store, studio: values as unknown as CastStudio, slots, lights, wave }
+/* ---- the wave's panel ----
+
+   Its own store, so it is its own tab. It has nothing to do with where a
+   subject stands and does not want to be scrolled past to reach one. */
+export function useWaveTuning() {
+  const store = useCreateStore()
+
+  const [values] = useControls(
+    () => ({
+      'Copy for source': button(() => {
+        const text = asSource()
+        void copyText(text)
+        // eslint-disable-next-line no-console
+        console.log(`[cast] paste over the four constants in src/v3/castTuning.ts:\n\n${text}`)
+      }),
+      on: { value: startWave.on, label: 'On' },
+      amp: { value: startWave.amp, min: 0, max: 4, step: 0.01, label: 'Height' },
+      scale: { value: startWave.scale, min: 0.02, max: 2, step: 0.01, label: 'Tightness' },
+      speed: { value: startWave.speed, min: 0, max: 3, step: 0.01, label: 'Speed' },
+      y: { value: startWave.y, min: -8, max: 2, step: 0.05, label: 'Drop' },
+      depth: { value: startWave.depth, min: 0, max: 60, step: 0.5, label: 'Push back' },
+      cells: { value: startWave.cells, min: 8, max: 240, step: 1, label: 'Cells' },
+      fade: { value: startWave.fade, min: 8, max: 160, step: 1, label: 'Reach' },
+      opacity: { value: startWave.opacity, min: 0, max: 3, step: 0.01, label: 'Lines' },
+      gain: { value: startWave.gain, min: 0, max: 6, step: 0.01, label: 'Bright' },
+      glow: { value: startWave.glow, min: 0, max: 5, step: 0.01, label: 'Glow' },
+      hue: { value: startWave.hue, min: 0, max: 360, step: 1, label: 'Hue spread' },
+      hueSpeed: { value: startWave.hueSpeed, min: -90, max: 90, step: 0.5, label: 'Hue drift' },
+      low: { value: startWave.low, label: 'Trough' },
+      mid: { value: startWave.mid, label: 'Middle' },
+      high: { value: startWave.high, label: 'Crest' }
+    }),
+    { store }
+  ) as unknown as [Flat]
+
+  const flat = values as Flat
+  const serialised = JSON.stringify(flat)
+
+  useEffect(() => {
+    live.wave = { ...live.wave, ...(flat as unknown as Partial<CastWave>) }
+    try {
+      window.localStorage.setItem(
+        STORE_KEY,
+        JSON.stringify({ studio: live.studio, slots: live.slots, lights: live.lights, wave: live.wave })
+      )
+    } catch {
+      /* private mode, a full quota */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serialised])
+
+  return { store, wave: { ...CAST_WAVE, ...(flat as unknown as Partial<CastWave>) } as CastWave }
 }
