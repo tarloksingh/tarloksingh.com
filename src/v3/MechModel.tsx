@@ -154,7 +154,14 @@ function useGaze(watchBird: boolean, catchSeconds: number) {
       ndc.current.y = -((event.clientY / window.innerHeight) * 2 - 1)
     }
     window.addEventListener('pointermove', onMove)
-    return () => window.removeEventListener('pointermove', onMove)
+    /* And a tap. On a phone there is no hovering, so a press is the only way
+       anyone says "here" — and a head that ignores it is a head that does
+       nothing at all on half the devices this runs on. */
+    window.addEventListener('pointerdown', onMove)
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerdown', onMove)
+    }
   }, [])
 
   useEffect(() => {

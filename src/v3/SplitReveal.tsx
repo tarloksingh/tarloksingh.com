@@ -4,10 +4,19 @@ import { SplitText as GSAPSplitText } from 'gsap/SplitText'
 
 gsap.registerPlugin(GSAPSplitText)
 
-/** A line that draws itself in a character at a time — the tagline and the
- *  fold titles. The same idea as `Typed`, but for text that never needs to
- *  be retyped, so it runs once per `run` instead of on an interval.
-
+/** A line that draws itself in a character at a time — the tagline, the fold
+ *  titles, every row of the menu. The same idea as `Typed`, but for text that
+ *  never needs to be retyped, so it runs once per `run` instead of on an
+ *  interval.
+ *
+ *  **It waits until it can be seen.** On the wide layout everything this is
+ *  used on is on screen at once and this changes nothing. On a phone the page
+ *  scrolls, and a cascade that fired at mount is a cascade that finished
+ *  three screens before you got there — which is the whole difference between
+ *  a page that draws itself as you go and a page where everything was simply
+ *  already there. One observer per line is fine at this count; the alternative
+ *  is a shared registry for a dozen elements.
+ *
  *  The text is written to the node imperatively rather than passed as a
  *  React child: GSAP's `SplitText` replaces that text with a run of `<span>`s
  *  per character, and a child React also renders would fight it for
@@ -46,13 +55,41 @@ export default function SplitReveal({
       )
     }
 
-    if (document.fonts.status === 'loaded') reveal()
-    else document.fonts.ready.then(reveal)
+    /* Held at nothing until it runs, so a line waiting below the fold is not
+       sitting there fully drawn and then re-drawing itself when you arrive. */
+    el.textContent = text
+    el.style.opacity = '0'
+
+    const start = () => {
+      el.style.opacity = ''
+      if (document.fonts.status === 'loaded') reveal()
+      else document.fonts.ready.then(reveal)
+    }
+
+    let watch: IntersectionObserver | null = null
+    if (typeof IntersectionObserver === 'undefined') {
+      start()
+    } else {
+      watch = new IntersectionObserver(
+        (entries) => {
+          if (!entries.some((entry) => entry.isIntersecting)) return
+          watch?.disconnect()
+          watch = null
+          start()
+        },
+        // A little before the top edge reaches the fold, so the line has
+        // begun by the time it is properly in view.
+        { rootMargin: '0px 0px -8% 0px', threshold: 0.01 }
+      )
+      watch.observe(el)
+    }
 
     return () => {
       cancelled = true
+      watch?.disconnect()
       tween?.kill()
       split?.revert()
+      if (el) el.style.opacity = ''
     }
   }, [text, run, delay])
 

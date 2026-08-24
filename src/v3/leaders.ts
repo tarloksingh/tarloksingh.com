@@ -38,6 +38,53 @@ const RUN = { full: 104, least: 26 }
  *  the project overview. */
 const GUTTER = { left: 500, right: 1450 }
 
+/* ---- the space the lines are drawn in ----
+
+   On the wide layout it is the 1920×1080 frame, and the stage is exactly that
+   box, so one SVG user unit is one `--px` and `preserveAspectRatio="none"`
+   maps them one to one.
+
+   Narrow, the stage is a box of its own — the width of the window and about
+   as tall — and drawing a 1920×1080 viewBox onto it with `none` scales x and
+   y by different amounts. Text does not survive that: at 390 by 409 the two
+   scales differ by nearly two to one, which is a row of labels squashed flat
+   sideways. It is *the* reason the lines were switched off on a phone, and
+   the fix is not to reach for a font size — it is to give the canvas a
+   viewBox with the stage's own proportions.
+
+   Measured in frame units, so one user unit stays one `--px` on both layouts.
+   Which means every fixed offset in this file, every radius in the
+   stylesheet, and `18px * var(--type-k)` all keep rendering at the size they
+   were drawn at, with nothing overridden anywhere. */
+export interface Space {
+  /** The canvas's coordinate box, in frame units. */
+  w: number
+  h: number
+  narrow: boolean
+}
+
+export const FRAME_SPACE: Space = { w: 1920, h: 1080, narrow: false }
+
+/** The subject's box on a narrow stage, in fractions of it.
+ *
+ *  Not the model's true bounding box — a *target*. The subject fills most of
+ *  the stage there, and tips laid on the edges of what it actually occupies
+ *  land in the air beside a face rather than on it. A little inside is what
+ *  a leader is for. */
+const NARROW_SUBJECT = { w: 0.56, h: 0.7 }
+
+/** Narrow, there is no left column and no rail beside the stage — the only
+ *  thing keeping a label on the page is the page. */
+const gutterFor = (space: Space) =>
+  space.narrow ? { left: space.w * 0.07, right: space.w * 0.93 } : GUTTER
+
+const centred = (space: Space, w: number, h: number): Box => ({
+  x: (space.w - w) / 2,
+  y: (space.h - h) / 2,
+  w,
+  h
+})
+
 /** The subject's box in frame coordinates. The model's is measured off the
  *  Figma; a still's is wherever the media actually lands, which is the same
  *  sum the CSS makes so the two can never disagree. */
@@ -52,7 +99,20 @@ export const mediaBox = (aspect: number) => {
 
 export type Box = { x: number; y: number; w: number; h: number }
 
-export const boxOf = (frame: Frame): Box => (frame.kind === 'flat' ? mediaBox(frame.aspect) : MODEL_BOX)
+export const boxOf = (frame: Frame, space: Space = FRAME_SPACE): Box => {
+  if (!space.narrow) return frame.kind === 'flat' ? mediaBox(frame.aspect) : MODEL_BOX
+  if (frame.kind !== 'flat') return centred(space, space.w * NARROW_SUBJECT.w, space.h * NARROW_SUBJECT.h)
+  /* A picture is `object-fit: contain` in the stage on this layout, so where
+     it actually lands is the same sum the browser is doing — whichever of the
+     two dimensions runs out first. */
+  const stage = space.w / space.h
+  const wide = frame.aspect >= stage
+  return centred(
+    space,
+    wide ? space.w : space.h * frame.aspect,
+    wide ? space.w / frame.aspect : space.h
+  )
+}
 
 /** A fraction of the subject's box, in frame coordinates. */
 export const pointIn = (box: Box, at: readonly [number, number]) => [box.x + at[0] * box.w, box.y + at[1] * box.h]
@@ -62,10 +122,10 @@ const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(ma
 /* A note that names its own two points. Everything else falls out of them:
    the text sits over the horizontal run, so which side the label was dragged
    to is which way the elbow turns and which end the type is set from. */
-const pinned = (note: Note, box: Box) => {
+const pinned = (note: Note, box: Box, gutter: { left: number; right: number }) => {
   const tip = pointIn(box, note.at!)
   const text = pointIn(box, note.to!)
-  const end = clamp(text[0], GUTTER.left, GUTTER.right)
+  const end = clamp(text[0], gutter.left, gutter.right)
   const dir = end >= tip[0] ? 1 : -1
   const run = clamp(Math.abs(end - tip[0]) * 0.55, RUN.least, RUN.full)
   return {
@@ -77,7 +137,7 @@ const pinned = (note: Note, box: Box) => {
   }
 }
 
-const slotted = (note: Note, index: number, box: Box) => {
+const slotted = (note: Note, index: number, box: Box, gutter: { left: number; right: number }) => {
   const slot = SLOTS[index % SLOTS.length]
   const tier = Math.floor(index / SLOTS.length) * TIER
   const seat = pointIn(box, slot.at)
@@ -86,7 +146,7 @@ const slotted = (note: Note, index: number, box: Box) => {
   // what the clamp is for on the slots that already sit near the bottom.
   const tip = [seat[0], Math.min(seat[1] + tier, box.y + box.h)]
   const elbow = [tip[0] + slot.elbow[0], tip[1] + slot.elbow[1]]
-  const room = slot.dir === 1 ? GUTTER.right - elbow[0] : elbow[0] - GUTTER.left
+  const room = slot.dir === 1 ? gutter.right - elbow[0] : elbow[0] - gutter.left
   const run = Math.max(40, Math.min(slot.run, room))
   return {
     ...note,
@@ -97,6 +157,8 @@ const slotted = (note: Note, index: number, box: Box) => {
   }
 }
 
-export const leadersFor = (notes: Note[], box: Box) =>
-  notes.map((note, i) => (note.at && note.to ? pinned(note, box) : slotted(note, i, box)))
+export const leadersFor = (notes: Note[], box: Box, space: Space = FRAME_SPACE) => {
+  const gutter = gutterFor(space)
+  return notes.map((note, i) => (note.at && note.to ? pinned(note, box, gutter) : slotted(note, i, box, gutter)))
+}
 

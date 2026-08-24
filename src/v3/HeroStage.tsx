@@ -108,7 +108,12 @@ function Lean({ degrees, turn, children }: { degrees: number; turn: number; chil
       to.current.y = (event.clientY / window.innerHeight) * 2 - 1
     }
     window.addEventListener('pointermove', onMove)
-    return () => window.removeEventListener('pointermove', onMove)
+    // And a tap: on a phone a press is the only way anyone says "here".
+    window.addEventListener('pointerdown', onMove)
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerdown', onMove)
+    }
   }, [])
 
   useFrame((_, delta) => {

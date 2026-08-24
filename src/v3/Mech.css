@@ -1556,6 +1556,17 @@
   inset: 0;
   mask-image: radial-gradient(ellipse 80% 74% at 50% 48%, #000 22%, transparent 80%);
   animation: mech-grid-in 1400ms var(--ease) both;
+  /* Moved with the page rather than welded to the glass — `--scrolled` is
+     written on `.mech-hud` from MechHud's scroll listener. A third of the
+     distance, because the grid is *behind* the readout and parallax is the
+     only thing on a flat screen that says so. The background is what moves,
+     not the element: a transform would drag the mask and the blurred copy
+     with it, and both of those belong to the window. */
+  background-position: 0 calc(var(--scrolled, 0px) * -0.34);
+}
+
+.mech-grid::after {
+  background-position: 0 calc(var(--scrolled, 0px) * -0.34);
 }
 
 .mech-grid::after {
@@ -1733,6 +1744,7 @@
 }
 
 .mech-bird {
+  position: relative;
   display: block;
   padding: 0;
   border: 0;
@@ -2559,6 +2571,20 @@
 }
 
 
+/* A thumb is not a reticle. Both creatures are drawn at the size they should
+   *look*, and on a touch screen that is well under what anyone can reliably
+   hit — so on a coarse pointer each one gets an invisible box around it to be
+   pressed by. `quarry.radius` already gives the *bolt* the same generosity;
+   this is the same idea one step earlier, on the press. */
+@media (pointer: coarse) {
+  .mech-bird::before,
+  .mech-moth::before {
+    content: '';
+    position: absolute;
+    inset: -14px;
+  }
+}
+
 /* ---- the moth ----
 
    The other animal. Where the bird crosses the sky on a clean arc and can be
@@ -2593,6 +2619,7 @@
 }
 
 .mech-moth {
+  position: relative;
   display: block;
   padding: 0;
   border: 0;
@@ -2726,19 +2753,22 @@
    there the layout is one column, top to bottom, in this order:
 
      the header, sticky, folded into one control (see `MechMenu.tsx`)
-     the subject, large — the reason anyone opened the page
-     what the leaders would have said, set out flat (`.mech-readout`)
+     the title and the line under it
+     the subject, large — the reason anyone opened the page — with its
+       leader lines, the same as the wide layout has
      the tile strip, sideways
-     the title, the tagline, and every section open
+     the write-up, one section open at a time
      the contact line
      the deck, floating over all of it at the bottom of the window
 
    The subject is the change worth naming. The stage is no longer a 16:9
    island: it is a tall box the width of the window, the model's `fill` is
    multiplied on the way in (`narrowTuning.ts`), and a picture fills the box
-   rather than sitting in a 780-unit rectangle inside it. The leaders are off —
-   a fan drawn for a 1920-wide frame has nowhere to land in 390, which is what
-   put three labels on top of each other and on top of the face.
+   rather than sitting in a 780-unit rectangle inside it. The leaders are on,
+   and drawn into a canvas with the stage's own proportions — a 1920×1080
+   viewBox stretched onto a 390×409 box squashes every label flat sideways,
+   which is what had them stacked on each other over the face. See `Space` in
+   leaders.ts.
 
    Nothing above this rule is affected: every property here is scoped under
    `.mech[data-narrow='true']`, which is only ever true below the breakpoint
@@ -2762,13 +2792,50 @@
   --gutter: calc(30 * var(--px));
 }
 
+/* A flex column, so the pieces can be put in an order that has nothing to do
+   with the order the markup needs. The wide layout wants the title, the
+   tagline and the write-up as one column beside the stage — which is exactly
+   what `.mech-side` is — and the narrow one wants the name *above* the
+   picture and the write-up *below* the tile strip. `display: contents` on
+   `.mech-side` (below) dissolves the wrapper so its two children become items
+   of this flex box in their own right, and `order` puts each where it goes. */
 .mech[data-narrow='true'] .mech-frame {
   width: 100%;
   height: auto;
   min-height: 100%;
+  display: flex;
+  flex-direction: column;
   /* Clears the deck floating at the bottom of the window, plus the home
      indicator on a phone that has one. */
   padding-bottom: calc(150 * var(--px) + env(safe-area-inset-bottom, 0px));
+}
+
+.mech[data-narrow='true'] .mech-head {
+  order: 0;
+}
+
+.mech[data-narrow='true'] .mech-lede {
+  order: 1;
+}
+
+.mech[data-narrow='true'] .mech-stage {
+  order: 2;
+}
+
+.mech[data-narrow='true'] .mech-rail-wrap {
+  order: 3;
+}
+
+.mech[data-narrow='true'] .mech-folds-wrap {
+  order: 4;
+}
+
+.mech[data-narrow='true'] .mech-tally {
+  order: 5;
+}
+
+.mech[data-narrow='true'] .mech-foot {
+  order: 6;
 }
 
 /* ---- the header, folded ---- */
@@ -3008,34 +3075,6 @@
   display: none;
 }
 
-/* ---- what the leaders would have said ---- */
-
-.mech-readout {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(calc(150 * var(--px)), 1fr));
-  gap: calc(2 * var(--px)) calc(24 * var(--px));
-  margin: calc(20 * var(--px)) 0 0;
-  padding: 0 var(--gutter);
-}
-
-.mech-readout > div {
-  padding: calc(9 * var(--px)) 0;
-  border-top: 1px solid rgba(var(--accent-rgb), 0.18);
-}
-
-.mech-readout dt {
-  font-size: calc(11 * var(--type));
-  letter-spacing: calc(1.3 * var(--type));
-  text-transform: lowercase;
-  color: rgba(var(--accent-rgb), 0.8);
-}
-
-.mech-readout dd {
-  margin: calc(2 * var(--px)) 0 0;
-  font-size: calc(14 * var(--type));
-  color: #fff;
-}
-
 /* ---- the tile strip, above the title ---- */
 
 /* Sideways, and above the words rather than below them: on a phone the
@@ -3111,11 +3150,22 @@
 
 /* ---- the title and the write-up ---- */
 
+/* The column itself goes away. `display: contents` leaves its two children
+   — the name and the write-up — as items of the frame's own flex box, which
+   is what lets one sit above the picture and the other below the tile strip.
+   Its padding and its entry animation move onto them. */
 .mech[data-narrow='true'] .mech-side {
-  position: static;
-  width: auto;
-  bottom: auto;
-  padding: calc(30 * var(--px)) var(--gutter) 0;
+  display: contents;
+}
+
+.mech[data-narrow='true'] .mech-lede {
+  padding: calc(20 * var(--px)) var(--gutter) calc(14 * var(--px));
+  animation: mech-in 620ms var(--ease) both;
+}
+
+.mech[data-narrow='true'] .mech-folds-wrap {
+  flex: none;
+  padding: calc(10 * var(--px)) var(--gutter) 0;
 }
 
 /* One line, and the type size is what has to keep that promise: at the size
@@ -3192,6 +3242,41 @@
   font-size: calc(15 * var(--type));
   line-height: calc(23 * var(--type));
   padding-bottom: 0;
+}
+
+/* ---- arriving ----
+
+   Only on this layout. The wide one has the whole page on screen at once —
+   there is nothing below a fold to arrive from, and the boot sequence already
+   brings every part of it up in order. A phone is a scroll, and a scroll
+   where everything is simply already there reads as a document rather than as
+   a panel coming up.
+
+   The attribute is flipped by `reveal.ts`; this is the whole of the motion.
+   It is `data-arrive` and not the obvious `data-reveal` because that one is
+   already taken: v2's own scroll-reveal claims `[data-reveal]` globally in
+   `src/site/base.css`, and both stylesheets are in the same bundle. A bare
+   `data-*` attribute is a shared namespace across every stylesheet a page
+   loads, which is easy to forget in a repo that is two sites at once.
+   `SplitReveal` does the same for lines of type — it holds its cascade until
+   the line can be seen, so the title of a section draws itself as you reach
+   it rather than having finished three screens ago. */
+.mech[data-narrow='true'] [data-arrive] {
+  opacity: 0;
+  transform: translateY(calc(16 * var(--px)));
+  transition: opacity 520ms var(--ease), transform 640ms var(--ease);
+}
+
+.mech[data-narrow='true'] [data-arrive][data-arrived='true'] {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mech[data-narrow='true'] [data-arrive] {
+    transition-duration: 1ms;
+    transform: none;
+  }
 }
 
 /* ---- the contact line ---- */

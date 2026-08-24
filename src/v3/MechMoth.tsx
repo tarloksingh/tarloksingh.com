@@ -23,9 +23,12 @@ import { quarry, type Creature } from './subject'
    something that has, and it is much harder, which is the point.
 
    Same plumbing as the bird: it registers itself in `quarry.creatures`, it
-   knows nothing about the gun, and a hit goes through `kills.add()`. Same
-   `pointer: fine` gate too — startling something with a cursor requires a
-   cursor. See PLAN.md on why touch is still open. */
+   knows nothing about the gun, and a hit goes through `kills.add()`.
+
+   On a phone there is no cursor to be approached by, so the thing that
+   startles it is the *page moving* — which is what v2's birds did too, and
+   for the same reason: something standing on a line is standing on nothing
+   the moment that line goes anywhere. Scroll past a moth and it goes. */
 
 const rand = (min: number, max: number) => min + Math.random() * (max - min)
 
@@ -53,12 +56,22 @@ const INSET = 0.14
 type Phase = 'perched' | 'flying' | 'hit' | 'away'
 
 function MechMoth() {
-  const [enabled] = useState(() => typeof window !== 'undefined' && window.matchMedia('(pointer: fine)').matches)
+  const [enabled] = useState(
+    () => typeof window !== 'undefined' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  )
   const [mode, setMode] = useState<Phase>('away')
   const wrap = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!enabled) return
+    /* What counts as coming too near.
+ 
+       On a mouse it is the reticle, which is the whole idea. A finger has no
+       hover and nothing approaches anything, so on touch the *page moving* is
+       what startles it — which is also how v2's birds behaved: a bird stands
+       on a line, and the moment that line goes anywhere the bird is standing
+       on nothing. Scroll past a moth and it goes. */
+    const byPointer = window.matchMedia('(pointer: fine)').matches
 
     let phase: Phase = 'away'
     let wait = rand(1.2, 3)
@@ -87,11 +100,16 @@ function MechMoth() {
       enter('perched')
     }
 
-    /** A fresh heading, biased away from wherever the pointer is — a startled
-     *  thing goes away from what startled it, and then keeps changing its
-     *  mind. */
+    /** A fresh heading, biased away from whatever startled it — and then it
+     *  keeps changing its mind, which is the whole of the erratic.
+     *
+     *  On touch there is no pointer to flee from, so it flees the middle of
+     *  the window, which sends it outward and off an edge rather than always
+     *  toward the bottom right (which is where a pointer parked at -9999
+     *  would have pushed it). */
     const veer = () => {
-      const away = Math.atan2(at.y - pointer.y, at.x - pointer.x)
+      const from = byPointer && pointer.x > -9000 ? pointer : { x: window.innerWidth / 2, y: window.innerHeight / 2 }
+      const away = Math.atan2(at.y - from.y, at.x - from.x)
       const angle = away + rand(-1.5, 1.5)
       const reach = rand(160, 420)
       to.x = at.x + Math.cos(angle) * reach
@@ -106,10 +124,19 @@ function MechMoth() {
     }
 
     const onMove = (event: PointerEvent) => {
+      if (event.pointerType !== 'mouse') return
       pointer.x = event.clientX
       pointer.y = event.clientY
     }
     window.addEventListener('pointermove', onMove)
+
+    /** Set by anything that moves the page, and read on the next frame. */
+    let stirred = false
+    const stir = () => {
+      if (!byPointer) stirred = true
+    }
+    window.addEventListener('scroll', stir, { passive: true, capture: true })
+    window.addEventListener('touchmove', stir, { passive: true })
 
     const self: Creature = {
       at: () => (phase === 'perched' || phase === 'flying' ? { x: at.x, y: at.y } : null),
@@ -138,7 +165,9 @@ function MechMoth() {
 
       if (phase === 'perched') {
         // The one thing it does while sitting: notice you.
-        if (Math.hypot(pointer.x - at.x, pointer.y - at.y) <= STARTLE) {
+        const near = byPointer && Math.hypot(pointer.x - at.x, pointer.y - at.y) <= STARTLE
+        if (near || stirred) {
+          stirred = false
           flown = 0
           flight = rand(FLIGHT[0], FLIGHT[1])
           veer()
@@ -146,6 +175,7 @@ function MechMoth() {
         }
         return
       }
+      stirred = false
 
       if (phase === 'hit') {
         fell += dt
@@ -185,6 +215,8 @@ function MechMoth() {
     raf = requestAnimationFrame(tick)
     return () => {
       window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('scroll', stir, { capture: true })
+      window.removeEventListener('touchmove', stir)
       quarry.creatures.delete(self)
       cancelAnimationFrame(raf)
     }

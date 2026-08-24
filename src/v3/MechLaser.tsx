@@ -26,7 +26,10 @@ import { quarry } from './subject'
    project screen several times a second while somebody was enjoying
    themselves.
 
-   Desktop only, and only where there is a real pointer. */
+   **Both kinds of pointer.** A mouse fires on the way down; a finger fires on
+   the way up and only if the press was a tap, because every scroll on a phone
+   starts with a `pointerdown` and a bolt per flick is a page fighting you.
+   See `TAP` below. */
 
 /** Everything you can press. A press that lands on one of these is that
  *  control's, and the gun stays quiet — the whole point is that the page does
@@ -64,8 +67,6 @@ function MechLaser() {
   const emitter = useRef<HTMLElement>(null)
 
   useEffect(() => {
-    if (!window.matchMedia('(pointer: fine)').matches) return
-
     // Someone who has asked for less motion still gets the shot — it is a
     // thing they did, not a thing the page decided to do at them — but it
     // crosses in the shortest flight rather than travelling.
@@ -216,24 +217,74 @@ function MechLaser() {
       if (!raf) raf = requestAnimationFrame(tick)
     }
 
-    const onDown = (event: PointerEvent) => {
+    /** Whether a press is one the gun should answer at all. */
+    const allowed = (event: PointerEvent) => {
       // Left button only, and never while a clip has the whole screen: the
       // overlay this draws into is underneath a fullscreen element and a
       // shot nobody can see is a sound with no picture.
-      if (event.button !== 0 || document.fullscreenElement) return
+      if (event.button !== 0 || document.fullscreenElement) return false
       const target = event.target as Element | null
-      if (!target?.closest?.('.mech')) return
+      if (!target?.closest?.('.mech, .v3-home')) return false
       // The panel and the pin editor are tools, not the page. While the
       // editor is open every press is a placement, so the gun is out.
-      if (target.closest('#leva__root, .mech-pins, .mech[data-pins="true"]')) return
+      if (target.closest('#leva__root, .mech-pins, .mech[data-pins="true"]')) return false
       const control = target.closest(CONTROLS)
-      if (control && !control.classList.contains('mech-bird')) return
+      // Creatures are the exception: they are `<button>`s so the reticle can
+      // lock onto them, and pressing one has to fire a bolt like everything
+      // else rather than killing it by touch.
+      if (control && !control.classList.contains('mech-bird') && !control.classList.contains('mech-moth')) return false
+      return true
+    }
+
+    /* ---- a press, on two kinds of pointer ----
+
+       A mouse fires on the way down: you aimed, you clicked, and waiting for
+       the button to come back up is a gun with lag.
+
+       A finger cannot. Every scroll on this page starts with a `pointerdown`,
+       so firing there means a bolt for every flick — which is the sort of
+       thing that makes a page feel like it is fighting you. So a touch fires
+       on the way *up*, and only if it was a tap: under `TAP.slop` pixels of
+       travel and under `TAP.hold` milliseconds. Anything longer or further is
+       a scroll or a press-and-hold, and neither is a shot. */
+    const TAP = { slop: 12, hold: 600 }
+    let press: { x: number; y: number; at: number; id: number } | null = null
+
+    const onDown = (event: PointerEvent) => {
+      if (!allowed(event)) return
+      if (event.pointerType === 'mouse') {
+        fire({ x: event.clientX, y: event.clientY })
+        return
+      }
+      press = { x: event.clientX, y: event.clientY, at: performance.now(), id: event.pointerId }
+    }
+
+    const onUp = (event: PointerEvent) => {
+      const started = press
+      press = null
+      if (!started || started.id !== event.pointerId) return
+      if (performance.now() - started.at > TAP.hold) return
+      if (Math.hypot(event.clientX - started.x, event.clientY - started.y) > TAP.slop) return
+      if (!allowed(event)) return
       fire({ x: event.clientX, y: event.clientY })
     }
 
+    // A finger that has started scrolling is not going to fire, and the
+    // browser takes the pointer away from us the moment it decides that is
+    // what is happening.
+    const onCancel = () => {
+      press = null
+    }
+
     window.addEventListener('pointerdown', onDown)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onCancel)
+    window.addEventListener('scroll', onCancel, { passive: true, capture: true })
     return () => {
       window.removeEventListener('pointerdown', onDown)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onCancel)
+      window.removeEventListener('scroll', onCancel, { capture: true })
       window.clearTimeout(settle)
       cancelAnimationFrame(raf)
       for (const bolt of bolts) bolt.node.remove()

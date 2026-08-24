@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { TAGS } from '../data/projects'
 import { entries } from './model'
 import { sound } from './sound'
+import SplitReveal from './SplitReveal'
 
 /* ---- the menu, on a phone ----
 
@@ -17,6 +18,13 @@ import { sound } from './sound'
    button opens a second button, and it is the trade a phone actually wants —
    the alternative is spending a third of the screen on navigation for a
    screen whose whole job is one large subject.
+
+   Every line of it draws itself in a character at a time, staggered down the
+   list — the same `SplitReveal` the taglines and the section titles are set
+   with, which is the one bit of motion this site has that reads as *writing*
+   rather than as sliding. A sheet that is simply there the instant it opens
+   is a sheet; a sheet that types itself is part of the same machine as the
+   readout behind it.
 
    Desktop never mounts this. See `.mech-projects` in Mech.tsx for what it
    replaces. */
@@ -56,7 +64,9 @@ export default function MechMenu({ shownId, onProject, onHome, onClose }: Props)
   return (
     <div className="mech-menu" role="dialog" aria-label="Projects" aria-modal="true">
       <div className="mech-menu-head">
-        <span>index</span>
+        <span>
+          <SplitReveal text="index" run="menu" />
+        </span>
         <button className="mech-menu-close" onClick={onClose} aria-label="Close menu">
           close
         </button>
@@ -67,7 +77,13 @@ export default function MechMenu({ shownId, onProject, onHome, onClose }: Props)
           <li key={entry.project.id}>
             <button aria-current={entry.project.id === shownId} onClick={() => go(entry.project.id)}>
               <span className="mech-menu-n">{String(i + 1).padStart(2, '0')}</span>
-              <span className="mech-menu-name">{entry.project.title.toLowerCase()}</span>
+              <span className="mech-menu-name">
+                <SplitReveal
+                  text={entry.project.title.toLowerCase()}
+                  run={entry.project.id}
+                  delay={0.06 + i * 0.045}
+                />
+              </span>
               <span className="mech-menu-year">{entry.year}</span>
             </button>
           </li>
@@ -78,13 +94,13 @@ export default function MechMenu({ shownId, onProject, onHome, onClose }: Props)
           to the next project carrying it, so the row is a way through the work
           rather than a legend for it. */}
       <nav className="mech-menu-tags">
-        {TAGS.filter((tag) => tag !== 'work').map((tag) => {
+        {TAGS.filter((tag) => tag !== 'work').map((tag, i) => {
           const along = entries.filter((item) => item.project.tags.includes(tag))
           const next = along[(along.findIndex((item) => item.project.id === shownId) + 1) % Math.max(along.length, 1)]
           if (!next || (along.length === 1 && next.project.id === shownId)) return null
           return (
             <button key={tag} onClick={() => go(next.project.id)}>
-              {tag}
+              <SplitReveal text={tag} run="menu" delay={0.6 + i * 0.03} />
             </button>
           )
         })}
@@ -97,7 +113,7 @@ export default function MechMenu({ shownId, onProject, onHome, onClose }: Props)
           onHome()
         }}
       >
-        home
+        <SplitReveal text="home" run="menu" delay={0.8} />
       </button>
     </div>
   )

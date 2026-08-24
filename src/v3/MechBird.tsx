@@ -49,7 +49,11 @@ function MechBird() {
   const [enabled, setEnabled] = useState(false)
 
   useEffect(() => {
-    if (!window.matchMedia('(pointer: fine)').matches) return
+    /* On a phone too. The layer is `position: fixed`, so on the narrow
+       layout — where the page scrolls under it — the bird crosses whatever
+       section you happen to be looking at rather than a fixed spot in a
+       document. Tapping it fires a bolt at it, the same as clicking it does;
+       see the creature exception in `MechLaser`'s `allowed`. */
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
     setEnabled(true)
 

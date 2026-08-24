@@ -294,10 +294,10 @@ order:
 | | |
 |---|---|
 | header | sticky, folded into one control — `MechMenu.tsx` |
-| stage | the subject, large |
-| `.mech-readout` | what the leaders would have said, set out flat |
-| rail | the tile strip, sideways, above the title |
-| `.mech-side` | title, tagline, and every section open |
+| `.mech-lede` | the name and the line under it |
+| stage | the subject, large, with its leader lines |
+| rail | the tile strip, sideways |
+| `.mech-folds-wrap` | the write-up, one section open at a time |
 | footer | the contact line |
 | deck | floating over all of it, centred at the bottom of the window |
 
@@ -307,18 +307,27 @@ model's `fill` is multiplied on the way into `MechModel` (`narrowTuning.ts`,
 never `MODEL_DEFAULTS`), and a picture fills the box rather than sitting in a
 780-unit rectangle inside it — `Flat` drops its inline frame-coordinate
 `left/top/width/height` when narrow, which is what leaves the stylesheet
-anything to set. The leaders are off entirely: a fan laid out for a
-1920-wide frame has nowhere to land in 390, which is what put three labels on
-top of each other and on top of the face. Their notes are set out flat under
-the picture instead.
+anything to set.
 
-Nothing folds, either. Every section stands open under its own heading with a
-rule above it — the accordion exists on the desktop layout because there the
-copy has to live in a 380-unit column *beside* the subject, not under it.
+The write-up is the same accordion the wide layout has, with one difference:
+the first section is open on arrival. On a phone the write-up is the bottom
+half of a scroll and a run of closed drawers there is a screen that says
+nothing about the work; on the wide layout it sits beside a subject that is
+already doing the talking, and that composition is not this pass's to redraw.
+
 The title is capped against the width it actually has: `--title-len` hands the
 stylesheet the character count and 0.66 is the average advance of an uppercase
 Clash Display character, counted rather than measured because the title types
 itself in a character at a time and a box measured mid-type is still growing.
+
+The order is the second half of it, and it is not the markup's order. The
+frame becomes a flex column below the breakpoint and `.mech-side` — the wide
+layout's left column — is dissolved with `display: contents`, so its two
+halves become items of that column in their own right and `order` puts each
+where it belongs: the name and the line under it *above* the picture, the
+write-up *below* the tile strip. Which is the reading order a phone wants
+(what is this → look at it → look at the rest → read about it) and exactly
+not the one a three-column desktop layout needs.
 
 The breakpoint itself lives in `narrow.ts` — one query, one store, read by
 both screens. Two copies of a media query is two copies that can drift, and
@@ -403,6 +412,40 @@ of this: `entries` in `model.ts` drops a project with no media, and those four
 have none. They are write-ups waiting for assets, and adding a piece for them
 would put a subject on a screen with nothing else on it.
 
+### Motion, where the page scrolls
+
+The wide layout has the whole composition on screen at once and a boot
+sequence that brings every part of it up in order. A phone is a scroll, and a
+scroll where everything is simply already there reads as a document rather
+than as a panel coming up. Three things, all narrow-only:
+
+- **`SplitReveal` waits until it can be seen.** It always drew a line in a
+  character at a time; what it did not do was hold off. A cascade that fires
+  at mount is a cascade that finished three screens before you got there. One
+  `IntersectionObserver` per line, which is fine at this count.
+- **Blocks arrive** — `reveal.ts` flips `data-arrived` on anything marked
+  `data-arrive` as it comes into view, and the motion is one CSS transition.
+  The attribute is `data-arrive` and not the obvious `data-reveal` because
+  **that one is already taken**: v2's own scroll-reveal claims `[data-reveal]`
+  globally in `src/site/base.css`, and both stylesheets ship in the same
+  bundle. A bare `data-*` selector is a namespace shared by every stylesheet
+  on the page, which is easy to forget in a repo that is two sites at once —
+  it cost an hour of wondering why the folds had gone invisible on *desktop*.
+- **The grid moves with the page.** It is a fixed layer, which is right on the
+  wide layout because nothing scrolls there. Narrow, the readout slides past
+  a texture welded to the glass, which reads as a screenshot with a filter on
+  it. `MechHud` writes the scroll position to `--scrolled` (captured, because
+  the scroller is `.mech` rather than the document) and the grid's
+  *background* moves at a third of it. The background and not the element: a
+  transform would drag the mask and the blurred copy with it, and both of
+  those belong to the window rather than to the page.
+
+The menu draws itself in the same way — every row typed out, staggered down
+the list, on the same `SplitReveal` the taglines and the section titles use.
+It is the one bit of motion here that reads as *writing* rather than as
+sliding, and a sheet that types itself is part of the same machine as the
+readout behind it.
+
 ### Getting to another project
 
 The header's tag row is a way *through* the work — press one and the readout
@@ -453,6 +496,38 @@ Over the model they ride its float, read from what the float actually did this
 frame rather than an animation timed to look like it. Two clocks that agree at
 the start and not a minute later is the sort of thing nobody can name and
 everybody notices.
+
+### The leaders, on a phone
+
+They were off there, and the reason was not the fan or the type size — it was
+the canvas. The lines are drawn into an SVG with `preserveAspectRatio="none"`
+over a `viewBox` of the frame, which on the wide layout is exactly the stage's
+own shape, so x and y are scaled by the same amount and nothing is distorted.
+Stretch that same 1920×1080 box onto a 390×409 phone stage and the two scales
+differ by nearly two to one: every label comes out squashed flat sideways, on
+top of the next one, on top of the face. Which is what it looked like.
+
+So the canvas takes the stage's own proportions instead. `Space` in
+`leaders.ts` is the stage measured **in frame units** — `useStageSpace` in
+`Mech.tsx` reads the stage's box and divides by one `--px`, taken off the same
+probe `--type-k` is measured from, because `--px` is a `min()` over rem and
+viewport units that `getComputedStyle` hands back unevaluated. One user unit
+stays worth one `--px` on both layouts, which is the whole trick: every fixed
+offset in `leaders.ts`, every radius in the stylesheet and `18px *
+var(--type-k)` all keep rendering at the size they were drawn at, with nothing
+overridden anywhere.
+
+Two things follow from the box being different. `boxOf` takes the space: the
+subject is a centred fraction of a narrow stage rather than `MODEL_BOX`, and a
+picture is the same contain-fit the browser is doing. And the gutter that
+keeps a label clear of the left column and the rail is pointless when there is
+neither — narrow it opens to nearly the full width.
+
+One more: `drift` is published in the frame's own 1920×1080 coordinates,
+because that is the space the wide layout draws in. A narrow canvas is a
+different number of units tall for the same amount of world, so the bob the
+labels ride has to be converted on the way in, or they swing twice as far as
+the head does.
 
 ### Pinning the leaders
 
@@ -767,10 +842,33 @@ Some seconds later there is another one somewhere else. So the two are two
 different shots: the bird is a timing shot at something that has not seen you,
 the moth is a snap shot at something that has, and it is much harder.
 
-Both live on the home screen and on every project screen, and both are still
-`pointer: fine` only — startling something with a cursor requires a cursor,
-and what shooting should mean on touch is a real design question rather than a
-default (see `PLAN.md`).
+Both live on the home screen and on every project screen, **and both work on
+touch.** That took three things.
+
+The gun fires on a different event depending on the pointer. A mouse fires on
+the way down — you aimed, you clicked, and waiting for the button to come back
+up is a gun with lag. A finger cannot: every scroll on this page starts with a
+`pointerdown`, so firing there is a bolt per flick, which is a page fighting
+you. So a touch fires on the way *up*, and only if the press was a tap — under
+twelve pixels of travel and under six hundred milliseconds. A scroll cancels
+it outright.
+
+Tapping a creature shoots it rather than swatting it. Both are `<button>`s so
+the reticle can lock on, and both are named as exceptions in the gun's
+`allowed` check, so a press on one fires a bolt *at* it like any other press;
+the bolt then has to actually reach it. Each also gets an invisible fourteen
+pixels of hit area on a coarse pointer, because they are drawn at the size
+they should look and that is well under what a thumb can reliably hit.
+
+And the moth needed a different trigger. It is built around being approached
+by a cursor, and a finger approaches nothing — so on touch the thing that
+startles it is the *page moving*, which is what v2's birds did too and for the
+same reason: something standing on a line is standing on nothing the moment
+that line goes anywhere. Scroll past a moth and it goes.
+
+The subject watches a tap as well as a hover, for the same reason: on a phone
+a press is the only way anyone says *here*, and a head that ignores it is a
+head that does nothing at all on half the devices this runs on.
 
 Adding the second one meant generalising the gun. `quarry.hit` used to be a
 single slot a creature claimed on mount, which works for exactly one creature:

@@ -14,12 +14,13 @@ import MechMenu from './MechMenu'
 import { useNarrowTuning } from './narrowTuning'
 import { sound } from './sound'
 import { useNarrow } from './narrow'
+import { useReveal } from './reveal'
 import { drift, flinch, quarry } from './subject'
 import { kills } from './kills'
 import { entries, thumbOf, type Entry, type Frame } from './model'
 import { focus, notesFor, pins, type Note } from './notes'
 import { useLabelTuning, type Handed } from './labelTuning'
-import { boxOf, leadersFor, mediaBox, MODEL_BOX } from './leaders'
+import { boxOf, FRAME_SPACE, leadersFor, mediaBox, MODEL_BOX, type Space } from './leaders'
 import SplitReveal from './SplitReveal'
 import './Mech.css'
 
@@ -92,6 +93,60 @@ const useTypeScale = (root: RefObject<HTMLDivElement | null>, probe: RefObject<H
     watch.observe(box)
     return () => watch.disconnect()
   }, [root, probe])
+}
+
+/* ---- the stage, in frame units ----
+
+   The leaders are drawn onto the stage in a viewBox, and on the wide layout
+   that box is the frame itself: 1920×1080, exactly what `.mech-stage`
+   measures, so one user unit is one `--px` and nothing is distorted.
+
+   Narrow, the stage is its own shape and a 1920×1080 viewBox stretched onto
+   it squashes every label flat sideways. So the canvas takes the stage's own
+   proportions instead — measured here, in frame units, which is the one
+   number that keeps a user unit worth one `--px` on both layouts. See
+   `Space` in leaders.ts.
+
+   Both boxes are read off the DOM rather than worked out: `--px` is a `min()`
+   over rem and viewport units that `getComputedStyle` hands back unevaluated,
+   and the stage's height is a `min()` of its own. The probe is already there
+   for `--type-k`; it is sized by both units, so a hundred of its height is a
+   hundred `--px`. */
+const useStageSpace = (
+  stage: RefObject<HTMLDivElement | null>,
+  probe: RefObject<HTMLElement | null>,
+  narrow: boolean
+): Space => {
+  const [space, setSpace] = useState<Space>(FRAME_SPACE)
+
+  useEffect(() => {
+    if (!narrow) {
+      setSpace(FRAME_SPACE)
+      return
+    }
+    const box = stage.current
+    const unit = probe.current
+    if (!box || !unit) return
+
+    const measure = () => {
+      const px = unit.getBoundingClientRect().height / 100
+      const rect = box.getBoundingClientRect()
+      if (px <= 0 || rect.height <= 0) return
+      setSpace((was) => {
+        const w = Math.round(rect.width / px)
+        const h = Math.round(rect.height / px)
+        return was.w === w && was.h === h && was.narrow ? was : { w, h, narrow: true }
+      })
+    }
+
+    measure()
+    const watch = new ResizeObserver(measure)
+    watch.observe(box)
+    watch.observe(unit)
+    return () => watch.disconnect()
+  }, [stage, probe, narrow])
+
+  return space
 }
 
 /* ---- the swap ----
@@ -183,6 +238,28 @@ const whenIdle = (run: () => void) => {
   return () => window.clearTimeout(timer)
 }
 
+/** The project's write-up, in the order it is read.
+ *
+ *  Roles used to stand on their own under the title; they read as one more
+ *  fact about the project, so they take their place among the other folds
+ *  instead — right after the overview, where the standalone line used to sit.
+ *
+ *  At module scope rather than in the render because the screen has to know
+ *  which fold is *first* before it has drawn any of them: one is open on
+ *  arrival, and which one depends on what this project happens to have. */
+const foldsFor = (project: Entry['project'] | undefined) => {
+  if (!project) return []
+  return [
+    ...(project.intro ? [{ id: 'overview', title: 'project overview', text: project.intro, tags: undefined }] : []),
+    ...project.sections
+      .filter((section) => section.id === 'roles')
+      .map((section) => ({ id: section.id, title: section.title.toLowerCase(), text: section.text, tags: section.tags })),
+    ...project.sections
+      .filter((section) => section.id !== 'roles')
+      .map((section) => ({ id: section.id, title: section.title.toLowerCase(), text: section.text, tags: section.tags }))
+  ]
+}
+
 /** The model goes first. "Open a project" means the object, and the stills are
  *  what you step to afterwards — `model.ts` appends it because the index
  *  screen wants it last. */
@@ -194,6 +271,7 @@ const modelFirst = (entry: Entry): Frame[] => [
 interface LeadersProps {
   notes: Note[]
   box: ReturnType<typeof boxOf>
+  space: Space
   floats: boolean
   /** A fold the pointer is over, or a leader's own label. Anything named is
    *  lit and everything else is dimmed — one at a time, so the link reads as
@@ -215,9 +293,9 @@ interface LeadersProps {
 const IN_STEP = { from: 240, by: 170 }
 const OUT_STEP = { by: 90, most: 260 }
 
-function Leaders({ notes, box, floats, lit, onLit }: LeadersProps) {
+function Leaders({ notes, box, space, floats, lit, onLit }: LeadersProps) {
   const group = useRef<SVGGElement>(null)
-  const list = leadersFor(notes, box)
+  const list = leadersFor(notes, box, space)
 
   /* The labels ride the same bob the subject is on, read from what the float
      actually did this frame rather than from an animation timed to look like
@@ -227,6 +305,12 @@ function Leaders({ notes, box, floats, lit, onLit }: LeadersProps) {
      Damped a little, so the lines lag the head by a hair. Chasing it exactly
      makes the whole assembly feel welded together; trailing it makes the
      labels feel pinned *to* something. */
+  /* `drift` is published in the frame's own coordinates — a 1920×1080 box —
+     because that is the space the wide layout draws in. A narrow canvas is a
+     different number of units tall for the same amount of world, so the bob
+     has to be converted on the way in or the labels swing twice as far as the
+     head does. */
+  const perFrame = space.h / 1080
   useEffect(() => {
     if (!floats) return
     let raf = 0
@@ -234,16 +318,22 @@ function Leaders({ notes, box, floats, lit, onLit }: LeadersProps) {
     let y = 0
     const tick = () => {
       raf = requestAnimationFrame(tick)
-      x += (drift.x - x) * 0.18
-      y += (drift.y - y) * 0.18
+      x += (drift.x * perFrame - x) * 0.18
+      y += (drift.y * perFrame - y) * 0.18
       group.current?.setAttribute('transform', `translate(${x} ${y})`)
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [floats])
+  }, [floats, perFrame])
 
   return (
-    <svg className="mech-leaders" viewBox="0 0 1920 1080" preserveAspectRatio="none" data-lit={lit !== null} aria-hidden>
+    <svg
+      className="mech-leaders"
+      viewBox={`0 0 ${space.w} ${space.h}`}
+      preserveAspectRatio="none"
+      data-lit={lit !== null}
+      aria-hidden
+    >
       <g ref={group}>
       {list.map((leader, i) => {
         const y = leader.elbow[1]
@@ -673,7 +763,7 @@ function Tally() {
   const count = useSyncExternalStore(kills.subscribe, kills.snapshot, kills.snapshot)
   if (count === 0) return null
   return (
-    <div className="mech-tally" aria-label="Downed">
+    <div className="mech-tally" aria-label="Downed" data-arrive>
       <span>downed</span>
       <span>{String(count).padStart(3, '0')}</span>
     </div>
@@ -721,6 +811,10 @@ export default function Mech({ id, onProject, onHome }: Props) {
   const scale = useRef<HTMLElement>(null)
   useTypeScale(root, scale)
   const narrow = useNarrow()
+  const space = useStageSpace(stage, scale, narrow)
+  /* Blocks draw themselves in as they are reached — narrow only, where the
+     page scrolls and half of it starts below the fold. See `reveal.ts`. */
+  useReveal(root, narrow)
   /* What has been pinned in this browser, if anything. Subscribed rather than
      read once: the editor writes to the same store the leaders read from, so
      a drag moves the real line rather than a preview of one. */
@@ -768,6 +862,20 @@ export default function Mech({ id, onProject, onHome }: Props) {
     return () => window.clearTimeout(timer)
   }, [id, shownId])
 
+
+  /* One fold open on arrival, on the narrow layout — the overview, or
+     whatever this project leads with.
+ 
+     Narrow only, and not because the wide layout would not suit it: on a
+     phone the write-up is the bottom half of a scroll and a run of closed
+     drawers there is a screen that says nothing about the work, while on the
+     wide one it sits beside a subject that is already doing the talking.
+     Which is also the arrangement that was there before, and the desktop
+     composition is not this pass's to redraw. */
+  useEffect(() => {
+    if (!narrow) return
+    setOpen(foldsFor(entries.find((item) => item.project.id === shownId)?.project)[0]?.id ?? null)
+  }, [shownId, narrow])
 
   useEffect(() => {
     if (index === shown) return
@@ -925,18 +1033,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
   const { project } = entry
   const notes = notesFor(entry, current, drafts)
 
-  // Roles used to stand on their own under the title; they read as one more
-  // fact about the project, so they take their place among the other folds
-  // instead — right after the overview, where the standalone line used to sit.
-  const folds = [
-    ...(project.intro ? [{ id: 'overview', title: 'project overview', text: project.intro, tags: undefined }] : []),
-    ...project.sections
-      .filter((section) => section.id === 'roles')
-      .map((section) => ({ id: section.id, title: section.title.toLowerCase(), text: section.text, tags: section.tags })),
-    ...project.sections
-      .filter((section) => section.id !== 'roles')
-      .map((section) => ({ id: section.id, title: section.title.toLowerCase(), text: section.text, tags: section.tags }))
-  ]
+  const folds = foldsFor(project)
 
   return (
     <div className="mech" ref={root} data-boot={booting} data-pins={pinning} data-narrow={narrow}>
@@ -1160,11 +1257,12 @@ export default function Mech({ id, onProject, onHome }: Props) {
               to the frame that is leaving — and the ones arriving mount at the
               moment the next picture starts, which is what their own draw-in
               is timed against. */}
-          {!booting && phase !== 'hold' && !narrow && (
+          {!booting && phase !== 'hold' && (
             <Leaders
               key={`leaders-${current.id}`}
               notes={notes}
-              box={boxOf(current)}
+              box={boxOf(current, space)}
+              space={space}
               floats={current.kind !== 'flat'}
               lit={lit}
               onLit={setLit}
@@ -1178,27 +1276,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
           )}
         </div>
 
-        {/* What the leaders say, when there are no leaders.
-
-            Narrow, the lines are off: at this width the fan is drawn into a
-            box a few hundred points across, and three labels with their
-            values set under them land on top of each other and on top of the
-            subject — which is exactly what the readout is for and exactly
-            what it stopped doing. The same notes are set out flat instead,
-            under the picture they name, which is the shape the rest of this
-            layout is in anyway. */}
-        {narrow && notes.length > 0 && (
-          <dl className="mech-readout">
-            {notes.map((note) => (
-              <div key={note.label}>
-                <dt>{note.label}</dt>
-                <dd>{note.value}</dd>
-              </div>
-            ))}
-          </dl>
-        )}
-
-        <div className="mech-rail-wrap" ref={railWrap}>
+        <div className="mech-rail-wrap" ref={railWrap} data-arrive>
           <div className="mech-rail" ref={rail}>
             {frames.map((frame, i) => {
               const thumb = thumbOf(frame)
@@ -1230,23 +1308,30 @@ export default function Mech({ id, onProject, onHome }: Props) {
         </div>
 
         <section className="mech-side">
-          {/* The title is set to one line, and on a phone that is a promise
-              the type size cannot keep on its own: "mr. takahashi" fits at
-              the size the frame asks for and "red dead redemption 2" is two
-              lines of it, which is what the split in the middle of a name
-              was. `--title-len` hands the stylesheet the character count so
-              it can cap the size against the width — measured off the count
-              rather than the rendered box because the title types itself in
-              a character at a time, and a box measured mid-type is a box
-              that is still growing. See `.mech-title` in Mech.css. */}
-          <h1 className="mech-title" style={{ ['--title-len' as string]: project.title.length }}>
-            <Typed text={project.title} run={shownId} />
-          </h1>
-          {project.tagline && (
-            <p className="mech-tagline">
-              <SplitReveal text={project.tagline} run={shownId} delay={0.3} />
-            </p>
-          )}
+          {/* Its own block, which on the wide layout is simply the first two
+              things in this column — and on a narrow one is what lets the
+              name and the line under it sit *above* the picture while the
+              write-up stays below the tile strip. See `display: contents`
+              under `narrow viewports` in Mech.css. */}
+          <div className="mech-lede">
+            {/* The title is set to one line, and on a phone that is a promise
+                the type size cannot keep on its own: "mr. takahashi" fits at
+                the size the frame asks for and "red dead redemption 2" is two
+                lines of it, which is what the split in the middle of a name
+                was. `--title-len` hands the stylesheet the character count so
+                it can cap the size against the width — measured off the count
+                rather than the rendered box because the title types itself in
+                a character at a time, and a box measured mid-type is a box
+                that is still growing. See `.mech-title` in Mech.css. */}
+            <h1 className="mech-title" style={{ ['--title-len' as string]: project.title.length }}>
+              <Typed text={project.title} run={shownId} />
+            </h1>
+            {project.tagline && (
+              <p className="mech-tagline">
+                <SplitReveal text={project.tagline} run={shownId} delay={0.3} />
+              </p>
+            )}
+          </div>
 
           {/* Sized to its own content and sandwiched between two flexible
               spacers (`.mech-folds-wrap`'s ::before/::after) rather than
@@ -1256,35 +1341,21 @@ export default function Mech({ id, onProject, onHome }: Props) {
           <div className="mech-folds-wrap">
             <div className="mech-folds">
               {folds.map((fold, i) => {
-                /* Narrow, nothing folds. A phone has one column and no
-                   competing use for it, so the whole write-up is laid out
-                   open — every section under its own heading, split apart,
-                   which is the shape v2's project page had and the thing
-                   worth keeping out of it. The accordion exists on the
-                   desktop layout because there the copy has to live in a
-                   380-unit column beside the subject, not under it. */
-                const isOpen = narrow || open === fold.id
+                const isOpen = open === fold.id
                 return (
-                  <div className="mech-fold" key={fold.id} data-open={isOpen}>
-                    {narrow ? (
-                      <h2>
-                        <span className="mech-pip" />
-                        <SplitReveal text={fold.title} run={shownId} delay={0.5 + i * 0.05} />
-                      </h2>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          sound.select()
-                          setOpen(isOpen ? null : fold.id)
-                        }}
-                        onPointerEnter={() => setLit(fold.id)}
-                        onPointerLeave={() => setLit(null)}
-                        aria-expanded={isOpen}
-                      >
-                        <span className="mech-pip" />
-                        <SplitReveal text={fold.title} run={shownId} delay={0.5 + i * 0.05} />
-                      </button>
-                    )}
+                  <div className="mech-fold" key={fold.id} data-open={isOpen} data-arrive>
+                    <button
+                      onClick={() => {
+                        sound.select()
+                        setOpen(isOpen ? null : fold.id)
+                      }}
+                      onPointerEnter={() => setLit(fold.id)}
+                      onPointerLeave={() => setLit(null)}
+                      aria-expanded={isOpen}
+                    >
+                      <span className="mech-pip" />
+                      <SplitReveal text={fold.title} run={shownId} delay={0.5 + i * 0.05} />
+                    </button>
 
                     {/* Always mounted, and opened by growing its row from 0fr to
                         1fr — the only way a panel of unknown height can animate
@@ -1304,7 +1375,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
 
         <Tally />
 
-        <footer className="mech-foot">
+        <footer className="mech-foot" data-arrive>
           <a className="mech-comms" href="mailto:hello@tarloksingh.com">
             <span className="mech-comms-tag">comms</span>
             <span className="mech-comms-to">hello@tarloksingh.com</span>

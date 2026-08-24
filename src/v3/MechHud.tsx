@@ -34,10 +34,52 @@ const pad = (n: number, width = 4) => String(Math.round(n)).padStart(width, '0')
 const SPIN = 1.15
 
 function MechHud() {
+  const hud = useRef<HTMLDivElement>(null)
   const strip = useRef<SVGGElement>(null)
   const heading = useRef<SVGTextElement>(null)
   const readX = useRef<HTMLSpanElement>(null)
   const readY = useRef<HTMLSpanElement>(null)
+
+  /* The panel moves with the page.
+ 
+     The grid is a fixed layer, which on the wide layout is right — nothing
+     scrolls there, the whole composition is the window. Narrow, the page runs
+     under it, and a grid welded to the glass while the readout slides past
+     reads as a screenshot with a texture on top rather than as a surface the
+     screen is printed on.
+ 
+     So it takes the scroll and moves, slower than the page — the grid is
+     *behind* everything and parallax is the only thing that says so. One
+     custom property, written from a rAF and only when it has changed, and the
+     stylesheet does the rest.
+ 
+     Captured, because on this layout the scroller is `.mech` rather than the
+     document, and a listener on the window would never hear it. */
+  useEffect(() => {
+    const node = hud.current
+    if (!node) return
+    let raf = 0
+    let last = -1
+
+    const read = (event: Event) => {
+      const target = event.target as HTMLElement | Document | null
+      const top = target && 'scrollTop' in target ? (target as HTMLElement).scrollTop : window.scrollY
+      if (raf) return
+      raf = requestAnimationFrame(() => {
+        raf = 0
+        const at = Math.round(top)
+        if (at === last) return
+        last = at
+        node.style.setProperty('--scrolled', `${at}px`)
+      })
+    }
+
+    window.addEventListener('scroll', read, { passive: true, capture: true })
+    return () => {
+      window.removeEventListener('scroll', read, { capture: true })
+      cancelAnimationFrame(raf)
+    }
+  }, [])
 
   useEffect(() => {
     if (!window.matchMedia('(pointer: fine)').matches) return
@@ -92,7 +134,7 @@ function MechHud() {
   }, [])
 
   return (
-    <div className="mech-hud" aria-hidden>
+    <div className="mech-hud" ref={hud} aria-hidden>
       <div className="mech-grid" />
       <div className="mech-bloom" />
       <div className="mech-sweep" />

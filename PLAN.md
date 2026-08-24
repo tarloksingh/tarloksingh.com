@@ -191,6 +191,7 @@ checking, so the next reader knows where to be suspicious.
 | Phase 4: "write `HeroModel.tsx` for Takahashi's loading and framing" | Unnecessary. `MechModel` is mounted as a second layer on the home stage, unchanged — two WebGL contexts, one running at a time, and his rig stays exactly one file. |
 | Nothing said about Draco | `capsule-c1.glb` is Draco-compressed; `useGLTF` needs `'/draco/'` passed or it reaches for Google's CDN. |
 | "verify with a handful of `Page.captureScreenshot` calls" | Correct, but it did not say how long to wait. Under SwiftShader this app needs 15–20 seconds before it has painted anything. |
+| Nothing said about the two stylesheets sharing a namespace | `src/site/base.css` claims `[data-reveal]` globally and both stylesheets are in one bundle, so a v3 element marked `data-reveal` picks up v2's hidden-until-scrolled styling — on *desktop*, where v3 has no scroll reveal at all. Any bare `data-*` selector is shared; namespace them. |
 
 ---
 
@@ -206,6 +207,22 @@ panels give way to `narrowTuning.ts`.
 Full writeup: **README.md → "Narrow viewports"**. Every rule is scoped under
 `.mech[data-narrow='true']` or the 700px query, so desktop is untouched by
 construction.
+
+A second pass on it went further, and the notes behind it are worth keeping
+because none of them were guesses about phones in general — they were things
+looked at on a real screen:
+
+- **The reading order is not the markup order.** The frame is a flex column
+  below the breakpoint and `.mech-side` is dissolved with `display: contents`,
+  so the name sits above the picture and the write-up below the tile strip.
+- **The leaders are back**, in a canvas with the stage's own proportions. They
+  were never too small — they were being stretched two to one by a 1920×1080
+  viewBox on a 390×409 box. See README.md → "The leaders, on a phone".
+- **One section open on arrival**, the rest on tap, the same accordion the
+  wide layout has.
+- **Everything arrives as it is reached**: `SplitReveal` holds its cascade
+  until a line is in view, blocks fade up on `data-arrive`, and the grid moves
+  with the scroll.
 
 The one thing worth repeating here because it is a trap: `scrollIntoView`
 must name **both** axes. `block` defaults to `'start'` when left out, and
@@ -292,15 +309,20 @@ Adding the second meant generalising the gun: `quarry.hit` was a single slot
 one creature claimed on mount, so a second would have silently replaced the
 first. It is `quarry.creatures`, a `Set`, now.
 
-**Open: should shooting work on touch?** Still no. All of it — reticle, gun,
-both creatures — is `pointer: fine` only, which is a deliberate and consistent
-choice across five files. Making it work on touch is a real design problem,
-not a port: there is no cursor to aim with, so tapping the creature directly
-is the only sane equivalent, and that turns "lead a moving target" into "tap
-the thing", which is a different game. And the moth *specifically* cannot
-survive the translation — it is built around being startled by a cursor
-approaching, and a touch screen has nothing approaching anything. **Ask before
-building.**
+**Shooting works on touch now** — asked for explicitly, and it turned out not
+to be the compromise it looked like. A tap fires a bolt *at* the point you
+touched, so it is still a shot rather than a swat; the bolt still has to reach
+the creature; and the moth, which cannot be approached by a finger, is
+startled by the page moving instead. The one thing that stayed desktop-only is
+the reticle, because there is nothing to draw a reticle around.
+
+Three details that are easy to get wrong and are written up in
+**README.md → "Two animals, and a tally"**: a mouse fires on `pointerdown`
+and a finger on `pointerup` (every scroll starts with a `pointerdown`, so
+firing there is a bolt per flick); creatures are named exceptions in the gun's
+`allowed` check so a press on one is a shot rather than a swat; and both get
+an invisible hit area on a coarse pointer, because they are drawn at the size
+they should look.
 
 ## Phase 10 — The tally · **done**
 
@@ -337,7 +359,12 @@ code.
 3. **Real audio.**
 4. **The per-piece and per-subject sizes** want the user's eye. Every one is a
    slider with a copy button; nothing is baked.
-5. **Touch shooting** — a real design decision, described under Phase 9.
+5. **The audio deck's design** — the user has one coming. The colour pass in
+   Phase 11 is in and driven by the real analyser signal, but the *shape* of
+   the thing (a strip on the wide layout, a floating key with a sheet on a
+   phone) is this pass's guess and is expected to be replaced. Nothing else
+   depends on it: `MechDeck.tsx` owns its own markup on both layouts and the
+   only thing outside it is `.mech-deck*` in Mech.css.
 6. **The five heroes are a choice, not a fact.** The roster is `HEROES` in
    `heroes.ts` and reordering or replacing an entry is a few lines. The
    Solomon rider is the only one with no case study behind it, and its readout
