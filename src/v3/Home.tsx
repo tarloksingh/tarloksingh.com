@@ -11,6 +11,7 @@ import SplitReveal from './SplitReveal'
 import { HEROES } from './heroes'
 import { useHeroTuning } from './heroTuning'
 import { useModelTuning } from './modelTuning'
+import { useNarrow } from './narrow'
 import { kills } from './kills'
 import { wallItems } from './model'
 import { sound } from './sound'
@@ -61,6 +62,7 @@ interface Props {
 
 export default function Home({ onOpen, onBrowse }: Props) {
   const wall = useWallTuning()
+  const narrow = useNarrow()
 
   /* Two indices, not one. `pick` is what has been chosen and `shown` is what
      is on the stage — the second trails the first by the swap, which is what
@@ -105,8 +107,12 @@ export default function Home({ onOpen, onBrowse }: Props) {
       {typeof document !== 'undefined'
         ? createPortal(
             <>
-              <Leva collapsed hidden={!import.meta.env.DEV} titleBar={{ title: 'Wall tuning' }} theme={PANEL} />
-              {import.meta.env.DEV && (
+              {/* Both panels are off at phone width, for the same reason the
+                  project screen's are: Leva's own minimum is most of a
+                  390-point window, and two of them stacked cover the subject
+                  they are for. */}
+              <Leva collapsed hidden={!import.meta.env.DEV || narrow} titleBar={{ title: 'Wall tuning' }} theme={PANEL} />
+              {import.meta.env.DEV && !narrow && (
                 <div className="v3-hero-panel">
                   <LevaPanel store={tuning.store} collapsed fill titleBar={{ title: 'Hero', drag: false }} theme={PANEL} />
                 </div>
@@ -210,6 +216,8 @@ export default function Home({ onOpen, onBrowse }: Props) {
         ))}
       </nav>
 
+      <Tally />
+
       <footer className="v3-foot v3-over">
         {/* The same address it always was, given the shape the rest of the
             instrument panel has — a strip that names what it is and the value
@@ -220,7 +228,6 @@ export default function Home({ onOpen, onBrowse }: Props) {
         </a>
       </footer>
 
-      <Tally />
     </div>
   )
 }

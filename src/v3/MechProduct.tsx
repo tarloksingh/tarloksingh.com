@@ -145,14 +145,27 @@ function Studio({ intensity, exposure }: { intensity: number; exposure: number }
  *  until a reload. */
 function Lens({ focalLength, fill }: { focalLength: number; fill: number }) {
   const camera = useThree((state) => state.camera) as PerspectiveCamera
+  const size = useThree((state) => state.size)
+
+  /* `fill` is a fraction of the frame's *height*, and a piece is normalised on
+     its longest edge — so a wide one asked to fill more of the height than
+     the frame is wide runs off the sides. Which is exactly what a phone is:
+     the stage there is about as wide as it is tall, and a monitor framed for
+     a 16:9 island came out cropped at both ends.
+
+     Capped against the frame's own aspect rather than hidden behind a
+     narrow-only number, because it is not about phones — it is true of any
+     window shape and any subject. */
+  const aspect = size.width / Math.max(1, size.height)
+  const held = Math.min(fill, aspect * 0.92)
 
   useEffect(() => {
     camera.fov = fovForFocalLength(focalLength)
-    camera.position.set(0, 0, distanceFor(focalLength, fill))
+    camera.position.set(0, 0, distanceFor(focalLength, held))
     camera.near = camera.position.z * 0.05
     camera.far = camera.position.z * 6
     camera.updateProjectionMatrix()
-  }, [camera, focalLength, fill])
+  }, [camera, focalLength, held])
 
   return null
 }

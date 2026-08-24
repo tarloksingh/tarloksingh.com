@@ -320,10 +320,17 @@ stylesheet the character count and 0.66 is the average advance of an uppercase
 Clash Display character, counted rather than measured because the title types
 itself in a character at a time and a box measured mid-type is still growing.
 
-Two behaviours branch on the flag. The rail turns sideways — a swipe strip
+The breakpoint itself lives in `narrow.ts` — one query, one store, read by
+both screens. Two copies of a media query is two copies that can drift, and
+the home screen needs the same call: its chrome hangs off the same 952-unit
+column, which centred on a phone puts the wordmark and the index link off
+both edges.
+
+Three behaviours branch on the flag. The rail turns sideways — a swipe strip
 instead of a list — so `Mech.tsx`'s scrubber measures
 `scrollWidth`/`scrollLeft` instead of `scrollHeight`/`scrollTop` and writes a
-different pair of custom properties for the CSS to read. And the arrow keys'
+different pair of custom properties for the CSS to read. The dev panels are
+hidden on both screens. And the arrow keys'
 `scrollIntoView` names *both* axes: `block` defaults to `'start'` when it's
 left out, and narrow the page itself is the vertical scroller, so asking only
 for `inline: 'nearest'` scrolled the whole window down to put the tile strip
@@ -373,6 +380,14 @@ loading. There is nothing much left to reuse anyway: `exhibitFor` hands back a
 piece already scaled, lit for a case and turned for a room, and this stage
 normalises the bounding box itself, lights it in its own studio and takes its
 turn off a panel.
+
+One more thing falls out of normalising on the longest edge, and it is not
+about phones even though a phone is where it showed up: `fill` is a fraction
+of the frame's *height*, so a wide subject asked to fill more of the height
+than the frame is *wide* runs off both sides. `Lens` caps `fill` against the
+frame's own aspect for that reason — true of any window shape and any
+subject, and the reason a point-of-sale terminal came out cropped at both ends
+on a stage that is about as wide as it is tall.
 
 Each piece is `Center`ed and `Resize`d to one world unit before framing —
 every one of them was built at whatever size suited the thing it is, and the

@@ -818,17 +818,42 @@
    The readout comes out of the corner and sits under the subject, where there
    is room for it. */
 @media (max-width: 700px) {
-  .v3-hero-stage {
-    top: 42%;
-    width: 94vw;
-    height: min(52vh, 460px);
+  /* The chrome hangs off a 952-unit column, which is two and a half times a
+     phone. Centred, that puts the wordmark and the index link off both edges
+     — so at this width they hang off the window instead, like everything
+     else on the page. */
+  .v3-head,
+  .v3-enter,
+  .v3-foot {
+    width: auto;
+    margin: 0;
+    padding-left: 16px;
+    padding-right: 16px;
   }
 
+  .v3-head {
+    padding-top: 18px;
+  }
+
+  .v3-foot {
+    justify-content: center;
+    padding-top: 10px;
+    padding-bottom: 18px;
+  }
+
+  .v3-hero-stage {
+    top: 38%;
+    width: 96vw;
+    height: min(46vh, 400px);
+  }
+
+  /* Out of the corner and under the subject, where there is room for it —
+     and clear of the roster below, which is what it used to land on. */
   .v3-hero-read {
     right: auto;
     left: 0;
     top: auto;
-    bottom: 116px;
+    bottom: 158px;
     width: 100%;
     max-width: none;
     align-items: center;
@@ -859,9 +884,12 @@
     min-width: 132px;
   }
 
+  /* The one thing on this screen with nowhere else to be. It shares the
+     bottom edge with the comms strip rather than sitting on it. */
   .v3-tally {
-    left: 16px;
-    bottom: 26px;
+    position: static;
+    justify-content: center;
+    padding-bottom: 6px;
   }
 }
 

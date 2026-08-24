@@ -13,6 +13,7 @@ import MechDeck from './MechDeck'
 import MechMenu from './MechMenu'
 import { useNarrowTuning } from './narrowTuning'
 import { sound } from './sound'
+import { useNarrow } from './narrow'
 import { drift, flinch, quarry } from './subject'
 import { kills } from './kills'
 import { entries, thumbOf, type Entry, type Frame } from './model'
@@ -92,28 +93,6 @@ const useTypeScale = (root: RefObject<HTMLDivElement | null>, probe: RefObject<H
     return () => watch.disconnect()
   }, [root, probe])
 }
-
-/* ---- narrow viewports ----
-
-   Below this the frame has nowhere to put `.mech-side` and `.mech-rail-wrap`
-   beside `.mech-stage`: both keep the frame's full height at any width, so
-   on a narrow one they shrink to a sliver and sit on top of the stage
-   instead of next to it, rather than getting smaller the way the rest of the
-   composition does. Mech.css restacks the chrome into normal document flow
-   under `[data-narrow='true']` on the root; this is the one thing the CSS
-   can't decide on its own, because the rail also has to swap which axis it
-   scrolls on. See PLAN.md, Phase 1. */
-const NARROW_QUERY = '(max-width: 700px)'
-
-const subscribeNarrow = (onChange: () => void) => {
-  const mql = window.matchMedia(NARROW_QUERY)
-  mql.addEventListener('change', onChange)
-  return () => mql.removeEventListener('change', onChange)
-}
-
-const snapshotNarrow = () => window.matchMedia(NARROW_QUERY).matches
-
-const useNarrow = () => useSyncExternalStore(subscribeNarrow, snapshotNarrow, snapshotNarrow)
 
 /* ---- the swap ----
 
