@@ -266,15 +266,6 @@ whatever it led with). Both are `setOpen(null)` now — the subject is on the
 stage and the title above it, and an open drawer is the one thing in that
 column nobody opened.
 
-**The bird is filled, not drawn.** A solid `--bird` red silhouette with the
-eye punched through it (`BIRD_SOLID` in `site/frames.ts`, `fill-rule: evenodd`
-on the `<svg>` — the eye and the body are two subpaths of one `d`, and that
-rule is the whole mechanism). Nothing under `.mech-bird path` may set a `fill`
-other than `currentColor` or the eye fills back in. The solid shapes are
-derived from the same curves as the strokes above them so the two cannot
-drift. `--bird` is deeper than `--moth`, deliberately: they are the two flying
-targets and have to stay tellable apart.
-
 **The boot deals the grid's cells in.** `MechTiles.tsx`, once per load, a ring
 travelling out from the middle of the window at the grid's own 46-unit pitch,
 then it takes itself down. No rAF — one delay per cell, computed from its

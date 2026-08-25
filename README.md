@@ -1463,27 +1463,6 @@ at the other. You lead it and you hit it. A second bird with different wings
 would be a recolour, so the moth is built around the other half of hunting —
 the part where something is already there and you have not noticed it.
 
-**The bird is filled now, not drawn.** It was v2's outline in the warning
-lamp's orange — the same hairline weight as the reticle, the compass and the
-leaders, which on a page made almost entirely of hairlines is one more
-instrument rather than a thing crossing in front of them. It is a solid red
-silhouette instead, in a red of its own (`--bird`, deeper than the moth's, so
-the two flying targets stay tellable apart at a glance) — **with its eye
-punched clean through it**. That is the outline inverted in both senses: the
-body that was empty is now solid, and the eye that was nothing is now the only
-place the panel shows through.
-
-The mechanism is one CSS property. The eye and the body are two subpaths of a
-single `d`, and `fill-rule: evenodd` on the `<svg>` is the entire reason the
-inner loop is a hole rather than a second bird — which also means nothing
-under `.mech-bird path` may set a `fill` other than `currentColor` without the
-eye filling back in. The shapes themselves (`BIRD_SOLID` and the two solid
-wings in `site/frames.ts`) are derived from the strokes above them rather than
-drawn again — same back line, same belly, same beak — so the two versions of
-this bird cannot drift apart. What is added is width where a stroke had none:
-the tail goes out and comes back on a lower curve instead of retracing itself,
-and each wing closes across its root.
-
 A moth settles somewhere on the panel and sits still, dim, wings shut, at a
 size you could easily take for another mark on the readout. Bring the reticle
 within about 120px and it *startles*: it bursts off its perch and flies a

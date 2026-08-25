@@ -51,16 +51,8 @@
      than as something leaving the page. */
   --shot: #ff8f3a;
   --shot-rgb: 255, 143, 58;
-  /* The bird, which is a filled shape rather than a drawn one and therefore
-     the largest area of colour on the screen. Red, and its own red: deeper
-     and further from the orange than either the warning lamp or the bolt, so
-     a solid of it next to `--shot` is obviously not made of the same stuff. */
-  --bird: #d81f2a;
-  --bird-rgb: 216, 31, 42;
   /* The moth, on its own colour rather than the panel's green — it needs to
-     read as a different kind of target from the bird at a glance, which now
-     means a lighter, pinker red than the bird's, against a shape rather than
-     an outline. */
+     read as a different kind of target from the bird at a glance. */
   --moth: #ff4d4d;
   --moth-rgb: 255, 77, 77;
   /* The room the panel is lit in: a cold blue off one side and a lime sign
@@ -1870,9 +1862,9 @@
   border: 0;
   background: none;
   pointer-events: auto;
-  /* Its own red. The one solid on a screen of hairlines, so it cannot be the
-     warning lamp's orange or the bolt's — see `--bird`. */
-  color: var(--bird);
+  /* Warm, like the compass marker and the deck — not another green thing on
+     a green panel. */
+  color: var(--warn);
   transform: translate(-50%, -50%);
 }
 
@@ -1880,21 +1872,14 @@
   width: 100%;
   height: 100%;
   overflow: visible;
-  filter: drop-shadow(0 0 5px rgba(var(--bird-rgb), 0.55));
+  filter: drop-shadow(0 0 5px rgba(var(--warn-rgb), 0.5));
 }
 
-/* Filled, not stroked — and the eye is a hole through the fill rather than a
-   dot drawn on top of it. `fill-rule` is on the `<svg>` in MechBird.tsx: the
-   eye and the body are two subpaths of one path, and `evenodd` is the entire
-   mechanism that makes the inner loop a cut-out. Nothing here may set a
-   `fill` other than `currentColor`, or the hole fills back in.
-
-   A hairline of the same colour around the edge, because a shape this small
-   loses its silhouette to antialiasing at the tail and the beak tip. */
 .mech-bird path {
-  fill: currentColor;
+  fill: none;
   stroke: currentColor;
-  stroke-width: 0.9;
+  stroke-width: 2.2;
+  stroke-linecap: round;
   stroke-linejoin: round;
 }
 
@@ -1929,9 +1914,8 @@
   }
 }
 
-/* Hit. The bird goes white for a frame — the whole shape, now, rather than
-   an outline of one — and the ring it was carrying blows out through it; the
-   tumble itself is gravity, in MechBird.tsx. */
+/* Hit. The bird goes white for a frame and the ring it was carrying blows
+   out through it; the tumble itself is gravity, in MechBird.tsx. */
 .mech-sky[data-mode='hit'] .mech-bird {
   color: #fff;
 }
@@ -1948,9 +1932,9 @@
   width: 12px;
   height: 12px;
   margin: -6px 0 0 -6px;
-  /* The bird's own red, so a hit reads as that thing breaking apart rather
-     than as a green flash going off on a red one. */
-  border: 1.6px solid var(--bird);
+  /* Warm, matching the bird itself — a hit reads as the same warm thing
+     breaking apart, not a green flash on a warm bird. */
+  border: 1.6px solid var(--warn);
   border-radius: 50%;
   opacity: 0;
   pointer-events: none;
