@@ -26,28 +26,6 @@
    **Type is small and there is a lot of it.** Labels are lower-case, tracked
    out, and dim. The only large thing on the screen is the name. */
 
-/* The panel's technical face, for the one block of running prose on it.
-
-   `Chakra Petch` has been vendored in `public/fonts/` and unused; it is the
-   right voice for this and nothing else on the site wants it. The profile was
-   set in the page's Helvetica at body size and colour, which made it the one
-   humanist, low-contrast, ragged thing on a screen of hard tracked caps — it
-   read as a paragraph pasted onto an instrument rather than as something the
-   instrument had printed. Same words, in a face with the squared terminals
-   and the flat curves the rest of this panel is drawn with.
-
-   One weight, and a `.ttf` because that is what is in the repo. It is loaded
-   for one paragraph, so `swap` matters more than the twenty kilobytes: the
-   words are readable in Helvetica from the first paint and re-set when the
-   file lands. */
-@font-face {
-  font-family: 'Chakra Petch';
-  src: url('/fonts/Chakra_Petch/ChakraPetch-Light.ttf') format('truetype');
-  font-weight: 300;
-  font-display: swap;
-  font-style: normal;
-}
-
 /* Centred by flex rather than by `translateY(-50%)`, and that is not a style
    preference — it is load-bearing.
 
@@ -76,10 +54,22 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: calc(74 * var(--px));
+  /* Tighter than a page's worth of sections — the reference has almost no air
+     between one instrument and the next, and the gap this file used to run
+     read as a website's section spacing sitting on top of a dashboard. */
+  gap: calc(56 * var(--px));
 
   /* Every glow in this file is a multiple of this. One knob, on the panel. */
   --g: var(--cluster-glow, 1);
+
+  /* The panel's own phosphor, paler and less saturated than the site's
+     `--accent` — the reference is a muted sage-mint, not a terminal green,
+     and every element in this file inherits these two rather than the global
+     pair. Scoped here rather than changed at the root: the grid, the cursor
+     and a project screen all read off the root value and none of them asked
+     to move. */
+  --accent: #a2e0cc;
+  --accent-rgb: 162, 224, 204;
 }
 
 /* The haze the whole panel sits in.
@@ -96,10 +86,14 @@
 .mech-cluster::before {
   content: '';
   position: absolute;
-  inset: calc(-140 * var(--px)) calc(-120 * var(--px));
+  inset: calc(-260 * var(--px)) calc(-180 * var(--px));
   background:
-    radial-gradient(ellipse 44% 36% at 50% 32%, rgba(var(--accent-rgb), calc(0.085 * var(--g))), transparent 70%),
-    radial-gradient(ellipse 38% 30% at 50% 84%, rgba(var(--accent-rgb), calc(0.06 * var(--g))), transparent 72%);
+    radial-gradient(ellipse 50% 42% at 50% 22%, rgba(var(--accent-rgb), calc(0.11 * var(--g))), transparent 72%),
+    radial-gradient(ellipse 40% 32% at 50% 88%, rgba(var(--accent-rgb), calc(0.075 * var(--g))), transparent 74%),
+    /* The warm pool the reference's brake light throws — a single wash the
+       size of half the panel, most of it faded out before it reaches
+       anything else lit. Nothing on this screen is `--warn` this large. */
+    radial-gradient(ellipse 46% 34% at 50% 0%, rgba(var(--warn-rgb), calc(0.05 * var(--g))), transparent 68%);
   pointer-events: none;
   z-index: -1;
 }
@@ -148,13 +142,13 @@
   position: relative;
   display: block;
   padding: calc(4 * var(--px)) calc(11 * var(--px));
-  border: 1px solid rgba(var(--accent-rgb), 0.16);
+  border: 1px solid rgba(var(--accent-rgb), 0.12);
   border-radius: calc(2 * var(--px));
   font-size: calc(9.5 * var(--type));
   letter-spacing: calc(2.2 * var(--type));
   text-transform: uppercase;
   font-style: normal;
-  color: rgba(var(--accent-rgb), 0.22);
+  color: rgba(var(--accent-rgb), 0.16);
   transition: color 260ms linear, border-color 260ms linear, background-color 260ms linear;
 }
 
@@ -202,37 +196,34 @@
    is left over. */
 .mech-band-top {
   display: grid;
-  grid-template-columns: calc(310 * var(--px)) 1fr calc(310 * var(--px));
+  grid-template-columns: calc(272 * var(--px)) 1fr calc(272 * var(--px));
   align-items: center;
-  gap: calc(40 * var(--px));
+  gap: calc(34 * var(--px));
 }
 
 /* ---- the profile ----
 
-   A readout with a housing, not a paragraph in a margin. The label sits on a
-   hairline the way every caption on the reference does, the text is in the
-   panel's technical face, and the whole block is bracketed so it reads as
-   something mounted rather than something typed. */
+   Plain system text under a label and a rule, not a paragraph in a box. The
+   first pass bracketed it like a picture and set it in a humanist face —
+   Chakra Petch, now unused again — at body size, which made it read as a
+   card floating on the panel rather than something the panel had printed.
+   What a MAGI screen or a Blade Runner overlay both do with a block of prose
+   is set it in the same monospace their system text already is, at no more
+   weight than a label, with nothing drawn around it. */
 
 .mech-profile {
-  position: relative;
-  padding: calc(16 * var(--px)) calc(18 * var(--px));
-  border: 1px solid rgba(var(--accent-rgb), 0.18);
-  background: rgba(var(--accent-rgb), 0.022);
   animation: mech-cluster-in 700ms 220ms var(--ease) both;
 }
 
 .mech-profile p {
-  margin: calc(12 * var(--px)) 0 0;
-  font-family: 'Chakra Petch', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  font-weight: 300;
+  margin: calc(11 * var(--px)) 0 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   /* Pulled toward the phosphor rather than neutral white. Plain white on this
      panel is the one colour nothing else is, and it made the block read as a
      different document sitting on the screen. */
-  color: rgba(206, 232, 218, 0.78);
-  font-size: calc(12.5 * var(--type));
-  letter-spacing: calc(0.2 * var(--type));
-  line-height: 1.54;
+  color: rgba(var(--accent-rgb), 0.62);
+  font-size: calc(11.5 * var(--type));
+  line-height: 1.62;
 }
 
 /* The label's own rule, under it and stopping short — the rules on the
@@ -240,33 +231,6 @@
 .mech-profile .mech-cap {
   padding-bottom: calc(9 * var(--px));
   border-bottom: 1px solid rgba(var(--accent-rgb), 0.16);
-}
-
-/* Two corner brackets, top-left and bottom-right — the same furniture a
-   picture gets a full set of on a project screen. Two rather than four,
-   because this is a block of type and not a subject. */
-.mech-profile::before,
-.mech-profile::after {
-  content: '';
-  position: absolute;
-  width: calc(13 * var(--px));
-  height: calc(13 * var(--px));
-  border: 1px solid var(--accent);
-  opacity: 0.7;
-}
-
-.mech-profile::before {
-  left: calc(-1 * var(--px));
-  top: calc(-1 * var(--px));
-  border-right: 0;
-  border-bottom: 0;
-}
-
-.mech-profile::after {
-  right: calc(-1 * var(--px));
-  bottom: calc(-1 * var(--px));
-  border-left: 0;
-  border-top: 0;
 }
 
 /* ---- the identity ----
@@ -298,9 +262,9 @@
      a wash of light on the housing well past the glyph — and the third term is
      the one that turns "green type with a glow" into "a lamp behind glass". */
   text-shadow:
-    0 0 calc(8 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.55 * var(--g))),
-    0 0 calc(34 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.3 * var(--g))),
-    0 0 calc(90 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.16 * var(--g)));
+    0 0 calc(9 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.58 * var(--g))),
+    0 0 calc(42 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.34 * var(--g))),
+    0 0 calc(130 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.2 * var(--g)));
   animation: mech-flicker 7s steps(1, end) infinite;
 }
 
@@ -312,7 +276,7 @@
 .mech-readout {
   position: relative;
   margin: calc(20 * var(--px)) auto 0;
-  width: calc(620 * var(--px));
+  width: calc(680 * var(--px));
   max-width: 100%;
   padding: calc(13 * var(--px)) calc(20 * var(--px));
   border: 1px solid rgba(var(--accent-rgb), 0.3);
@@ -338,8 +302,8 @@
 .mech-readout::before {
   content: '';
   position: absolute;
-  inset: calc(-40 * var(--px)) calc(-60 * var(--px));
-  background: radial-gradient(ellipse at 50% 50%, rgba(var(--accent-rgb), calc(0.12 * var(--g))), transparent 70%);
+  inset: calc(-60 * var(--px)) calc(-90 * var(--px));
+  background: radial-gradient(ellipse at 50% 50%, rgba(var(--accent-rgb), calc(0.15 * var(--g))), transparent 72%);
   pointer-events: none;
   z-index: -1;
   transition: opacity 300ms linear;
@@ -366,48 +330,60 @@
    that project touches — usually two or three of the five lit at once, which
    is the whole reason it is a scale and not a single needle.
 
-   Same strip, same size, same colour either way, which is what keeps the swap
-   reading as one instrument changing channel rather than as two captions
-   taking turns. */
+   Five small vertical meters now, not five words with a tick over the lit
+   ones. A word that changes colour reads as a caption; a bar that fills reads
+   as an instrument — the same bar-and-label grammar the counts use on the
+   other side of the readout, and the scale was the one thing on this half of
+   the panel with no mass to match them. */
 .mech-scale-row {
   display: flex;
   justify-content: center;
+  align-items: flex-end;
+  gap: calc(22 * var(--px));
+  margin-top: calc(18 * var(--px));
+}
+
+.mech-field-gauge {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: calc(24 * var(--px));
-  margin-top: calc(14 * var(--px));
-  font-size: calc(10.5 * var(--type));
-  letter-spacing: calc(2.4 * var(--type));
-  text-transform: uppercase;
+  gap: calc(7 * var(--px));
 }
 
-.mech-field {
-  position: relative;
-  color: rgba(var(--accent-rgb), 0.22);
-  transition: color 260ms linear, text-shadow 260ms linear;
+/* Filled from the foot up, like `.mech-gauge-bar` — a field is on or it is
+   not, so there is no partial height to plot, only a full bar or a ghost
+   one. */
+.mech-field-bar {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: calc(2 * var(--px));
+  width: calc(11 * var(--px));
+  height: calc(38 * var(--px));
 }
 
-.mech-field[data-on='true'] {
-  color: var(--accent);
-  text-shadow: 0 0 calc(9 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.6 * var(--g)));
+.mech-field-bar i {
+  flex: 1;
+  min-height: 0;
+  background: rgba(var(--accent-rgb), 0.08);
+  transition: background-color 220ms linear, box-shadow 220ms linear;
 }
 
-/* A tick over the lit ones, so the strip reads as a scale being *marked*
-   rather than as words changing colour. */
-.mech-field::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 4 * var(--px));
-  width: calc(9 * var(--px));
-  height: calc(2 * var(--px));
-  transform: translateX(-50%) scaleX(0);
+.mech-field-gauge[data-on='true'] .mech-field-bar i {
   background: var(--accent);
-  transition: transform 220ms var(--ease);
-  box-shadow: 0 0 calc(7 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.8 * var(--g)));
+  box-shadow: 0 0 calc(5 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.55 * var(--g)));
 }
 
-.mech-field[data-on='true']::before {
-  transform: translateX(-50%) scaleX(1);
+.mech-field-label {
+  font-size: calc(9.5 * var(--type));
+  letter-spacing: calc(2 * var(--type));
+  text-transform: uppercase;
+  color: rgba(var(--accent-rgb), 0.28);
+  transition: color 220ms linear, text-shadow 220ms linear;
+}
+
+.mech-field-gauge[data-on='true'] .mech-field-label {
+  color: var(--accent);
+  text-shadow: 0 0 calc(9 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.55 * var(--g)));
 }
 
 /* ---- the counts ---- */
@@ -649,7 +625,11 @@
   inset: 0;
   background: var(--accent);
   mix-blend-mode: color;
-  opacity: 0.7;
+  /* Down from 0.7 — full strength flattened every subject to one uniform
+     wash, which is a large part of why nothing in the bank read as a
+     separate, pressable thing: colour is the one cue the eye uses to tell
+     twelve renders apart, and the veil was removing exactly that. */
+  opacity: 0.42;
 }
 
 .mech-slot {
@@ -658,8 +638,8 @@
   flex-direction: column;
   height: 100%;
   padding: 0;
-  border: 1px solid rgba(var(--accent-rgb), 0.2);
-  background: rgba(var(--accent-rgb), 0.025);
+  border: 1px solid rgba(var(--accent-rgb), 0.14);
+  background: rgba(var(--accent-rgb), 0.02);
   color: inherit;
   text-align: left;
   cursor: inherit;
@@ -671,6 +651,16 @@
     box-shadow 220ms var(--ease);
   animation: mech-slot-in 460ms var(--ease) both;
   animation-delay: calc(420ms + var(--i, 0) * 34ms);
+}
+
+/* Mouse affordance, ahead of and independent from selection — a bank of
+   twelve things to press should say so the instant the pointer lands on one,
+   not only once it has already been picked. */
+@media (hover: hover) {
+  .mech-slot:hover {
+    border-color: rgba(var(--accent-rgb), 0.4);
+    background: rgba(var(--accent-rgb), 0.05);
+  }
 }
 
 @keyframes mech-slot-in {
@@ -721,7 +711,11 @@
   flex: none;
   height: calc(var(--cluster-slot, 150) * var(--px));
   overflow: hidden;
-  background: radial-gradient(ellipse at 50% 40%, rgba(var(--accent-rgb), 0.06), #050806 72%);
+  /* Flat, not a vignette. A radial fade to black behind the subject was the
+     first pass and it did two things at once, both wrong: it darkened
+     exactly the part of the bay a thumb or a pointer aims for, and it read as
+     a photo mounted in the panel rather than a live instrument reading. */
+  background: #050806;
 }
 
 /* No material yet — Visa is under an NDA, Solomon's write-up is still to come.
@@ -770,7 +764,7 @@
   letter-spacing: calc(0.5 * var(--type));
   line-height: 1.18;
   text-transform: uppercase;
-  color: rgba(var(--accent-rgb), 0.75);
+  color: rgba(var(--accent-rgb), 0.6);
   transition: color 180ms linear, text-shadow 180ms linear;
   display: -webkit-box;
   -webkit-box-orient: vertical;

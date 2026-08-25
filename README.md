@@ -183,9 +183,9 @@ and the effect was a screensaver. An instrument does not change colour.
 
 So home is a panel now, laid out the way a car's instrument cluster is: a row
 of indicator lamps along the top, one dominant readout across the middle with
-a smaller cluster either side of it, and a bar graph filling the bottom.
-`MechCluster.tsx`, and `MechCluster.css` beside it — its own stylesheet
-because this is a whole screen rather than a part of one.
+a smaller cluster either side of it, and a bank of twelve slots filling the
+bottom. `MechCluster.tsx`, and `MechCluster.css` beside it — its own
+stylesheet because this is a whole screen rather than a part of one.
 
 **Nothing on it is decoration.** The big readout is who this is. The left
 flank is the profile paragraph, the right flank is three counts derived from
@@ -193,6 +193,18 @@ the work itself (projects listed, years active, organisations shipped for) —
 a portfolio that states a number it does not derive is a number to keep up to
 date. The bottom is a bank of twelve slots, each holding its project's own 3D
 subject, and it is the navigation.
+
+**The panel is its own colour, not the site's.** A first pass at this screen
+used the root `--accent` everywhere on it, at more or less one brightness, and
+it read as a wall of the same saturated green — lamps, borders, labels and
+twelve slot names all lit at once, with almost nothing held back for contrast.
+`.mech-cluster` now redefines `--accent`/`--accent-rgb` to a paler, less
+saturated sage (`#a2e0cc`) that only this screen's descendants see — the grid,
+the cursor, the gun and every project screen still read the root value and
+none of them moved. Most of what used to sit at a bright, always-on opacity
+(lamp borders, field labels, a slot's border and name) sits dimmer at rest now
+too, so the accent — in either colour — only reads as *lit* where something
+is actually selected, rather than as the resting colour of the whole panel.
 
 #### The display
 
@@ -214,13 +226,19 @@ repaints when the word changes, which is why it is affordable.
 
 **One display, two channels.** With nothing pointed at, it cycles the titles —
 product designer, engineer, filmmaker, game designer, founder — and the scale
-of fields printed under it marks which one the current title falls under,
-exactly the way a speedometer puts a number in the window and a mark on the
-strip beneath. Point at a bar on the graph and the same display takes that
-project's name instead, and the strip becomes that project's line: tagline,
-who it was for, when. Same position, same size, same colour, which is what
-keeps the swap reading as one instrument changing channel rather than as two
-different captions.
+of fields under it marks which one the current title falls under. Press a slot
+in the bank and the same display takes that project's name instead, and the
+strip becomes every field that project touches — usually two or three of the
+five at once, which is why it is a scale and not a single needle. Same
+position, same size, same colour, which is what keeps the swap reading as one
+instrument changing channel rather than as two different captions.
+
+The scale itself is drawn as five small vertical meters, not five words with a
+tick above the lit ones — `FieldGauge` in `MechCluster.tsx`, the same
+bar-and-label shape the three counts on the other side of the readout use. A
+word that changes colour reads as a caption; a bar that fills reads as an
+instrument, and a flat row of text was the one thing on that half of the
+panel with no mass to match the boxy gauges opposite it.
 
 A word does not cut to the next one. Each cell runs four frames of random
 segments and then lands on what it should say, left to right, the way a
@@ -250,13 +268,22 @@ only lamp about the page rather than about the work.
 
 #### The profile, in the panel's voice
 
-The one block of running prose here was set in the page's Helvetica at body size
-and colour, which made it the single humanist, low-contrast, ragged thing on a
-screen of hard tracked caps: a paragraph pasted onto an instrument rather than
-something the instrument had printed. Same words, in `Chakra Petch` — vendored
-in `public/fonts/` and until now unused — inside a housing, under a label, with
-two corner brackets and a colour pulled toward the phosphor. Nothing else on the
-site wants that face, which is the argument for it being here.
+The one block of running prose here was set in the page's Helvetica at body
+size and colour, which made it the single humanist, low-contrast, ragged thing
+on a screen of hard tracked caps — a paragraph pasted onto an instrument rather
+than something the instrument had printed. A second pass moved it into
+`Chakra Petch`, vendored and otherwise unused, inside a bordered housing with
+two corner brackets — which fixed the voice and broke the picture-frame
+problem differently: it now read as a card floating on the panel, competing
+with the boxed readout next to it rather than sitting beside it.
+
+What is there now is plainer: the same label and hairline, and the paragraph
+itself in `ui-monospace` — the face this site already reserves for its other
+system text — at no more weight than a caption, with nothing drawn around it.
+A MAGI screen or a Blade Runner overlay both print a block of prose in the same
+monospace their other readouts are in rather than framing it separately, and
+that turned out to be the actual fix: not a face for this one paragraph, but
+the one the rest of the panel's system text already had.
 
 #### The bank is the navigation
 
@@ -367,6 +394,17 @@ the tint stops at the edge of the bank. Two grids that have to agree also means
 the row height is stated rather than derived — a bay plus a label bar — and that
 the bay is `flex: none`, or a name wrapping to two lines shrinks the picture out
 from under its own tint.
+
+The veil ran at full strength (`0.7`) in the first pass, and at that opacity
+the duotone was doing its job too well: every subject flattened to the same
+tone, and colour is the one cue that tells twelve renders apart at a glance —
+remove it and the bank reads as one dark mass with borders in it rather than
+twelve separate, pressable things. It sits at `0.42` now, enough to still read
+as the panel's own phosphor rather than twelve full-colour holes, not enough to
+erase what a bay actually is. `.mech-slot-shot` lost its own vignette at the
+same time — a radial fade to near-black behind the subject, which darkened
+exactly the centre of the bay a pointer or a thumb aims for and made the bank
+read as a strip of moody photographs rather than a live instrument.
 
 #### What is still here, and unmounted
 

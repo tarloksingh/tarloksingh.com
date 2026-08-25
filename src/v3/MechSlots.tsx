@@ -202,9 +202,9 @@ function Slot({ id, live }: { id: string; live: boolean }) {
   return (
     <>
       <Room />
-      <ambientLight intensity={live ? 0.55 : 0.35} />
-      <directionalLight position={[2.4, 3, 4]} intensity={live ? 2.6 : 1.5} />
-      <directionalLight position={[-3, -0.6, 1.6]} intensity={live ? 1.1 : 0.6} color="#9fd8ff" />
+      <ambientLight intensity={live ? 0.55 : 0.46} />
+      <directionalLight position={[2.4, 3, 4]} intensity={live ? 2.6 : 1.9} />
+      <directionalLight position={[-3, -0.6, 1.6]} intensity={live ? 1.1 : 0.75} color="#9fd8ff" />
 
       <Suspense fallback={null}>
         <Drift fit={fit} live={live}>

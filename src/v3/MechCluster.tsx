@@ -216,6 +216,31 @@ function Lamps({ slot }: { slot: Slot | null }) {
   )
 }
 
+/** How many cells a field's bar stands in — the same bar-and-label grammar as
+ *  the counts opposite it, not a word with a tick over it. The scale used to
+ *  be five words in a row with a lit mark above the ones that applied, which
+ *  read as a caption next to the boxy, weighted gauges on the other side of
+ *  the readout — a proportion mismatch as much as a styling one. A field is
+ *  on or it isn't, so its bar is either full or a ghost outline; there is no
+ *  partial reading to plot, unlike a count. */
+const FIELD_CELLS = 6
+
+/** One mark on the scale under the display, drawn as a small vertical meter —
+ *  the same shape the temperature and oil pressure take on the reference,
+ *  rather than a word that changes colour. */
+function FieldGauge({ name, on }: { name: Field; on: boolean }) {
+  return (
+    <div className="mech-field-gauge" data-on={on}>
+      <span className="mech-field-bar">
+        {Array.from({ length: FIELD_CELLS }, (_, n) => (
+          <i key={n} data-on={on} />
+        ))}
+      </span>
+      <span className="mech-field-label">{name}</span>
+    </div>
+  )
+}
+
 /** A count, drawn the way the temperature and the oil pressure are on the
  *  reference: the number in segments over a stack of lit cells, with what it
  *  measures printed underneath. */
@@ -421,9 +446,7 @@ export default function MechCluster({ onProject, covered, tuning }: Props) {
 
           <div className="mech-scale-row">
             {FIELDS.map((name) => (
-              <span key={name} className="mech-field" data-on={marked.includes(name)}>
-                {name}
-              </span>
+              <FieldGauge key={name} name={name} on={marked.includes(name)} />
             ))}
           </div>
         </section>
