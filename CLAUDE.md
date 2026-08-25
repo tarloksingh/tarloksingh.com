@@ -114,6 +114,20 @@ larger than about 1600. Use `MediaItem.still` and `MediaItem.thumb`, never
   built with so its material variety survives. `Sheen` in `MechProduct.tsx`
   keeps the originals and re-applies from them, because boosting an
   already-boosted roughness every frame walks it to 1 in a second.
+- **A panel's scratchpad beats source.** Every tuning hook keeps its values in
+  `localStorage`, and those are merged *over* the `_DEFAULTS` constants. So
+  pasting a fresh set of numbers into source and reloading changes nothing
+  until you press **Reset** on any tab (it clears the whole key and reloads).
+  This is the single most confusing thing about the panels — if a tab looks
+  dead, it is almost always a stale scratchpad, not a broken control.
+- **Leva's `set()` throws on a key with no input, and that unmounts the app.**
+  Reseeding a per-item folder passes a whole tuning object, so every field on
+  it must exist in the schema — and the schema is now conditional (no Eyes
+  folder unless it is the face). Both `modelTuning.ts` and `productTuning.ts`
+  filter the reseed against the keys Leva actually declared, read off its own
+  values so the list cannot drift. Without that filter the page renders as a
+  **blank paper gradient**, which reads as a CSS bug rather than a crash.
+  Check the console first.
 - **Never put a `.` in a Leva key or folder label.** Leva reads it as a folder
   separator: `wave.on` silently nests a phantom `wave` folder, and a subject
   titled "Mr. Takahashi" becomes `Mr` containing `Takahashi`. `castTuning.ts`
@@ -133,6 +147,18 @@ in `Mech.tsx` covering the first two. Every exit has **its own keyframes** —
 `animation-name` changes, so reusing the name leaves the finished entry running
 and the exit never plays. The canvas and its grid are gone; see
 **The swap** in `README.md`, and `50629fd` for the dissolve if it is wanted.
+
+**One reveal, and it is typing.** There used to be two — `Typed` on the title
+and a GSAP `SplitText` fade-per-character (`SplitReveal`) on taglines, fold
+titles and the index sheet. `SplitReveal.tsx` is deleted; `Typed.tsx` takes
+`delay`, `speed` and `caret` so short labels can be quick and caret-less. SVG
+text cannot use it (the leaders are drawn in user units), so `useTypedSvg` in
+`Mech.tsx` does the same thing straight onto the node.
+
+**The cast fades, it does not scale.** Every material under a subject is
+switched to `transparent` for the length of the fade and back to opaque once
+it settles, so transparent-material sorting is only paid for while something
+is moving.
 
 **Home is not a separate screen.** `/v3` and `/v3/p/<id>` are the same
 component: `Mech` with `id` either a project or `null`. Three slots swap — the

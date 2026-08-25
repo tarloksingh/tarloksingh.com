@@ -77,38 +77,20 @@ export interface CastStudio {
 }
 
 export const CAST_STUDIO: CastStudio = {
-  /* Mr. Takahashi's own lens and his own exposure, because he is the subject
-     that has to match a page of his own and the other four are not.
-
-     Focal length is free to copy: `fill` sets how much world the frame holds,
-     and the camera backs off to hold it, so changing the lens changes the
-     *perspective* and not the framing. 200mm is the flat, compressed look his
-     project screen has.
-
-     Exposure is not free, and this is the part that caught me. It is one
-     number for the whole canvas, and ACES tone mapping is not linear — so
-     lighting him at 28.5 under an exposure of 0.05 and lighting him at 1.43
-     under an exposure of 1 are not the same picture, even though the product
-     is the same. The first lands on the shoulder of the curve and gives the
-     dark, moody face his page has; the second sits in the middle of it and
-     gives a flat, washed one. There is no way to have both on one canvas, so
-     the canvas takes his exposure and the other four are scaled to suit —
-     see the intensities in `CAST_LIGHTS`, which are twentyfold what they
-     would be at 1. */
-  focalLength: 200,
-  fill: 0.34,
-  exposure: 0.05,
+  focalLength: 78,
+  fill: 0.37,
+  exposure: 0.18,
   dolly: 0,
   camY: 0,
-  tilt: 0,
+  tilt: 0.8,
   lift: 0,
   spread: 1,
-  floatSpeed: 4,
-  floatRange: 0,
-  floatRotation: 0,
+  floatSpeed: 2.2,
+  floatRange: 0.2,
+  floatRotation: 1.02,
   lean: 10,
-  wheelRpm: 620,
-  shake: 0.006
+  wheelRpm: 660,
+  shake: 0.001
 }
 
 /** Where one subject stands.
@@ -139,17 +121,11 @@ export interface CastSlot {
 export const CAST_SLOT_FALLBACK: CastSlot = { x: 0, y: 0, z: 0, scale: 1, turn: 0, tilt: 0 }
 
 export const CAST_SLOTS: Record<string, CastSlot> = {
-  /* `turn` back to 0 and `scale` re-read as world units. Both were dead
-     numbers while he was a layer over the canvas rather than in it — the
-     docs on `CastSlot` used to say so — and `turn: -180` came through as
-     soon as he became a real cast member, which is the back of his head.
-     `scale` was a multiplier on his own `fill` and is now a size like
-     everyone else's. */
-  takahashi: { x: -0.1, y: 0.08, z: 0, scale: 1.05, turn: 0, tilt: 0 },
-  capsule: { x: 0.53, y: 0.42, z: -1.73, scale: 0.64, turn: -53.5, tilt: 25.5 },
+  takahashi: { x: -0.1, y: 0.58, z: -2.55, scale: 1.92, turn: -7.5, tilt: 0 },
+  capsule: { x: 0.47, y: -0.13, z: 0.84, scale: 0.53, turn: -75, tilt: 24 },
   rider: { x: -0.62, y: -0.27, z: -1.06, scale: 0.81, turn: 130.5, tilt: 27 },
-  stitchfam: { x: -0.53, y: 0.38, z: -0.86, scale: 0.43, turn: 0, tilt: 0 },
-  fish: { x: 0.46, y: -0.1, z: -1.95, scale: 0.63, turn: -180, tilt: -90 }
+  stitchfam: { x: -0.86, y: 0.37, z: -3.11, scale: 0.61, turn: -44, tilt: 0 },
+  fish: { x: 0.69, y: 0.55, z: -1.95, scale: 0.63, turn: -180, tilt: -90 }
 }
 
 export const slotFor = (id: string): CastSlot => CAST_SLOTS[id] ?? CAST_SLOT_FALLBACK
@@ -194,19 +170,11 @@ export const CAST_LIGHT_FALLBACK: CastLight = {
 }
 
 export const CAST_LIGHTS: Record<string, CastLight> = {
-  /* Copied outright from `MODEL_DEFAULTS` — the same two intensities from the
-     same two directions — because the canvas now runs at his exposure. This
-     is his project screen's rig, not an approximation of it. `env` is 0
-     because his rig uses no environment at all. */
-  takahashi: { keyIntensity: 28.5, keyX: 12, keyY: 0.22, keyZ: 12, fillIntensity: 71.3, fillX: -0.32, fillY: 0.08, fillZ: -0.66, env: 0 },
-  /* Twentyfold what these were, because the exposure they were set against
-     went from 1 to 0.05. A starting point rather than a match — ACES is not
-     linear, so scaling by the exposure ratio gets the brightness roughly back
-     and not the contrast. These four are the ones to re-tune. */
-  capsule: { keyIntensity: 48, keyX: -3.6, keyY: -2.5, keyZ: 5.5, fillIntensity: 28, fillX: -6.5, fillY: -3.6, fillZ: -10, env: 7 },
-  rider: { keyIntensity: 44, keyX: -10, keyY: -10, keyZ: -10, fillIntensity: 22, fillX: -4, fillY: -10, fillZ: -3, env: 20 },
-  stitchfam: { keyIntensity: 44, keyX: 1, keyY: 3, keyZ: 6, fillIntensity: 32, fillX: -3, fillY: 1, fillZ: 2, env: 16 },
-  fish: { keyIntensity: 48, keyX: 2, keyY: 3, keyZ: 5, fillIntensity: 30, fillX: -3, fillY: 2, fillZ: -1, env: 18 }
+  takahashi: { keyIntensity: 11, keyX: -6, keyY: 0.5, keyZ: -0.6, fillIntensity: 12, fillX: -9.3, fillY: -10, fillZ: -10, env: 0 },
+  capsule: { keyIntensity: 1.8, keyX: -3.6, keyY: -2.5, keyZ: 5.5, fillIntensity: 1.4, fillX: -6.5, fillY: -3.6, fillZ: -10, env: 0.35 },
+  rider: { keyIntensity: 2.2, keyX: -10, keyY: -10, keyZ: -10, fillIntensity: 1.1, fillX: -4, fillY: -10, fillZ: -3, env: 1 },
+  stitchfam: { keyIntensity: 2.2, keyX: 1, keyY: 3, keyZ: 6, fillIntensity: 1.6, fillX: -3, fillY: 1, fillZ: 2, env: 0.8 },
+  fish: { keyIntensity: 2.4, keyX: 2, keyY: 3, keyZ: 5, fillIntensity: 1.5, fillX: -3, fillY: 2, fillZ: -1, env: 0.9 }
 }
 
 export const lightFor = (id: string): CastLight => CAST_LIGHTS[id] ?? CAST_LIGHT_FALLBACK
@@ -271,10 +239,10 @@ export const CAST_WAVE: CastWave = {
   glow: 5,
   hue: 162,
   hueSpeed: -39.5,
+  lens: 55,
   low: '#8d77b4',
   mid: '#684596',
   high: '#c07cff',
-  lens: 55,
   size: 90,
   segments: 200
 }
@@ -510,6 +478,15 @@ export function useWaveTuning() {
         void copyText(text)
         // eslint-disable-next-line no-console
         console.log(`[cast] paste over the four constants in src/v3/castTuning.ts:\n\n${text}`)
+      }),
+      /* On this tab too, and not only the Cast one. Everything on both tabs
+         shares a single localStorage key, and that scratchpad *wins over
+         source* — so pasting new defaults in and reloading changes nothing
+         until it is cleared. Having the only way to do that on a different
+         tab is how a panel comes to look broken. */
+      Reset: button(() => {
+        window.localStorage.removeItem(STORE_KEY)
+        window.location.reload()
       }),
       on: { value: startWave.on, label: 'On' },
       amp: { value: startWave.amp, min: 0, max: 4, step: 0.01, label: 'Height' },

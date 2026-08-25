@@ -531,7 +531,17 @@ export default function MechModel({
       <directionalLight position={[tuning.keyX, tuning.keyY, tuning.keyZ]} intensity={tuning.keyIntensity} />
       <directionalLight position={[tuning.fillX, tuning.fillY, tuning.fillZ]} intensity={tuning.fillIntensity} />
 
-      <FaceScene src={src} tuning={tuning} />
+      {/* Where it stands. The pieces have had this since they arrived and the
+          models never did, which is why an enclosure could be lit six ways
+          and not turned round once. Outside `FaceScene` because on the home
+          screen the cast's own slot supplies the same three numbers — see
+          `Placed` in MechCast.tsx. */}
+      <group
+        rotation={[MathUtils.degToRad(tuning.tilt), MathUtils.degToRad(tuning.turn), 0]}
+        position={[0, tuning.liftY / tuning.fill, 0]}
+      >
+        <FaceScene src={src} tuning={tuning} />
+      </group>
     </Canvas>
   )
 }

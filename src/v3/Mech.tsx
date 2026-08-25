@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import MechPanel, { type PanelTab } from './MechPanel'
+import Typed from './Typed'
 import MechBird from './MechBird'
 import MechMoth from './MechMoth'
 import MechCursor from './MechCursor'
@@ -22,7 +23,6 @@ import { findProject, MENU, portraitOf, thumbOf, type Entry, type Frame } from '
 import { focus, notesFor, pins, type Note } from './notes'
 import { useLabelTuning, type Handed } from './labelTuning'
 import { boxOf, FRAME_SPACE, leadersFor, mediaBox, type Space } from './leaders'
-import SplitReveal from './SplitReveal'
 import './Mech.css'
 
 const MechModel = lazy(() => import('./MechModel'))
@@ -774,40 +774,6 @@ interface Props {
   onHome: () => void
 }
 
-/** Reveals its text a character at a time. Used once, on the title, because
- *  the title is the one line that changes when the readout retargets. */
-function Typed({ text, run }: { text: string; run: string }) {
-  const out = useRef<HTMLSpanElement>(null)
-  /* The only thing state is used for here is the caret going out at the end.
-     Setting it per character re-rendered the whole project screen forty times
-     a second while the title typed — the rail, the folds, the leaders and all
-     — which is a stutter you can see, on the one beat of the page that is
-     meant to be a machine coming up smoothly. The text itself is written
-     straight to the node. */
-  const [done, setDone] = useState(false)
-
-  useEffect(() => {
-    setDone(false)
-    let at = 0
-    if (out.current) out.current.textContent = ''
-    const timer = window.setInterval(() => {
-      at += 1
-      if (out.current) out.current.textContent = text.slice(0, at)
-      if (at >= text.length) {
-        window.clearInterval(timer)
-        setDone(true)
-      }
-    }, 55)
-    return () => window.clearInterval(timer)
-  }, [text, run])
-
-  return (
-    <>
-      <span ref={out} />
-      <span className="mech-caret" data-done={done} />
-    </>
-  )
-}
 
 /* ---- the tag on a cast subject ----
 
@@ -836,8 +802,38 @@ const TAG = { rise: 84, run: 110, bar: 190 }
  *  longest of the exits below — the line's 520 plus its 210 of delay. */
 const TAG_OUT = 780
 
+/** Types an SVG text node. `Typed` writes into a `<span>`, which is no use
+ *  inside an `<svg>` — the leader's label and value are SVG text, drawn in
+ *  user units the viewBox scales. Same effect, written straight to the node. */
+function useTypedSvg(ref: RefObject<SVGTextElement | null>, text: string, delay: number, speed: number) {
+  useEffect(() => {
+    let at = 0
+    let timer = 0
+    if (ref.current) ref.current.textContent = ''
+    const start = window.setTimeout(() => {
+      timer = window.setInterval(() => {
+        at += 1
+        if (ref.current) ref.current.textContent = text.slice(0, at)
+        if (at >= text.length) window.clearInterval(timer)
+      }, speed)
+    }, delay)
+    return () => {
+      window.clearTimeout(start)
+      window.clearInterval(timer)
+    }
+  }, [ref, text, delay, speed])
+}
+
 function CastTag({ space, title, value, off }: { space: Space; title: string; value: string; off: boolean }) {
   const group = useRef<SVGGElement>(null)
+  const label = useRef<SVGTextElement>(null)
+  const sub = useRef<SVGTextElement>(null)
+
+  /* Typed rather than faded, like every other line on the page. Timed to
+     land just after the leader has finished drawing itself — the line
+     arrives, then it is written on. */
+  useTypedSvg(label, title, 180, 20)
+  useTypedSvg(sub, value, 300, 14)
   /** Which way the leader reaches. Fixed when it appears rather than followed
    *  live: a subject drifting across the middle of the stage would otherwise
    *  flip the whole label from one side to the other mid-hover. */
@@ -878,12 +874,9 @@ function CastTag({ space, title, value, off }: { space: Space; title: string; va
           points={`${end},${elbow[1]} ${elbow[0]},${elbow[1]} 0,0`}
           style={{ ['--l' as string]: length }}
         />
-        <text className="mech-leader-label" x={textX} y={elbow[1] - 9} textAnchor={anchor}>
-          {title}
-        </text>
-        <text className="mech-leader-value" x={textX} y={elbow[1] + 21} textAnchor={anchor}>
-          {value}
-        </text>
+        {/* Filled in by `useTypedSvg`, so they start empty. */}
+        <text ref={label} className="mech-leader-label" x={textX} y={elbow[1] - 9} textAnchor={anchor} />
+        <text ref={sub} className="mech-leader-value" x={textX} y={elbow[1] + 21} textAnchor={anchor} />
       </g>
     </svg>
   )
@@ -1660,7 +1653,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
                 </h1>
                 {lede.tagline && (
                   <p className="mech-tagline">
-                    <SplitReveal text={lede.tagline} run={lede.id} delay={0.3} />
+                    <Typed text={lede.tagline} run={lede.id} delay={0.3} speed={22} caret={false} />
                   </p>
                 )}
               </>
@@ -1671,7 +1664,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
                   <Typed text={INTRO.name} run="intro" />
                 </h1>
                 <p className="mech-tagline">
-                  <SplitReveal text={INTRO.line} run="intro" delay={0.3} />
+                  <Typed text={INTRO.line} run="intro" delay={0.3} speed={22} caret={false} />
                 </p>
               </>
             )}
@@ -1707,7 +1700,13 @@ export default function Mech({ id, onProject, onHome }: Props) {
                       aria-expanded={isOpen}
                     >
                       <span className="mech-pip" />
-                      <SplitReveal text={fold.title} run={shownId ?? 'home'} delay={0.5 + i * 0.05} />
+                      <Typed
+                        text={fold.title}
+                        run={shownId ?? 'home'}
+                        delay={0.5 + i * 0.08}
+                        speed={18}
+                        caret={false}
+                      />
                     </button>
 
                     {/* Always mounted, and opened by growing its row from 0fr to

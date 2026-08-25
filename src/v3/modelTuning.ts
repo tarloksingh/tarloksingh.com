@@ -1,6 +1,6 @@
 import { button, folder, useControls, useCreateStore } from 'leva'
 import { copyText } from './clipboard'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 /* ---- the subject's tuning panel ----
 
@@ -22,6 +22,18 @@ export interface ModelTuning {
   fill: number
   /** Degrees the subject leans toward the pointer, across the whole frame. */
   lean: number
+
+  /* ---- where it stands ----
+
+     The pieces have had these since they arrived and the models never did,
+     which is why an enclosure could be lit six ways and not turned round
+     once. `turn` is the one that matters: which face of the thing you meet. */
+  /** Degrees about the vertical axis. */
+  turn: number
+  /** Degrees about the horizontal one. */
+  tilt: number
+  /** Frame heights above centre. */
+  liftY: number
   floatSpeed: number
   floatRange: number
   floatRotation: number
@@ -81,6 +93,9 @@ export const MODEL_DEFAULTS: ModelTuning = {
   focalLength: 200,
   fill: 0.56,
   lean: 11,
+  turn: 0,
+  tilt: 0,
+  liftY: 0,
   floatSpeed: 0.9,
   floatRange: 0.14,
   floatRotation: 1.5,
@@ -146,7 +161,11 @@ const start: ModelTuning = { ...MODEL_DEFAULTS, ...(typeof window === 'undefined
  *  the defaults, so adding a third GLB needs no entry until it wants one. */
 export const MODEL_RIGS: Record<string, ModelTuning> = {
   'mr-takahashi': { ...MODEL_DEFAULTS },
-  'capsule-c1': { ...MODEL_DEFAULTS }
+  /* An enclosure. It has no eyes to move and no reason to look at a bird —
+     `watchBird` drives the whole subject's lean toward whatever the gaze is
+     tracking, so left on it made a piece of hardware turn to follow
+     something flying past. */
+  'capsule-c1': { ...MODEL_DEFAULTS, watchBird: false }
 }
 
 export const rigFor = (projectId: string): ModelTuning => MODEL_RIGS[projectId] ?? MODEL_DEFAULTS
@@ -185,9 +204,19 @@ const asSource = () =>
  *  dev panel instead of a second window floating over the page — which on the
  *  home screen was a panel labelled "Subject tuning" with no clue whose
  *  subject. See `MechPanel.tsx`. */
+/** Which model the eye, blink and gaze controls belong to.
+ *
+ *  Only one subject on this site has a face. Capsule C1 is an injection
+ *  moulded enclosure, and a panel offering it a blink rate, an eye-tracking
+ *  sensitivity and a "watch bird" toggle is a panel describing something that
+ *  is not there — every one of those drives a morph target the export does
+ *  not carry. */
+const FACE = 'mr-takahashi'
+
 export function useModelTuning(
-  projectId = 'mr-takahashi'
+  projectId = FACE
 ): ModelTuning & { store: ReturnType<typeof useCreateStore> } {
+  const isFace = projectId === FACE
   const store = useCreateStore()
   /* The schema is read once, so it has to open on the model that is actually
      on screen — the effect below only catches the *next* one. Same
@@ -210,6 +239,17 @@ export function useModelTuning(
       window.localStorage.removeItem(STORE_KEY)
       window.location.reload()
     }),
+
+    /* Where it stands. First, because on anything that is not a face it is
+       the only thing you actually want. */
+    Place: folder(
+      {
+        turn: { value: seed.turn, min: -180, max: 180, step: 0.5, label: 'Turn' },
+        tilt: { value: seed.tilt, min: -180, max: 180, step: 0.5, label: 'Tilt' },
+        liftY: { value: seed.liftY, min: -0.5, max: 0.5, step: 0.005, label: 'Lift' }
+      },
+      { collapsed: false }
+    ),
 
     Lens: folder(
       {
@@ -245,24 +285,32 @@ export function useModelTuning(
       { collapsed: true }
     ),
 
-    Eyes: folder(
+    /* Only for the face. Spread in rather than rendered conditionally
+       because Leva reads the schema once: a folder that exists with its
+       inputs disabled is still a folder full of controls for morph targets
+       the other export does not have. */
+    ...(isFace
+      ? {
+          Eyes: folder(
       {
-        lookH: { value: seed.lookH, min: 0, max: 2, step: 0.05, label: 'Sens H' },
-        lookV: { value: seed.lookV, min: 0, max: 2, step: 0.05, label: 'Sens V' },
-        lookMaxH: { value: seed.lookMaxH, min: 0.02, max: 0.5, step: 0.01, label: 'Max H' },
-        lookMaxV: { value: seed.lookMaxV, min: 0.02, max: 0.5, step: 0.01, label: 'Max V' },
-        lookCenterH: { value: seed.lookCenterH, min: 0, max: 1, step: 0.01, label: 'Centre H' },
-        lookCenterV: { value: seed.lookCenterV, min: 0, max: 1, step: 0.01, label: 'Centre V' },
-        lookSpeed: { value: seed.lookSpeed, min: 0.5, max: 14, step: 0.1, label: 'Follow' },
-        lookFlipH: { value: seed.lookFlipH, label: 'Flip H' },
-        lookFlipV: { value: seed.lookFlipV, label: 'Flip V' },
-        watchBird: { value: seed.watchBird, label: 'Watch bird' },
-        watchCatch: { value: seed.watchCatch, min: 0, max: 6, step: 0.05, label: 'Catch (s)' },
-        blinkMin: { value: seed.blinkMin, min: 0.5, max: 12, step: 0.1, label: 'Blink min' },
-        blinkMax: { value: seed.blinkMax, min: 1, max: 24, step: 0.1, label: 'Blink max' }
-      },
-      { collapsed: true }
-    ),
+          lookH: { value: seed.lookH, min: 0, max: 2, step: 0.05, label: 'Sens H' },
+          lookV: { value: seed.lookV, min: 0, max: 2, step: 0.05, label: 'Sens V' },
+          lookMaxH: { value: seed.lookMaxH, min: 0.02, max: 0.5, step: 0.01, label: 'Max H' },
+          lookMaxV: { value: seed.lookMaxV, min: 0.02, max: 0.5, step: 0.01, label: 'Max V' },
+          lookCenterH: { value: seed.lookCenterH, min: 0, max: 1, step: 0.01, label: 'Centre H' },
+          lookCenterV: { value: seed.lookCenterV, min: 0, max: 1, step: 0.01, label: 'Centre V' },
+          lookSpeed: { value: seed.lookSpeed, min: 0.5, max: 14, step: 0.1, label: 'Follow' },
+          lookFlipH: { value: seed.lookFlipH, label: 'Flip H' },
+          lookFlipV: { value: seed.lookFlipV, label: 'Flip V' },
+          watchBird: { value: seed.watchBird, label: 'Watch bird' },
+          watchCatch: { value: seed.watchCatch, min: 0, max: 6, step: 0.05, label: 'Catch (s)' },
+          blinkMin: { value: seed.blinkMin, min: 0.5, max: 12, step: 0.1, label: 'Blink min' },
+          blinkMax: { value: seed.blinkMax, min: 1, max: 24, step: 0.1, label: 'Blink max' }
+        },
+            { collapsed: true }
+          )
+        }
+      : {}),
 
     Material: folder(
       {
@@ -277,12 +325,27 @@ export function useModelTuning(
   /* Keyed on the serialised values rather than the object: Leva hands back a
      fresh object on renders where nothing moved, and writing localStorage on
      every one of those is a write per frame while a slider is dragged. */
+  /* Which keys this panel actually declares. Read off Leva's own values
+     rather than listed here, so it cannot drift out of step with the schema
+     above — which is exactly what went wrong: the Eyes folder is omitted for
+     anything that is not a face, and reseeding still handed Leva `blinkMin`
+     and `watchBird`. `set()` throws on a key with no input, and a throw here
+     unmounts the whole app to a blank paper gradient that reads as a CSS bug
+     rather than as a crash. */
+  const declared = useRef<string[]>([])
+  if (declared.current.length === 0) declared.current = Object.keys(values as object)
+
   /* Reseed when the readout swings to the other model. Without this, opening
      Capsule C1 after Mr. Takahashi would show his numbers on the panel and
      write them over hers the moment anything was dragged. */
   useEffect(() => {
     owner = projectId
-    setValues(rigs[projectId] ?? MODEL_DEFAULTS)
+    const next = rigs[projectId] ?? MODEL_DEFAULTS
+    setValues(
+      Object.fromEntries(
+        Object.entries(next).filter(([key]) => declared.current.includes(key))
+      ) as Partial<ModelTuning>
+    )
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId])
 

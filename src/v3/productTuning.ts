@@ -1,5 +1,5 @@
 import { button, folder, useControls, useCreateStore } from 'leva'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { copyText } from './clipboard'
 
 /* ---- the pieces, and their tuning panel ----
@@ -283,11 +283,23 @@ export function useProductTuning(projectId: string) {
     { store }
   ) as unknown as [ProductTuning & PieceTuning, (values: Partial<PieceTuning>) => void]
 
+  /* Which keys this panel actually declares — read off Leva's own values so
+     it cannot drift out of step with the schema. `set()` throws on a key with
+     no input, and a throw here unmounts the whole app to a blank paper
+     gradient that reads as a CSS bug rather than as a crash. */
+  const declared = useRef<string[]>([])
+  if (declared.current.length === 0) declared.current = Object.keys(values as object)
+
   // Reseed the per-piece folder when the readout swings to another project.
   useEffect(() => {
     live.id = projectId
     if (!projectId) return
-    set(live.pieces[projectId] ?? PIECE_FALLBACK)
+    const next = live.pieces[projectId] ?? PIECE_FALLBACK
+    set(
+      Object.fromEntries(
+        Object.entries(next).filter(([key]) => declared.current.includes(key))
+      ) as Partial<PieceTuning>
+    )
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId])
 

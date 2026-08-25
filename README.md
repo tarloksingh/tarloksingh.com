@@ -236,13 +236,16 @@ forward and pushes the others back, damped. Small numbers; it is parallax, not
 a carousel. A direct pointer-over beats the index, because the pointer is the
 more specific answer.
 
-**The cast comes and goes in a stagger**, in three rather than in CSS, because
-there is nothing in the DOM to stagger — the whole line-up is one canvas. It
-grows in place one subject after another and retracts in the opposite order
-when a project is opened, last in first away, the same shape the leaders'
-cascades have. Scale rather than opacity: fading a mesh means making every
-material transparent, which is a different render path with its own sorting
-problems for a beat nobody sees the inside of.
+**The cast fades in and out**, staggered arriving and together leaving. It
+used to *scale* — each subject growing from nothing — which was chosen to
+avoid making every material transparent, and which read as the line-up being
+inflated rather than as it arriving. So it is opacity, and the cost is paid
+narrowly: every material on a subject is switched to `transparent` for the
+length of the fade and switched back to opaque the moment it settles, so the
+sorting a transparent material brings only exists while something is moving.
+Staggered in, together out — a cast arriving one after another reads as a
+line-up assembling; a cast *leaving* one after another just delays the thing
+you asked for.
 
 **Two frame-one bugs, both the same shape.** A `camera` prop is read once at
 mount and the `Lens` effect corrects it a frame later — and that frame is

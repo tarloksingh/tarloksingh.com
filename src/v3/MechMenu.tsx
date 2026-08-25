@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { TAGS } from '../data/projects'
 import { MENU } from './model'
 import { sound } from './sound'
-import SplitReveal from './SplitReveal'
+import Typed from './Typed'
 
 /* ---- the index sheet ----
 
@@ -12,12 +12,11 @@ import SplitReveal from './SplitReveal'
    whole index folds into one control, on both layouts now: every project,
    named, the tags that are actually worth a shortcut, and the way home.
 
-   Every line of it draws itself in a character at a time, staggered down the
-   list — the same `SplitReveal` the taglines and the section titles are set
-   with, which is the one bit of motion this site has that reads as *writing*
-   rather than as sliding. A sheet that is simply there the instant it opens
-   is a sheet; a sheet that types itself is part of the same machine as the
-   readout behind it. */
+   Every line of it types itself, staggered down the list — the same reveal
+   the title and the taglines use, which is the one bit of motion this site
+   has that reads as *writing* rather than as sliding. A sheet that is simply
+   there the instant it opens is a sheet; a sheet that types itself is part of
+   the same machine as the readout behind it. */
 
 interface Props {
   /** Whichever project is on screen behind the sheet, or `null` at home —
@@ -58,7 +57,7 @@ export default function MechMenu({ shownId, onProject, onHome, onClose }: Props)
     <div className="mech-menu" role="dialog" aria-label="Projects" aria-modal="true">
       <div className="mech-menu-head">
         <span>
-          <SplitReveal text="index" run="menu" />
+          <Typed text="index" run="menu" speed={40} />
         </span>
         <button className="mech-menu-close" onClick={onClose} aria-label="Close menu">
           close
@@ -74,10 +73,12 @@ export default function MechMenu({ shownId, onProject, onHome, onClose }: Props)
             <button aria-current={item.project.id === shownId} onClick={() => go(item.project.id)}>
               <span className="mech-menu-n">{String(i + 1).padStart(2, '0')}</span>
               <span className="mech-menu-name">
-                <SplitReveal
+                <Typed
                   text={item.project.title.toLowerCase()}
                   run={item.project.id}
                   delay={0.06 + i * 0.045}
+                  speed={16}
+                  caret={false}
                 />
               </span>
               <span className="mech-menu-year">{item.project.year}</span>
@@ -99,7 +100,7 @@ export default function MechMenu({ shownId, onProject, onHome, onClose }: Props)
           if (!next || (along.length === 1 && next.project.id === shownId)) return null
           return (
             <button key={tag} onClick={() => go(next.project.id)}>
-              <SplitReveal text={tag} run="menu" delay={0.6 + i * 0.03} />
+              <Typed text={tag} run="menu" delay={0.6 + i * 0.03} speed={18} caret={false} />
             </button>
           )
         })}
@@ -112,7 +113,7 @@ export default function MechMenu({ shownId, onProject, onHome, onClose }: Props)
           onHome()
         }}
       >
-        <SplitReveal text="home" run="menu" delay={0.8} />
+        <Typed text="home" run="menu" delay={0.8} speed={30} caret={false} />
       </button>
     </div>
   )

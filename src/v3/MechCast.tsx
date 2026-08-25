@@ -12,7 +12,7 @@ import { aim } from './subject'
 import { FaceScene } from './MechModel'
 import { MODEL_DEFAULTS, type ModelTuning } from './modelTuning'
 import { CAST_STUDIO, lightFor, slotFor, type CastLight, type CastSlot, type CastStudio } from './castTuning'
-import type { Group, Mesh, PerspectiveCamera } from 'three'
+import type { Group, Material, Mesh, PerspectiveCamera } from 'three'
 
 /* The home screen's cast: every subject on one stage, at once, arranged.
 
@@ -145,19 +145,25 @@ const CAST_DEPTH = 4
 
 /* ---- coming and going ----
 
-   Subjects grow in place, one after another, and retract in the opposite
-   order when a project is opened — last in, first away, the same shape the
-   leaders' two cascades have on the project screen.
+   The cast fades in when the page arrives and fades out when a project is
+   opened. It used to *scale* — each subject growing from nothing and
+   shrinking back — which was chosen to avoid making every material
+   transparent, and which read as the line-up being inflated and deflated
+   rather than as it arriving and leaving.
 
-   In three rather than in CSS, because there is nothing in the DOM to
-   stagger: the whole cast is one canvas. Scale rather than opacity for the
-   same reason — fading a mesh means making every material transparent, and a
-   transparent material is a different render path with its own sorting
-   problems for the sake of a beat nobody sees the inside of. */
-const IN_STAGGER = 0.1
-const OUT_STAGGER = 0.06
-/** How far under its mark a subject starts, in world units. */
-const RISE = 0.45
+   So it is opacity, and the cost of that is real but small: every material on
+   a subject is switched to `transparent` while it is on the way in or out,
+   and switched back to opaque once it settles, so the sorting problems a
+   transparent material brings only exist during the fade and never while you
+   are looking at a still stage.
+
+   Staggered on the way in, together on the way out. A cast arriving one after
+   another reads as a line-up assembling; a cast *leaving* one after another
+   just delays the thing you asked for. */
+const IN_STAGGER = 0.09
+/** How far under its mark a subject starts, in world units. A little lift
+ *  under the fade, so it arrives rather than simply appears. */
+const RISE = 0.28
 
 /** Hover: the one being looked at comes forward, everything else drops back.
  *  Small numbers — this is parallax, not a carousel. */
@@ -352,7 +358,6 @@ function Placed({
   light,
   layer,
   index,
-  count,
   shown,
   focus,
   lift,
@@ -366,7 +371,6 @@ function Placed({
   light: CastLight
   layer: number
   index: number
-  count: number
   /** Whether the cast is on the stage at all. False retracts it. */
   shown: boolean
   /** `true` this one, `false` another one, `null` nothing. */
@@ -386,6 +390,9 @@ function Placed({
   const inner = useRef<Group>(null)
   const camera = useThreeState((state) => state.camera)
   const at = useMemo(() => new Vector3(), [])
+  /** Every material under this subject, with whether it was authored opaque —
+   *  so it can be handed back exactly what it had once the fade is over. */
+  const coats = useMemo(() => new Map<Material, boolean>(), [])
   const grow = useRef(0)
   const depth = useRef(0)
   const since = useRef(0)
@@ -407,17 +414,35 @@ function Placed({
     group.traverse(() => n++)
     if (n !== nodes.current) {
       nodes.current = n
-      group.traverse((node) => node.layers.set(layer))
+      group.traverse((node) => {
+        node.layers.set(layer)
+        const mesh = node as Mesh
+        if (!mesh.isMesh) return
+        for (const material of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
+          if (material && !coats.has(material)) coats.set(material, !material.transparent)
+        }
+      })
     }
 
     since.current += delta
-    // Last in, first away.
-    const delay = shown ? index * IN_STAGGER : (count - 1 - index) * OUT_STAGGER
+    // Staggered arriving, together leaving.
+    const delay = shown ? index * IN_STAGGER : 0
     if (since.current >= delay) {
       const to = shown ? 1 : 0
       grow.current = MathUtils.lerp(grow.current, to, 1 - Math.pow(0.0015, delta))
     }
     const eased = grow.current
+
+    /* The fade. Written to every material under the subject, and `transparent`
+       switched back off once it is settled — a transparent material is sorted
+       differently and it is not worth paying for that on a stage that is just
+       sitting there. */
+    const solid = eased > 0.995
+    for (const [material, opaque] of coats) {
+      material.opacity = eased
+      material.transparent = solid ? !opaque : true
+      material.depthWrite = solid ? true : opaque && eased > 0.5
+    }
 
     const forward = focus === true ? FORWARD : focus === false ? -BACK : 0
     depth.current = MathUtils.lerp(depth.current, forward, 1 - Math.pow(0.002, delta))
@@ -427,6 +452,8 @@ function Placed({
       slot.y + lift - (1 - eased) * RISE,
       slot.z + depth.current
     )
+    body.scale.setScalar(slot.scale)
+    body.visible = eased > 0.004
 
     /* Where this subject has ended up on screen, for the leader that names
        it. Only worth computing for the one being pointed at, and published to
@@ -438,8 +465,6 @@ function Placed({
       aim.x = at.x * 0.5 + 0.5
       aim.y = -at.y * 0.5 + 0.5
     }
-    body.scale.setScalar(Math.max(0.0001, slot.scale * eased))
-    body.visible = eased > 0.005
   })
 
   return (
@@ -630,7 +655,6 @@ export default function MechCast({
             // subject's rig happens to share the default.
             layer={index + 1}
             index={index}
-            count={CAST.length}
             shown={shown}
             focus={focused === null ? null : focused === hero.id}
             lift={studio.lift}
