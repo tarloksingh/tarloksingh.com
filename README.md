@@ -210,6 +210,22 @@ canvas takes his 0.05, his lights are copied across untouched, and the other
 four are scaled twentyfold to suit. The wave keeps a lens of its own — a grid
 running to a horizon through a 200mm barely converges.
 
+**His float is the studio's, not his own.** `floatSpeed`/`floatRange`/
+`floatRotation` in `modelTuning.ts` are tuned for a subject filling the whole
+of his own project screen alone, and next to four others bobbing by the
+studio's own numbers, his own read as barely moving. `Placed` builds the
+tuning `FaceScene` gets by overriding those three fields with `studio`'s
+before handing it over — his lean and his gaze, which follow the pointer and
+the bird rather than a fixed loop, are untouched, because those *are* his
+alone.
+
+**Exposure breathes with the pointer.** It used to be one number, set once, on
+`Studio`'s own effect. Now `Studio` lerps `toneMappingExposure` every frame
+toward `exposure` at rest and `exposureHover` while any subject is
+hovered — the stage or the index, either counts — the same damping `Lean`
+already uses for following the pointer, so the lift reads as the cast waking
+up rather than a switch thrown. Both numbers live on the Stage folder.
+
 Nothing is dimmed. The old roster faded every subject that was not selected,
 which made a cast of five read as one subject and four rejected candidates.
 
@@ -682,10 +698,44 @@ column would have taken a third off every long name to protect space that is
 empty.
 
 It is the same sum on both layouts; narrow substitutes the window for the
-column and starts from a lower ceiling. It applies to the home screen's own
-name too, because home and a project are the same element — which is where
-"Tarlok Singh" breaking in half came from, on any window small enough that
-`--type`'s rem floor won against `--px`.
+column and starts from a lower ceiling. It used to be the sum that sized the
+home screen's own name too, when home and a project shared `.mech-title` — the
+name moved out to its own layer since (see **The name behind the cast**,
+below), but the reasoning is identical: `--title-len`, an average advance and
+a cap said out loud rather than left silent.
+
+### The name behind the cast
+
+Home's title used to be the first two things in `.mech-lede` — small, in the
+side column, typed in for whichever project the pointer happened to be over
+and swapped for that project's own name and tagline on hover. Both were the
+wrong call for the one thing on the page meant to say whose site this is: it
+should not compete with a project's title for the same element, and it should
+not move every time the pointer crosses an index box.
+
+`.mech-hero-name` is a full-bleed layer instead — "designer" above, "Tarlok
+Singh" filled out to the frame's own width below it, always one line — drawn
+*behind* the cast rather than beside it. It carries no `z-index` of its own;
+`.mech-stage` right after it in the DOM carries `z-index: 1`, and an explicit
+z-index always wins over `auto`, document order aside — the same reasoning
+`.mech-wave-layer` relies on to stay behind everything in the frame without a
+z-index either. So the paint order — wave, name, cast — falls out of two
+z-indexes and where things sit in the document, not out of three layers
+someone has to keep straight.
+
+The size formula is `.mech-title`'s own average-advance heuristic, run against
+a different width: `--gutter`, the same full-bleed inset the index sheet uses,
+rather than the side column's 460. `nameTuning.ts` is the panel it answers to
+— the **Name** tab — with `size` as a scale on top of the fit for when the
+width-fitted number still wants nudging by eye, `y` to move the block off
+vertical centre, and `opacity` for how much shows through the cast standing in
+front of it. Home only, and `.mech-lede` stays empty there now: it fills in
+only for a project's own title, exactly as it always did.
+
+The long paragraph that used to sit under the old title — the intro copy, or a
+project's brief while hovering — is gone outright rather than left empty.
+`.mech-brief` was never a project screen's own; it only ever filled in for
+home's old fallback state, and there is no fallback state left to have one.
 
 ### Narrow viewports
 

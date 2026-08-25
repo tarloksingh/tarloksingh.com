@@ -14,6 +14,7 @@ import { CAST } from './heroes'
 import MechDeck from './MechDeck'
 import MechMenu from './MechMenu'
 import { useNarrowTuning } from './narrowTuning'
+import { useNameTuning } from './nameTuning'
 import { sound } from './sound'
 import { useNarrow } from './narrow'
 import { useReveal } from './reveal'
@@ -250,21 +251,12 @@ const whenIdle = (run: () => void) => {
   return () => window.clearTimeout(timer)
 }
 
-/** Who this is, for the home screen's side column when nothing in the index
- *  is being pointed at. The project screen never shows it: there the column
- *  belongs to the project.
- *
- *  The default state of a portfolio's front page should say what the person
- *  does, not describe whichever project happens to be first in the list —
- *  which is what filling the readout in with `MENU[0]` on arrival did. */
+/** Who this is: the name behind the cast, and the line above it. Fixed —
+ *  home no longer has a "nothing pointed at yet" state for this, because
+ *  nothing hovered ever changes it any more. See `.mech-hero-name`. */
 const INTRO = {
   name: 'Tarlok Singh',
-  line: 'designer',
-  text:
-    'Product designer with 8+ years building 0→1 developer tools, AI applications, and consumer products. ' +
-    'I rapidly ship working products from concept to launch. I\u2019ve scaled a business from $800K to $1.5M+ ' +
-    'by putting design at the center of growth. My passion is building multi-sensory experiences and turning ' +
-    'ideas into products. I\u2019m in love with the craft of building and designing.'
+  line: 'designer'
 }
 
 /** Which subject on the home stage belongs to which project — the reverse of
@@ -275,16 +267,6 @@ const INTRO = {
 const HERO_BY_PROJECT = new Map(
   CAST.filter((hero) => hero.project).map((hero) => [hero.project as string, hero.id])
 )
-
-/** The first paragraph of a project's `intro`, trimmed to something the home
- *  readout can hold without turning into the case study itself. `intro` is
- *  prose written for a full write-up; this is the same words, just not all of
- *  them. */
-const briefOf = (intro: string): string => {
-  const first = (intro.split('\n\n')[0] ?? intro).trim()
-  if (first.length <= 240) return first
-  return `${first.slice(0, 237).trimEnd()}…`
-}
 
 /** The project's write-up, in the order it is read.
  *
@@ -947,6 +929,9 @@ export default function Mech({ id, onProject, onHome }: Props) {
   /* Its own tab: the ground has nothing to do with where a subject stands and
      should not have to be scrolled past to reach one. */
   const waveTuning = useWaveTuning()
+  /* The name behind the cast. Its own tab for the same reason the wave has
+     one: this has nothing to do with where a subject stands either. */
+  const nameTuning = useNameTuning()
   const [booting, setBooting] = useState(true)
   const [lit, setLit] = useState<string | null>(null)
   /* `home` is the whole difference between the two states, and it is read
@@ -1258,12 +1243,13 @@ export default function Mech({ id, onProject, onHome }: Props) {
      note on its own card, in place of the subject. See `MENU` in `model.ts`
      for why a project with no media is in the index at all. */
   const bare = !home && !current
-  /* What the readout in the side column is currently about. On a project that
-     is the project; at home it is whichever box in the index the pointer is
-     over, which is what lets the title stay put across the press that opens
-     it. */
-  const eyedItem = home && eyed ? (MENU.find((item) => item.project.id === eyed) ?? null) : null
-  const lede = project ?? eyedItem?.project ?? null
+  /* What the readout in the side column is currently about. On a project
+     screen that is the project; at home it is always the intro — hovering an
+     index box or a subject on the stage used to swap the title over to that
+     project's name, which fought with the title being the one thing on the
+     page that says whose site this is. `eyed` still drives which subject
+     lights up (see `focusHeroId` below), just not what the title says. */
+  const lede = project ?? null
 
   /* What the tag says: the project's real name, and its line under it — the
      same pairing every leader on a project screen has. A subject with no
@@ -1291,7 +1277,8 @@ export default function Mech({ id, onProject, onHome }: Props) {
         ? [
             { id: 'cast', label: 'Cast', store: cast.store },
             { id: 'tags', label: 'Tags', store: castTags },
-            { id: 'wave', label: 'Wave', store: waveTuning.store }
+            { id: 'wave', label: 'Wave', store: waveTuning.store },
+            { id: 'name', label: 'Name', store: nameTuning.store }
           ]
         : [
             ...(modelFrame ? [{ id: 'subject', label: 'Subject', store: tuning.store }] : []),
@@ -1389,6 +1376,36 @@ export default function Mech({ id, onProject, onHome }: Props) {
         <div className="mech-deck-slot">
           <MechDeck narrow={narrow} />
         </div>
+
+        {/* The name, behind the cast rather than beside it. Used to be the
+            first two things in `.mech-lede` — small, in the side column, and
+            swapped over to whichever project the pointer was on. Both of
+            those were the wrong call for the one thing on the page that says
+            whose site this is: it should not move, and it should not have to
+            share a column with a project's own title. Sits before
+            `.mech-stage` in the DOM and after `.mech-wave-layer` outside this
+            frame entirely, so it paints between the two without a z-index of
+            its own — see the stacking note in Mech.css. */}
+        {home && (
+          <div
+            className="mech-hero-name"
+            style={{
+              ['--hero-name-len' as string]: INTRO.name.length,
+              ['--hero-name-size' as string]: nameTuning.values.size,
+              ['--hero-name-y' as string]: `${nameTuning.values.y}`,
+              ['--hero-name-opacity' as string]: nameTuning.values.opacity,
+              ['--hero-kicker-gap' as string]: `${nameTuning.values.kickerGap}`,
+              ['--hero-kicker-size' as string]: `${nameTuning.values.kickerSize}`
+            }}
+          >
+            <p className="mech-hero-kicker">
+              <Typed text={INTRO.line} run="intro-kicker" speed={22} caret={false} />
+            </p>
+            <h1 className="mech-hero-title">
+              <Typed text={INTRO.name} run="intro-name" delay={0.3} />
+            </h1>
+          </div>
+        )}
 
         {/* The subject and its labels share one box so that scaling the window
             moves them together. */}
@@ -1666,11 +1683,14 @@ export default function Mech({ id, onProject, onHome }: Props) {
         )}
 
         <section className="mech-side">
-          {/* Its own block, which on the wide layout is simply the first two
-              things in this column — and on a narrow one is what lets the
-              name and the line under it sit *above* the picture while the
-              write-up stays below the tile strip. See `display: contents`
-              under `narrow viewports` in Mech.css. */}
+          {/* Empty on home now — the name lives behind the cast, in
+              `.mech-hero-name` above, and does not react to the pointer.
+              This block only ever fills in on a project screen. See
+              `display: contents` under `narrow viewports` in Mech.css for
+              why it still gets its own wrapper rather than folding straight
+              into `.mech-side`: a project's title needs to sit above the
+              picture on a narrow layout while the write-up stays below the
+              tile strip, and that reorder has to happen at this level. */}
           <div className="mech-lede">
             {/* The title is set to one line, and on a phone that is a promise
                 the type size cannot keep on its own: "mr. takahashi" fits at
@@ -1681,13 +1701,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
                 rather than the rendered box because the title types itself in
                 a character at a time, and a box measured mid-type is a box
                 that is still growing. See `.mech-title` in Mech.css. */}
-            {/* At home this is whichever box the pointer is over; on a
-                project it is the project. Same element either way, which is
-                the point — opening something from the index does not replace
-                the title, it stops it changing. `run` is keyed on what is
-                being described rather than on `shownId` so the home readout
-                retypes as the pointer moves. */}
-            {lede ? (
+            {lede && (
               <>
                 <h1 className="mech-title" style={{ ['--title-len' as string]: lede.title.length }}>
                   <Typed text={lede.title} run={lede.id} />
@@ -1698,16 +1712,6 @@ export default function Mech({ id, onProject, onHome }: Props) {
                   </p>
                 )}
               </>
-            ) : (
-              /* Home, with nothing in the index being pointed at. */
-              <>
-                <h1 className="mech-title" style={{ ['--title-len' as string]: INTRO.name.length }}>
-                  <Typed text={INTRO.name} run="intro" />
-                </h1>
-                <p className="mech-tagline">
-                  <Typed text={INTRO.line} run="intro" delay={0.3} speed={22} caret={false} />
-                </p>
-              </>
             )}
           </div>
 
@@ -1717,15 +1721,6 @@ export default function Mech({ id, onProject, onHome }: Props) {
               lets it sit centred in whatever room is left, biased a little
               above true middle. */}
           <div className="mech-folds-wrap">
-            {/* Home says the one thing about a project that a name and a line
-                cannot: what it actually was. The folds are the write-up and
-                the write-up belongs to the project screen — an index that
-                unfolded a case study in place would be the case study. */}
-            {home && (
-              <p className="mech-brief" key={lede?.id ?? 'intro'} data-intro={!lede}>
-                {lede ? briefOf(lede.intro) : INTRO.text}
-              </p>
-            )}
             <div className="mech-folds">
               {folds.map((fold, i) => {
                 const isOpen = open === fold.id

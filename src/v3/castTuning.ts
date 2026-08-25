@@ -43,8 +43,13 @@ export interface CastStudio {
   fill: number
   /** Renderer-level, so it cannot be per-subject: there is one tone map for
    *  the canvas. Every other lighting number on this panel belongs to one
-   *  subject. */
+   *  subject. What the canvas rests at when nothing is under the pointer;
+   *  see `exposureHover` for what it lifts to. */
   exposure: number
+  /** What the canvas's exposure rises to while a subject is hovered — the
+   *  index or the stage, either counts. Lets the cast sit dim until
+   *  something is actually being looked at. */
+  exposureHover: number
 
   /* ---- the camera ----
 
@@ -79,7 +84,8 @@ export interface CastStudio {
 export const CAST_STUDIO: CastStudio = {
   focalLength: 200,
   fill: 0.95,
-  exposure: 0.115,
+  exposure: 0.01,
+  exposureHover: 0.15,
   dolly: 8.35,
   camY: 0.09,
   tilt: -0.1,
@@ -365,6 +371,7 @@ export function useCastTuning() {
           /* The one light left that is not a subject's own — there is a single
              tone map for the canvas and it cannot be split. */
           exposure: { value: startStudio.exposure, min: 0.005, max: 4, step: 0.005, label: 'Exposure' },
+          exposureHover: { value: startStudio.exposureHover, min: 0.005, max: 4, step: 0.005, label: 'Exposure (hover)' },
           lean: { value: startStudio.lean, min: 0, max: 40, step: 0.5, label: 'Lean' }
         },
         { collapsed: false }

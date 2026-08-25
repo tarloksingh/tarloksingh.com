@@ -50,6 +50,7 @@ being false (which is why `navigator.clipboard` does not exist — see
 | `Mech.tsx` | **Home and a project both** — layout, the swap, transit |
 | `MechCast.tsx`, `castTuning.ts` | The home line-up, and where each one stands |
 | `MechWave.tsx` | The ground it stands over — a shader, not a picture |
+| `nameTuning.ts` | The name behind the cast — `.mech-hero-name` in Mech.tsx |
 | `leaders.ts`, `notes.ts` | Where the label lines go, and what they say |
 | `MechPins.tsx`, `labelTuning.ts` | Placing a picture's labels (**P**) and copying them out |
 | `MechCastPins.tsx`, `castTags.ts` | The same, for the tags on the cast (**P** on home) |
@@ -100,8 +101,12 @@ larger than about 1600. Use `MediaItem.still` and `MediaItem.thumb`, never
 - **One dev panel, top right, with tabs** — `MechPanel.tsx`. The tabs are
   whatever the current screen can actually change: home gets **Cast** (every
   subject's placement and its own rig, plus the camera and whole-stage
-  handles), **Takahashi** (his lighting) and **Wave**; a project gets
-  **Subject** / **Piece** / **Labels** as they apply; narrow gets **Scale**.
+  handles, including the two exposure numbers hovering breathes between),
+  **Tags** (the cast's own labels, **P** to place them), **Wave** and **Name**
+  (the big name behind the cast); a project gets **Subject** / **Piece** /
+  **Labels** as they apply; narrow gets **Scale**. Mr. Takahashi has no tab of
+  his own any more — he stands in the cast's scene now, so his rig is the
+  folder with his name on it under **Cast**, alongside everyone else's.
   Every tuning hook makes its own store with `useCreateStore` — nothing writes
   into Leva's default store, and there is no `<Leva>` element.
 - **Every 3D subject has its own lighting.** There is no shared rig left
@@ -193,6 +198,34 @@ One knob — **Panel swing** on the Wave tab, degrees of hue, 0 off and 360 a
 full turn at the field's own rate. Off on a project screen by construction.
 Written thirty times a second rather than sixty: a custom property on `.mech`
 invalidates style for the whole readout under it.
+
+**The name moved behind the cast.** It used to be the first two things in
+`.mech-side` — small, typed in next to whichever project the pointer was on,
+and swapped over to that project's own title on hover. Both were wrong for
+the one thing on the page that says whose site this is: `.mech-hero-name` in
+Mech.tsx is a new full-bleed layer, home only, drawn before `.mech-stage` so
+it sits behind the line-up without needing a z-index of its own — `.mech-lede`
+now stays empty on home and only ever fills in for a project. `nameTuning.ts`
+is its panel, the **Name** tab: Size nudges the width-fitted size, Vertical
+moves it off centre, Opacity is how much shows through the cast standing in
+front of it. The long intro paragraph that used to sit under the old title is
+gone outright, not hidden — `.mech-brief` was never a project screen's, only
+home's fallback state, and there is no fallback state left to have one.
+
+**Exposure breathes.** `Studio` in MechCast.tsx used to set
+`toneMappingExposure` once, off the panel's `exposure` number, in an effect.
+Now it lerps every frame toward `exposure` at rest and `exposureHover` while
+any subject is under the pointer — the stage or the index either one — the
+same damping `Lean` already used for following the pointer. Both numbers are
+on the **Cast** tab's Stage folder now, not just one.
+
+**Mr. Takahashi floats with the cast on home, not with himself.** His own
+`floatSpeed`/`floatRange`/`floatRotation` in `modelTuning.ts` are tuned for
+filling his own project screen alone, and on the stage next to four other
+subjects moving by the studio's numbers, his own read as barely moving. The
+cast's `Placed` now overrides those three fields with the studio's when
+building the tuning `FaceScene` gets — everything else about his rig (his
+lean, his gaze) still travels with him unchanged.
 
 **Type is on its own unit.** `--type: max(var(--px), 0.0651rem)` — the same rem
 that caps `--px`, but a `max()`, so type has a floor on a small window and

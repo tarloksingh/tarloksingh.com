@@ -406,6 +406,73 @@
    clutter rather than navigation; what replaced them is `.mech-menu-key`
    below, opening the same index sheet a phone gets. See `MechMenu.tsx`. */
 
+/* ---- the name, behind the cast ----
+
+   Full-bleed within the frame and centred both ways — the kicker on top,
+   "designer", and the name filled out to the frame's own width below it,
+   always one line. No z-index of its own: it carries none, `.mech-stage`
+   right after it carries `z-index: 1`, and an explicit z-index always wins
+   over `auto` regardless of which comes first in the document — see the
+   painting-order note by `.mech-wave-layer`, further down, for the same
+   reasoning the other way round (that one stays behind everything in this
+   frame the same way, without a z-index either).
+
+   Width and the size formula share the same number — `--gutter`, the same
+   full-bleed inset the index sheet uses — so "one line, filled to the frame"
+   and "the box it's centred in" can never drift apart. The average-advance
+   heuristic is `.mech-title`'s own: a name of unusually wide letters can
+   still overrun it by a hair, which is meant to show as reaching past the
+   frame rather than as a silent size cut.
+
+   Home only, and it does not react to the pointer — see `INTRO` and
+   `.mech-lede` in Mech.tsx for what this replaced and why. `nameTuning.ts`
+   is the panel: Size nudges the fit, Vertical moves the block off centre,
+   Opacity is how much it stands out from behind the cast. */
+.mech-hero-name {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + var(--hero-name-y, 0) * var(--px));
+  width: calc(1920 * var(--px) - 2 * var(--gutter));
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  opacity: var(--hero-name-opacity, 1);
+  pointer-events: none;
+  animation: mech-in 620ms var(--ease) both;
+}
+
+.mech-hero-kicker {
+  margin: 0 0 calc(var(--hero-kicker-gap, 18) * var(--px));
+  font-size: calc(var(--hero-kicker-size, 20) * var(--type));
+  font-weight: 500;
+  letter-spacing: calc(3 * var(--type));
+  text-transform: uppercase;
+  color: var(--accent);
+  text-shadow: 0 0 calc(9 * var(--px)) rgba(var(--accent-rgb), 0.4);
+}
+
+.mech-hero-title {
+  margin: 0;
+  width: 100%;
+  font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-weight: 400;
+  white-space: nowrap;
+  line-height: 1;
+  letter-spacing: calc(-0.4 * var(--type));
+  text-transform: uppercase;
+  color: var(--accent);
+  /* Same two-shadow treatment as `.mech-title` — a tight halo and a wide,
+     faint one — and the same slow flicker, so this reads as the same lit
+     panel rather than as a second, unrelated effect. */
+  text-shadow: 0 0 calc(9 * var(--px)) rgba(var(--accent-rgb), 0.55), 0 0 calc(34 * var(--px)) rgba(var(--accent-rgb), 0.25);
+  animation: mech-flicker 7s steps(1, end) infinite;
+  font-size: calc(
+    var(--hero-name-size, 1) * (1920 * var(--px) - 2 * var(--gutter)) / (var(--hero-name-len, 12) * 0.66)
+  );
+}
+
 /* ---- the subject ---- */
 
 .mech-stage {
@@ -3629,10 +3696,12 @@
 
 /* ---- the home readout ----
 
-   The side column says the same three things it says on a project screen —
-   name, line, and what it was — for whichever box the pointer is over. The
-   folds are the write-up and stay on the project screen: an index that
-   unfolded a case study in place would be the case study.
+   `.mech-lede` is empty here now — the name is `.mech-hero-name`, behind the
+   cast, and does not react to the pointer any more. This column on home is
+   only ever the folds: the stack, contact, the rest of the accordion. The
+   paragraph that used to fill in under the name — a project's brief while
+   hovering, the intro paragraph otherwise — is gone outright rather than
+   left empty; `.mech-brief` was never a project screen's, only home's.
 
    Pulled up off the bottom so it cannot reach the index below it. On a
    project this column runs to 120 from the bottom because the folds need the
@@ -3642,14 +3711,6 @@
      itself stands off the bottom edge. It was 320 when each box carried a
      portrait square and a second line of type. */
   bottom: calc(230 * var(--px));
-}
-
-.mech-brief {
-  max-width: calc(360 * var(--px));
-  font-size: calc(13 * var(--type));
-  line-height: 1.55;
-  color: var(--mid);
-  animation: mech-in 620ms var(--ease) both;
 }
 
 /* ---- nothing to show ----
@@ -3685,14 +3746,6 @@
   font-size: calc(14 * var(--type));
   line-height: 1.6;
   color: var(--mid);
-}
-
-/* The intro paragraph runs longer than a project's brief and is the first
-   thing anybody reads, so it gets its own measure and a little more air. */
-.mech-brief[data-intro='true'] {
-  max-width: calc(370 * var(--px));
-  font-size: calc(12.5 * var(--type));
-  line-height: 1.7;
 }
 
 /* ---- the wave's layer ----

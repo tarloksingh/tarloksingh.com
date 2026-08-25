@@ -54,10 +54,25 @@ const distanceFor = (focalLength: number, fill: number) =>
  *  aim: a bright studio box lifting every subject at once, exactly the
  *  "generic lighting effect in the way". How hard any given subject picks the
  *  room up is `env` on its own `CastLight`, and setting that to 0 removes the
- *  room from that subject entirely. */
-function Studio({ exposure }: { exposure: number }) {
+ *  room from that subject entirely.
+ *
+ *  Exposure itself breathes: it rests at `exposure` and rises to
+ *  `exposureHover` while a subject is under the pointer, on the stage or in
+ *  the index either one — see `hovered`. Damped rather than snapped, the same
+ *  way `Lean` follows the pointer, so the lift reads as the cast waking up
+ *  rather than a toggle. */
+function Studio({
+  exposure,
+  exposureHover,
+  hovered
+}: {
+  exposure: number
+  exposureHover: number
+  hovered: boolean
+}) {
   const gl = useThree((state) => state.gl)
   const scene = useThree((state) => state.scene)
+  const current = useRef(exposure)
 
   useEffect(() => {
     const pmrem = new PMREMGenerator(gl)
@@ -74,9 +89,11 @@ function Studio({ exposure }: { exposure: number }) {
     scene.environmentIntensity = 1
   }, [scene])
 
-  useEffect(() => {
-    gl.toneMappingExposure = exposure
-  }, [gl, exposure])
+  useFrame((_, delta) => {
+    const target = hovered ? exposureHover : exposure
+    current.current = MathUtils.lerp(current.current, target, 1 - Math.pow(0.001, delta))
+    gl.toneMappingExposure = current.current
+  })
 
   return null
 }
@@ -670,7 +687,7 @@ export default function MechCast({
         camY={studio.camY}
         tilt={studio.tilt}
       />
-      <Studio exposure={studio.exposure} />
+      <Studio exposure={studio.exposure} exposureHover={studio.exposureHover} hovered={focused !== null} />
 
       {CAST.map((hero, index) => {
         const slot = slots?.[hero.id] ?? slotFor(hero.id)
@@ -702,13 +719,26 @@ export default function MechCast({
                  pointer, which is most of what makes him read as a character
                  rather than as a prop. `Env` is skipped for the same reason —
                  his `Model` writes `envMapIntensity` itself, from the tuning
-                 handed to it. */
+                 handed to it.
+
+                 The float itself is the cast's, not his own page's: his
+                 `floatSpeed`/`floatRange`/`floatRotation` in `modelTuning.ts`
+                 are tuned for filling his own screen alone, which on the
+                 stage read as barely moving next to the other four. Everyone
+                 in the cast bobs by the same studio numbers; only his rig,
+                 lean and gaze stay his. */
               <group
                 rotation={[MathUtils.degToRad(slot.tilt), MathUtils.degToRad(slot.turn), 0]}
               >
                 <FaceScene
                   src={hero.src}
-                  tuning={{ ...faceTuning, envMapIntensity: light.env }}
+                  tuning={{
+                    ...faceTuning,
+                    envMapIntensity: light.env,
+                    floatSpeed: studio.floatSpeed,
+                    floatRange: studio.floatRange,
+                    floatRotation: studio.floatRotation
+                  }}
                   driftFill={studio.fill}
                 />
               </group>
