@@ -78,17 +78,17 @@ export interface CastStudio {
 
 export const CAST_STUDIO: CastStudio = {
   focalLength: 200,
-  fill: 0.58,
-  exposure: 0.18,
-  dolly: 20,
-  camY: 0.06,
-  tilt: -0.2,
-  lift: 0,
-  spread: 0.8,
-  floatSpeed: 2.2,
-  floatRange: 0.2,
-  floatRotation: 1.02,
-  lean: 0,
+  fill: 0.95,
+  exposure: 0.115,
+  dolly: 8.35,
+  camY: 0.09,
+  tilt: -0.1,
+  lift: -0.29,
+  spread: 0.37,
+  floatSpeed: 3.4,
+  floatRange: 0.3,
+  floatRotation: 1.08,
+  lean: 11,
   wheelRpm: 660,
   shake: 0.001
 }
@@ -121,11 +121,11 @@ export interface CastSlot {
 export const CAST_SLOT_FALLBACK: CastSlot = { x: 0, y: 0, z: 0, scale: 1, turn: 0, tilt: 0 }
 
 export const CAST_SLOTS: Record<string, CastSlot> = {
-  takahashi: { x: -0.1, y: 0.95, z: -2.45, scale: 0.65, turn: -7.5, tilt: 0 },
-  capsule: { x: 0.47, y: -0.13, z: 0.84, scale: 0.53, turn: -75, tilt: 24 },
-  rider: { x: -0.62, y: -0.27, z: -1.06, scale: 0.81, turn: 130.5, tilt: 27 },
-  stitchfam: { x: -0.86, y: 0.37, z: -3.11, scale: 0.61, turn: -44, tilt: 0 },
-  fish: { x: 0.69, y: 0.55, z: -1.95, scale: 0.63, turn: -180, tilt: -90 }
+  takahashi: { x: 0.39, y: 0.43, z: -0.59, scale: 0.48, turn: 13.5, tilt: -7 },
+  capsule: { x: 0.12, y: 0.84, z: -3.52, scale: 0.38, turn: -44.5, tilt: 24 },
+  rider: { x: -0.73, y: 0.29, z: 0.34, scale: 0.56, turn: 130.5, tilt: 27 },
+  stitchfam: { x: -1.43, y: 0.6, z: -2.8, scale: 0.38, turn: -44, tilt: 0 },
+  fish: { x: 1.22, y: 0.65, z: -1.95, scale: 0.58, turn: -180, tilt: -90 }
 }
 
 export const slotFor = (id: string): CastSlot => CAST_SLOTS[id] ?? CAST_SLOT_FALLBACK
@@ -171,9 +171,9 @@ export const CAST_LIGHT_FALLBACK: CastLight = {
 
 export const CAST_LIGHTS: Record<string, CastLight> = {
   takahashi: { keyIntensity: 11, keyX: -6, keyY: 0.5, keyZ: -0.6, fillIntensity: 12, fillX: -9.3, fillY: -10, fillZ: -10, env: 0 },
-  capsule: { keyIntensity: 1.8, keyX: -3.6, keyY: -2.5, keyZ: 5.5, fillIntensity: 1.4, fillX: -6.5, fillY: -3.6, fillZ: -10, env: 0.35 },
+  capsule: { keyIntensity: 1.1, keyX: -3.6, keyY: -2.5, keyZ: 5.5, fillIntensity: 1.4, fillX: -6.5, fillY: -3.6, fillZ: -10, env: 0.35 },
   rider: { keyIntensity: 2.2, keyX: -10, keyY: -10, keyZ: -10, fillIntensity: 1.1, fillX: -4, fillY: -10, fillZ: -3, env: 1 },
-  stitchfam: { keyIntensity: 2.2, keyX: 1, keyY: 3, keyZ: 6, fillIntensity: 1.6, fillX: -3, fillY: 1, fillZ: 2, env: 0.8 },
+  stitchfam: { keyIntensity: 3, keyX: 1, keyY: 3, keyZ: 6, fillIntensity: 1.6, fillX: -3, fillY: 1, fillZ: 2, env: 0 },
   fish: { keyIntensity: 2.4, keyX: 2, keyY: 3, keyZ: 5, fillIntensity: 1.5, fillX: -3, fillY: 2, fillZ: -1, env: 0.9 }
 }
 
@@ -239,20 +239,20 @@ export interface CastWave {
 
 export const CAST_WAVE: CastWave = {
   on: true,
-  amp: 4,
-  scale: 0.19,
-  speed: 0.53,
-  y: 0.9,
-  depth: 6.5,
-  cells: 240,
-  fade: 75,
-  opacity: 0.08,
-  gain: 6,
+  amp: 0.84,
+  scale: 0.17,
+  speed: 0.72,
+  y: -1.25,
+  depth: 28,
+  cells: 136,
+  fade: 160,
+  opacity: 2.95,
+  gain: 0.1,
   glow: 5,
   hue: 249,
-  hueSpeed: -39.5,
+  hueSpeed: -26,
   tint: 360,
-  lens: 101,
+  lens: 93,
   low: '#8d77b4',
   mid: '#684596',
   high: '#c07cff',
