@@ -1072,10 +1072,41 @@
   }
 }
 
+/* One line, on every layout, and the type size is what keeps that promise.
+   The column is 380 frame units wide and never more; at a flat 46 that holds
+   "openup" and breaks "grand theft auto v" across three lines, with the break
+   landing in the middle of a name. A title split in half is not a title.
+
+   So the size is capped against the width the words actually have — the same
+   sum the narrow layout has had for a while, moved up here so both layouts
+   are the one rule. `--title-len` is the character count, handed in from
+   Mech.tsx; 0.66 is the average advance of an uppercase Clash Display
+   character as a fraction of its size, allowing for the negative tracking;
+   and 26 is the caret, which is set beside the last character and is part of
+   the line's width for as long as the title is still typing itself.
+
+   460, not the column's own 380. The title is the top line of the screen and
+   there is nothing beside it — the subject's own box starts past 600 and the
+   folds under the title are set in a size that never needs the room. Capping
+   it at the column would have taken a third off every long name to protect
+   space that is empty.
+
+   Counted rather than measured, because the title *does* type itself in a
+   character at a time — a box measured while it is being written is a box
+   that is still growing, and a font-size keyed to it would shrink on every
+   keystroke. */
 .mech-title {
   font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-weight: 400;
-  font-size: calc(46 * var(--type));
+  font-size: min(
+    calc(46 * var(--type)),
+    calc((460 * var(--px) - 26 * var(--px)) / (var(--title-len, 14) * 0.66))
+  );
+  /* Said out loud rather than left to the cap. The cap is arithmetic on an
+     average advance and a name of unusually wide letters could still overrun
+     it by a hair — which should show as a title reaching past its column,
+     where it is obvious, rather than as a silent second line. */
+  white-space: nowrap;
   line-height: 1;
   letter-spacing: calc(-0.4 * var(--type));
   text-transform: uppercase;
@@ -1933,6 +1964,69 @@
   background: var(--accent);
   border-color: var(--accent);
   font-weight: 600;
+}
+
+/* ---- the same editor, for the cast ----
+
+   Home has no picture to pin a note to; it has five subjects standing in a
+   scene, each with a tag that names the project it opens. So the handles are
+   on the tag itself — the dot on the end that touches the subject, and a bar
+   over the words for the end that reads — and the whole thing rides the
+   subject's float rather than sitting on a patch of screen. See
+   `MechCastPins.tsx`.
+
+   Everything is drawn with the leaders' own classes, which is the point: what
+   you drag is the real tag at its real size in its real type, not a
+   representation of one. What has to be turned off is their *entry*. A leader
+   arrives drawn-on and faded-up out of `opacity: 0`, timed off `--d` and
+   `--l`, and neither variable exists out here — an animation whose delay is
+   an unresolved `var()` is simply dropped, which leaves the declared
+   `opacity: 0` underneath it standing. The labels were invisible until this
+   said otherwise. */
+.mech-cast-pin-layer .mech-leader,
+.mech-cast-pin-layer .mech-leader-label,
+.mech-cast-pin-layer .mech-leader-value,
+.mech-cast-pin-layer .mech-leader-mark,
+.mech-cast-pin-layer .mech-leader-core {
+  animation: none;
+  opacity: 1;
+  stroke-dasharray: none;
+  stroke-dashoffset: 0;
+}
+
+/* One being dragged, lit the way a note being dragged is. */
+.mech-cast-pin[data-live='true'] .mech-leader,
+.mech-cast-pin[data-live='true'] .mech-leader-mark {
+  stroke: #fff;
+}
+
+/* Nobody has placed this one — it is sitting where the fan put it, the same
+   thing a dashed chip says on a project screen. */
+.mech-cast-pin[data-loose='true'] {
+  opacity: 0.62;
+}
+
+/* The two handles. Transparent, but a fill all the same: an SVG shape filled
+   `none` is not hit-tested, so a handle drawn as an outline is a handle you
+   cannot grab. Last in the group, and therefore on top of the parts they
+   move. */
+.mech-cast-pin-grab {
+  pointer-events: auto;
+  fill: rgba(var(--accent-rgb), 0.001);
+  stroke: rgba(var(--accent-rgb), 0.35);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.mech-cast-pin-grab:hover {
+  fill: rgba(var(--accent-rgb), 0.12);
+  stroke: var(--accent);
+}
+
+@media (pointer: fine) {
+  .mech[data-pins='true'] .mech-cast-pin-grab {
+    cursor: grab;
+  }
 }
 
 /* ---- the source, on screen ----
@@ -3036,17 +3130,10 @@
   padding: calc(10 * var(--px)) var(--gutter) 0;
 }
 
-/* One line, and the type size is what has to keep that promise: at the size
-   the frame asks for, "mr. takahashi" fits a 390-point window and "red dead
-   redemption 2" is two lines of it — which is where the break in the middle
-   of a name came from.
-
-   So the size is capped against the width the words actually have. The
-   character count comes in on `--title-len` from Mech.tsx, and 0.66 is the
-   average advance of an uppercase Clash Display character as a fraction of
-   its size, allowing for the negative tracking. Counted rather than measured
-   because the title types itself in a character at a time, and a box measured
-   while it is still being written is a box that is still growing. */
+/* The same cap as `.mech-title`, against a different width: narrow, the title
+   has the window rather than a 380-unit column, and a lower ceiling to start
+   from. Everything about why it is a count and not a measurement is written
+   up there. */
 .mech[data-narrow='true'] .mech-title {
   font-size: min(
     calc(44 * var(--type)),
@@ -3423,15 +3510,21 @@
   width: fit-content;
   max-width: calc(1718 * var(--px));
   grid-template-columns: repeat(6, 1fr);
-  gap: calc(20 * var(--px)) calc(19 * var(--px));
+  /* Tighter than the boxes were tall. Two rows of a one-line control want to
+     read as one block of twelve, and the gap that suited a 60-unit box with a
+     square in it left the rows floating apart once the box was 26. */
+  gap: calc(12 * var(--px)) calc(14 * var(--px));
 }
 
+/* One line: the name, then its number. Both the second row of type and the
+   portrait square that used to set this box's height are gone, so the padding
+   is the only thing left deciding it — which is why it is symmetrical now
+   rather than the four different numbers a square on the right needed. */
 .mech-index-box {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: calc(8 * var(--px));
-  padding: calc(9 * var(--px)) calc(9 * var(--px)) calc(9 * var(--px)) calc(14 * var(--px));
+  align-items: baseline;
+  gap: calc(10 * var(--px));
+  padding: calc(7 * var(--px)) calc(13 * var(--px));
   border: 1px solid rgba(var(--accent-rgb), 0.22);
   border-radius: var(--round);
   /* Nearly opaque, because there is a lit surface behind this now — the
@@ -3465,10 +3558,9 @@
   }
 }
 
+/* Holds the name and the gauge that sizes every box off it. Not a column any
+   more — there is one line in here. */
 .mech-index-text {
-  display: flex;
-  flex-direction: column;
-  gap: calc(5 * var(--px));
   min-width: 0;
 }
 
@@ -3502,32 +3594,19 @@
   white-space: nowrap;
 }
 
+/* Pushed to the far edge rather than set right against the name. Every box is
+   the width of the longest name, so a number that trails each name lands in a
+   different place in each box; one that sits on the edge lines up down the
+   column, which is the only thing that makes twelve of them read as an index
+   rather than as twelve stray digits. */
 .mech-index-n {
+  margin-left: auto;
+  flex: none;
   font-size: calc(8 * var(--type));
   letter-spacing: calc(1.4 * var(--type));
   font-variant-numeric: tabular-nums;
   color: inherit;
   opacity: 0.8;
-}
-
-/* The rectangle a project's own PNG drops into — see `portraitOf` in
-   `model.ts`. Drawn empty until that file exists so the row keeps its shape
-   while the set is being filled in. */
-.mech-index-portrait {
-  flex: none;
-  width: calc(42 * var(--px));
-  height: calc(42 * var(--px));
-  border: 1px solid rgba(var(--accent-rgb), 0.18);
-  border-radius: calc(4 * var(--px));
-  background: rgba(var(--accent-rgb), 0.05);
-  overflow: hidden;
-}
-
-.mech-index-portrait img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
 }
 
 .mech-index-box:hover {
@@ -3548,10 +3627,6 @@
     inset 0 0 calc(30 * var(--px)) rgba(var(--accent-rgb), 0.08);
 }
 
-.mech-index-box[aria-pressed='true'] .mech-index-portrait {
-  border-color: rgba(var(--accent-rgb), 0.6);
-}
-
 /* ---- the home readout ----
 
    The side column says the same three things it says on a project screen —
@@ -3563,7 +3638,10 @@
    project this column runs to 120 from the bottom because the folds need the
    room; here there are no folds. */
 .mech[data-home='true'] .mech-side {
-  bottom: calc(320 * var(--px));
+  /* Two rows of one-line boxes, the gap between them, and the 140 the index
+     itself stands off the bottom edge. It was 320 when each box carried a
+     portrait square and a second line of type. */
+  bottom: calc(230 * var(--px));
 }
 
 .mech-brief {
@@ -3615,114 +3693,6 @@
   max-width: calc(370 * var(--px));
   font-size: calc(12.5 * var(--type));
   line-height: 1.7;
-}
-
-/* ---- the wave's layer ----
-
-   Full window, not the frame. `.mech-frame` is 1920 coordinates wide and
-   `--px` takes the smaller of a width term and a height term, so on anything
-   wider than 16:9 the frame is letterboxed — and the wave, drawn inside it,
-   stopped dead at the black bars while the grid behind it ran to the edges.
-
-   Fixed and inset like `.mech-hud`, at the same stacking level and earlier in
-   the DOM, so the grid, the bloom and the sweep all still paint over it. It
-   takes no pointer: the gun and the reticle have to reach the page through
-   it. See `MechWave.tsx`. */
-.mech-wave-layer {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  /* Fades with the retarget, the same as everything else that belongs to
-     home — so opening a project takes the ground out with the cast rather
-     than cutting it. */
-  opacity: 1;
-  transition: opacity 700ms var(--ease);
-}
-
-.mech[data-covered='true']:not([data-boot='true']) .mech-wave-layer {
-  opacity: 0;
-}
-
-.mech-wave-layer canvas {
-  display: block;
-}
-
-/* ---- the dev panel ----
-
-   One window, tabbed, and it scrolls. What it replaces was four Leva panels
-   stacked down this edge — a panel grows to its content and the page behind
-   it does not scroll, so anything past the bottom of the window was simply
-   unreachable. Capped at the viewport with its own scroller, and the tab
-   strip stays put at the top of it.
-
-   Development only. See `MechPanel.tsx`. */
-.mech-panel {
-  position: fixed;
-  top: 10px;
-  right: 10px;
-  z-index: 1000;
-  width: min(340px, calc(100vw - 20px));
-  display: flex;
-  flex-direction: column;
-  /* Never taller than the window, so there is always a way to reach the
-     bottom of a long tab. */
-  max-height: calc(100vh - 20px);
-  border-radius: 6px;
-  overflow: hidden;
-  background: #141414;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-
-.mech-panel-tabs {
-  flex: none;
-  display: flex;
-  border-bottom: 1px solid #272727;
-  background: #1b1b1b;
-}
-
-.mech-panel-tabs button {
-  flex: 1 1 0;
-  min-width: 0;
-  padding: 8px 6px;
-  border: 0;
-  border-right: 1px solid #272727;
-  background: transparent;
-  color: #7a7a7a;
-  font: inherit;
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: color 120ms linear, background-color 120ms linear;
-}
-
-.mech-panel-tabs button:last-child {
-  border-right: 0;
-}
-
-.mech-panel-tabs button:hover {
-  color: #d0d0d0;
-}
-
-/* The one you are on, marked along its bottom edge — inside the strip, so
-   switching tabs does not move anything. */
-.mech-panel-tabs button[aria-selected='true'] {
-  color: var(--accent);
-  background: #141414;
-  box-shadow: inset 0 -2px 0 var(--accent);
-}
-
-.mech-panel-body {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-
-.mech-panel-body[hidden] {
-  display: none;
 }
 
 /* ---- the wave's layer ----

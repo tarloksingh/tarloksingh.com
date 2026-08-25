@@ -157,13 +157,11 @@ const CAST_DEPTH = 4
    transparent material brings only exist during the fade and never while you
    are looking at a still stage.
 
-   Staggered on the way in, together on the way out. A cast arriving one after
-   another reads as a line-up assembling; a cast *leaving* one after another
-   just delays the thing you asked for. */
+   Staggered on the way in, and not done here at all on the way out. Leaving
+   is one CSS opacity on the canvas — see `Placed`'s frame loop. A fade and
+   nothing else: the lift a subject used to arrive on read, in reverse, as the
+   whole line-up sinking through the floor on the way to a project. */
 const IN_STAGGER = 0.09
-/** How far under its mark a subject starts, in world units. A little lift
- *  under the fade, so it arrives rather than simply appears. */
-const RISE = 0.28
 
 /** Hover: the one being looked at comes forward, everything else drops back.
  *  Small numbers — this is parallax, not a carousel. */
@@ -354,6 +352,7 @@ function Subject({ hero, studio }: { hero: Hero; studio: CastStudio }) {
    rendered black. Cheaper to notice than to subscribe to: the node count only
    changes when something loads. */
 function Placed({
+  heroId,
   slot,
   light,
   layer,
@@ -367,6 +366,9 @@ function Placed({
   onPick,
   children
 }: {
+  /** Which subject this is holding — the key its projected position is
+   *  published under. See `aim.spots` in `subject.ts`. */
+  heroId: string
   slot: CastSlot
   light: CastLight
   layer: number
@@ -425,45 +427,73 @@ function Placed({
     }
 
     since.current += delta
-    // Staggered arriving, together leaving.
-    const delay = shown ? index * IN_STAGGER : 0
-    if (since.current >= delay) {
-      const to = shown ? 1 : 0
-      grow.current = MathUtils.lerp(grow.current, to, 1 - Math.pow(0.0015, delta))
+    /* **Arriving only.** Leaving is the canvas's own fade — one CSS opacity on
+       `.mech-model-layer`, which is the same fade a project's subject leaves
+       on. Fading five subjects out material by material was doing the same
+       job twice and doing it worse: a picture already composited cannot sort
+       wrong, and five sets of half-transparent materials can. Nothing has to
+       be restored afterwards either, because the cast is unmounted at the end
+       of the exit and mounts again at `grow` zero when home comes back. */
+    if (shown && since.current >= index * IN_STAGGER) {
+      grow.current = MathUtils.lerp(grow.current, 1, 1 - Math.pow(0.0015, delta))
     }
     const eased = grow.current
 
-    /* The fade. Written to every material under the subject, and `transparent`
-       switched back off once it is settled — a transparent material is sorted
-       differently and it is not worth paying for that on a stage that is just
-       sitting there. */
+    /* The fade in. Written to every material under the subject, and
+       `transparent` switched back off once it is settled — a transparent
+       material is sorted differently and it is not worth paying for that on a
+       stage that is just sitting there. */
     const solid = eased > 0.995
     for (const [material, opaque] of coats) {
       material.opacity = eased
       material.transparent = solid ? !opaque : true
-      material.depthWrite = solid ? true : opaque && eased > 0.5
+      /* Depth is written for the whole of the fade, not only its second half.
+         Dropping it below half opacity is what put the inside of Mr.
+         Takahashi's head in front of his face for the first beat of every
+         arrival — with nothing in the depth buffer, the back of a head drawn
+         after the front of it is not rejected, and a head is the one subject
+         here you can see into. Restored to what the material was authored
+         with rather than to `true`, so a piece built transparent stays it. */
+      material.depthWrite = opaque
     }
 
-    const forward = focus === true ? FORWARD : focus === false ? -BACK : 0
+    /* Frozen on the way out. Opening a project means the pointer is sitting on
+       an index box, so the subject that box names was being pulled forward at
+       the exact moment the stage was asked to leave — a fade with a lunge in
+       the middle of it. */
+    const forward = !shown
+      ? depth.current
+      : focus === true
+        ? FORWARD
+        : focus === false
+          ? -BACK
+          : 0
     depth.current = MathUtils.lerp(depth.current, forward, 1 - Math.pow(0.002, delta))
 
-    group.position.set(
-      slot.x * spread,
-      slot.y + lift - (1 - eased) * RISE,
-      slot.z + depth.current
-    )
+    /* No lift. A subject arriving used to rise `RISE` under the fade, which
+       on the way *back* out read as the line-up sinking through the floor —
+       and Mr. Takahashi, framed largest and lowest, sank furthest. What was
+       asked for is a fade, so this is only a fade. */
+    group.position.set(slot.x * spread, slot.y + lift, slot.z + depth.current)
     body.scale.setScalar(slot.scale)
     body.visible = eased > 0.004
 
-    /* Where this subject has ended up on screen, for the leader that names
-       it. Only worth computing for the one being pointed at, and published to
-       a module rather than lifted into state because it changes every frame
-       and the thing reading it draws itself in its own loop. */
+    /* Where this subject has ended up on screen, for the leader that names it
+       and for the editor that places where that leader points. Published to a
+       module rather than lifted into state because it changes every frame and
+       both things reading it draw themselves in their own loops.
+
+       Every subject, not only the one being pointed at: the tag editor draws
+       all five at once. `aim.x`/`aim.y` stay the focused one's, because the
+       tag itself only ever has one subject to name. */
+    group.getWorldPosition(at)
+    at.project(camera)
+    const spot = (aim.spots[heroId] ??= { x: 0.5, y: 0.5 })
+    spot.x = at.x * 0.5 + 0.5
+    spot.y = -at.y * 0.5 + 0.5
     if (focus === true) {
-      group.getWorldPosition(at)
-      at.project(camera)
-      aim.x = at.x * 0.5 + 0.5
-      aim.y = -at.y * 0.5 + 0.5
+      aim.x = spot.x
+      aim.y = spot.y
     }
   })
 
@@ -648,6 +678,7 @@ export default function MechCast({
         return (
           <Placed
             key={hero.id}
+            heroId={hero.id}
             slot={slot}
             light={light}
             // Layer 0 is left empty on purpose: anything that misses its

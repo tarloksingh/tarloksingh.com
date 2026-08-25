@@ -236,16 +236,39 @@ forward and pushes the others back, damped. Small numbers; it is parallax, not
 a carousel. A direct pointer-over beats the index, because the pointer is the
 more specific answer.
 
-**The cast fades in and out**, staggered arriving and together leaving. It
-used to *scale* — each subject growing from nothing — which was chosen to
-avoid making every material transparent, and which read as the line-up being
-inflated rather than as it arriving. So it is opacity, and the cost is paid
-narrowly: every material on a subject is switched to `transparent` for the
-length of the fade and switched back to opaque the moment it settles, so the
-sorting a transparent material brings only exists while something is moving.
-Staggered in, together out — a cast arriving one after another reads as a
-line-up assembling; a cast *leaving* one after another just delays the thing
-you asked for.
+**The cast fades in, and it only fades.** It used to *scale* — each subject
+growing from nothing — which was chosen to avoid making every material
+transparent, and which read as the line-up being inflated rather than as it
+arriving. So it is opacity, and the cost is paid narrowly: every material on a
+subject is switched to `transparent` for the length of the arrival and
+switched back to opaque the moment it settles, so the sorting a transparent
+material brings only exists while something is moving. Staggered, because a
+cast arriving one after another reads as a line-up assembling.
+
+**Leaving is not this.** Opening a project takes the whole canvas out on one
+CSS opacity — `.mech-model-layer` in Mech.css, the same fade a project's own
+subject leaves on. Fading five subjects out material by material was doing the
+same job twice and doing it worse, in three ways that were all visible and all
+read as "something weird happens on the way out":
+
+- **The lift.** A subject arrived from `RISE` under its mark, so on the way
+  back out the line-up sank through the floor — and Mr. Takahashi, framed
+  largest and lowest, sank furthest. A fade with a slide in it is not a fade.
+- **The inside of his head.** `depthWrite` was dropped below half opacity, so
+  for the second half of every exit nothing was in the depth buffer and the
+  back faces of the head drew over the front ones. On an enclosure you would
+  never notice; on a face it is the thing you notice first. Depth is written
+  for the whole of the arrival now, and restored to what each material was
+  authored with rather than to `true`.
+- **The lunge.** Opening a project means the pointer is on an index box, so
+  the subject that box names was being pulled forward by the hover parallax at
+  the exact moment the stage was asked to leave. The depth is frozen once the
+  cast is no longer `shown`.
+
+A picture already composited cannot sort wrong; five sets of half-transparent
+materials can. Nothing has to be restored afterwards either — the cast is
+unmounted at the end of the exit and mounts again at zero when home comes
+back, which is what the arrival's stagger is timed from.
 
 **Two frame-one bugs, both the same shape.** A `camera` prop is read once at
 mount and the `Lens` effect corrects it a frame later — and that frame is
@@ -302,6 +325,28 @@ other end — pointing at a box lights its subject and fills in the readout, so
 pointing at the subject has to fill in the same readout and pressing it has to
 open the same project.
 
+**Where it reaches is placed, not derived.** It used to be three constants and
+a rule: up and out by `TAG.rise`/`TAG.run`, to the left unless the subject sat
+past the middle of the stage. Which is a composition for one subject and a
+guess for five — Mr. Takahashi stands high and near, the rider low and turned
+away, and the fish in the top right corner, so one fan puts a label across a
+face on one of them and off the frame on another. The same thing that is true
+of a project's readout is true here: a line that names a thing has to touch
+that thing, and no constant knows where that is.
+
+So a subject's tag has its own two points, `at` and `to`, and there is an
+editor for placing them — **press P on the home screen**, exactly as you would
+on a project screen. It is written up under
+[Pinning the leaders](#pinning-the-leaders), which is where the tool it is a
+copy of is. The one thing that differs is what the numbers are measured
+against. A note is a *fraction of the picture's box*, because a picture has
+edges; a subject has none — it is a thing standing in a scene, drifting on its
+float — so a tag is an offset in frame coordinates from wherever the camera is
+projecting the subject this frame. Which is exactly what makes it ride the
+float instead of being pinned to a patch of screen the subject swims away
+from. `CAST_TAGS` in `castTags.ts` is the table; anything not in it falls back
+to the old fan, and reads as a dashed handle in the editor.
+
 Two things had to be untangled for a pointer to reach the stage at all, and
 neither was obvious:
 
@@ -356,9 +401,24 @@ Reflects goes up with it.
 
 ### The index
 
-Twelve projects, named and numbered, in two rows of six along the bottom edge,
-each with a rectangle for a portrait (`public/portraits/<project-id>.png` —
-drop a file in and it appears; the rectangle is drawn empty until then).
+Twelve projects, named and numbered, in two rows of six along the bottom edge.
+One line each: the name, and its number out at the right edge of the box.
+
+There was a square on the right of every box for a portrait —
+`public/portraits/<project-id>.png`, drop a file in and it appears — drawn
+empty until the file existed. None of them ever did, and an empty rectangle is
+not a set being filled in, it is a hole; twelve of them is a row of holes. It
+was also carrying most of the box's height, and the number under the name was
+carrying the rest: two lines of type and the gap between them, for a control
+whose entire content is one name. Both are gone and the row is a little over a
+third of the depth it was, which is most of what makes it read as an index
+rather than as a second grid of cards competing with the stage. `portraitOf`
+is still in `model.ts` if the portraits are ever made.
+
+The number sits on the far edge rather than up against the name, because every
+box is already exactly as wide as the longest name — a number trailing each
+name lands somewhere different in every box, and one on the edge lines up down
+the column.
 
 The list is **written out** rather than derived, which is the one place on
 this site where that is the right answer. `entries` is "every project with
@@ -450,6 +510,54 @@ replacing them with a rainbow nobody picked.
 
 All of it is one folder on the Cast panel, with the same copy-to-source as
 everything else.
+
+### The panel turns with it
+
+The wave drifts its hue, and for a while everything else on the home screen
+was fixed at one green while it did — which left the ground looking like a
+screensaver running behind a printed page rather than like the same instrument
+lit off one supply.
+
+So the page drifts with it. Not a second effect: the *same* rotation, applied
+to the one token every green thing on this site already comes out of.
+`--accent` and `--accent-rgb` are one colour written two ways — Mech.css needs
+the bare triplet for the eighty-odd `rgba(…, 0.22)` it sets — and `tint.ts`
+writes both on `.mech`, so the phosphor grid, the title, the tagline, the
+index, the leaders, the reticle and the bloom's middle all turn together and
+none of them has to know it is happening.
+
+It is the shader's own formula, written out in JS rather than taken through
+HSL: Rodrigues' rotation about the grey axis of RGB space, which is what a hue
+rotation is when it must not touch how bright the colour is. It rotates from
+the **authored** green every frame rather than from what is currently on the
+element — reading the element back and rotating that again compounds, and a
+few seconds of it walks the page off anywhere.
+
+Three things worth knowing:
+
+- **Home only.** A project screen is about the project, and a panel whose
+  colour moves while you read a case study is a panel competing with it. The
+  hook takes the wave to follow or `null`, and clears what it set when it is
+  handed the second one.
+- **One knob, and it is amplitude.** `tint` on the Wave tab is degrees of
+  hue: 0 leaves the panel the green it was authored, 360 turns it right round
+  at the field's own `hueSpeed` — literally the same drift the grid has — and
+  anything between rocks it back and forth through that many degrees, so it
+  can move without ever stopping being green. The *rate* is the wave's,
+  deliberately, because a second speed control is a second thing to keep in
+  sync by hand.
+- **Thirty a second, not sixty.** Writing a custom property on `.mech`
+  invalidates style for everything under it, and the whole readout is under
+  it — so this is the one animated thing on the page that is deliberately off
+  the frame clock. At the rates the panel offers a step is a fraction of a
+  degree and nothing on screen can tell.
+
+Why not CSS: rotating a hue in a stylesheet needs either relative colour
+syntax — `rgb(from var(--accent) …)`, which cannot produce the bare `r, g, b`
+triplet every `rgba()` here is written against — or an `@property` angle,
+which costs the same style recalculation and can only reach a colour already
+expressed as one. Two `setProperty` calls on one element is the cheap version,
+not the lazy one.
 
 ### The housing
 
@@ -546,6 +654,39 @@ leader lines share a 16:9 box, and they have to, because a label that misses
 what it names is not a readout. A wider window buys the leaders clearance,
 never less.
 
+### The title is one line
+
+A title split across three lines with the break in the middle of a name is not
+a title. `.mech-title` is set `white-space: nowrap` and its **size** is what
+keeps that promise, capped against the width the words actually have:
+
+```
+font-size: min(46 * --type, (460 - 26) * --px / (--title-len * 0.66))
+```
+
+`--title-len` is the character count, handed in from `Mech.tsx`; 0.66 is the
+average advance of an uppercase Clash Display character as a fraction of its
+size, allowing for the negative tracking; and 26 is the caret, which is set
+beside the last character and is part of the line's width for as long as the
+title is still typing itself.
+
+**Counted, not measured**, and that is the whole reason this is arithmetic
+rather than a `ResizeObserver`: the title types itself in a character at a
+time, so a box measured while it is being written is a box that is still
+growing, and a font size keyed to it would shrink on every keystroke.
+
+**460, not the column's own 380.** The title is the top line of the screen and
+there is nothing beside it — the subject's box starts past 600 and the folds
+under the title are set in a size that never needs the room. Capping it at the
+column would have taken a third off every long name to protect space that is
+empty.
+
+It is the same sum on both layouts; narrow substitutes the window for the
+column and starts from a lower ceiling. It applies to the home screen's own
+name too, because home and a project are the same element — which is where
+"Tarlok Singh" breaking in half came from, on any window small enough that
+`--type`'s rem floor won against `--px`.
+
 ### Narrow viewports
 
 That column assumes there's room either side of the centred stage —
@@ -597,10 +738,8 @@ half of a scroll and a run of closed drawers there is a screen that says
 nothing about the work; on the wide layout it sits beside a subject that is
 already doing the talking, and that composition is not this pass's to redraw.
 
-The title is capped against the width it actually has: `--title-len` hands the
-stylesheet the character count and 0.66 is the average advance of an uppercase
-Clash Display character, counted rather than measured because the title types
-itself in a character at a time and a box measured mid-type is still growing.
+The title is capped against the width it actually has — the same rule the wide
+layout has, against a different width. See **The title is one line** below.
 
 The order is the second half of it, and it is not the markup's order. The
 frame becomes a flex column below the breakpoint and `.mech-side` — the wide
@@ -831,6 +970,31 @@ Placing is not typing. Press **P** on a project screen in development:
   the line is evidence for (hovering either lights the other)
 - **copying and reverting are on the Labels panel**, not on the overlay — see
   below
+
+**The same P, on the home screen, places the cast's tags.** There is no
+picture there, so there is nothing to click on to *add* a line — the roster
+is the roster and every subject has exactly one tag — and what is up instead
+is **all five tags at once**, each with a dot on the end that touches the
+subject and a bar over the words for the end that reads. All five, not the one
+being hovered, for the same reason the cast panel puts a folder on screen per
+subject rather than a folder for whichever is selected: arranging labels
+across a group means dragging one while watching the other four. It also
+side-steps the thing that makes this awkward to build the obvious way, which
+is that the real tag is only on screen while the pointer is over its subject,
+and a pointer cannot be over a subject and dragging a label twenty degrees
+away from it at the same time.
+
+The handles have to follow the subject rather than sit still, which is why
+`MechCastPins.tsx` has a frame loop in it at all — every subject's projected
+position is published on `aim.spots`, not only the one being pointed at.
+Copying and reverting are on the **Tags** panel, next to Cast and Wave, and
+the source pastes over `CAST_TAGS` in `castTags.ts`. Everything else about it
+— the localStorage draft, the dashed "this one is still on the fan" state, the
+clipboard falling back to `execCommand` — is the same machinery as above.
+
+Both editors are the same key and they are never up together: a project screen
+has a picture to pin notes on, home has a cast to tag, and neither has the
+other.
 
 **The transport is drawn, not typed.** It was a row of single characters —
 `▶`, `⊘`, `⤢` — at eleven frame pixels, which is a row of specks: you could not

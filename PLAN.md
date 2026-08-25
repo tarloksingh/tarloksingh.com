@@ -105,9 +105,11 @@ normalise, light and turn their own.
 Every hand-set number that is not structural gets a Leva panel, in development
 only, reading from a `_DEFAULTS` constant that is the shipped value. The panel
 is for finding the next number by eye — **nothing it sets reaches a visitor
-until someone pastes the copy button's output back into the constant.** Six
+until someone pastes the copy button's output back into the constant.** Seven
 files now follow this shape: `modelTuning.ts`, `wallTuning.ts`,
-`labelTuning.ts`, `productTuning.ts`, `heroTuning.ts`, `narrowTuning.ts`. All
+`labelTuning.ts`, `productTuning.ts`, `narrowTuning.ts`, `castTags.ts`, and
+`castTuning.ts` — which is where `heroTuning.ts` went when the five hero
+stages became one canvas. All
 use `useControls`, a `localStorage` scratchpad, and `copyText()` from
 `clipboard.ts` (not `navigator.clipboard` — the dev server is reached by IP
 over Tailscale, which is not a secure context, so the direct API is silently

@@ -17,9 +17,11 @@ import { useNarrowTuning } from './narrowTuning'
 import { sound } from './sound'
 import { useNarrow } from './narrow'
 import { useReveal } from './reveal'
+import { useAccentDrift } from './tint'
 import { aim, drift, flinch, quarry } from './subject'
+import { castPins, isPlaced, TAG, tagFor, useCastTagTuning } from './castTags'
 import { kills } from './kills'
-import { findProject, MENU, portraitOf, thumbOf, type Entry, type Frame } from './model'
+import { findProject, MENU, thumbOf, type Entry, type Frame } from './model'
 import { focus, notesFor, pins, type Note } from './notes'
 import { useLabelTuning, type Handed } from './labelTuning'
 import { boxOf, FRAME_SPACE, leadersFor, mediaBox, type Space } from './leaders'
@@ -38,6 +40,7 @@ const MechWave = lazy(() => import('./MechWave'))
 /* Development only — the render is behind `import.meta.env.DEV`, so a visitor
    never fetches this chunk. See `MechPins.tsx`. */
 const MechPins = lazy(() => import('./MechPins'))
+const MechCastPins = lazy(() => import('./MechCastPins'))
 
 /* The project screen.
 
@@ -795,9 +798,6 @@ interface Props {
    built in three would be a texture. What crosses the boundary is one number
    a frame — where the subject ended up on screen — through `aim`. */
 
-/** The leader's shape, in frame coordinates, measured from the subject. */
-const TAG = { rise: 84, run: 110, bar: 190 }
-
 /** How long the retraction gets before the leader is taken down. Covers the
  *  longest of the exits below — the line's 520 plus its 210 of delay. */
 const TAG_OUT = 780
@@ -824,7 +824,21 @@ function useTypedSvg(ref: RefObject<SVGTextElement | null>, text: string, delay:
   }, [ref, text, delay, speed])
 }
 
-function CastTag({ space, title, value, off }: { space: Space; title: string; value: string; off: boolean }) {
+function CastTag({
+  space,
+  heroId,
+  title,
+  value,
+  off
+}: {
+  space: Space
+  /** Which subject is being named, so the tag can be drawn where that subject
+   *  has had one placed. See `castTags.ts`. */
+  heroId: string
+  title: string
+  value: string
+  off: boolean
+}) {
   const group = useRef<SVGGElement>(null)
   const label = useRef<SVGTextElement>(null)
   const sub = useRef<SVGTextElement>(null)
@@ -834,10 +848,16 @@ function CastTag({ space, title, value, off }: { space: Space; title: string; va
      arrives, then it is written on. */
   useTypedSvg(label, title, 180, 20)
   useTypedSvg(sub, value, 300, 14)
-  /** Which way the leader reaches. Fixed when it appears rather than followed
-   *  live: a subject drifting across the middle of the stage would otherwise
-   *  flip the whole label from one side to the other mid-hover. */
-  const side = useRef(aim.x > 0.55 ? -1 : 1)
+  /* Anything placed by hand for this subject, and the fan if nothing is.
+     Read once, when the tag appears, rather than followed live: a subject
+     drifting across the middle of the stage would otherwise flip the whole
+     label from one side to the other mid-hover. Subscribed to the draft store
+     as well, so dragging a handle in the editor moves the real tag rather
+     than a preview of it. */
+  const drafts = useSyncExternalStore(castPins.subscribe, castPins.snapshot, castPins.snapshot)
+  const seat = useRef(tagFor(heroId, aim.x, drafts))
+  const tag = tagFor(heroId, aim.x, drafts)
+  const held = isPlaced(heroId, drafts) ? tag : seat.current
 
   useEffect(() => {
     let raf = 0
@@ -849,10 +869,10 @@ function CastTag({ space, title, value, off }: { space: Space; title: string; va
     return () => cancelAnimationFrame(raf)
   }, [space])
 
-  const dir = side.current
-  const elbow = [TAG.run * dir, -TAG.rise]
+  const dir = held.to[0] >= held.at[0] ? 1 : -1
+  const elbow = held.to
   const end = elbow[0] + TAG.bar * dir
-  const length = Math.abs(end - elbow[0]) + Math.hypot(elbow[0], TAG.rise)
+  const length = TAG.bar + Math.hypot(elbow[0] - held.at[0], elbow[1] - held.at[1])
   const anchor = dir === 1 ? 'start' : 'end'
   const textX = elbow[0]
 
@@ -866,12 +886,12 @@ function CastTag({ space, title, value, off }: { space: Space; title: string; va
     >
       {/* `--d` is nought: one leader, so there is no cascade to place it in. */}
       <g ref={group} style={{ ['--d' as string]: '0ms', ['--d-out' as string]: '0ms' }}>
-        <circle className="mech-leader-ping" cx={0} cy={0} r={13} />
-        <circle className="mech-leader-mark" cx={0} cy={0} r={6.5} />
-        <circle className="mech-leader-core" cx={0} cy={0} r={1.9} />
+        <circle className="mech-leader-ping" cx={held.at[0]} cy={held.at[1]} r={13} />
+        <circle className="mech-leader-mark" cx={held.at[0]} cy={held.at[1]} r={6.5} />
+        <circle className="mech-leader-core" cx={held.at[0]} cy={held.at[1]} r={1.9} />
         <polyline
           className="mech-leader"
-          points={`${end},${elbow[1]} ${elbow[0]},${elbow[1]} 0,0`}
+          points={`${end},${elbow[1]} ${elbow[0]},${elbow[1]} ${held.at[0]},${held.at[1]}`}
           style={{ ['--l' as string]: length }}
         />
         {/* Filled in by `useTypedSvg`, so they start empty. */}
@@ -910,6 +930,9 @@ export default function Mech({ id, onProject, onHome }: Props) {
      picture to click on. See `labelTuning.ts`. */
   const [handed, setHanded] = useState<Handed>(null)
   const labels = useLabelTuning(setHanded)
+  /* The same half again, for the tags on the home stage: placing is over the
+     stage under **P**, getting the result out is here. See `castTags.ts`. */
+  const castTags = useCastTagTuning()
   /* The project on screen trails the one in the URL by a transit, the same
      way the frame trails the tile you picked. Retargeting is the readout
      swinging over to something else, not a page being replaced. */
@@ -984,6 +1007,11 @@ export default function Mech({ id, onProject, onHome }: Props) {
   /* Blocks draw themselves in as they are reached — narrow only, where the
      page scrolls and half of it starts below the fold. See `reveal.ts`. */
   useReveal(root, narrow)
+  /* The panel's own green, turning with the ground under the cast. Home only,
+     and off entirely unless the wave is on and its Panel swing is up — see
+     `tint.ts`. Passed the wave rather than the numbers off it so the two
+     stay one setting. */
+  useAccentDrift(root, home ? waveTuning.wave : null)
   /* What has been pinned in this browser, if anything. Subscribed rather than
      read once: the editor writes to the same store the leaders read from, so
      a drag moves the real line rather than a preview of one. */
@@ -1262,6 +1290,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
       : home
         ? [
             { id: 'cast', label: 'Cast', store: cast.store },
+            { id: 'tags', label: 'Tags', store: castTags },
             { id: 'wave', label: 'Wave', store: waveTuning.store }
           ]
         : [
@@ -1498,29 +1527,52 @@ export default function Mech({ id, onProject, onHome }: Props) {
           {/* Names whatever is being pointed at on the home stage, in the
               project screen's own hand. Keyed on the subject so moving from
               one to another draws a new leader rather than sliding the old
-              one across. */}
-          {home && taggedItem && (
+              one across.
+
+              Off while the tag editor is open: that draws all five at once,
+              and the hovered one arriving over the top of its own handles is
+              two of the same leader on one subject. */}
+          {home && !pinning && tagged && taggedItem && (
             <CastTag
-              key={tagged ?? 'tag'}
+              key={tagged}
               space={space}
+              heroId={tagged}
               title={taggedItem.title}
               value={taggedItem.value}
               off={!onSubject}
             />
           )}
 
-          {import.meta.env.DEV && pinning && current && (
+          {import.meta.env.DEV && pinning && !home && current && (
             <Suspense fallback={null}>
               <MechPins frame={current} notes={notes} onClose={() => setPinning(false)} />
+            </Suspense>
+          )}
+
+          {/* The same tool, for the stage instead of a picture: **P** on home
+              puts a handle on each end of every subject's tag. The project
+              screen's editor above and this one are never up together — there
+              is a picture to pin notes on or there is a cast to tag, never
+              both. See `MechCastPins.tsx`. */}
+          {import.meta.env.DEV && pinning && home && (
+            <Suspense fallback={null}>
+              <MechCastPins space={space} onClose={() => setPinning(false)} />
             </Suspense>
           )}
         </div>
 
         {/* The index, across the bottom — home's answer to the tile rail, in
-            the same slot in the machine. One box per project: its name, its
-            number, and a portrait. Pressing one opens it; the box the pointer
-            is over fills in the readout in the side column first, so the
-            press lands on something already being described.
+            the same slot in the machine. One box per project: its name and
+            its number, on one line. Pressing one opens it; the box the
+            pointer is over fills in the readout in the side column first, so
+            the press lands on something already being described.
+
+            There was a square for a portrait on the right of each box until
+            the files behind it had stayed missing long enough to admit they
+            were not coming. Twelve empty rectangles is not a set being filled
+            in, it is twelve holes — and each one was carrying most of its
+            box's height for nothing. `portraitOf` is still in `model.ts` if
+            the portraits are ever made.
 
             Not `entries`. Two of the twelve have nothing to put on a stage
             and belong in an index anyway — see `MENU` in `model.ts`. */}
@@ -1546,7 +1598,6 @@ export default function Mech({ id, onProject, onHome }: Props) {
               >
                 <span className="mech-index-text">
                   <span className="mech-index-title">{item.project.title}</span>
-                  <span className="mech-index-n">{String(i + 1).padStart(2, '0')}</span>
                   {/* Every name, in every box, at zero height — so each box's
                       natural width is the width of the *longest* name and all
                       twelve come out identical. Six `1fr` columns do not do
@@ -1562,25 +1613,15 @@ export default function Mech({ id, onProject, onHome }: Props) {
                     ))}
                   </span>
                 </span>
-                {/* Empty until a file is dropped in — see `portraitOf`. The
-                    rectangle is drawn either way so the row of boxes keeps
-                    its shape while the set is being filled in. */}
-                <span className="mech-index-portrait">
-                  <img
-                    src={portraitOf(item.project.id)}
-                    alt=""
-                    loading="lazy"
-                    /* Hidden until it loads, rather than shown until it
-                       fails. Most of these files do not exist yet, and a 404
-                       paints the browser's own broken-image glyph in the
-                       frame a beat before `onError` can hide it — twelve
-                       boxes each flashing a torn-page icon. */
-                    style={{ display: 'none' }}
-                    onLoad={(event) => {
-                      event.currentTarget.style.display = 'block'
-                    }}
-                  />
-                </span>
+                {/* Beside the name, not under it. Stacked, the number set the
+                    height of every box on its own — two lines of type and the
+                    gap between them, for a control whose entire content is
+                    one name — and twelve of those came out as deep as the
+                    readout above them. On the same line it costs its own
+                    width and nothing else, and since every box is already
+                    exactly as wide as the longest name, the numbers land in a
+                    column of their own. */}
+                <span className="mech-index-n">{String(i + 1).padStart(2, '0')}</span>
               </button>
             ))}
           </nav>

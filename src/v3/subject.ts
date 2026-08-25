@@ -84,5 +84,18 @@ export const flinch = { at: 0 }
  *  pointing at ended up on screen — which is only knowable after the camera
  *  has projected it, inside the frame loop.
  *
- *  `id` is which subject, or null while nothing is being pointed at. */
-export const aim = { x: 0.5, y: 0.5, id: null as string | null }
+ *  `id` is which subject, or null while nothing is being pointed at.
+ *
+ *  `spots` is the same number for *every* subject, whether it is being
+ *  pointed at or not, keyed by hero id. The tag only ever needs the one, but
+ *  the tag *editor* draws all five at once — placing a group means seeing
+ *  where the other four are while you drag one, which is the same reason the
+ *  cast panel has a folder per subject rather than a folder for the selected
+ *  one. Five projections a frame is nothing; five that are only computed
+ *  while a dev overlay happens to be open is a special case to get wrong. */
+export const aim = {
+  x: 0.5,
+  y: 0.5,
+  id: null as string | null,
+  spots: {} as Record<string, { x: number; y: number }>
+}

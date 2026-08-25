@@ -77,18 +77,18 @@ export interface CastStudio {
 }
 
 export const CAST_STUDIO: CastStudio = {
-  focalLength: 78,
-  fill: 0.37,
+  focalLength: 200,
+  fill: 0.58,
   exposure: 0.18,
-  dolly: 0,
-  camY: 0,
-  tilt: 0.8,
+  dolly: 20,
+  camY: 0.06,
+  tilt: -0.2,
   lift: 0,
-  spread: 1,
+  spread: 0.8,
   floatSpeed: 2.2,
   floatRange: 0.2,
   floatRotation: 1.02,
-  lean: 10,
+  lean: 0,
   wheelRpm: 660,
   shake: 0.001
 }
@@ -121,7 +121,7 @@ export interface CastSlot {
 export const CAST_SLOT_FALLBACK: CastSlot = { x: 0, y: 0, z: 0, scale: 1, turn: 0, tilt: 0 }
 
 export const CAST_SLOTS: Record<string, CastSlot> = {
-  takahashi: { x: -0.1, y: 0.58, z: -2.55, scale: 1.92, turn: -7.5, tilt: 0 },
+  takahashi: { x: -0.1, y: 0.95, z: -2.45, scale: 0.65, turn: -7.5, tilt: 0 },
   capsule: { x: 0.47, y: -0.13, z: 0.84, scale: 0.53, turn: -75, tilt: 24 },
   rider: { x: -0.62, y: -0.27, z: -1.06, scale: 0.81, turn: 130.5, tilt: 27 },
   stitchfam: { x: -0.86, y: 0.37, z: -3.11, scale: 0.61, turn: -44, tilt: 0 },
@@ -209,6 +209,18 @@ export interface CastWave {
   hue: number
   /** Degrees a second the whole hue drifts. */
   hueSpeed: number
+  /** How far the *page's* own green is carried along with that drift, in
+   *  degrees of hue — see `tint.ts`. The grid behind the readout, the title,
+   *  the index and every lit edge on the panel are all one token, so this is
+   *  one number: 0 leaves the panel the green it was authored, 360 turns it
+   *  right round at `hueSpeed` the way the field does, and anything between
+   *  rocks it back and forth through that many degrees so it can move without
+   *  ever stopping being green.
+   *
+   *  Home only. A project screen is about the project and the panel around it
+   *  should hold still; the drift is the thing that makes the front page read
+   *  as something running rather than something printed. */
+  tint: number
   /** Troughs, mid-height, crests. Three rather than two because a two-stop
    *  ramp makes every middle height a muddy blend of the ends. */
   low: string
@@ -227,19 +239,20 @@ export interface CastWave {
 
 export const CAST_WAVE: CastWave = {
   on: true,
-  amp: 0.68,
-  scale: 0.14,
-  speed: 0.15,
-  y: -2.45,
-  depth: 45,
-  cells: 167,
-  fade: 120,
-  opacity: 3,
-  gain: 0.18,
+  amp: 4,
+  scale: 0.19,
+  speed: 0.53,
+  y: 0.9,
+  depth: 6.5,
+  cells: 240,
+  fade: 75,
+  opacity: 0.08,
+  gain: 6,
   glow: 5,
-  hue: 162,
+  hue: 249,
   hueSpeed: -39.5,
-  lens: 55,
+  tint: 360,
+  lens: 101,
   low: '#8d77b4',
   mid: '#684596',
   high: '#c07cff',
@@ -281,7 +294,7 @@ const SLOT_KEYS = ['x', 'y', 'z', 'scale', 'turn', 'tilt'] as const
 const LIGHT_KEYS = Object.keys(CAST_LIGHT_FALLBACK) as Array<keyof CastLight>
 const WAVE_NUMBERS = [
   'amp', 'scale', 'speed', 'y', 'depth', 'cells', 'fade',
-  'opacity', 'gain', 'glow', 'hue', 'hueSpeed', 'lens'
+  'opacity', 'gain', 'glow', 'hue', 'hueSpeed', 'tint', 'lens'
 ] as const
 
 const tidy = (value: number) => String(Number(value.toFixed(4)))
@@ -501,6 +514,9 @@ export function useWaveTuning() {
       glow: { value: startWave.glow, min: 0, max: 5, step: 0.01, label: 'Glow' },
       hue: { value: startWave.hue, min: 0, max: 360, step: 1, label: 'Hue spread' },
       hueSpeed: { value: startWave.hueSpeed, min: -90, max: 90, step: 0.5, label: 'Hue drift' },
+      /* The panel's own green, carried along with the field's drift. 0 holds
+         it where it was authored; 360 turns it right round. See `tint.ts`. */
+      tint: { value: startWave.tint, min: 0, max: 360, step: 1, label: 'Panel swing' },
       lens: { value: startWave.lens, min: 18, max: 200, step: 1, label: 'Lens mm' },
       low: { value: startWave.low, label: 'Trough' },
       mid: { value: startWave.mid, label: 'Middle' },

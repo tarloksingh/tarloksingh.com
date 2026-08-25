@@ -51,7 +51,9 @@ being false (which is why `navigator.clipboard` does not exist — see
 | `MechCast.tsx`, `castTuning.ts` | The home line-up, and where each one stands |
 | `MechWave.tsx` | The ground it stands over — a shader, not a picture |
 | `leaders.ts`, `notes.ts` | Where the label lines go, and what they say |
-| `MechPins.tsx`, `labelTuning.ts` | Placing labels (**P**) and copying them out |
+| `MechPins.tsx`, `labelTuning.ts` | Placing a picture's labels (**P**) and copying them out |
+| `MechCastPins.tsx`, `castTags.ts` | The same, for the tags on the cast (**P** on home) |
+| `tint.ts` | The panel's green, turning with the wave — home only |
 | `MechModel.tsx` | The subject: one GLB, lit, drifting, watching, shootable |
 | `MechHud.tsx`, `MechCursor.tsx` | The dashboard, and the reticle |
 | `MechBird.tsx`, `MechLaser.tsx` | The bird, and the gun |
@@ -91,7 +93,10 @@ larger than about 1600. Use `MediaItem.still` and `MediaItem.thumb`, never
 
 ## Dev-only tools
 
-- **P** on a project screen opens the label pin editor (placing and dragging).
+- **P** opens a pin editor on either screen, and they are never both up: on a
+  project it is the picture's labels (`MechPins.tsx`), on home it is the five
+  cast tags (`MechCastPins.tsx`). Placing and dragging on the overlay; copying
+  and reverting on the **Labels** / **Tags** panel tab.
 - **One dev panel, top right, with tabs** — `MechPanel.tsx`. The tabs are
   whatever the current screen can actually change: home gets **Cast** (every
   subject's placement and its own rig, plus the camera and whole-stage
@@ -180,6 +185,14 @@ off to hold it — but exposure is one number for the whole canvas and ACES is
 not linear, so his `28.5 @ 0.05` cannot be rewritten as `1.43 @ 1`. The cast
 runs at his 0.05 and the other four are scaled to suit; the wave has a lens of
 its own. Don't "tidy" the exposure back to 1.
+
+**Home's green drifts, and nothing else's does.** The wave already turned its
+own hue; `tint.ts` applies the same rotation to `--accent`/`--accent-rgb` on
+`.mech`, so the grid, the title, the index and every lit edge turn with it.
+One knob — **Panel swing** on the Wave tab, degrees of hue, 0 off and 360 a
+full turn at the field's own rate. Off on a project screen by construction.
+Written thirty times a second rather than sixty: a custom property on `.mech`
+invalidates style for the whole readout under it.
 
 **Type is on its own unit.** `--type: max(var(--px), 0.0651rem)` — the same rem
 that caps `--px`, but a `max()`, so type has a floor on a small window and
