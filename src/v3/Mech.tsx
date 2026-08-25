@@ -1332,7 +1332,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
         </div>
       )}
 
-      <MechHud />
+      <MechHud gridOn={waveTuning.wave.grid} />
       <MechCursor />
       <MechBird />
       <MechMoth />
@@ -1344,9 +1344,15 @@ export default function Mech({ id, onProject, onHome }: Props) {
 
       <div className="mech-frame">
         <header className="mech-head">
-          <button className="mech-wordmark" onClick={onHome}>
-            Tarlok Singh
-          </button>
+          {/* Home already says whose site this is — `.mech-hero-name`, large,
+              behind the cast. This signature in the corner is a way back from
+              a project, not a second copy of the same name, so it only draws
+              once there is a project to come back from. */}
+          {!home && (
+            <button className="mech-wordmark" onClick={onHome}>
+              Tarlok Singh
+            </button>
+          )}
 
           {/* One control, on both layouts. Ten projects is too many for a tag
               row to stand in for and too many to spell out along the header —

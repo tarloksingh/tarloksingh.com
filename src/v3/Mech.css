@@ -395,6 +395,9 @@
   padding: 0;
   flex: none;
   transition: color 160ms linear;
+  /* Only ever mounts arriving at a project — home has no wordmark to cut
+     away from — so this is the one direction that needs a keyframe. */
+  animation: mech-in 500ms var(--ease) both;
 }
 
 .mech-wordmark:hover {

@@ -219,15 +219,25 @@ before handing it over — his lean and his gaze, which follow the pointer and
 the bird rather than a fixed loop, are untouched, because those *are* his
 alone.
 
-**Exposure breathes with the pointer.** It used to be one number, set once, on
-`Studio`'s own effect. Now `Studio` lerps `toneMappingExposure` every frame
-toward `exposure` at rest and `exposureHover` while any subject is
-hovered — the stage or the index, either counts — the same damping `Lean`
-already uses for following the pointer, so the lift reads as the cast waking
-up rather than a switch thrown. Both numbers live on the Stage folder.
+**A spotlight was tried, and it is not right yet.** The first pass put the
+hover-brightening on `Studio`'s canvas-wide `toneMappingExposure`, which
+brightened all five subjects together — there is one tone map for the whole
+canvas, so that was never going to isolate to one. The second pass moved it
+to each subject's own two lights instead: `dim` on `CastStudio` multiplies a
+subject's own `keyIntensity`/`fillIntensity` while `focus !== true`, lerped in
+`Placed`'s existing per-frame loop toward `1` (full, exactly as `CastLight`
+authored it) for the hovered subject and toward `dim` for everyone else. In
+isolation this measured correctly — one subject's lights climbing, the other
+four's held flat — but live, hovering still reads as every subject lifting
+together, faintly. Left in place rather than reverted: it is a real,
+independently-scoped mechanic (each subject's own `directionalLight`s, on its
+own layer, driven by its own `focus` prop), so whatever is actually causing
+the shared brightening is not in this loop's isolation — worth finding before
+the next attempt rather than papering over. `exposure` on the Stage folder
+is static again, a single canvas baseline; only `dim` answers the pointer.
 
-Nothing is dimmed. The old roster faded every subject that was not selected,
-which made a cast of five read as one subject and four rejected candidates.
+The old roster's dimming — every unselected subject faded — is still gone;
+this is a different, narrower thing sitting where it used to be.
 
 **Every subject has its own lighting, and it is genuinely its own.** A
 `directionalLight` is infinite — it lights the whole scene — so five subjects
@@ -527,6 +537,13 @@ replacing them with a rainbow nobody picked.
 All of it is one folder on the Cast panel, with the same copy-to-source as
 everything else.
 
+**On, and a second on next to it, for a different grid entirely.** `MechHud`
+draws a flat, CSS-timed phosphor grid behind the whole readout — `.mech-grid`
+— on every screen, unrelated to this shader beyond sharing a name. Its toggle
+sits on the Wave tab anyway, as `grid` on `CastWave`, because that is already
+where "is the ground on" lives and a second tab for one checkbox would be
+worse than a checkbox in the wrong-sounding place.
+
 ### The panel turns with it
 
 The wave drifts its hue, and for a while everything else on the home screen
@@ -736,6 +753,14 @@ The long paragraph that used to sit under the old title — the intro copy, or a
 project's brief while hovering — is gone outright rather than left empty.
 `.mech-brief` was never a project screen's own; it only ever filled in for
 home's old fallback state, and there is no fallback state left to have one.
+
+**The corner signature is a way back, not a second copy of the name.**
+`.mech-wordmark` in the header used to sit top-left on every screen, home
+included — which put "Tarlok Singh" twice on the one page that has it large
+behind the cast as well. It only mounts now when `!home`: absent on the home
+screen, and drawn (with `mech-in`'s fade, since it is the one direction that
+ever needs an entrance) the moment a project opens, in the same corner it was
+always in. There is no exit to animate — home has no wordmark to fade *from*.
 
 ### Narrow viewports
 

@@ -11,7 +11,12 @@ import { useEffect, useRef, memo } from 'react'
    Nothing here goes through React state. The strip and the numbers are
    rewritten from a rAF loop straight onto the nodes — a readout that
    re-rendered a component tree sixty times a second to print four digits
-   would cost more than everything it sits under. */
+   would cost more than everything it sits under.
+
+   `gridOn` is the one exception, and it is the flat grid alone — the bloom
+   and the sweep still show. Its control lives on the Wave tab, next to the
+   3D wave's own on/off, even though this one has nothing to do with that
+   shader: see `grid` on `CastWave` in castTuning.ts. */
 
 /** Ticks either side of centre on the compass. The strip is wider than the
  *  window on purpose: it scrolls under a fixed marker, and the ends must
@@ -33,7 +38,7 @@ const pad = (n: number, width = 4) => String(Math.round(n)).padStart(width, '0')
  *  switched on; one that races and settles has. */
 const SPIN = 1.15
 
-function MechHud() {
+function MechHud({ gridOn = true }: { gridOn?: boolean }) {
   const hud = useRef<HTMLDivElement>(null)
   const strip = useRef<SVGGElement>(null)
   const heading = useRef<SVGTextElement>(null)
@@ -135,7 +140,7 @@ function MechHud() {
 
   return (
     <div className="mech-hud" ref={hud} aria-hidden>
-      <div className="mech-grid" />
+      {gridOn && <div className="mech-grid" />}
       <div className="mech-bloom" />
       <div className="mech-sweep" />
 

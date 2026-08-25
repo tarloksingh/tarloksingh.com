@@ -43,13 +43,18 @@ export interface CastStudio {
   fill: number
   /** Renderer-level, so it cannot be per-subject: there is one tone map for
    *  the canvas. Every other lighting number on this panel belongs to one
-   *  subject. What the canvas rests at when nothing is under the pointer;
-   *  see `exposureHover` for what it lifts to. */
+   *  subject. Static — see `dim` for the thing that actually answers the
+   *  pointer, which is each subject's own lights rather than this. */
   exposure: number
-  /** What the canvas's exposure rises to while a subject is hovered — the
-   *  index or the stage, either counts. Lets the cast sit dim until
-   *  something is actually being looked at. */
-  exposureHover: number
+  /** Multiplies every subject's own `keyIntensity`/`fillIntensity` while it is
+   *  not the one under the pointer — the index or the stage, either counts.
+   *  1 leaves an idle subject exactly as its `CastLight` authored it; low
+   *  numbers make it read as barely there until you actually look at it. The
+   *  hovered subject is always its own full, authored brightness — this
+   *  never touches it, and never touches the canvas either, which is why
+   *  spotlighting one does not wash out the other four the way a canvas-wide
+   *  exposure change used to. */
+  dim: number
 
   /* ---- the camera ----
 
@@ -84,8 +89,8 @@ export interface CastStudio {
 export const CAST_STUDIO: CastStudio = {
   focalLength: 200,
   fill: 0.95,
-  exposure: 0.01,
-  exposureHover: 0.15,
+  exposure: 0.15,
+  dim: 0.12,
   dolly: 8.35,
   camY: 0.09,
   tilt: -0.1,
@@ -190,6 +195,13 @@ export const lightFor = (id: string): CastLight => CAST_LIGHTS[id] ?? CAST_LIGHT
  *  column and a horizon cut off at the letterbox is not a horizon. */
 export interface CastWave {
   on: boolean
+  /** The *other* grid — `.mech-grid` in `MechHud.tsx`, the flat phosphor
+   *  lines drawn behind the whole readout on every screen, not the 3D one
+   *  this file's shader draws. It lives on this tab rather than its own
+   *  because this is already where the ground's other toggle is, the same
+   *  reasoning `tint` (below) rides along on this object despite driving the
+   *  whole page's accent and not only the wave. */
+  grid: boolean
   /** How high the crests run, in world units. */
   amp: number
   /** How tight the pattern is — bigger is more, smaller waves. */
@@ -245,6 +257,7 @@ export interface CastWave {
 
 export const CAST_WAVE: CastWave = {
   on: true,
+  grid: true,
   amp: 0.84,
   scale: 0.17,
   speed: 0.72,
@@ -322,6 +335,7 @@ const asSource = () => {
 
   const wave = `export const CAST_WAVE: CastWave = {\n${[
     `  on: ${live.wave.on}`,
+    `  grid: ${live.wave.grid}`,
     ...WAVE_NUMBERS.map((k) => `  ${k}: ${tidy(live.wave[k])}`),
     `  low: '${live.wave.low}'`,
     `  mid: '${live.wave.mid}'`,
@@ -371,7 +385,7 @@ export function useCastTuning() {
           /* The one light left that is not a subject's own — there is a single
              tone map for the canvas and it cannot be split. */
           exposure: { value: startStudio.exposure, min: 0.005, max: 4, step: 0.005, label: 'Exposure' },
-          exposureHover: { value: startStudio.exposureHover, min: 0.005, max: 4, step: 0.005, label: 'Exposure (hover)' },
+          dim: { value: startStudio.dim, min: 0, max: 1, step: 0.01, label: 'Dim (unfocused)' },
           lean: { value: startStudio.lean, min: 0, max: 40, step: 0.5, label: 'Lean' }
         },
         { collapsed: false }
@@ -509,6 +523,7 @@ export function useWaveTuning() {
         window.location.reload()
       }),
       on: { value: startWave.on, label: 'On' },
+      grid: { value: startWave.grid, label: 'Flat grid' },
       amp: { value: startWave.amp, min: 0, max: 4, step: 0.01, label: 'Height' },
       scale: { value: startWave.scale, min: 0.02, max: 2, step: 0.01, label: 'Tightness' },
       speed: { value: startWave.speed, min: 0, max: 3, step: 0.01, label: 'Speed' },

@@ -101,14 +101,15 @@ larger than about 1600. Use `MediaItem.still` and `MediaItem.thumb`, never
 - **One dev panel, top right, with tabs** — `MechPanel.tsx`. The tabs are
   whatever the current screen can actually change: home gets **Cast** (every
   subject's placement and its own rig, plus the camera and whole-stage
-  handles, including the two exposure numbers hovering breathes between),
-  **Tags** (the cast's own labels, **P** to place them), **Wave** and **Name**
-  (the big name behind the cast); a project gets **Subject** / **Piece** /
-  **Labels** as they apply; narrow gets **Scale**. Mr. Takahashi has no tab of
-  his own any more — he stands in the cast's scene now, so his rig is the
-  folder with his name on it under **Cast**, alongside everyone else's.
-  Every tuning hook makes its own store with `useCreateStore` — nothing writes
-  into Leva's default store, and there is no `<Leva>` element.
+  handles, including `dim`, the not-yet-working hover spotlight), **Tags**
+  (the cast's own labels, **P** to place them), **Wave** (the ground, the flat
+  `.mech-grid`'s own on/off alongside the 3D one's) and **Name** (the big name
+  behind the cast); a project gets **Subject** / **Piece** / **Labels** as
+  they apply; narrow gets **Scale**. Mr. Takahashi has no tab of his own any
+  more — he stands in the cast's scene now, so his rig is the folder with his
+  name on it under **Cast**, alongside everyone else's. Every tuning hook
+  makes its own store with `useCreateStore` — nothing writes into Leva's
+  default store, and there is no `<Leva>` element.
 - **Every 3D subject has its own lighting.** There is no shared rig left
   anywhere. On home, each cast member owns two lights on its own three.js
   layer (`castTuning.ts`). On a project screen, each *piece* owns its
@@ -211,13 +212,30 @@ moves it off centre, Opacity is how much shows through the cast standing in
 front of it. The long intro paragraph that used to sit under the old title is
 gone outright, not hidden — `.mech-brief` was never a project screen's, only
 home's fallback state, and there is no fallback state left to have one.
+`.mech-wordmark`, the corner signature, moved the other way in the same
+change — it only mounts when `!home` now, so home is not saying the name
+twice.
 
-**Exposure breathes.** `Studio` in MechCast.tsx used to set
-`toneMappingExposure` once, off the panel's `exposure` number, in an effect.
-Now it lerps every frame toward `exposure` at rest and `exposureHover` while
-any subject is under the pointer — the stage or the index either one — the
-same damping `Lean` already used for following the pointer. Both numbers are
-on the **Cast** tab's Stage folder now, not just one.
+**A second grid, a second toggle.** `.mech-grid` in `MechHud.tsx` — the flat
+phosphor lines behind the whole readout, every screen — is unrelated to the
+wave's own 3D one beyond sharing a word. Its control lives on the Wave tab
+anyway as `grid` on `CastWave`, next to the wave's `on`, because that tab is
+already "is the ground on" and a second tab for one checkbox would cost more
+than it explains.
+
+**The hover spotlight is unfinished — known broken, not yet reverted.**
+Canvas-wide `toneMappingExposure` breathing on hover brightened all five
+subjects at once (one tone map, one canvas, no way to scope it). Replaced
+with `dim` on `CastStudio`: multiplies a subject's own `keyIntensity`/
+`fillIntensity` toward `1` (full) when `focus === true` and toward `dim`
+otherwise, lerped in `Placed`'s own per-frame loop, on refs attached to that
+subject's own two `directionalLight`s. Reported live as still lighting every
+subject slightly, together — despite each subject owning its lights on its
+own three.js layer and its own `focus` prop, which is the part that does not
+yet add up. `exposure` on the Stage folder is a static canvas baseline again;
+`dim` is the only thing answering the pointer, and it is not answering it
+right. Next session: find where the isolation actually breaks before trying a
+third mechanism.
 
 **Mr. Takahashi floats with the cast on home, not with himself.** His own
 `floatSpeed`/`floatRange`/`floatRotation` in `modelTuning.ts` are tuned for
