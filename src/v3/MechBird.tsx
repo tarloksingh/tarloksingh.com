@@ -1,15 +1,22 @@
 import { useEffect, useRef, useState, memo } from 'react'
-import { BIRD_BODY, BIRD_WING_DOWN, BIRD_WING_UP } from '../site/frames'
+import { BIRD_SOLID, BIRD_WING_DOWN_SOLID, BIRD_WING_UP_SOLID } from '../site/frames'
 import { sound } from './sound'
 import { kills } from './kills'
 import { gaze, quarry, type Creature } from './subject'
 
 /* A bird crosses the readout, and you can shoot it.
 
-   The drawing is v2's, down to the twelve-frame wingbeat — the same three
-   paths off `site/frames.ts`, so there is one bird on this site and not two.
-   What is different is everything around it: it does not perch, it does not
-   care where the page's rails are, and it is a hit target. It comes in off
+   The drawing is v2's, down to the twelve-frame wingbeat — the same curves
+   off `site/frames.ts`, so there is one bird on this site and not two. It is
+   filled here rather than drawn: a solid red silhouette with its eye punched
+   clean through, which is the outline inverted in both senses — the body that
+   was empty is now solid, and the eye that was nothing is now the only place
+   the panel shows through. On a page made almost entirely of hairlines, a
+   shape is the thing that reads as an object rather than as more instrument.
+   See `BIRD_SOLID`.
+
+   What is different beyond that is everything around it: it does not perch,
+   it does not care where the page's rails are, and it is a hit target. It comes in off
    one edge, crosses on a bowed path, and leaves by another; some seconds
    later it comes back on a different line.
 
@@ -199,14 +206,17 @@ function MechBird() {
     <div className="mech-sky" data-mode={mode} aria-hidden>
       <div className="mech-bird-wrap" ref={wrap}>
         <button className="mech-bird" style={{ width: SIZE, height: HEIGHT }} tabIndex={-1}>
-          <svg viewBox="0 0 44 30" fill="none" focusable="false">
-            {BIRD_BODY.map((d) => (
+          {/* `evenodd` is what makes the eye a hole: it and the body are two
+              subpaths of one `d`, and the rule is the only thing that decides
+              whether the inner loop is cut out or filled over. */}
+          <svg viewBox="0 0 44 30" fillRule="evenodd" focusable="false">
+            {BIRD_SOLID.map((d) => (
               <path key={d} d={d} />
             ))}
-            {BIRD_WING_UP.map((d) => (
+            {BIRD_WING_UP_SOLID.map((d) => (
               <path key={d} className="mech-wing-up" d={d} />
             ))}
-            {BIRD_WING_DOWN.map((d) => (
+            {BIRD_WING_DOWN_SOLID.map((d) => (
               <path key={d} className="mech-wing-down" d={d} />
             ))}
           </svg>

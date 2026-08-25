@@ -34,11 +34,11 @@ export interface NameTuning {
 }
 
 export const NAME_DEFAULTS: NameTuning = {
-  size: 1,
+  size: 0.63,
   y: 0,
-  opacity: 1,
-  kickerGap: 18,
-  kickerSize: 20
+  opacity: 0.9,
+  kickerGap: 0,
+  kickerSize: 13
 }
 
 const STORE_KEY = 'v3.name.tuning.v1'

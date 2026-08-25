@@ -7,6 +7,7 @@ import MechMoth from './MechMoth'
 import MechCursor from './MechCursor'
 import MechLaser from './MechLaser'
 import MechHud from './MechHud'
+import MechTiles from './MechTiles'
 import { useModelTuning } from './modelTuning'
 import { useProductTuning } from './productTuning'
 import { useCastTuning, useWaveTuning } from './castTuning'
@@ -274,9 +275,11 @@ const HERO_BY_PROJECT = new Map(
  *  fact about the project, so they take their place among the other folds
  *  instead — right after the overview, where the standalone line used to sit.
  *
- *  At module scope rather than in the render because the screen has to know
- *  which fold is *first* before it has drawn any of them: one is open on
- *  arrival, and which one depends on what this project happens to have. */
+ *  Every one of them arrives shut. A project used to open on its overview —
+ *  on the narrow layout, whatever it led with — and that is a screen
+ *  answering before it has been asked: the subject is already on the stage
+ *  and the title already above it, and a drawer standing open is the one
+ *  thing in the column that was not opened by the reader. */
 const foldsFor = (project: Entry['project'] | undefined) => {
   if (!project) return []
   return [
@@ -762,55 +765,45 @@ interface Props {
 
 /* ---- the tag on a cast subject ----
 
-   The same leader the project screen draws, not something that looks like
-   one. It reuses `.mech-leaders` and every `.mech-leader-*` class outright,
-   so it is the same three circles, the same hairline drawn on out of nothing,
-   the same Clash Display label over the same Helvetica value — and the same
-   cascade in and, more to the point, the same cascade back out.
+   A ring on the subject, a hairline out to one side, and at the end of it the
+   index box: name on the left, its number on the right, exactly the control
+   the bottom of this screen used to be a row of. That row is gone — the
+   objects are the index now, and you find a project by pointing at the thing
+   rather than by reading a list of names underneath it — so its design is
+   what names a subject instead. Same box, same border, same numbers in the
+   same place; it just arrives one at a time and only for the thing you are
+   actually looking at.
+
+   The order it arrives in is the point. The box draws itself first, empty,
+   and the name is typed into it afterwards — a label that appears whole is a
+   tooltip, and a box that opens and is then filled in is an instrument
+   acquiring something. It leaves the same way round: the name backspaces out
+   (`Typed`'s `back`), then the box shuts, then the line retracts.
+
+   Two elements, one clock. The leader is SVG in the stage's own coordinates,
+   because it is a line; the box is HTML, because it is the index box and a
+   rounded rectangle with two typefaces in it is not something to rebuild in
+   SVG text — the widths would have to be guessed, and they are already
+   correct in CSS. Both are moved by the same rAF off `aim`, so the tag rides
+   the subject's float rather than being pinned to a patch of screen the
+   subject swims away from.
 
    Getting the outro meant not unmounting on pointer-out. An exit here is the
    same trick the frame swap uses: its own keyframes under a `data-off` flag,
    never the entry reversed, because an animation is only restarted when its
    `animation-name` changes — see `entries, and their inverses` in Mech.css.
-   So the leader stays mounted for `TAG_OUT` after the pointer leaves, playing
-   the retraction, and only then goes.
-
-   It is drawn outside the Canvas because it is type: SVG text in the stage's
-   own coordinates stays crisp and stays in the page's fonts, where a label
-   built in three would be a texture. What crosses the boundary is one number
-   a frame — where the subject ended up on screen — through `aim`. */
+   So the tag stays mounted for `TAG_OUT` after the pointer leaves, playing
+   the retraction, and only then goes. */
 
 /** How long the retraction gets before the leader is taken down. Covers the
  *  longest of the exits below — the line's 520 plus its 210 of delay. */
 const TAG_OUT = 780
 
-/** Types an SVG text node. `Typed` writes into a `<span>`, which is no use
- *  inside an `<svg>` — the leader's label and value are SVG text, drawn in
- *  user units the viewBox scales. Same effect, written straight to the node. */
-function useTypedSvg(ref: RefObject<SVGTextElement | null>, text: string, delay: number, speed: number) {
-  useEffect(() => {
-    let at = 0
-    let timer = 0
-    if (ref.current) ref.current.textContent = ''
-    const start = window.setTimeout(() => {
-      timer = window.setInterval(() => {
-        at += 1
-        if (ref.current) ref.current.textContent = text.slice(0, at)
-        if (at >= text.length) window.clearInterval(timer)
-      }, speed)
-    }, delay)
-    return () => {
-      window.clearTimeout(start)
-      window.clearInterval(timer)
-    }
-  }, [ref, text, delay, speed])
-}
-
 function CastTag({
   space,
   heroId,
   title,
-  value,
+  n,
   off
 }: {
   space: Space
@@ -818,18 +811,16 @@ function CastTag({
    *  has had one placed. See `castTags.ts`. */
   heroId: string
   title: string
-  value: string
+  /** Its place in the index, already padded — the same two digits the sheet
+   *  and the old bottom row both print. Empty for a subject that is not a
+   *  project, which is the only case with no number to give. */
+  n: string
   off: boolean
 }) {
   const group = useRef<SVGGElement>(null)
-  const label = useRef<SVGTextElement>(null)
-  const sub = useRef<SVGTextElement>(null)
+  const wrap = useRef<HTMLDivElement>(null)
+  const node = useRef<HTMLDivElement>(null)
 
-  /* Typed rather than faded, like every other line on the page. Timed to
-     land just after the leader has finished drawing itself — the line
-     arrives, then it is written on. */
-  useTypedSvg(label, title, 180, 20)
-  useTypedSvg(sub, value, 300, 14)
   /* Anything placed by hand for this subject, and the fan if nothing is.
      Read once, when the tag appears, rather than followed live: a subject
      drifting across the middle of the stage would otherwise flip the whole
@@ -841,51 +832,99 @@ function CastTag({
   const tag = tagFor(heroId, aim.x, drafts)
   const held = isPlaced(heroId, drafts) ? tag : seat.current
 
+  const dir = held.to[0] >= held.at[0] ? 1 : -1
+  const elbow = held.to
+  /* Where the box's inner edge sits: a short horizontal off the elbow, so the
+     line lands into the side of the box rather than stopping in mid-air next
+     to it. */
+  const end = elbow[0] + TAG.bar * dir
+  const length = TAG.bar + Math.hypot(elbow[0] - held.at[0], elbow[1] - held.at[1])
+
+  /* One loop for both halves. The subject's projected position is published
+     every frame from inside the Canvas (`aim`, in subject.ts), and both the
+     line and the box are moved off it here — a second clock, however well
+     matched at the start, is two things that disagree a minute later. */
   useEffect(() => {
     let raf = 0
+    let across = wrap.current?.clientWidth ?? 0
+    let down = wrap.current?.clientHeight ?? 0
+    const measure = () => {
+      across = wrap.current?.clientWidth ?? 0
+      down = wrap.current?.clientHeight ?? 0
+    }
+    const watch = wrap.current ? new ResizeObserver(measure) : null
+    if (wrap.current && watch) watch.observe(wrap.current)
+
     const tick = () => {
       raf = requestAnimationFrame(tick)
       group.current?.setAttribute('transform', `translate(${aim.x * space.w} ${aim.y * space.h})`)
+      if (node.current && across > 0) {
+        // Frame units into this box's real pixels: the stage is `space` units
+        // wide by definition, so one unit is `across / space.w` of it.
+        const x = aim.x * across + (end * across) / space.w
+        const y = aim.y * down + (elbow[1] * down) / space.h
+        node.current.style.transform = `translate(${x}px, ${y}px)`
+      }
     }
     raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [space])
-
-  const dir = held.to[0] >= held.at[0] ? 1 : -1
-  const elbow = held.to
-  const end = elbow[0] + TAG.bar * dir
-  const length = TAG.bar + Math.hypot(elbow[0] - held.at[0], elbow[1] - held.at[1])
-  const anchor = dir === 1 ? 'start' : 'end'
-  const textX = elbow[0]
+    return () => {
+      cancelAnimationFrame(raf)
+      watch?.disconnect()
+    }
+  }, [space, end, elbow])
 
   return (
-    <svg
-      className="mech-leaders mech-cast-tag"
-      viewBox={`0 0 ${space.w} ${space.h}`}
-      preserveAspectRatio="none"
-      data-off={off}
-      aria-hidden
-    >
-      {/* `--d` is nought: one leader, so there is no cascade to place it in. */}
-      <g ref={group} style={{ ['--d' as string]: '0ms', ['--d-out' as string]: '0ms' }}>
-        <circle className="mech-leader-ping" cx={held.at[0]} cy={held.at[1]} r={13} />
-        <circle className="mech-leader-mark" cx={held.at[0]} cy={held.at[1]} r={6.5} />
-        <circle className="mech-leader-core" cx={held.at[0]} cy={held.at[1]} r={1.9} />
-        <polyline
-          className="mech-leader"
-          points={`${end},${elbow[1]} ${elbow[0]},${elbow[1]} ${held.at[0]},${held.at[1]}`}
-          style={{ ['--l' as string]: length }}
-        />
-        {/* Filled in by `useTypedSvg`, so they start empty. */}
-        <text ref={label} className="mech-leader-label" x={textX} y={elbow[1] - 9} textAnchor={anchor} />
-        <text ref={sub} className="mech-leader-value" x={textX} y={elbow[1] + 21} textAnchor={anchor} />
-      </g>
-    </svg>
+    <>
+      <svg
+        className="mech-leaders mech-cast-tag"
+        viewBox={`0 0 ${space.w} ${space.h}`}
+        preserveAspectRatio="none"
+        data-off={off}
+        aria-hidden
+      >
+        {/* `--d` is nought: one leader, so there is no cascade to place it in. */}
+        <g ref={group} style={{ ['--d' as string]: '0ms', ['--d-out' as string]: '0ms' }}>
+          <circle className="mech-leader-ping" cx={held.at[0]} cy={held.at[1]} r={13} />
+          <circle className="mech-leader-mark" cx={held.at[0]} cy={held.at[1]} r={6.5} />
+          <circle className="mech-leader-core" cx={held.at[0]} cy={held.at[1]} r={1.9} />
+          <polyline
+            className="mech-leader"
+            points={`${end},${elbow[1]} ${elbow[0]},${elbow[1]} ${held.at[0]},${held.at[1]}`}
+            style={{ ['--l' as string]: length }}
+          />
+        </g>
+      </svg>
+
+      {/* The box, in HTML, over the same stage and moved by the same loop.
+          `data-side` is which way it hangs off the end of the line — the
+          stylesheet turns that into the half-width offset and the corner the
+          box opens from. */}
+      <div className="mech-cast-label" ref={wrap} data-off={off} aria-hidden>
+        <div className="mech-cast-label-at" ref={node}>
+          <div className="mech-cast-box" data-side={dir === 1 ? 'right' : 'left'}>
+            <span className="mech-cast-name">
+              {/* Typed in after the box has opened, and backspaced out before
+                  it shuts — see the note above. */}
+              <Typed text={title} run={heroId} delay={0.46} speed={17} caret={false} back={off} backSpeed={16} />
+            </span>
+            <span className="mech-cast-n">
+              <Typed text={n} run={heroId} delay={0.62} speed={40} caret={false} back={off} backSpeed={16} />
+            </span>
+          </div>
+        </div>
+      </div>
+    </>
   )
 }
 
 /** What has been shot, everywhere, ever. Its own component so the number
- *  changing does not re-render the readout under it — see `kills.ts`. */
+ *  changing does not re-render the readout under it — see `kills.ts`.
+ *
+ *  It sits in the footer now, on the opposite end of the same line as the
+ *  contact address. It used to be its own absolute box pinned to the bottom
+ *  right, an inch above that address and sharing its column, which read as
+ *  two unrelated things stacked in a corner rather than as one strip of
+ *  chrome across the bottom of the panel. */
 function Tally() {
   const count = useSyncExternalStore(kills.subscribe, kills.snapshot, kills.snapshot)
   if (count === 0) return null
@@ -955,6 +994,12 @@ export default function Mech({ id, onProject, onHome }: Props) {
      come off. See `CastTag`. */
   const [onSubject, setOnSubject] = useState<string | null>(null)
   const [tagged, setTagged] = useState<string | null>(null)
+  /* Whether the *screen* is changing, as opposed to the frame on it.
+     `phase === 'out'` is true for both — stepping the tile rail runs the same
+     beat — and the name handing itself to the header has to happen only on
+     the first. See the retarget effect below, which is the one place this is
+     ever set. */
+  const [transiting, setTransiting] = useState(false)
 
   /* The tag lingers past the pointer for exactly as long as its retraction
      takes, then goes. Restarted on every change, so moving straight from one
@@ -1041,12 +1086,21 @@ export default function Mech({ id, onProject, onHome }: Props) {
     if (id === shownId) return
     sound.dissolve()
     setPhase('out')
+    setTransiting(true)
     const timer = window.setTimeout(() => {
       setShownId(id)
       setIndex(0)
       setShown(0)
-      setOpen('overview')
+      /* Shut, not open on the overview. A project used to arrive with its
+         first fold already down, which is a screen answering a question
+         nobody asked yet — the subject is on the stage and the title is
+         above it, and the write-up is there to be opened when you want it. */
+      setOpen(null)
       setPhase('hold')
+      /* Cleared on the same beat the screen actually changes, so whichever
+         of the two names is mounting on the other side of it mounts with
+         something to type rather than something to delete. */
+      setTransiting(false)
       // Arriving on a project from the index leaves the readout where it
       // already was, so the title in the side column does not blink over to
       // something else on the way in.
@@ -1055,20 +1109,6 @@ export default function Mech({ id, onProject, onHome }: Props) {
     return () => window.clearTimeout(timer)
   }, [id, shownId])
 
-
-  /* One fold open on arrival, on the narrow layout — the overview, or
-     whatever this project leads with.
- 
-     Narrow only, and not because the wide layout would not suit it: on a
-     phone the write-up is the bottom half of a scroll and a run of closed
-     drawers there is a screen that says nothing about the work, while on the
-     wide one it sits beside a subject that is already doing the talking.
-     Which is also the arrangement that was there before, and the desktop
-     composition is not this pass's to redraw. */
-  useEffect(() => {
-    if (!narrow || !shownId) return
-    setOpen(foldsFor(findProject(shownId)?.project)[0]?.id ?? null)
-  }, [shownId, narrow])
 
   useEffect(() => {
     if (index === shown) return
@@ -1251,15 +1291,21 @@ export default function Mech({ id, onProject, onHome }: Props) {
      lights up (see `focusHeroId` below), just not what the title says. */
   const lede = project ?? null
 
-  /* What the tag says: the project's real name, and its line under it — the
-     same pairing every leader on a project screen has. A subject with no
-     project of its own falls back to what the subject is called. */
+  /* What the tag says: the project's real name and its number in the index —
+     the same two things the row of boxes along the bottom used to print, now
+     that the subject on the stage *is* that row. A subject with no project of
+     its own falls back to what the subject is called, and has no number to
+     give: it is not in the index, and inventing one would be a lie about
+     where it sits in the work. */
   const taggedHero = tagged ? CAST.find((item) => item.id === tagged) : null
   const taggedProject = taggedHero?.project ? findProject(taggedHero.project)?.project : null
+  const taggedAt = taggedHero?.project
+    ? MENU.findIndex((item) => item.project.id === taggedHero.project)
+    : -1
   const taggedItem = taggedHero
     ? {
         title: taggedProject?.title ?? taggedHero.title,
-        value: taggedProject?.tagline?.toLowerCase() ?? taggedHero.role
+        n: taggedAt >= 0 ? String(taggedAt + 1).padStart(2, '0') : ''
       }
     : null
 
@@ -1333,6 +1379,13 @@ export default function Mech({ id, onProject, onHome }: Props) {
       )}
 
       <MechHud gridOn={waveTuning.wave.grid} />
+      {/* The grid's cells dealt in from the middle of the window, once, while
+          the rest of the machine comes up. It takes itself down when its own
+          ripple is over rather than being cut off with the boot flag, which
+          is a little shorter than the furthest cell needs — see `LIFE` in
+          `MechTiles.tsx`. Mounted plainly, because `.mech` is never
+          unmounted: this runs once per page load, which is the point. */}
+      <MechTiles />
       <MechCursor />
       <MechBird />
       <MechMoth />
@@ -1347,10 +1400,18 @@ export default function Mech({ id, onProject, onHome }: Props) {
           {/* Home already says whose site this is — `.mech-hero-name`, large,
               behind the cast. This signature in the corner is a way back from
               a project, not a second copy of the same name, so it only draws
-              once there is a project to come back from. */}
+              once there is a project to come back from.
+
+              And it is the same name, handed over. Opening a project
+              backspaces the big one out from behind the cast; a beat later
+              this types itself into the corner, one character at a time, in
+              the same typeface. Going home runs it the other way. Two blocks
+              of markup, one gesture — which is the whole reason `transiting`
+              exists as a separate flag from `phase`: stepping the tile rail
+              is also an exit, and the name has no business reacting to it. */}
           {!home && (
             <button className="mech-wordmark" onClick={onHome}>
-              Tarlok Singh
+              <Typed text={INTRO.name} run="wordmark" delay={0.12} speed={34} caret={false} back={transiting} />
             </button>
           )}
 
@@ -1405,10 +1466,10 @@ export default function Mech({ id, onProject, onHome }: Props) {
             }}
           >
             <p className="mech-hero-kicker">
-              <Typed text={INTRO.line} run="intro-kicker" speed={22} caret={false} />
+              <Typed text={INTRO.line} run="intro-kicker" speed={22} caret={false} back={transiting} />
             </p>
             <h1 className="mech-hero-title">
-              <Typed text={INTRO.name} run="intro-name" delay={0.3} />
+              <Typed text={INTRO.name} run="intro-name" delay={0.3} back={transiting} backSpeed={34} />
             </h1>
           </div>
         )}
@@ -1439,7 +1500,25 @@ export default function Mech({ id, onProject, onHome }: Props) {
             <div className="mech-model-layer" data-on>
               <Suspense fallback={null}>
                 <MechCast
-                  studio={cast.studio}
+                  /* Narrow, the line-up is pulled in from the sides and
+                     dropped toward the middle of a much taller stage — a
+                     composition drawn across a 16:9 frame puts the two
+                     subjects on the ends past both edges of a portrait
+                     window, and the whole set along its top edge. Applied
+                     here rather than in `CAST_STUDIO` for the same reason
+                     `MechModel` gets `fill * narrowScale.model` here: the
+                     Cast panel describes the wide composition, and this
+                     layout's two adjustments belong on the one panel a phone
+                     actually shows. See `narrowTuning.ts`. */
+                  studio={
+                    narrow
+                      ? {
+                          ...cast.studio,
+                          spread: cast.studio.spread * narrowScale.castSpread,
+                          lift: cast.studio.lift + narrowScale.castLift
+                        }
+                      : cast.studio
+                  }
                   slots={cast.slots}
                   lights={cast.lights}
                   focusHeroId={eyed ? (HERO_BY_PROJECT.get(eyed) ?? null) : null}
@@ -1561,7 +1640,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
               space={space}
               heroId={tagged}
               title={taggedItem.title}
-              value={taggedItem.value}
+              n={taggedItem.n}
               off={!onSubject}
             />
           )}
@@ -1584,71 +1663,20 @@ export default function Mech({ id, onProject, onHome }: Props) {
           )}
         </div>
 
-        {/* The index, across the bottom — home's answer to the tile rail, in
-            the same slot in the machine. One box per project: its name and
-            its number, on one line. Pressing one opens it; the box the
-            pointer is over fills in the readout in the side column first, so
-            the press lands on something already being described.
+        {/* The row of twelve boxes that used to run along the bottom of the
+            home screen is gone. It named every project in type, under a stage
+            with five of those projects standing on it as objects — so the
+            page asked you to read a list and look at a line-up that were
+            about the same thing, and the list was the half that won, because
+            a name is easier to scan than a shape.
 
-            There was a square for a portrait on the right of each box until
-            the files behind it had stayed missing long enough to admit they
-            were not coming. Twelve empty rectangles is not a set being filled
-            in, it is twelve holes — and each one was carrying most of its
-            box's height for nothing. `portraitOf` is still in `model.ts` if
-            the portraits are ever made.
-
-            Not `entries`. Two of the twelve have nothing to put on a stage
-            and belong in an index anyway — see `MENU` in `model.ts`. */}
-        {home && (
-          <nav className="mech-index" aria-label="Every project" data-arrive>
-            {MENU.map((item, i) => (
-              <button
-                key={item.project.id}
-                className="mech-index-box"
-                aria-pressed={item.project.id === eyed}
-                style={{ ['--i' as string]: i }}
-                onPointerEnter={() => {
-                  sound.tick()
-                  setEyed(item.project.id)
-                }}
-                onPointerLeave={() => setEyed((was) => (was === item.project.id ? null : was))}
-                onFocus={() => setEyed(item.project.id)}
-                onBlur={() => setEyed((was) => (was === item.project.id ? null : was))}
-                onClick={() => {
-                  sound.select()
-                  onProject(item.project.id)
-                }}
-              >
-                <span className="mech-index-text">
-                  <span className="mech-index-title">{item.project.title}</span>
-                  {/* Every name, in every box, at zero height — so each box's
-                      natural width is the width of the *longest* name and all
-                      twelve come out identical. Six `1fr` columns do not do
-                      this on their own: in an intrinsically sized grid each
-                      column takes its own content's width, which is why the
-                      row used to be six different widths. Measuring the
-                      longest string in JS would be the other way, and would
-                      be wrong the first time a name with wide letters was
-                      added — this is exact because it is the real type. */}
-                  <span className="mech-index-gauge" aria-hidden>
-                    {MENU.map((other) => (
-                      <span key={other.project.id}>{other.project.title}</span>
-                    ))}
-                  </span>
-                </span>
-                {/* Beside the name, not under it. Stacked, the number set the
-                    height of every box on its own — two lines of type and the
-                    gap between them, for a control whose entire content is
-                    one name — and twelve of those came out as deep as the
-                    readout above them. On the same line it costs its own
-                    width and nothing else, and since every box is already
-                    exactly as wide as the longest name, the numbers land in a
-                    column of their own. */}
-                <span className="mech-index-n">{String(i + 1).padStart(2, '0')}</span>
-              </button>
-            ))}
-          </nav>
-        )}
+            The objects are the index now. Point at one and it steps forward
+            and puts its own box up — the same box, name and number, that used
+            to sit down here twelve at a time (see `CastTag`). Everything the
+            row could reach and the stage cannot — the seven projects with no
+            object, the tags, the way home — is behind the one control in the
+            header, which is where it already was on a phone. See
+            `MechMenu.tsx`. */}
 
         {/* The tile strip, which is a project's own thing — home has the
             index in this slot instead. Unmounted rather than hidden: the two
@@ -1767,9 +1795,8 @@ export default function Mech({ id, onProject, onHome }: Props) {
           </div>
         </section>
 
-        <Tally />
-
         <footer className="mech-foot" data-arrive>
+          <Tally />
           <a className="mech-comms" href="mailto:hello@tarloksingh.com">
             <span className="mech-comms-tag">comms</span>
             <span className="mech-comms-to">hello@tarloksingh.com</span>

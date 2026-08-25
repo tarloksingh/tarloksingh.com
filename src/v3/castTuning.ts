@@ -43,18 +43,15 @@ export interface CastStudio {
   fill: number
   /** Renderer-level, so it cannot be per-subject: there is one tone map for
    *  the canvas. Every other lighting number on this panel belongs to one
-   *  subject. Static — see `dim` for the thing that actually answers the
-   *  pointer, which is each subject's own lights rather than this. */
+   *  subject.
+   *
+   *  Static, and nothing on this panel makes it move any more. Two passes at
+   *  a hover spotlight went through here — this number breathing with the
+   *  pointer, then a `dim` multiplier on each subject's own two lights — and
+   *  both lit the whole line-up rather than the one being pointed at. Taken
+   *  out rather than left broken; the line-up is evenly lit and what answers
+   *  the pointer is the tag and the step forward. */
   exposure: number
-  /** Multiplies every subject's own `keyIntensity`/`fillIntensity` while it is
-   *  not the one under the pointer — the index or the stage, either counts.
-   *  1 leaves an idle subject exactly as its `CastLight` authored it; low
-   *  numbers make it read as barely there until you actually look at it. The
-   *  hovered subject is always its own full, authored brightness — this
-   *  never touches it, and never touches the canvas either, which is why
-   *  spotlighting one does not wash out the other four the way a canvas-wide
-   *  exposure change used to. */
-  dim: number
 
   /* ---- the camera ----
 
@@ -89,8 +86,7 @@ export interface CastStudio {
 export const CAST_STUDIO: CastStudio = {
   focalLength: 200,
   fill: 0.95,
-  exposure: 0.15,
-  dim: 0.12,
+  exposure: 0.3,
   dolly: 8.35,
   camY: 0.09,
   tilt: -0.1,
@@ -132,11 +128,11 @@ export interface CastSlot {
 export const CAST_SLOT_FALLBACK: CastSlot = { x: 0, y: 0, z: 0, scale: 1, turn: 0, tilt: 0 }
 
 export const CAST_SLOTS: Record<string, CastSlot> = {
-  takahashi: { x: 0.39, y: 0.43, z: -0.59, scale: 0.48, turn: 13.5, tilt: -7 },
-  capsule: { x: 0.12, y: 0.84, z: -3.52, scale: 0.38, turn: -44.5, tilt: 24 },
-  rider: { x: -0.73, y: 0.29, z: 0.34, scale: 0.56, turn: 130.5, tilt: 27 },
-  stitchfam: { x: -1.43, y: 0.6, z: -2.8, scale: 0.38, turn: -44, tilt: 0 },
-  fish: { x: 1.22, y: 0.65, z: -1.95, scale: 0.58, turn: -180, tilt: -90 }
+  takahashi: { x: 0.39, y: 0.96, z: -0.59, scale: 0.48, turn: 13.5, tilt: -7 },
+  capsule: { x: -1.43, y: 0.98, z: -3.52, scale: 0.38, turn: -44.5, tilt: 24 },
+  rider: { x: -2.63, y: 0.87, z: 0.34, scale: 0.56, turn: 130.5, tilt: 27 },
+  stitchfam: { x: 2.43, y: 0.94, z: -3.25, scale: 0.38, turn: -44, tilt: 0 },
+  fish: { x: 3.72, y: 0.92, z: -1.95, scale: 0.58, turn: -180, tilt: -90 }
 }
 
 export const slotFor = (id: string): CastSlot => CAST_SLOTS[id] ?? CAST_SLOT_FALLBACK
@@ -258,20 +254,20 @@ export interface CastWave {
 export const CAST_WAVE: CastWave = {
   on: true,
   grid: true,
-  amp: 0.84,
-  scale: 0.17,
+  amp: 3.97,
+  scale: 0.18,
   speed: 0.72,
-  y: -1.25,
+  y: -1.5,
   depth: 28,
   cells: 136,
-  fade: 160,
-  opacity: 2.95,
+  fade: 8,
+  opacity: 0,
   gain: 0.1,
-  glow: 5,
+  glow: 0,
   hue: 249,
   hueSpeed: -26,
   tint: 360,
-  lens: 93,
+  lens: 120,
   low: '#8d77b4',
   mid: '#684596',
   high: '#c07cff',
@@ -385,7 +381,6 @@ export function useCastTuning() {
           /* The one light left that is not a subject's own — there is a single
              tone map for the canvas and it cannot be split. */
           exposure: { value: startStudio.exposure, min: 0.005, max: 4, step: 0.005, label: 'Exposure' },
-          dim: { value: startStudio.dim, min: 0, max: 1, step: 0.01, label: 'Dim (unfocused)' },
           lean: { value: startStudio.lean, min: 0, max: 40, step: 0.5, label: 'Lean' }
         },
         { collapsed: false }

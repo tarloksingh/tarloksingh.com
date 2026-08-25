@@ -57,6 +57,7 @@ being false (which is why `navigator.clipboard` does not exist — see
 | `tint.ts` | The panel's green, turning with the wave — home only |
 | `MechModel.tsx` | The subject: one GLB, lit, drifting, watching, shootable |
 | `MechHud.tsx`, `MechCursor.tsx` | The dashboard, and the reticle |
+| `MechTiles.tsx` | The boot: the grid's cells struck in a ring from the middle |
 | `MechBird.tsx`, `MechLaser.tsx` | The bird, and the gun |
 | `MechDeck.tsx`, `sound.ts` | The music deck, and every synthesised sound |
 | `SplitReveal.tsx` | The tagline and fold titles, drawn in a character at a time |
@@ -101,11 +102,13 @@ larger than about 1600. Use `MediaItem.still` and `MediaItem.thumb`, never
 - **One dev panel, top right, with tabs** — `MechPanel.tsx`. The tabs are
   whatever the current screen can actually change: home gets **Cast** (every
   subject's placement and its own rig, plus the camera and whole-stage
-  handles, including `dim`, the not-yet-working hover spotlight), **Tags**
+  handles), **Tags**
   (the cast's own labels, **P** to place them), **Wave** (the ground, the flat
   `.mech-grid`'s own on/off alongside the 3D one's) and **Name** (the big name
   behind the cast); a project gets **Subject** / **Piece** / **Labels** as
-  they apply; narrow gets **Scale**. Mr. Takahashi has no tab of his own any
+  they apply; narrow gets **Scale** — subject and picture size, and the home
+  line-up's own spread and lift, which a portrait window needs and a 16:9 one
+  does not. Mr. Takahashi has no tab of his own any
   more — he stands in the cast's scene now, so his rig is the folder with his
   name on it under **Cast**, alongside everyone else's. Every tuning hook
   makes its own store with `useCreateStore` — nothing writes into Leva's
@@ -212,9 +215,16 @@ moves it off centre, Opacity is how much shows through the cast standing in
 front of it. The long intro paragraph that used to sit under the old title is
 gone outright, not hidden — `.mech-brief` was never a project screen's, only
 home's fallback state, and there is no fallback state left to have one.
-`.mech-wordmark`, the corner signature, moved the other way in the same
-change — it only mounts when `!home` now, so home is not saying the name
-twice.
+`.mech-wordmark`, the corner signature, only mounts when `!home`, so home is
+not saying the name twice — and the two hand the name to each other rather
+than one fading as the other appears. Opening a project backspaces the big
+one out; a beat later the corner one types itself in. `Typed` grew `back` for
+it, deleting from wherever the line actually got to. The flag is `transiting`
+in Mech.tsx, set only in the retarget effect and cleared on the same beat
+`shownId` changes — deliberately **not** `phase`, which is also `'out'` for
+an ordinary tile-rail step, and the name has no business reacting to a
+picture changing. Both hero lines are Clash Display now; the kicker was the
+page's Helvetica, which made one block read as a caption on a title.
 
 **A second grid, a second toggle.** `.mech-grid` in `MechHud.tsx` — the flat
 phosphor lines behind the whole readout, every screen — is unrelated to the
@@ -223,19 +233,65 @@ anyway as `grid` on `CastWave`, next to the wave's `on`, because that tab is
 already "is the ground on" and a second tab for one checkbox would cost more
 than it explains.
 
-**The hover spotlight is unfinished — known broken, not yet reverted.**
-Canvas-wide `toneMappingExposure` breathing on hover brightened all five
-subjects at once (one tone map, one canvas, no way to scope it). Replaced
-with `dim` on `CastStudio`: multiplies a subject's own `keyIntensity`/
-`fillIntensity` toward `1` (full) when `focus === true` and toward `dim`
-otherwise, lerped in `Placed`'s own per-frame loop, on refs attached to that
-subject's own two `directionalLight`s. Reported live as still lighting every
-subject slightly, together — despite each subject owning its lights on its
-own three.js layer and its own `focus` prop, which is the part that does not
-yet add up. `exposure` on the Stage folder is a static canvas baseline again;
-`dim` is the only thing answering the pointer, and it is not answering it
-right. Next session: find where the isolation actually breaks before trying a
-third mechanism.
+**The hover spotlight is gone, after two attempts.** Canvas-wide
+`toneMappingExposure` breathing on hover lifted all five subjects at once (one
+tone map, one canvas, nothing to scope it to). `dim` on `CastStudio` replaced
+it — each subject's own `keyIntensity`/`fillIntensity` scaled in `Placed`'s
+per-frame loop, on refs to that subject's own two `directionalLight`s, each on
+its own three.js layer with its own `focus` prop — and *still* read live as
+every subject lifting slightly, together. Both are out rather than a third
+mechanism stacked on a second that did not behave as reasoned. `exposure` is a
+static canvas baseline, every subject sits at exactly what its `CastLight`
+authored, and what answers the pointer is the tag being drawn and the subject
+stepping forward. If a spotlight is ever wanted again, `git show 4a322c0` has
+the second attempt intact — but read the note in the README first: the old
+roster dimmed everything unselected and that was removed on purpose, and a
+spotlight is the same idea in nicer clothes.
+
+**Home's bottom row of project names is gone; the objects are the index.**
+Twelve boxes named every project under a stage carrying five of them as
+objects, so the page asked you to read a list and look at a line-up about the
+same things — and the list won, which made the objects decoration. Pointing at
+a subject now puts up *that same box* (name left, number right, same border,
+same radius) on a leader drawn to it: `CastTag` in Mech.tsx, `.mech-cast-box`
+in Mech.css. The box opens first, empty, and the name is typed into it after —
+a label that arrives whole is a tooltip. It leaves the same way backwards.
+The line is SVG in stage coordinates and the box is HTML, moved by the same
+rAF off `aim`, so it rides the subject's float. The seven projects with no
+object are behind the header's index key, which is now both layouts' way
+through the work. The number comes from `MENU`, the same order the sheet uses.
+
+**Everything arrives shut.** A project used to open on its overview (narrow:
+whatever it led with). Both are `setOpen(null)` now — the subject is on the
+stage and the title above it, and an open drawer is the one thing in that
+column nobody opened.
+
+**The bird is filled, not drawn.** A solid `--bird` red silhouette with the
+eye punched through it (`BIRD_SOLID` in `site/frames.ts`, `fill-rule: evenodd`
+on the `<svg>` — the eye and the body are two subpaths of one `d`, and that
+rule is the whole mechanism). Nothing under `.mech-bird path` may set a `fill`
+other than `currentColor` or the eye fills back in. The solid shapes are
+derived from the same curves as the strokes above them so the two cannot
+drift. `--bird` is deeper than `--moth`, deliberately: they are the two flying
+targets and have to stay tellable apart.
+
+**The boot deals the grid's cells in.** `MechTiles.tsx`, once per load, a ring
+travelling out from the middle of the window at the grid's own 46-unit pitch,
+then it takes itself down. No rAF — one delay per cell, computed from its
+distance to the centre. Only `opacity` and `transform` animate, because the
+main thread on that beat is compiling shaders. The ring spacing (`RING`) is
+set against how long a cell stays lit, not against a total: get that ratio
+wrong and it is a grid fading up rather than a wave crossing.
+
+**The tally moved into the footer**, left end, opposite the contact address —
+it used to be its own absolute box directly above that address with the whole
+left half of the line empty. The footer stays `flex-start` with the address on
+`margin-left: auto`, because the tally is hidden at zero and `space-between`
+would put the address mid-screen on first load.
+
+**The header is `flex-end`.** `space-between` with one child left in it — which
+is what home is, now the wordmark only mounts on a project — put the index key
+against the left edge. Both the wide and the narrow header rules changed.
 
 **Mr. Takahashi floats with the cast on home, not with himself.** His own
 `floatSpeed`/`floatRange`/`floatRotation` in `modelTuning.ts` are tuned for

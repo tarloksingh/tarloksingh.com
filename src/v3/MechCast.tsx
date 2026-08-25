@@ -12,7 +12,7 @@ import { aim } from './subject'
 import { FaceScene } from './MechModel'
 import { MODEL_DEFAULTS, type ModelTuning } from './modelTuning'
 import { CAST_STUDIO, lightFor, slotFor, type CastLight, type CastSlot, type CastStudio } from './castTuning'
-import type { DirectionalLight, Group, Material, Mesh, PerspectiveCamera } from 'three'
+import type { Group, Material, Mesh, PerspectiveCamera } from 'three'
 
 /* The home screen's cast: every subject on one stage, at once, arranged.
 
@@ -56,11 +56,13 @@ const distanceFor = (focalLength: number, fill: number) =>
  *  room up is `env` on its own `CastLight`, and setting that to 0 removes the
  *  room from that subject entirely.
  *
- *  Static. It used to breathe with the pointer — rising off hover — but that
- *  is a renderer-level number, one tone map for the whole canvas, so
- *  spotlighting a subject that way spotlit all five at once. The pointer's
- *  answer is each subject's own lights now — `dim` on `CastStudio`, applied
- *  in `Placed` — and this stays put. */
+ *  Static, and so is every other light on this stage. Two passes at a hover
+ *  spotlight came through here and both were taken out: this number breathing
+ *  with the pointer lit all five at once, because a tone map is one number for
+ *  the whole canvas — and scaling each subject's own two lights instead, which
+ *  should have been per-subject and was not, read the same way on the page.
+ *  The line-up is evenly lit now. What answers the pointer is the tag being
+ *  drawn and the subject stepping forward, both of which are unambiguous. */
 function Studio({ exposure }: { exposure: number }) {
   const gl = useThree((state) => state.gl)
   const scene = useThree((state) => state.scene)
@@ -367,7 +369,6 @@ function Placed({
   focus,
   lift,
   spread,
-  dim,
   openable,
   onHover,
   onPick,
@@ -388,10 +389,6 @@ function Placed({
    *  handles for moving the whole line-up without re-placing any of it. */
   lift: number
   spread: number
-  /** Multiplies this subject's own two lights while `focus` is not `true`.
-   *  The hovered subject is always its full, authored brightness — this
-   *  never touches it. See `dim` on `CastStudio`. */
-  dim: number
   /** Whether pressing it goes anywhere. A subject that opened nothing would
    *  be a tag promising a page that is not there. */
   openable: boolean
@@ -401,8 +398,6 @@ function Placed({
 }) {
   const outer = useRef<Group>(null)
   const inner = useRef<Group>(null)
-  const key = useRef<DirectionalLight>(null)
-  const fill = useRef<DirectionalLight>(null)
   const camera = useThreeState((state) => state.camera)
   const at = useMemo(() => new Vector3(), [])
   /** Every material under this subject, with whether it was authored opaque —
@@ -412,7 +407,6 @@ function Placed({
   const depth = useRef(0)
   const since = useRef(0)
   const nodes = useRef(-1)
-  const glow = useRef(dim)
 
   // Restart the stagger clock whenever the cast is asked to come or go.
   useEffect(() => {
@@ -484,16 +478,6 @@ function Placed({
           : 0
     depth.current = MathUtils.lerp(depth.current, forward, 1 - Math.pow(0.002, delta))
 
-    /* The spotlight. Full brightness — exactly what `CastLight` authored — is
-       `focus === true` and nothing else; `false` and `null` both mean some
-       other subject has the pointer or nothing does, and either way this one
-       reads as barely there. Damped the same way `depth` is, so a subject
-       waking up under the pointer is a lift, not a switch thrown. */
-    const spotlight = focus === true ? 1 : dim
-    glow.current = MathUtils.lerp(glow.current, spotlight, 1 - Math.pow(0.001, delta))
-    if (key.current) key.current.intensity = light.keyIntensity * glow.current
-    if (fill.current) fill.current.intensity = light.fillIntensity * glow.current
-
     /* No lift. A subject arriving used to rise `RISE` under the fade, which
        on the way *back* out read as the line-up sinking through the floor —
        and Mr. Takahashi, framed largest and lowest, sank furthest. What was
@@ -541,16 +525,14 @@ function Placed({
           with no lights of its own baked in — see `MechModel.tsx` — so these
           two are his real rig here, not a stand-in for one; `CAST_LIGHTS.
           takahashi`'s unusually large numbers are what a face actually wants.
-          Refs rather than a static `intensity` prop because the spotlight
-          below writes it every frame — the JSX value only ever paints the
-          very first frame, before that loop has run once. */}
+          Authored intensities, written once. They were on refs and rewritten
+          every frame while the hover spotlight existed; it does not any
+          more. */}
       <directionalLight
-        ref={key}
         position={[light.keyX, light.keyY, light.keyZ]}
         intensity={light.keyIntensity}
       />
       <directionalLight
-        ref={fill}
         position={[light.fillX, light.fillY, light.fillZ]}
         intensity={light.fillIntensity}
       />
@@ -714,7 +696,6 @@ export default function MechCast({
             focus={focused === null ? null : focused === hero.id}
             lift={studio.lift}
             spread={studio.spread}
-            dim={studio.dim}
             openable={Boolean(hero.project)}
             onHover={(on) => take(hero.id, on)}
             onPick={() => hero.project && onPick?.(hero.project)}

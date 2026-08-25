@@ -219,25 +219,25 @@ before handing it over — his lean and his gaze, which follow the pointer and
 the bird rather than a fixed loop, are untouched, because those *are* his
 alone.
 
-**A spotlight was tried, and it is not right yet.** The first pass put the
-hover-brightening on `Studio`'s canvas-wide `toneMappingExposure`, which
-brightened all five subjects together — there is one tone map for the whole
-canvas, so that was never going to isolate to one. The second pass moved it
-to each subject's own two lights instead: `dim` on `CastStudio` multiplies a
-subject's own `keyIntensity`/`fillIntensity` while `focus !== true`, lerped in
-`Placed`'s existing per-frame loop toward `1` (full, exactly as `CastLight`
-authored it) for the hovered subject and toward `dim` for everyone else. In
-isolation this measured correctly — one subject's lights climbing, the other
-four's held flat — but live, hovering still reads as every subject lifting
-together, faintly. Left in place rather than reverted: it is a real,
-independently-scoped mechanic (each subject's own `directionalLight`s, on its
-own layer, driven by its own `focus` prop), so whatever is actually causing
-the shared brightening is not in this loop's isolation — worth finding before
-the next attempt rather than papering over. `exposure` on the Stage folder
-is static again, a single canvas baseline; only `dim` answers the pointer.
+**A hover spotlight was tried twice and is gone.** The first pass put the
+brightening on `Studio`'s canvas-wide `toneMappingExposure`, which lifted all
+five subjects together — there is one tone map for the whole canvas, so that
+was never going to isolate to one. The second moved it to each subject's own
+two lights: `dim` on `CastStudio` multiplying that subject's
+`keyIntensity`/`fillIntensity` while `focus !== true`, lerped in `Placed`'s
+existing per-frame loop. That one measured correctly in isolation — one
+subject's lights climbing, the other four's held flat — and still read on the
+page as every subject lifting together, faintly. Rather than a third
+mechanism on top of a second that did not behave as reasoned, both are out:
+`exposure` is a static canvas baseline again and every subject sits at
+exactly the brightness its own `CastLight` authored.
 
-The old roster's dimming — every unselected subject faded — is still gone;
-this is a different, narrower thing sitting where it used to be.
+Which is the right answer anyway, and it took two failures to see it. The old
+roster dimmed every unselected subject, which made a cast of five read as one
+subject and four rejected candidates; a spotlight is that idea in nicer
+clothes. What answers the pointer now is the tag being drawn and the subject
+stepping forward — both unambiguous, both about the one thing you are pointing
+at, and neither one an opinion about the other four.
 
 **Every subject has its own lighting, and it is genuinely its own.** A
 `directionalLight` is infinite — it lights the whole scene — so five subjects
@@ -330,26 +330,42 @@ that looks like is a pair of legs hanging in the air a foot above the bike.
 ### Pointing at the cast
 
 Hovering a subject names the project it opens and pressing it opens that
-project. The tag is **the same leader the project screen draws** — not
-something that resembles one. It reuses `.mech-leaders` and every
-`.mech-leader-*` rule outright, so it is the same three circles, the same
-hairline drawn on out of nothing, the same Clash Display label over the same
-Helvetica value, and the same cascade in.
+project. Since the row of project names came off the bottom of the screen,
+this is not a nicety on top of the index — **it is the index**, and the tag
+is what does the naming.
 
-Getting the cascade *out* meant not unmounting on pointer-out. The exit is the
-same trick the frame swap uses — its own keyframes under a `data-off` flag,
-never the entry reversed, because an animation is only restarted when its
-`animation-name` changes. So the leader stays mounted for `TAG_OUT` after the
-pointer leaves, plays the retraction, and only then goes.
+Two pieces, one gesture. The line is **the same leader the project screen
+draws** — not something that resembles one. It reuses `.mech-leaders` and
+every `.mech-leader-*` rule outright, so it is the same three circles and the
+same hairline drawn on out of nothing. At the end of it is **the index box**:
+the same rounded rectangle, the same border, the same name on the left and
+number on the right that used to run twelve-across the bottom of this screen.
+Its design did not need replacing when the row went; it needed a new place to
+be, one at a time, for the thing you are actually looking at.
 
-It is drawn *outside* the Canvas, because it is type: SVG text in the stage's
-own coordinates stays crisp and stays in the page's fonts, where a label built
-in three would be a texture. One number a frame crosses the boundary — where
-the subject ended up on screen, through `aim` in `subject.ts`, which is the
-same pattern `drift` already uses. It is the index arriving from the
-other end — pointing at a box lights its subject and fills in the readout, so
-pointing at the subject has to fill in the same readout and pressing it has to
-open the same project.
+**The order it arrives in is the point.** The line draws out to the elbow, the
+box opens along it like a drawer being pulled, and only then is the name typed
+into it, with its number after. A label that arrives whole is a tooltip; a box
+that opens empty and is then filled in is an instrument acquiring something.
+Out is the same list backwards — the name backspaces (`Typed`'s `back`), the
+box shuts, the line retracts — and those add up to just inside `TAG_OUT`,
+which is how long the tag stays mounted after the pointer has gone.
+
+Getting that cascade *out* meant not unmounting on pointer-out. The exit is
+the same trick the frame swap uses — its own keyframes under a `data-off`
+flag, never the entry reversed, because an animation is only restarted when
+its `animation-name` changes. So the tag stays mounted for `TAG_OUT`, plays
+the retraction, and only then goes.
+
+The line is SVG in the stage's own coordinates; the box is HTML. That split is
+deliberate: a line is a line, and a rounded rectangle with two typefaces in it
+is already correct in CSS and would have to have its widths guessed in SVG
+text. Both are moved by **the same rAF**, off `aim` in `subject.ts` — one
+number a frame crossing out of the Canvas, the same pattern `drift` already
+uses — so the tag rides the subject's float rather than being pinned to a
+patch of screen the subject swims away from. Two clocks that agree at the
+start and not a minute later is exactly the sort of thing nobody can name and
+everybody notices.
 
 **Where it reaches is placed, not derived.** It used to be three constants and
 a rule: up and out by `TAG.rise`/`TAG.run`, to the left unless the subject sat
@@ -427,48 +443,105 @@ Reflects goes up with it.
 
 ### The index
 
-Twelve projects, named and numbered, in two rows of six along the bottom edge.
-One line each: the name, and its number out at the right edge of the box.
+**Home does not carry a row of project names any more.** Twelve boxes ran
+along the bottom edge, two rows of six: the name, and its number out at the
+right. Under them stood a line-up with five of those projects on it as
+objects. So the screen asked you to read a list and look at a group portrait
+that were about the same twelve things, and the list won every time — a name
+is easier to scan than a shape, which meant the objects were decoration and
+the page's whole idea was decoration.
 
-There was a square on the right of every box for a portrait —
-`public/portraits/<project-id>.png`, drop a file in and it appears — drawn
-empty until the file existed. None of them ever did, and an empty rectangle is
-not a set being filled in, it is a hole; twelve of them is a row of holes. It
-was also carrying most of the box's height, and the number under the name was
-carrying the rest: two lines of type and the gap between them, for a control
-whose entire content is one name. Both are gone and the row is a little over a
-third of the depth it was, which is most of what makes it read as an index
-rather than as a second grid of cards competing with the stage. `portraitOf`
-is still in `model.ts` if the portraits are ever made.
+The objects are the index now. Point at one and it steps forward and puts up
+**that same box** — same rounded rectangle, same border, same name and number
+in the same places — on a line drawn to the thing it names. One at a time, for
+the thing you are actually looking at. See
+[Pointing at the cast](#pointing-at-the-cast), which is where that box now
+lives, and `git show 4a322c0` for the row as it was.
 
-The number sits on the far edge rather than up against the name, because every
-box is already exactly as wide as the longest name — a number trailing each
-name lands somewhere different in every box, and one on the edge lines up down
-the column.
+That leaves the seven projects with no object on the stage, which is what the
+one control in the header is for. It was already the only way through the work
+on a phone; it is both layouts' way now. The list behind it is **written out**
+rather than derived, which is the one place on this site where that is the
+right answer. `entries` is "every project with something to put on a stage",
+and that is correct for the timeline and the tile rail — a screen whose whole
+job is showing frames cannot show a project that has none. It is wrong for an
+index. Visa is the largest piece of work here and it is under an NDA, so it
+has no media and never will; Solomon is a sibling checkout with a write-up
+still to come. Both belong in a list of the work, and a filter that reads
+`media.length` cannot know that. So `MENU` in `model.ts` is an ordered list of
+ids, and a project named in it opens whether or not it has frames — a
+**restricted card** stands in for the subject, saying so in the panel's own
+voice, because an empty stage reads as a failure to load. The tile rail does
+not draw at all for those, for the same reason.
 
-The list is **written out** rather than derived, which is the one place on
-this site where that is the right answer. `entries` is "every project with
-something to put on a stage", and that is correct for the timeline and the
-tile rail — a screen whose whole job is showing frames cannot show a project
-that has none. It is wrong for an index. Visa is the largest piece of work
-here and it is under an NDA, so it has no media and never will; Solomon is a
-sibling checkout with a write-up still to come. Both belong in a list of the
-work, and a filter that reads `media.length` cannot know that. So `MENU` in
-`model.ts` is an ordered list of ids, and a project named in it opens whether
-or not it has frames — a **restricted card** stands in for the subject, saying
-so in the panel's own voice, because an empty stage reads as a failure to
-load. The tile rail does not draw at all for those, for the same reason.
+`MENU` is also where a subject's *number* comes from: the tag on the stage
+prints the same two digits the sheet does, because they are the same index and
+there is only one order of the work.
 
-No name is ellipsised, and all twelve boxes are the same width — the width of
-the *longest* name and no wider. Six `1fr` columns do not do that on their
-own: in an intrinsically sized grid each column takes its own content's width,
-which is why the row came out as six different widths. What does it is a
-gauge — every name, rendered in every box, at zero height. Each box's natural
-width becomes the widest name, so they match exactly and the row stops there
-instead of being stretched to the frame's margins with every short name
-swimming in it. Measuring the longest string in JS would be the other way, and
-would be wrong the first time a name with wide letters was added; this is
-exact because it is the real type.
+What went with the row is worth naming, because it was the good part of it and
+it has no job now. Every box was the width of the *longest* name and no
+wider — done with a gauge, every name rendered in every box at zero height, so
+each box's natural width became the widest name and all twelve matched
+exactly. Six `1fr` columns do not do that on their own: in an intrinsically
+sized grid each column takes its own content's width, which is why the row
+came out as six different widths at first. There is one box on screen at a
+time now and it is as wide as its own name, so the gauge went with the row.
+`portraitOf` in `model.ts` is likewise still there and likewise unused — there
+was a square in each box for `public/portraits/<project-id>.png`, and none of
+those files were ever made.
+
+### The panel coming alive
+
+The boot was already a machine switching on a piece at a time — the chrome
+holds off, the compass spins several turns and eases into where it should have
+been all along, the leaders extend last. The one part that simply *appeared*
+was the surface all of it is printed on: `.mech-grid` faded up over 1400ms and
+that was that.
+
+So the grid's own cells are dealt in, once, as a ring travelling out from the
+middle of the window. Each cell strikes bright, holds a frame and decays to
+nothing; what is underneath when the last of them has gone is `.mech-grid`
+itself, at the same 46-unit pitch and in the same accent — so it reads as that
+grid lighting up rather than as a second grid laid over the first. One ring is
+drawn as an actual expanding circle over the top, which is what makes the
+cells read as being *struck* by something travelling outwards instead of
+merely taking their turn.
+
+`MechTiles.tsx` builds it. Three things about it are deliberate:
+
+**It is a thousand elements, not a canvas.** Each cell runs one composited
+keyframe, which is work the compositor does off the main thread — and the main
+thread on this exact beat is bringing up a WebGL context, compiling shaders
+and parsing a GLB. Nothing here animates anything but `opacity` and
+`transform`, for the same reason: those two are the only properties that get
+run without waking it. Colour is baked into the cell and the flash is opacity
+alone rather than an animated `background-color`. `will-change` is
+deliberately absent — a thousand promoted layers is a worse problem than the
+one it would solve.
+
+**There is no rAF in it at all.** Every cell's place in the ring is a delay,
+computed once from its distance to the centre, so the whole thing costs
+nothing after layout. The cell size is *measured* rather than worked out —
+`--px` is a `min()` over a rem and two viewport terms and `getComputedStyle`
+hands back the expression rather than the value, the same problem
+`useTypeScale` has — so one throwaway element sized in the real unit is read
+once and removed. Past a ceiling on cell count the pitch doubles, which nobody
+can tell apart at the size that happens.
+
+**The ring spacing is set against how long a cell stays lit, not against a
+total.** That ratio is the entire difference between a ring travelling out and
+the window filling in at once. A cell is visible for 420ms; at 34ms a ring
+that is a band about a dozen cells deep, with a bright core two or three cells
+thick at the front. The first attempt spaced rings at 19ms and gave each cell
+a long dim plateau in the middle of its run — which put a faint version of
+every cell on screen simultaneously, and what should have been a wave read as
+a grid fading up. There is no plateau in the keyframes now: bright by a fifth
+of the way through and falling from there.
+
+The layer takes itself down when its own ripple is over rather than being
+unmounted with the boot flag, which is a little shorter than the furthest cell
+needs, and it does not draw at all under `prefers-reduced-motion` — where the
+grid is simply there, which is what it was before any of this.
 
 ### The wave
 
@@ -731,7 +804,8 @@ should not compete with a project's title for the same element, and it should
 not move every time the pointer crosses an index box.
 
 `.mech-hero-name` is a full-bleed layer instead — "designer" above, "Tarlok
-Singh" filled out to the frame's own width below it, always one line — drawn
+Singh" filled out to the frame's own width below it, always one line, both
+lines in Clash Display — drawn
 *behind* the cast rather than beside it. It carries no `z-index` of its own;
 `.mech-stage` right after it in the DOM carries `z-index: 1`, and an explicit
 z-index always wins over `auto`, document order aside — the same reasoning
@@ -742,7 +816,13 @@ someone has to keep straight.
 
 The size formula is `.mech-title`'s own average-advance heuristic, run against
 a different width: `--gutter`, the same full-bleed inset the index sheet uses,
-rather than the side column's 460. `nameTuning.ts` is the panel it answers to
+rather than the side column's 460. Narrow, the same formula is rebased on 500
+rather than 1920 — that is what a frame coordinate is worth on that layout —
+and the block comes out of the overlay entirely to become the first thing in
+the page's scroll, kicker then name then the line-up under it. Behind the cast
+is a wide-layout idea: `.mech-frame` has no fixed height there for a 50% to be
+half of, and a name laid over five objects at 390 points is a name over a
+face. `nameTuning.ts` is the panel it answers to
 — the **Name** tab — with `size` as a scale on top of the fit for when the
 width-fitted number still wants nudging by eye, `y` to move the block off
 vertical centre, and `opacity` for how much shows through the cast standing in
@@ -758,9 +838,29 @@ home's old fallback state, and there is no fallback state left to have one.
 `.mech-wordmark` in the header used to sit top-left on every screen, home
 included — which put "Tarlok Singh" twice on the one page that has it large
 behind the cast as well. It only mounts now when `!home`: absent on the home
-screen, and drawn (with `mech-in`'s fade, since it is the one direction that
-ever needs an entrance) the moment a project opens, in the same corner it was
-always in. There is no exit to animate — home has no wordmark to fade *from*.
+screen, drawn the moment a project opens, in the same corner it was always in.
+
+**And it is the same name, handed over.** Opening a project backspaces the big
+one out from behind the cast, a character at a time; a beat later the corner
+one types itself in, in the same typeface. Going home runs it the other way.
+Nothing here fades: `Typed` grew a `back` prop, which deletes from wherever
+the line actually got to rather than restarting from the end, so a fast exit
+picks up mid-word. Fading a typed line out is the one exit that says it was
+never really typed; backspacing says the machine is still holding the caret.
+
+The flag it runs off is `transiting`, and it is deliberately **not** `phase`.
+`phase === 'out'` is true for any exit, and stepping the tile rail is an exit —
+the name has no business reacting to a picture changing. `transiting` is set
+only in the retarget effect, the one place the *screen* changes, and cleared
+on the same beat `shownId` does, so whichever of the two names is mounting on
+the other side of it mounts with something to type rather than something to
+delete.
+
+The header hangs its one control off `flex-end` rather than spacing two things
+apart, and the signature pushes itself over with `margin-right: auto` when
+there is one. `space-between` with a single child left in it put the index key
+against the *left* edge of the home screen, which is the one place a way in to
+everything should never be.
 
 ### Narrow viewports
 
@@ -792,8 +892,9 @@ order:
 | | |
 |---|---|
 | header | sticky, folded into one control — `MechMenu.tsx` |
-| `.mech-lede` | the name and the line under it |
-| stage | the subject, large, with its leader lines |
+| `.mech-hero-name` | home only: "designer", then the name |
+| `.mech-lede` | a project's title and the line under it |
+| stage | the subject (or the whole line-up, on home), with its leader lines |
 | rail | the tile strip, sideways |
 | `.mech-folds-wrap` | the write-up, one section open at a time |
 | footer | the contact line |
@@ -807,11 +908,25 @@ never `MODEL_DEFAULTS`), and a picture fills the box rather than sitting in a
 `left/top/width/height` when narrow, which is what leaves the stylesheet
 anything to set.
 
-The write-up is the same accordion the wide layout has, with one difference:
-the first section is open on arrival. On a phone the write-up is the bottom
-half of a scroll and a run of closed drawers there is a screen that says
-nothing about the work; on the wide layout it sits beside a subject that is
-already doing the talking, and that composition is not this pass's to redraw.
+The write-up is the same accordion the wide layout has, and like the wide
+layout **every section arrives shut** — here and on desktop both. A project
+used to open on its overview (on this layout, on whatever it led with), and
+that is a screen answering before it has been asked: the subject is already on
+the stage and the title already above it, and a drawer standing open is the
+one thing in the column that nobody opened.
+
+**Home's line-up needed its own two numbers here.** The objects *are* the index
+now, so all five of them have to be on the screen and reachable by thumb — and
+a composition drawn across a 16:9 frame puts the two on the ends past both
+edges of a portrait window, with the whole set along its top edge. `fill` is a
+fraction of the stage's *height*, so a tall stage shows less world sideways,
+not more. `castSpread` (a multiplier on `CAST_STUDIO.spread`) pulls the
+line-up in and `castLift` (an offset on `lift`) drops it toward the middle;
+both are applied on the way into `MechCast` in `Mech.tsx`, never to
+`CAST_STUDIO` itself, exactly as `model` is applied to `fill` on the way into
+`MechModel`. Narrowing the spread rather than pulling the camera back is the
+deliberate half of that: pulling back would fit them by making all five
+smaller, which on the smallest screen is the wrong trade.
 
 The title is capped against the width it actually has — the same rule the wide
 layout has, against a different width. See **The title is one line** below.
@@ -843,10 +958,10 @@ at the top and took the subject off the screen.
 
 The dev panels are off at this width — Leva's own minimum is most of a
 390-point window, and the subject panel and the label editor stacked cover
-the subject, the deck and the title. What's left is `narrowTuning.ts`: two
-knobs, subject scale and picture scale, in the same shape as every other
-tuning panel here (a `_DEFAULTS` constant, a localStorage scratchpad, a copy
-button that hands back source).
+the subject, the deck and the title. What's left is `narrowTuning.ts`: subject
+scale, picture scale and the home line-up's two, in the same shape as every
+other tuning panel here (a `_DEFAULTS` constant, a localStorage scratchpad, a
+copy button that hands back source).
 
 ### The subject, when there is no model
 
@@ -1348,6 +1463,27 @@ at the other. You lead it and you hit it. A second bird with different wings
 would be a recolour, so the moth is built around the other half of hunting —
 the part where something is already there and you have not noticed it.
 
+**The bird is filled now, not drawn.** It was v2's outline in the warning
+lamp's orange — the same hairline weight as the reticle, the compass and the
+leaders, which on a page made almost entirely of hairlines is one more
+instrument rather than a thing crossing in front of them. It is a solid red
+silhouette instead, in a red of its own (`--bird`, deeper than the moth's, so
+the two flying targets stay tellable apart at a glance) — **with its eye
+punched clean through it**. That is the outline inverted in both senses: the
+body that was empty is now solid, and the eye that was nothing is now the only
+place the panel shows through.
+
+The mechanism is one CSS property. The eye and the body are two subpaths of a
+single `d`, and `fill-rule: evenodd` on the `<svg>` is the entire reason the
+inner loop is a hole rather than a second bird — which also means nothing
+under `.mech-bird path` may set a `fill` other than `currentColor` without the
+eye filling back in. The shapes themselves (`BIRD_SOLID` and the two solid
+wings in `site/frames.ts`) are derived from the strokes above them rather than
+drawn again — same back line, same belly, same beak — so the two versions of
+this bird cannot drift apart. What is added is width where a stroke had none:
+the tail goes out and comes back on a lower curve instead of retracing itself,
+and each wing closes across its root.
+
 A moth settles somewhere on the panel and sits still, dim, wings shut, at a
 size you could easily take for another mark on the readout. Bring the reticle
 within about 120px and it *startles*: it bursts off its perch and flies a
@@ -1402,6 +1538,19 @@ label-pin store already uses — with the count cached in the module because
 forever. It renders as one more digit readout on the instrument panel, and not
 at all at zero, because a counter saying nothing has happened is a counter
 advertising a feature.
+
+It sits at the **left end of the footer** now, opposite the contact address.
+It used to be its own absolutely positioned box pinned to the bottom right, an
+inch directly above that address and sharing its column — so the corner of the
+screen read as two unrelated readouts stacked on each other, while the whole
+left half of the footer line sat empty the entire time. On the same baseline
+at the other end, the bottom edge is one strip of chrome with something at
+each end of it: what you have shot, and how to reach me. The footer stays
+`flex-start` with the address on `margin-left: auto` rather than going
+`space-between`, because the tally is hidden at zero and a two-ended line
+whose left end is missing would slide the address into the middle of the
+screen on first load. Narrow, the two stack and centre instead — two things at
+opposite ends of a 390-point line are two things nowhere near each other.
 
 ### Nothing stutters on a swap
 

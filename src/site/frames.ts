@@ -329,6 +329,35 @@ export const BIRD_BODY: string[] = [
  * because on a downbeat the wing root is behind the body and only the part
  * below it is visible. A down-wing drawn from the shoulder crosses the whole
  * body on its way out. */
+/* ---- the same bird, as a shape ----
+
+ * The readout's bird is filled rather than drawn (`MechBird.tsx`): a solid
+ * silhouette with the eye punched out of it, so the one hole in the shape is
+ * the panel showing through where the eye should be. It is the inverse of the
+ * outline, and it is what makes the bird read as an object crossing the glass
+ * rather than as one more hairline on a page already full of them.
+ *
+ * Derived from the strokes above rather than drawn again — same back line,
+ * same belly, same beak — so the two versions of this bird cannot drift
+ * apart. What is added is width where a stroke had none: the tail goes out
+ * and comes back on a lower curve instead of retracing itself, and each wing
+ * closes across its root.
+ *
+ * The eye is a second subpath in the same `d`, and the element it is drawn
+ * into must be `fill-rule: evenodd` — that is the whole mechanism: a closed
+ * loop inside another closed loop is a hole, not a second bird.
+ */
+export const BIRD_SOLID: string[] = [
+  'M41 12 C37 7 30 6 24 9 C18 11 11 14 6 16 C3 14 1 12 -1 10 ' +
+    'L1 12 C3 14 4 16 7 17 C10 19 12 20 16 21 C23 22 31 21 38 19 C42 18 43 14 41 12 Z ' +
+    'M40.2 13.3 A1.75 1.75 0 1 0 36.7 13.3 A1.75 1.75 0 1 0 40.2 13.3 Z',
+  'M41 12 L46 13 L41 15 Z'
+]
+
+export const BIRD_WING_UP_SOLID: string[] = ['M26 11 C20 2 14 -4 6 -8 C11 0 14 7 17 12 Z']
+
+export const BIRD_WING_DOWN_SOLID: string[] = ['M24 21 C20 26 15 30 9 31 C13 26 15 24 17 21 Z']
+
 export const BIRD_WING_UP: string[] = ['M26 11 C20 2 14 -4 6 -8 C11 0 14 7 17 12']
 
 export const BIRD_WING_DOWN: string[] = ['M24 21 C20 26 15 30 9 31 C13 26 15 24 17 21']

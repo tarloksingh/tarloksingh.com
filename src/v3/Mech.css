@@ -51,8 +51,16 @@
      than as something leaving the page. */
   --shot: #ff8f3a;
   --shot-rgb: 255, 143, 58;
+  /* The bird, which is a filled shape rather than a drawn one and therefore
+     the largest area of colour on the screen. Red, and its own red: deeper
+     and further from the orange than either the warning lamp or the bolt, so
+     a solid of it next to `--shot` is obviously not made of the same stuff. */
+  --bird: #d81f2a;
+  --bird-rgb: 216, 31, 42;
   /* The moth, on its own colour rather than the panel's green — it needs to
-     read as a different kind of target from the bird at a glance. */
+     read as a different kind of target from the bird at a glance, which now
+     means a lighter, pinker red than the bird's, against a shape rather than
+     an outline. */
   --moth: #ff4d4d;
   --moth-rgb: 255, 77, 77;
   /* The room the panel is lit in: a cold blue off one side and a lime sign
@@ -368,6 +376,12 @@
 
 /* ---- header ---- */
 
+/* `flex-end`, with the signature pushing itself over rather than the row
+   spacing two things apart. Home has no signature — the name is behind the
+   cast — and `space-between` with one child left in it put the index key on
+   the *left* of the screen, which is the one place a way-in to everything
+   should never be. This way the key is welded to the right edge on both
+   screens and the signature appears to its left when there is one. */
 .mech-head {
   position: absolute;
   left: calc(101 * var(--px));
@@ -375,7 +389,7 @@
   top: calc(24 * var(--px));
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: calc(24 * var(--px));
   z-index: 3;
 }
@@ -394,10 +408,11 @@
   border: 0;
   padding: 0;
   flex: none;
+  margin-right: auto;
   transition: color 160ms linear;
-  /* Only ever mounts arriving at a project — home has no wordmark to cut
-     away from — so this is the one direction that needs a keyframe. */
-  animation: mech-in 500ms var(--ease) both;
+  /* No entrance of its own. It types itself in a character at a time — see
+     the handover note in Mech.tsx — and a block fading up underneath a line
+     being typed is two arrivals for one name. */
 }
 
 .mech-wordmark:hover {
@@ -446,8 +461,14 @@
   animation: mech-in 620ms var(--ease) both;
 }
 
+/* Clash Display, like the name under it. It was the page's Helvetica, which
+   made the two lines of one block read as a caption sitting on a title
+   instead of as one signature — the whole reason it is up there is that it
+   belongs to the name. Smaller, spaced out and in the accent, so it is
+   still obviously the line *above* rather than a second title. */
 .mech-hero-kicker {
   margin: 0 0 calc(var(--hero-kicker-gap, 18) * var(--px));
+  font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-size: calc(var(--hero-kicker-size, 20) * var(--type));
   font-weight: 500;
   letter-spacing: calc(3 * var(--type));
@@ -1574,6 +1595,115 @@
   }
 }
 
+/* ---- the panel coming alive ----
+
+   The grid's own cells, dealt in once as a ring travelling out from the middle
+   of the window while the rest of the machine boots. Each strikes bright,
+   holds a frame and decays to nothing; what is underneath when the last of
+   them has gone is `.mech-grid`, at the same 46-unit pitch and in the same
+   accent, so this reads as that grid lighting up rather than as a second one
+   laid over it. The layer is mounted for the boot and taken down after —
+   `MechTiles.tsx`, which measures the cell and works out the delays.
+
+   Nothing here animates anything but `opacity` and `transform`. There can be
+   a thousand of these on a wide window, and those two are the only properties
+   a compositor will run without waking the main thread — which on this exact
+   beat is busy with a WebGL context, a shader compile and a GLB. Colour is
+   baked into the cell and the flash is opacity alone for the same reason, and
+   `will-change` is deliberately absent: a thousand promoted layers is a
+   worse problem than the one it solves. */
+.mech-tiles {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 1), var(--cell, 0px));
+  grid-auto-rows: var(--cell, 0px);
+  /* Centred both ways, so the middle of the ring is the middle of the window
+     — the cell count is rounded up and there is a spare row and column to
+     absorb. */
+  justify-content: center;
+  align-content: center;
+  /* The same falloff `.mech-grid` has, for the same reason: an effect that
+     reaches the corners of the window is a background, and this is a panel
+     lit from behind. */
+  mask-image: radial-gradient(ellipse 82% 78% at 50% 50%, #000 25%, transparent 82%);
+}
+
+/* A struck cell, not a filled one. The wash is faint and the edge is what
+   carries it: a solid block of accent at any real opacity turns the whole
+   window green the moment more than a ring of them is up at once, which is
+   what the first pass at this did. An outline lighting up reads as the cell
+   being *found*; a solid reads as a colour wash. */
+.mech-tiles i {
+  display: block;
+  background: rgba(var(--accent-rgb), 0.22);
+  box-shadow:
+    inset 0 0 0 1px var(--accent),
+    0 0 calc(10 * var(--px)) rgba(var(--accent-rgb), 0.45);
+  opacity: 0;
+  animation: mech-tile 420ms var(--ease) both;
+}
+
+/* Struck, then gone. There is no plateau in the middle of this on purpose:
+   a cell that holds at a low opacity for most of its run leaves the whole
+   window faintly lit at once, and what should be a ring travelling outward
+   reads as a grid fading up. Bright by a fifth of the way through and falling
+   from there, so what is on screen at any moment is a hard front with a short
+   tail behind it. See `RING` in MechTiles.tsx, which is set against this
+   number rather than against a total. */
+@keyframes mech-tile {
+  0% {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  20% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+/* The front of the ring, drawn once as one element rather than inferred from
+   a thousand. It is what makes the cells read as being *struck* by something
+   travelling outwards instead of merely taking their turn. */
+.mech-tiles::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(60 * var(--px));
+  height: calc(60 * var(--px));
+  margin: calc(-30 * var(--px)) 0 0 calc(-30 * var(--px));
+  border: 1px solid rgba(var(--accent-rgb), 0.55);
+  border-radius: 50%;
+  animation: mech-tiles-ring 1150ms cubic-bezier(0.16, 0.8, 0.3, 1) both;
+}
+
+@keyframes mech-tiles-ring {
+  from {
+    opacity: 0.9;
+    transform: scale(0.2);
+  }
+  to {
+    opacity: 0;
+    transform: scale(46);
+  }
+}
+
+/* Nothing is dealt in for a reader who has asked for less motion — the grid
+   is simply there, which is what it was before any of this. */
+@media (prefers-reduced-motion: reduce) {
+  .mech-tiles {
+    display: none;
+  }
+}
+
 /* The room the panel is in. A rose sign off to the left, sodium off the
    right, and the panel's own green wash in the middle — all far enough under
    the readout that no white text ever sits on a tint. */
@@ -1740,9 +1870,9 @@
   border: 0;
   background: none;
   pointer-events: auto;
-  /* Warm, like the compass marker and the deck — not another green thing on
-     a green panel. */
-  color: var(--warn);
+  /* Its own red. The one solid on a screen of hairlines, so it cannot be the
+     warning lamp's orange or the bolt's — see `--bird`. */
+  color: var(--bird);
   transform: translate(-50%, -50%);
 }
 
@@ -1750,14 +1880,21 @@
   width: 100%;
   height: 100%;
   overflow: visible;
-  filter: drop-shadow(0 0 5px rgba(var(--warn-rgb), 0.5));
+  filter: drop-shadow(0 0 5px rgba(var(--bird-rgb), 0.55));
 }
 
+/* Filled, not stroked — and the eye is a hole through the fill rather than a
+   dot drawn on top of it. `fill-rule` is on the `<svg>` in MechBird.tsx: the
+   eye and the body are two subpaths of one path, and `evenodd` is the entire
+   mechanism that makes the inner loop a cut-out. Nothing here may set a
+   `fill` other than `currentColor`, or the hole fills back in.
+
+   A hairline of the same colour around the edge, because a shape this small
+   loses its silhouette to antialiasing at the tail and the beak tip. */
 .mech-bird path {
-  fill: none;
+  fill: currentColor;
   stroke: currentColor;
-  stroke-width: 2.2;
-  stroke-linecap: round;
+  stroke-width: 0.9;
   stroke-linejoin: round;
 }
 
@@ -1792,8 +1929,9 @@
   }
 }
 
-/* Hit. The bird goes white for a frame and the ring it was carrying blows
-   out through it; the tumble itself is gravity, in MechBird.tsx. */
+/* Hit. The bird goes white for a frame — the whole shape, now, rather than
+   an outline of one — and the ring it was carrying blows out through it; the
+   tumble itself is gravity, in MechBird.tsx. */
 .mech-sky[data-mode='hit'] .mech-bird {
   color: #fff;
 }
@@ -1810,9 +1948,9 @@
   width: 12px;
   height: 12px;
   margin: -6px 0 0 -6px;
-  /* Warm, matching the bird itself — a hit reads as the same warm thing
-     breaking apart, not a green flash on a warm bird. */
-  border: 1.6px solid var(--warn);
+  /* The bird's own red, so a hit reads as that thing breaking apart rather
+     than as a green flash going off on a red one. */
+  border: 1.6px solid var(--bird);
   border-radius: 50%;
   opacity: 0;
   pointer-events: none;
@@ -2527,9 +2665,18 @@
   z-index: 3;
   display: flex;
   align-items: baseline;
-  justify-content: flex-end;
+  /* Not `space-between`: the tally is hidden at zero, and a two-ended line
+     whose left end is missing would slide the address into the middle of the
+     screen the first time you loaded the page. The address holds the right
+     edge on its own instead, and the tally appears at the left when there is
+     one. */
+  justify-content: flex-start;
   font-size: calc(13 * var(--type));
   color: var(--mid);
+}
+
+.mech-comms {
+  margin-left: auto;
 }
 
 .mech-foot {
@@ -2738,13 +2885,17 @@
    instrument panel rather than in a corner as a score: it is one more digit
    readout beside the compass's, which is where a number like this belongs on
    a page that already has three of them. Hidden at zero — a counter saying
-   nothing has happened is a counter advertising a feature. See `kills.ts`. */
+   nothing has happened is a counter advertising a feature. See `kills.ts`.
+
+   In the footer, at the far left of it, rather than pinned to the bottom
+   right on its own. It used to sit eighteen units directly above the contact
+   address and share that column, so the corner of the screen read as two
+   unrelated readouts stacked on each other — and the whole left half of the
+   footer line was empty the entire time. On the same baseline, at the other
+   end, the bottom edge is one strip of chrome with something at each end of
+   it: what you have shot, and how to get hold of me. */
 
 .mech-tally {
-  position: absolute;
-  right: calc(101 * var(--px));
-  bottom: calc(48 * var(--px));
-  z-index: 3;
   display: flex;
   gap: calc(9 * var(--px));
   align-items: baseline;
@@ -2862,12 +3013,55 @@
   order: 4;
 }
 
-.mech[data-narrow='true'] .mech-tally {
+.mech[data-narrow='true'] .mech-foot {
   order: 5;
 }
 
-.mech[data-narrow='true'] .mech-foot {
-  order: 6;
+/* ---- the name, on a phone ----
+
+   Behind the cast is a wide-layout idea. Here the stage is a tall box in a
+   column that scrolls, `.mech-frame` has no fixed height for a 50% to be
+   half of, and a name laid over five objects at this width is a name over a
+   face. So it comes out of the overlay and becomes the first block of the
+   page: kicker, name, then the line-up under it. Same two lines, same
+   typeface, same order — read down instead of stacked in depth.
+
+   Rebased on 500 rather than 1920 for both the width and the fit, because
+   that is what a frame coordinate is worth on this layout (`--px`, above).
+   Left as it is and the block would be measured against a box nearly four
+   times the width of the window. `--hero-name-y` is not read here at all:
+   it moves the block off the middle of a frame, and there is no middle of a
+   frame to move it off. */
+.mech[data-narrow='true'] .mech-hero-name {
+  position: static;
+  order: 1;
+  transform: none;
+  width: 100%;
+  padding: calc(26 * var(--px)) var(--gutter) calc(10 * var(--px));
+  /* Full strength. The value on the panel is set for type sitting behind a
+     lit line-up; there is nothing behind it here. */
+  opacity: 1;
+}
+
+.mech[data-narrow='true'] .mech-hero-title {
+  font-size: calc(
+    var(--hero-name-size, 1) * (500 * var(--px) - 2 * var(--gutter)) / (var(--hero-name-len, 12) * 0.66)
+  );
+}
+
+/* A floor under the kicker, which the panel sets in type units for a screen
+   four times this wide — at 13 it comes out too small to read as a line of
+   its own here. */
+.mech[data-narrow='true'] .mech-hero-kicker {
+  font-size: max(calc(var(--hero-kicker-size, 20) * var(--type)), calc(11 * var(--type)));
+  margin-bottom: calc(max(var(--hero-kicker-gap, 18), 8) * var(--px));
+}
+
+/* The line-up wants more of the window on home than a single subject in a
+   housing does: five objects in a box sized for one picture is five specks.
+   Home only — a project's stage keeps the height above. */
+.mech[data-narrow='true'][data-home='true'] .mech-stage {
+  height: min(64vh, calc(100vw * 1.25));
 }
 
 /* ---- the header, folded ---- */
@@ -2882,7 +3076,11 @@
   z-index: 6;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  /* The same `flex-end` the wide header uses, and for the same reason: home
+     has no signature to sit opposite, and `space-between` with one child left
+     in it put the index key against the left edge. The signature pushes
+     itself over with `margin-right: auto` when there is one. */
+  justify-content: flex-end;
   padding: calc(16 * var(--px)) var(--gutter) calc(14 * var(--px));
   background: linear-gradient(to bottom, rgba(0, 0, 0, 0.92) 55%, rgba(0, 0, 0, 0));
 }
@@ -3306,17 +3504,22 @@
 
 /* ---- the contact line ---- */
 
-.mech[data-narrow='true'] .mech-tally {
-  position: static;
-  justify-content: center;
-  margin-top: calc(10 * var(--px));
-}
-
+/* Narrow, the footer is a block in the scroll rather than a strip across the
+   bottom of a window, and two things at opposite ends of a 390-point line is
+   two things nowhere near each other. Stacked and centred instead — which is
+   also why `margin-left: auto` has to come off the address here. */
 .mech[data-narrow='true'] .mech-foot {
+  flex-direction: column;
+  align-items: center;
+  gap: calc(12 * var(--px));
   position: static;
   justify-content: center;
   margin-top: calc(34 * var(--px));
   padding: calc(26 * var(--px)) var(--gutter) calc(10 * var(--px));
+}
+
+.mech[data-narrow='true'] .mech-comms {
+  margin-left: 0;
 }
 
 /* ---- the deck, floating ---- */
@@ -3521,181 +3724,42 @@
 
 /* ---- the exchange ----
 
-   The index and the tile rail are the same slot in the machine holding two
-   different controls, and only ever one at a time. Both take their exit from
-   `data-covered` on the root — which is already true for the whole length of
-   a retarget — so whichever one is up has faded before `shownId` changes
-   underneath it, and whichever one replaces it fades in after. Neither is
-   ever caught mid-swap, and nothing has to know which direction the move
-   was. */
-.mech-index,
+   This slot along the bottom of the screen used to hold two controls, one per
+   screen: a project's tile strip, and home's row of twelve named boxes. Home
+   no longer puts anything here — the objects on the stage are its index now
+   (see the note where that row was, in Mech.tsx) — so the slot is a project's
+   alone and the exchange is with nothing.
+
+   The rule stays because the reason for it does: the strip takes its exit
+   from `data-covered` on the root, which is already true for the whole length
+   of a retarget, so it has faded before `shownId` changes underneath it and
+   fades back in after. It is never caught mid-swap, and it does not have to
+   know which direction the move was. */
 .mech-rail-wrap {
   transition: opacity 300ms var(--ease);
 }
 
-.mech[data-covered='true'] .mech-index,
 .mech[data-covered='true'] .mech-rail-wrap {
   opacity: 0;
   pointer-events: none;
   transition-duration: 240ms;
 }
 
-/* `covered` is also true for the whole of the boot, and the index does not
-   want to be hidden for that — its own stagger is a good part of the machine
-   coming up, and holding it back until the boot finished only meant it
-   arrived late and all at once. Excluded here rather than by weakening
-   `covered` itself, which the stage still needs. */
-.mech[data-boot='true'][data-covered='true'] .mech-index {
-  opacity: 1;
-  pointer-events: auto;
-}
-
 /* ---- the index ----
 
-   Every project, named and numbered, in two rows of six along the bottom
-   edge — above the compass strip, which is at 74 and 44 tall.
+   Twelve boxes ran along the bottom of the home screen: a project's name and
+   its number, on one line, sized so all twelve came out the width of the
+   longest name. It is gone, and what replaced it is not a smaller version of
+   it — it is the line-up on the stage. Point at an object and that object's
+   box comes up on a line drawn to it, in the same design, one at a time; the
+   projects with no object are behind the index key in the header.
 
-   Wider than the stage's own margins on purpose. The names are the content
-   here and several of them are long ("red dead redemption 2" is twenty-one
-   characters); a box narrow enough to need an ellipsis is a box that has
-   stopped naming the thing, which is its only job. So the row takes most of
-   the frame's width and the type comes down to meet it, rather than the type
-   holding its size and the names being cut. */
-.mech-index {
-  position: absolute;
-  left: 50%;
-  bottom: calc(140 * var(--px));
-  transform: translateX(-50%);
-  z-index: 3;
-  display: grid;
-  /* Six equal columns, all as wide as the *widest* name and no wider.
- 
-     `1fr` inside a `fit-content` box is what does it: with no free space to
-     distribute, an `fr` track resolves to the largest max-content among the
-     items in it, and six of them resolve to the same number. So the boxes
-     match each other, the row is exactly as wide as "red dead redemption 2"
-     needs it to be, and it stops there — rather than being stretched to the
-     frame's margins and leaving every short name swimming, which is what
-     pinning this to `left`/`right` did. */
-  width: fit-content;
-  max-width: calc(1718 * var(--px));
-  grid-template-columns: repeat(6, 1fr);
-  /* Tighter than the boxes were tall. Two rows of a one-line control want to
-     read as one block of twelve, and the gap that suited a 60-unit box with a
-     square in it left the rows floating apart once the box was 26. */
-  gap: calc(12 * var(--px)) calc(14 * var(--px));
-}
-
-/* One line: the name, then its number. Both the second row of type and the
-   portrait square that used to set this box's height are gone, so the padding
-   is the only thing left deciding it — which is why it is symmetrical now
-   rather than the four different numbers a square on the right needed. */
-.mech-index-box {
-  display: flex;
-  align-items: baseline;
-  gap: calc(10 * var(--px));
-  padding: calc(7 * var(--px)) calc(13 * var(--px));
-  border: 1px solid rgba(var(--accent-rgb), 0.22);
-  border-radius: var(--round);
-  /* Nearly opaque, because there is a lit surface behind this now — the
-     wave runs under the whole stage (`MechWave.tsx`). A 55% black that read
-     fine over the plain grid let the purple through far enough to grey out
-     the names. */
-  background: rgba(0, 0, 0, 0.78);
-  box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.06);
-  text-align: left;
-  color: var(--mid);
-  transition:
-    color 160ms linear,
-    border-color 160ms linear,
-    background-color 160ms linear,
-    box-shadow 160ms linear;
-  animation: mech-index-in 420ms var(--ease) both;
-  /* Staggered along the row, from the moment it mounts.
- 
-     No boot offset. It used to wait out `BOOT_MS` before starting, which is
-     right exactly once — on the very first load — and wrong every time you
-     come back to home from a project, where there is no boot to wait for and
-     the row sat empty for a beat and a quarter before admitting it existed.
-     What keeps it out of the boot instead is the rule below. */
-  animation-delay: calc(var(--i) * 32ms);
-}
-
-@keyframes mech-index-in {
-  from {
-    opacity: 0;
-    transform: translateY(calc(8 * var(--px)));
-  }
-}
-
-/* Holds the name and the gauge that sizes every box off it. Not a column any
-   more — there is one line in here. */
-.mech-index-text {
-  min-width: 0;
-}
-
-.mech-index-title {
-  font-size: calc(9.5 * var(--type));
-  letter-spacing: calc(0.2 * var(--type));
-  line-height: 1.1;
-  text-transform: uppercase;
-  color: #fff;
-  /* One line, never ellipsised — the boxes are sized so it fits. If a longer
-     name is ever added and this overflows, it should be visible rather than
-     silently trimmed, which is what tells you the box needs to grow. */
-  white-space: nowrap;
-}
-
-/* Sets the width of every box and shows nothing. Must carry exactly the
-   title's type metrics or it would measure a different string than the one
-   drawn. See the note where it is rendered. */
-.mech-index-gauge {
-  display: block;
-  height: 0;
-  overflow: hidden;
-  visibility: hidden;
-  font-size: calc(9.5 * var(--type));
-  letter-spacing: calc(0.2 * var(--type));
-  text-transform: uppercase;
-}
-
-.mech-index-gauge span {
-  display: block;
-  white-space: nowrap;
-}
-
-/* Pushed to the far edge rather than set right against the name. Every box is
-   the width of the longest name, so a number that trails each name lands in a
-   different place in each box; one that sits on the edge lines up down the
-   column, which is the only thing that makes twelve of them read as an index
-   rather than as twelve stray digits. */
-.mech-index-n {
-  margin-left: auto;
-  flex: none;
-  font-size: calc(8 * var(--type));
-  letter-spacing: calc(1.4 * var(--type));
-  font-variant-numeric: tabular-nums;
-  color: inherit;
-  opacity: 0.8;
-}
-
-.mech-index-box:hover {
-  color: #fff;
-  border-color: rgba(var(--accent-rgb), 0.55);
-  background: rgba(var(--accent-rgb), 0.08);
-}
-
-/* The one the readout is currently about. Lit the way everything else on this
-   panel is lit — the accent, turned up, with the black around it picking some
-   of it up. */
-.mech-index-box[aria-pressed='true'] {
-  color: var(--accent);
-  border-color: var(--accent);
-  background: rgba(var(--accent-rgb), 0.16);
-  box-shadow:
-    0 0 calc(22 * var(--px)) rgba(var(--accent-rgb), 0.28),
-    inset 0 0 calc(30 * var(--px)) rgba(var(--accent-rgb), 0.08);
-}
+   `.mech-cast-box` at the foot of this file is where the box itself now
+   lives, and it is deliberately the same rounded rectangle, the same border
+   and the same number in the same place. `.mech-index-gauge`, which measured
+   every name at zero height so the boxes could match, went with the row —
+   there is one box on screen at a time now and it is as wide as its own
+   name. `git show 4a322c0` has all of it. */
 
 /* ---- the home readout ----
 
@@ -3925,65 +3989,199 @@
 
 /* ---- the tag on a cast subject ----
 
-   The same leader the project screen draws — it reuses `.mech-leaders` and
-   every `.mech-leader-*` rule outright, so the circles, the hairline, the
-   Clash Display label and the Helvetica value under it are not a second
-   design that resembles the first. All that is added here is the way out.
+   Two pieces, one gesture. The leader — ring, hairline, elbow — is SVG in the
+   stage's own coordinates, sharing every `.mech-leader-*` rule with the lines
+   a project screen draws, so it is not a second design that resembles the
+   first. The label at the end of it is HTML, and it is the index box: the
+   same rounded rectangle, the same border, the same name on the left and the
+   same number on the right that used to run twelve-across the bottom of this
+   screen. That row is gone and the objects on the stage took its job, so its
+   design is what names one.
 
-   The exits are the four `data-covered` rules from `entries, and their
-   inverses`, rescoped to this leader's own flag. They cannot be shared:
-   `data-covered` belongs to the stage and is true for a frame swap and the
-   whole of the boot, neither of which has anything to do with a pointer
-   leaving a subject.
+   The order is the whole thing. The line draws itself out to the elbow, the
+   box opens along it like a drawer being pulled, and only then is the name
+   typed into it. A label that arrives whole is a tooltip; a box that opens
+   empty and is then filled in is an instrument acquiring something. Out is
+   the same list backwards — the name backspaces (`Typed`'s `back`, in
+   Mech.tsx), the box shuts, the line retracts — and the numbers below add up
+   to just inside `TAG_OUT`, which is how long the tag stays mounted after
+   the pointer has gone.
+
+   The exits are the `data-covered` rules from `entries, and their inverses`,
+   rescoped to this tag's own flag. They cannot be shared: `data-covered`
+   belongs to the stage and is true for a frame swap and the whole of the
+   boot, neither of which has anything to do with a pointer leaving a subject.
 
    Its own keyframes, never the entry reversed — an animation is only
    restarted when its `animation-name` changes, so `mech-draw reverse` would
    leave the finished entry running and the line would simply be gone on the
    next frame. Same reasoning, at length, beside the rules it comes from. */
-.mech-cast-tag[data-off='true'] .mech-leader-mark,
-.mech-cast-tag[data-off='true'] .mech-leader-core {
-  animation: mech-out 260ms var(--ease) both;
-}
-
-.mech-cast-tag[data-off='true'] .mech-leader-value {
-  animation: mech-out 240ms var(--ease) 60ms both;
-}
-
-.mech-cast-tag[data-off='true'] .mech-leader-label {
-  animation: mech-out 240ms var(--ease) 110ms both;
-}
-
-.mech-cast-tag[data-off='true'] .mech-leader {
-  animation: mech-undraw 420ms var(--ease) 140ms both;
-}
-
-.mech-cast-tag[data-off='true'] .mech-leader-ping {
-  animation: mech-out 220ms var(--ease) both;
-}
 
 /* Quicker in than a project's leaders. Those are the last beat of a machine
    booting and can take their time; this one answers a pointer, and anything
    that answers a pointer has to be under way before you have finished
    arriving. */
 .mech-cast-tag .mech-leader {
-  animation-duration: 420ms;
-}
-
-.mech-cast-tag .mech-leader-label {
-  animation-delay: calc(var(--d) + 180ms);
-}
-
-.mech-cast-tag .mech-leader-value {
-  animation-delay: calc(var(--d) + 240ms);
+  animation-duration: 300ms;
 }
 
 .mech-cast-tag .mech-leader-mark,
 .mech-cast-tag .mech-leader-core {
-  animation-delay: calc(var(--d) + 240ms);
+  animation-delay: calc(var(--d) + 120ms);
 }
 
 .mech-cast-tag .mech-leader-ping {
-  animation-delay: calc(var(--d) + 340ms);
+  animation-delay: calc(var(--d) + 220ms);
+}
+
+.mech-cast-tag[data-off='true'] .mech-leader-mark,
+.mech-cast-tag[data-off='true'] .mech-leader-core {
+  animation: mech-out 260ms var(--ease) both;
+}
+
+.mech-cast-tag[data-off='true'] .mech-leader-ping {
+  animation: mech-out 220ms var(--ease) both;
+}
+
+.mech-cast-tag[data-off='true'] .mech-leader {
+  animation: mech-undraw 300ms var(--ease) 460ms both;
+}
+
+/* ---- the label at the end of it ----
+
+   A box the size of the stage, holding a point that is moved every frame,
+   holding the box itself. Three elements because there are three different
+   jobs: `.mech-cast-label` is the coordinate space (the stage's own, so a
+   fraction of it is a fraction of `space`), `.mech-cast-label-at` is where the
+   subject is *right now* — written from the same rAF that moves the leader,
+   off `aim`, so the tag rides the float — and `.mech-cast-box` is the offset
+   that hangs the box off the correct side of that point. Splitting the last
+   two apart is what lets the per-frame transform be written without having to
+   carry the static one along with it every time. */
+.mech-cast-label {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.mech-cast-label-at {
+  position: absolute;
+  left: 0;
+  top: 0;
+  will-change: transform;
+}
+
+.mech-cast-box {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  align-items: baseline;
+  gap: calc(30 * var(--px));
+  padding: calc(7 * var(--px)) calc(13 * var(--px));
+  border: 1px solid var(--accent);
+  border-radius: var(--round);
+  /* Nearly opaque, because there is a lit surface behind this — the wave runs
+     under the whole stage (`MechWave.tsx`) and a subject's own key light is
+     right beside it. A 55% black lets the purple through far enough to grey
+     out the name. */
+  background: rgba(0, 0, 0, 0.82);
+  box-shadow:
+    0 0 calc(22 * var(--px)) rgba(var(--accent-rgb), 0.28),
+    inset 0 0 calc(30 * var(--px)) rgba(var(--accent-rgb), 0.08);
+  white-space: nowrap;
+  /* `translate` rather than `transform`, so the keyframes below can animate
+     the box open without having to restate the offset in every frame of it —
+     the two are separate properties and compose on their own. */
+  translate: 0 -50%;
+  animation: mech-box-in 220ms var(--ease) 250ms both;
+}
+
+/* Hanging off the left of the line instead: the box's right edge meets the
+   end of the bar, and it opens from that edge rather than the other one. */
+.mech-cast-box[data-side='left'] {
+  translate: -100% -50%;
+  animation-name: mech-box-in-left;
+}
+
+/* Wiped open along the line, rather than scaled or faded. A clip keeps the
+   corners and the border at full crispness the whole way — a box scaled from
+   nothing has a radius that grows with it, which reads as a balloon. */
+@keyframes mech-box-in {
+  from {
+    clip-path: inset(0 100% 0 0 round var(--round));
+  }
+  to {
+    clip-path: inset(0 0 0 0 round var(--round));
+  }
+}
+
+@keyframes mech-box-in-left {
+  from {
+    clip-path: inset(0 0 0 100% round var(--round));
+  }
+  to {
+    clip-path: inset(0 0 0 0 round var(--round));
+  }
+}
+
+/* Held open while the name backspaces itself out, then shut the way it came.
+   250 is a little longer than the longest name in the index takes to delete
+   at `backSpeed`. */
+.mech-cast-label[data-off='true'] .mech-cast-box {
+  animation: mech-box-out 200ms var(--ease) 300ms both;
+}
+
+.mech-cast-label[data-off='true'] .mech-cast-box[data-side='left'] {
+  animation-name: mech-box-out-left;
+}
+
+@keyframes mech-box-out {
+  from {
+    clip-path: inset(0 0 0 0 round var(--round));
+  }
+  to {
+    clip-path: inset(0 100% 0 0 round var(--round));
+  }
+}
+
+@keyframes mech-box-out-left {
+  from {
+    clip-path: inset(0 0 0 0 round var(--round));
+  }
+  to {
+    clip-path: inset(0 0 0 100% round var(--round));
+  }
+}
+
+/* The name, in the index box's own type — not the leader's Clash Display
+   label. This is a box in a list of boxes, one at a time, and the list set
+   its names in the page's Helvetica at 9.5. */
+.mech-cast-name {
+  font-size: calc(9.5 * var(--type));
+  letter-spacing: calc(0.2 * var(--type));
+  line-height: 1.1;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+/* And its place in the index, on the right of the box, quieter than the name
+   — exactly where the row used to put it. */
+.mech-cast-n {
+  font-size: calc(8 * var(--type));
+  letter-spacing: calc(1.4 * var(--type));
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  opacity: 0.75;
+}
+
+/* A minimum, so a two-letter name and a twenty-one-letter one do not open
+   into wildly different shapes — and so the box has somewhere to put the
+   number while the name is still being typed into it. */
+.mech-cast-name {
+  display: inline-block;
+  min-width: calc(120 * var(--px));
 }
 
 /* ---- home's side column ----
