@@ -320,6 +320,37 @@ for him is an invisible sphere at the same slot. A hit target in that scene
 rather than a hotspot in the DOM, so all five subjects are picked by one
 raycaster and the tag comes off one code path.
 
+### Lighting, per subject
+
+Nothing on this site shares a lighting rig any more, and the three places it
+happens each needed a different answer.
+
+**The home cast** shares one scene, so a `directionalLight` — which is
+infinite — would spill from one subject onto the next. Each subject and its
+two lights sit on a three.js layer of their own; see above.
+
+**The pieces** never share a scene: a project screen shows one piece at a time
+in a canvas of its own. So no layers are needed, and *exposure and the scene's
+environment can be per-piece too* — the two things the cast genuinely had to
+share. Each piece owns its exposure, its room, both lights with positions, and
+its surface. One shared studio had to suit a matte business card, a glossy
+moulded kiosk, a video-texture monitor and a flipbook of fish at once, which
+means at most one of them was ever right.
+
+**And the two GLB models** were both running on `MODEL_DEFAULTS` — a rig built
+around a face, with an enclosure tuned to look acceptable under it. That is
+now `MODEL_RIGS`, one entry each, seeded identical so nothing changed the day
+it split.
+
+Surface is Gloss, Metal and Reflects, and they are **offsets, not absolutes**.
+A piece is several materials on purpose — a disc case is a clear sleeve over a
+printed insert — and writing one roughness across all of them flattens it into
+a single plastic. Added rather than multiplied, too: most pieces are authored
+at `metalness: 0`, and no multiplier lifts a zero, so a scaling Metal slider
+would have run its whole range without anything ever turning metal. Metal on
+its own only darkens — a metal with nothing to reflect is a black surface — so
+Reflects goes up with it.
+
 ### The index
 
 Twelve projects, named and numbered, in two rows of six along the bottom edge,

@@ -99,6 +99,21 @@ larger than about 1600. Use `MediaItem.still` and `MediaItem.thumb`, never
   **Subject** / **Piece** / **Labels** as they apply; narrow gets **Scale**.
   Every tuning hook makes its own store with `useCreateStore` — nothing writes
   into Leva's default store, and there is no `<Leva>` element.
+- **Every 3D subject has its own lighting.** There is no shared rig left
+  anywhere. On home, each cast member owns two lights on its own three.js
+  layer (`castTuning.ts`). On a project screen, each *piece* owns its
+  exposure, its environment, both lights with positions, and a **Surface**
+  folder — Gloss, Metal, Reflects (`productTuning.ts`), and each *model* owns
+  a full `ModelTuning` in `MODEL_RIGS` (`modelTuning.ts`), so Capsule C1 is no
+  longer lit by the rig built around Takahashi's face. Stills and clips have
+  no lighting and need none.
+- **Surface offsets are added, never multiplied.** Most pieces are authored at
+  `metalness: 0`, and no multiplier can lift a zero — a scaling Metal slider
+  runs its whole range without anything turning metal. `gloss` comes off
+  roughness, `metal` goes onto metalness, both relative to what the piece was
+  built with so its material variety survives. `Sheen` in `MechProduct.tsx`
+  keeps the originals and re-applies from them, because boosting an
+  already-boosted roughness every frame walks it to 1 in a second.
 - **Never put a `.` in a Leva key or folder label.** Leva reads it as a folder
   separator: `wave.on` silently nests a phantom `wave` folder, and a subject
   titled "Mr. Takahashi" becomes `Mr` containing `Takahashi`. `castTuning.ts`
@@ -126,6 +141,12 @@ remounted, which is why the background does not flicker when you open a
 project. Do not reintroduce a second root component for home; the flash that
 used to be there was the second one painting over the first. See **Home is the
 project screen** in `README.md`.
+
+**Leva's `set()` throws if you hand it a key with no input.** Reseeding a
+per-item folder (`productTuning.ts`, `modelTuning.ts`) passes the whole tuning
+object, so every field on that object must exist in the schema. Add a field to
+`PieceTuning` without adding its control and the whole app unmounts to a blank
+paper gradient — which looks like a CSS bug, not a crash. Check the console.
 
 **The home canvas wears Mr. Takahashi's lens and exposure.** Focal length is
 free to copy across subjects — `fill` sets the framing and the camera backs

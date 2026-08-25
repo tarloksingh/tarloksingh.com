@@ -115,7 +115,19 @@ export const MODEL_DEFAULTS: ModelTuning = {
   blinkMax: 9.5
 }
 
-const STORE_KEY = 'v3.model.tuning.v1'
+/* ---- one rig per model ----
+
+   `MODEL_DEFAULTS` used to be *the* rig, and both GLB models on this site ran
+   on it: Mr. Takahashi, who it was built around, and Capsule C1, which was
+   tuned to look acceptable under a setup designed for a face. Acceptable is
+   not the same as lit — an injection-moulded enclosure and a matte skin
+   shader want opposite things from a key, and the face's is a tenth-stop
+   exposure hauled back up by two enormous lamps.
+
+   So the defaults are the *starting* rig and each model keeps its own copy.
+   Seeded identical, deliberately: nothing changed appearance the day this
+   split, and the two only diverge as they are tuned apart. */
+const STORE_KEY = 'v3.model.tuning.v2'
 
 const stored = (): Partial<ModelTuning> => {
   try {
@@ -130,7 +142,31 @@ const start: ModelTuning = { ...MODEL_DEFAULTS, ...(typeof window === 'undefined
 
 /** Current values, kept fresh by the hook. The copy button reads this rather
  *  than closing over state that would be a render behind. */
+/** Every model's rig, by project id. Anything not named here falls back to
+ *  the defaults, so adding a third GLB needs no entry until it wants one. */
+export const MODEL_RIGS: Record<string, ModelTuning> = {
+  'mr-takahashi': { ...MODEL_DEFAULTS },
+  'capsule-c1': { ...MODEL_DEFAULTS }
+}
+
+export const rigFor = (projectId: string): ModelTuning => MODEL_RIGS[projectId] ?? MODEL_DEFAULTS
+
+const savedRigs = ((): Record<string, ModelTuning> => {
+  try {
+    const parsed: unknown = JSON.parse(window.localStorage.getItem(`${STORE_KEY}.rigs`) ?? 'null')
+    return parsed && typeof parsed === 'object' ? (parsed as Record<string, ModelTuning>) : {}
+  } catch {
+    return {}
+  }
+})()
+
+/** Current values for whichever model is on screen, kept fresh by the hook —
+ *  the copy button reads these rather than closing over state a render
+ *  behind. */
 const live: ModelTuning = { ...start }
+const rigs: Record<string, ModelTuning> = { ...MODEL_RIGS, ...savedRigs }
+/** Whose rig `live` currently holds. */
+let owner = 'mr-takahashi'
 
 const keys = Object.keys(MODEL_DEFAULTS) as Array<keyof ModelTuning>
 
@@ -138,8 +174,10 @@ const keys = Object.keys(MODEL_DEFAULTS) as Array<keyof ModelTuning>
  *  value anyone chose; pasted back into source they are just noise. */
 const tidy = (value: number | boolean) => (typeof value === 'number' ? String(Number(value.toFixed(4))) : String(value))
 
-const asSource = (values: ModelTuning) =>
-  `export const MODEL_DEFAULTS: ModelTuning = {\n${keys.map((key) => `  ${key}: ${tidy(values[key])}`).join(',\n')}\n}`
+const asSource = () =>
+  `export const MODEL_RIGS: Record<string, ModelTuning> = {\n${Object.entries(rigs)
+    .map(([id, rig]) => `  '${id}': { ${keys.map((key) => `${key}: ${tidy(rig[key])}`).join(', ')} }`)
+    .join(',\n')}\n}`
 
 /** Mr. Takahashi's rig, and its own store.
  *
@@ -147,11 +185,17 @@ const asSource = (values: ModelTuning) =>
  *  dev panel instead of a second window floating over the page — which on the
  *  home screen was a panel labelled "Subject tuning" with no clue whose
  *  subject. See `MechPanel.tsx`. */
-export function useModelTuning(): ModelTuning & { store: ReturnType<typeof useCreateStore> } {
+export function useModelTuning(
+  projectId = 'mr-takahashi'
+): ModelTuning & { store: ReturnType<typeof useCreateStore> } {
   const store = useCreateStore()
-  const values = useControls({
+  /* The schema is read once, so it has to open on the model that is actually
+     on screen — the effect below only catches the *next* one. Same
+     arrangement as the pieces' panel. */
+  const seed = rigs[projectId] ?? MODEL_DEFAULTS
+  const [values, setValues] = useControls(() => ({
     'Copy for source': button(() => {
-      const text = asSource(live)
+      const text = asSource()
       // Not `navigator.clipboard` directly: it does not exist on a plain
       // http origin, which is what the tailnet dev server is. See
       // `clipboard.ts` — the console line below is the real fallback.
@@ -169,75 +213,86 @@ export function useModelTuning(): ModelTuning & { store: ReturnType<typeof useCr
 
     Lens: folder(
       {
-        focalLength: { value: start.focalLength, min: 18, max: 200, step: 1, label: 'mm' },
-        fill: { value: start.fill, min: 0.2, max: 0.95, step: 0.01, label: 'Fills' },
-        lean: { value: start.lean, min: 0, max: 40, step: 0.5 }
+        focalLength: { value: seed.focalLength, min: 18, max: 200, step: 1, label: 'mm' },
+        fill: { value: seed.fill, min: 0.2, max: 0.95, step: 0.01, label: 'Fills' },
+        lean: { value: seed.lean, min: 0, max: 40, step: 0.5 }
       },
       { collapsed: true }
     ),
 
     Drift: folder(
       {
-        floatSpeed: { value: start.floatSpeed, min: 0, max: 4, step: 0.05, label: 'Speed' },
-        floatRange: { value: start.floatRange, min: 0, max: 0.3, step: 0.005, label: 'Range' },
-        floatRotation: { value: start.floatRotation, min: 0, max: 1.5, step: 0.02, label: 'Turn' }
+        floatSpeed: { value: seed.floatSpeed, min: 0, max: 4, step: 0.05, label: 'Speed' },
+        floatRange: { value: seed.floatRange, min: 0, max: 0.3, step: 0.005, label: 'Range' },
+        floatRotation: { value: seed.floatRotation, min: 0, max: 1.5, step: 0.02, label: 'Turn' }
       },
       { collapsed: true }
     ),
 
     Lighting: folder(
       {
-        exposure: { value: start.exposure, min: 0.01, max: 2, step: 0.01 },
-        envIntensity: { value: start.envIntensity, min: 0, max: 12, step: 0.1, label: 'Env' },
-        keyIntensity: { value: start.keyIntensity, min: 0, max: 80, step: 0.5, label: 'Key' },
-        keyX: { value: start.keyX, min: -12, max: 12, step: 0.01 },
-        keyY: { value: start.keyY, min: -12, max: 12, step: 0.01 },
-        keyZ: { value: start.keyZ, min: -12, max: 12, step: 0.01 },
-        fillIntensity: { value: start.fillIntensity, min: 0, max: 80, step: 0.5, label: 'Fill' },
-        fillX: { value: start.fillX, min: -12, max: 12, step: 0.01 },
-        fillY: { value: start.fillY, min: -12, max: 12, step: 0.01 },
-        fillZ: { value: start.fillZ, min: -12, max: 12, step: 0.01 }
+        exposure: { value: seed.exposure, min: 0.01, max: 2, step: 0.01 },
+        envIntensity: { value: seed.envIntensity, min: 0, max: 12, step: 0.1, label: 'Env' },
+        keyIntensity: { value: seed.keyIntensity, min: 0, max: 80, step: 0.5, label: 'Key' },
+        keyX: { value: seed.keyX, min: -12, max: 12, step: 0.01 },
+        keyY: { value: seed.keyY, min: -12, max: 12, step: 0.01 },
+        keyZ: { value: seed.keyZ, min: -12, max: 12, step: 0.01 },
+        fillIntensity: { value: seed.fillIntensity, min: 0, max: 80, step: 0.5, label: 'Fill' },
+        fillX: { value: seed.fillX, min: -12, max: 12, step: 0.01 },
+        fillY: { value: seed.fillY, min: -12, max: 12, step: 0.01 },
+        fillZ: { value: seed.fillZ, min: -12, max: 12, step: 0.01 }
       },
       { collapsed: true }
     ),
 
     Eyes: folder(
       {
-        lookH: { value: start.lookH, min: 0, max: 2, step: 0.05, label: 'Sens H' },
-        lookV: { value: start.lookV, min: 0, max: 2, step: 0.05, label: 'Sens V' },
-        lookMaxH: { value: start.lookMaxH, min: 0.02, max: 0.5, step: 0.01, label: 'Max H' },
-        lookMaxV: { value: start.lookMaxV, min: 0.02, max: 0.5, step: 0.01, label: 'Max V' },
-        lookCenterH: { value: start.lookCenterH, min: 0, max: 1, step: 0.01, label: 'Centre H' },
-        lookCenterV: { value: start.lookCenterV, min: 0, max: 1, step: 0.01, label: 'Centre V' },
-        lookSpeed: { value: start.lookSpeed, min: 0.5, max: 14, step: 0.1, label: 'Follow' },
-        lookFlipH: { value: start.lookFlipH, label: 'Flip H' },
-        lookFlipV: { value: start.lookFlipV, label: 'Flip V' },
-        watchBird: { value: start.watchBird, label: 'Watch bird' },
-        watchCatch: { value: start.watchCatch, min: 0, max: 6, step: 0.05, label: 'Catch (s)' },
-        blinkMin: { value: start.blinkMin, min: 0.5, max: 12, step: 0.1, label: 'Blink min' },
-        blinkMax: { value: start.blinkMax, min: 1, max: 24, step: 0.1, label: 'Blink max' }
+        lookH: { value: seed.lookH, min: 0, max: 2, step: 0.05, label: 'Sens H' },
+        lookV: { value: seed.lookV, min: 0, max: 2, step: 0.05, label: 'Sens V' },
+        lookMaxH: { value: seed.lookMaxH, min: 0.02, max: 0.5, step: 0.01, label: 'Max H' },
+        lookMaxV: { value: seed.lookMaxV, min: 0.02, max: 0.5, step: 0.01, label: 'Max V' },
+        lookCenterH: { value: seed.lookCenterH, min: 0, max: 1, step: 0.01, label: 'Centre H' },
+        lookCenterV: { value: seed.lookCenterV, min: 0, max: 1, step: 0.01, label: 'Centre V' },
+        lookSpeed: { value: seed.lookSpeed, min: 0.5, max: 14, step: 0.1, label: 'Follow' },
+        lookFlipH: { value: seed.lookFlipH, label: 'Flip H' },
+        lookFlipV: { value: seed.lookFlipV, label: 'Flip V' },
+        watchBird: { value: seed.watchBird, label: 'Watch bird' },
+        watchCatch: { value: seed.watchCatch, min: 0, max: 6, step: 0.05, label: 'Catch (s)' },
+        blinkMin: { value: seed.blinkMin, min: 0.5, max: 12, step: 0.1, label: 'Blink min' },
+        blinkMax: { value: seed.blinkMax, min: 1, max: 24, step: 0.1, label: 'Blink max' }
       },
       { collapsed: true }
     ),
 
     Material: folder(
       {
-        envMapIntensity: { value: start.envMapIntensity, min: 0, max: 4, step: 0.05, label: 'Env ×' },
-        roughnessBoost: { value: start.roughnessBoost, min: -1, max: 1, step: 0.01, label: 'Rough +' },
-        metalnessScale: { value: start.metalnessScale, min: 0, max: 2, step: 0.05, label: 'Metal ×' }
+        envMapIntensity: { value: seed.envMapIntensity, min: 0, max: 4, step: 0.05, label: 'Env ×' },
+        roughnessBoost: { value: seed.roughnessBoost, min: -1, max: 1, step: 0.01, label: 'Rough +' },
+        metalnessScale: { value: seed.metalnessScale, min: 0, max: 2, step: 0.05, label: 'Metal ×' }
       },
       { collapsed: true }
     )
-  }, { store }) as unknown as ModelTuning
+  }), { store }) as unknown as [ModelTuning, (next: Partial<ModelTuning>) => void]
 
   /* Keyed on the serialised values rather than the object: Leva hands back a
      fresh object on renders where nothing moved, and writing localStorage on
      every one of those is a write per frame while a slider is dragged. */
+  /* Reseed when the readout swings to the other model. Without this, opening
+     Capsule C1 after Mr. Takahashi would show his numbers on the panel and
+     write them over hers the moment anything was dragged. */
+  useEffect(() => {
+    owner = projectId
+    setValues(rigs[projectId] ?? MODEL_DEFAULTS)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId])
+
   const serialised = JSON.stringify(values)
   useEffect(() => {
     Object.assign(live, values)
+    rigs[owner] = { ...(values as ModelTuning) }
     try {
       window.localStorage.setItem(STORE_KEY, serialised)
+      window.localStorage.setItem(`${STORE_KEY}.rigs`, JSON.stringify(rigs))
     } catch {
       /* private mode, a full quota — not worth breaking the page over */
     }

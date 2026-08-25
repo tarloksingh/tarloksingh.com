@@ -10,6 +10,7 @@ import PosStation from '../three/PosStation'
 import VideoFrame from '../three/VideoFrame'
 import WyteCard from '../three/WyteCard'
 import { SpriteFlipbook } from '../three/CapsuleStage'
+import type { Mesh, MeshStandardMaterial } from 'three'
 import { resolveVideo } from '../data/media'
 import { drift, gaze } from './subject'
 import { PIECE_FALLBACK, PRODUCT_DEFAULTS, type PieceTuning, type ProductTuning } from './productTuning'
@@ -239,6 +240,66 @@ function Piece({ project }: { project: string }) {
   )
 }
 
+/** How metal and how glossy the piece's surfaces are.
+ *
+ *  Relative, and that is the whole design: a piece is built out of several
+ *  materials on purpose — a disc case is a clear sleeve over a printed
+ *  insert, a kiosk is a screen in a moulded shell — and writing one roughness
+ *  across all of them flattens the thing into a single plastic. So each
+ *  material is moved *from where it already was* and keeps its distance from
+ *  its neighbours.
+ *
+ *  Added rather than multiplied: most of these pieces are authored at
+ *  `metalness: 0`, and no multiplier can lift a zero, so a scaling Metal
+ *  slider would have run its whole range without anything ever turning
+ *  metal.
+ *
+ *  The originals are kept, because the tuning has to be re-applied *from* them
+ *  every time: boosting an already-boosted roughness every frame walks it to
+ *  1 in about a second.
+ *
+ *  Re-walked when the node count changes, which is when a piece has finished
+ *  building itself — several of them assemble out of primitives over a frame
+ *  or two rather than arriving whole. */
+function Sheen({ piece, children }: { piece: PieceTuning; children: React.ReactNode }) {
+  const ref = useRef<Group>(null)
+  const nodes = useRef(-1)
+  const seen = useMemo(() => new Map<MeshStandardMaterial, { roughness: number; metalness: number }>(), [])
+  const last = useRef('')
+
+  useFrame(() => {
+    const group = ref.current
+    if (!group) return
+    let n = 0
+    group.traverse(() => n++)
+    const stamp = `${piece.gloss}|${piece.metal}|${piece.reflects}`
+    if (n === nodes.current && stamp === last.current) return
+    nodes.current = n
+    last.current = stamp
+
+    group.traverse((node) => {
+      const mesh = node as Mesh
+      if (!mesh.isMesh) return
+      for (const raw of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
+        const material = raw as MeshStandardMaterial
+        if (!material || !('roughness' in material)) continue
+        let origin = seen.get(material)
+        if (!origin) {
+          origin = { roughness: material.roughness, metalness: material.metalness }
+          seen.set(material, origin)
+        }
+        // Off roughness, so Gloss up is shinier.
+        material.roughness = MathUtils.clamp(origin.roughness - piece.gloss, 0, 1)
+        material.metalness = MathUtils.clamp(origin.metalness + piece.metal, 0, 1)
+        material.envMapIntensity = piece.reflects
+        material.needsUpdate = true
+      }
+    })
+  })
+
+  return <group ref={ref}>{children}</group>
+}
+
 export default function MechProduct({
   project,
   tuning = PRODUCT_DEFAULTS,
@@ -265,10 +326,20 @@ export default function MechProduct({
       gl={{ alpha: true, antialias: true, toneMapping: ACESFilmicToneMapping, outputColorSpace: SRGBColorSpace }}
       style={{ background: 'transparent' }}
     >
+      {/* All of this is the *piece's*, not the studio's. One exposure and two
+          fixed lamps used to serve all eight, which meant a matte card, a
+          glossy kiosk and a video-texture monitor were lit identically and at
+          most one of them was right.
+
+          Per-piece is cheap here in a way it was not on the home stage: a
+          project screen shows one piece at a time in a canvas of its own, so
+          exposure and the scene's environment — one-per-canvas, and the two
+          things the cast genuinely had to share — are free to differ. No
+          layers, nothing to keep apart. */}
       <Lens focalLength={tuning.focalLength} fill={fill} />
-      <Studio intensity={tuning.envIntensity} exposure={tuning.exposure} />
-      <directionalLight position={[3, 4, 5]} intensity={tuning.keyIntensity} />
-      <directionalLight position={[-4, 1, -3]} intensity={tuning.fillIntensity} />
+      <Studio intensity={piece.envIntensity} exposure={piece.exposure} />
+      <directionalLight position={[piece.keyX, piece.keyY, piece.keyZ]} intensity={piece.keyIntensity} />
+      <directionalLight position={[piece.fillX, piece.fillY, piece.fillZ]} intensity={piece.fillIntensity} />
 
       <Suspense fallback={null}>
         <group position={[0, piece.liftY / fill, 0]}>
@@ -279,9 +350,11 @@ export default function MechProduct({
             floatingRange={[-tuning.floatRange, tuning.floatRange]}
           >
             <Drift fill={fill} />
-            <Swing turn={piece.turn}>
-              <Piece project={project} />
-            </Swing>
+            <Sheen piece={piece}>
+              <Swing turn={piece.turn}>
+                <Piece project={project} />
+              </Swing>
+            </Sheen>
           </Float>
         </group>
       </Suspense>

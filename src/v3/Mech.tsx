@@ -903,7 +903,11 @@ function Tally() {
 }
 
 export default function Mech({ id, onProject, onHome }: Props) {
-  const tuning = useModelTuning()
+  /* Keyed on whichever model is on screen. The two GLB models used to share
+     one rig, so Capsule C1 — an injection-moulded enclosure — was lit by a
+     setup built around a face. At home it is always Mr. Takahashi, who stands
+     in the cast. See `MODEL_RIGS` in `modelTuning.ts`. */
+  const tuning = useModelTuning(id ?? 'mr-takahashi')
   /* The phone's two knobs — how large the subject and the pictures sit in a
      stage that is no longer a 16:9 island. Its own panel, because the other
      two are hidden at this width. See `narrowTuning.ts`. */
