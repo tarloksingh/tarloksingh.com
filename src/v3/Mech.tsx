@@ -8,22 +8,19 @@ import MechCursor from './MechCursor'
 import MechLaser from './MechLaser'
 import MechHud from './MechHud'
 import MechTiles from './MechTiles'
+import Segment from './Segment'
 import { useModelTuning } from './modelTuning'
 import { useProductTuning } from './productTuning'
-import { useCastTuning, useWaveTuning } from './castTuning'
-import { CAST } from './heroes'
+import { useClusterTuning } from './clusterTuning'
 import MechDeck from './MechDeck'
 import MechMenu from './MechMenu'
 import { useNarrowTuning } from './narrowTuning'
-import { useNameTuning } from './nameTuning'
 import { sound } from './sound'
 import { useNarrow } from './narrow'
 import { useReveal } from './reveal'
-import { useAccentDrift } from './tint'
-import { aim, drift, flinch, quarry } from './subject'
-import { castPins, isPlaced, TAG, tagFor, useCastTagTuning } from './castTags'
+import { drift, flinch, quarry } from './subject'
 import { kills } from './kills'
-import { findProject, MENU, thumbOf, type Entry, type Frame } from './model'
+import { findProject, thumbOf, type Entry, type Frame } from './model'
 import { focus, notesFor, pins, type Note } from './notes'
 import { useLabelTuning, type Handed } from './labelTuning'
 import { boxOf, FRAME_SPACE, leadersFor, mediaBox, type Space } from './leaders'
@@ -31,18 +28,29 @@ import './Mech.css'
 
 const MechModel = lazy(() => import('./MechModel'))
 const MechProduct = lazy(() => import('./MechProduct'))
-/* The home screen's line-up. Lazy for the same reason the other two are: a
-   visitor who lands straight on a project URL never pays for it. */
-const MechCast = lazy(() => import('./MechCast'))
-/* The ground the cast stands over. Its own canvas at the size of the window
-   rather than a child of the cast's, because `.mech-frame` is a 16:9 column
-   and a horizon cut off at the letterbox is not a horizon. See
-   `MechWave.tsx`. */
-const MechWave = lazy(() => import('./MechWave'))
 /* Development only — the render is behind `import.meta.env.DEV`, so a visitor
    never fetches this chunk. See `MechPins.tsx`. */
 const MechPins = lazy(() => import('./MechPins'))
-const MechCastPins = lazy(() => import('./MechCastPins'))
+/* Home, and everything in it. Lazy because the bank puts every project's own
+   3D subject in its slot, which pulls three.js and eleven scene graphs in with
+   it — a visitor who lands straight on a project URL should never fetch any of
+   that. See `MechSlots.tsx`. */
+const MechCluster = lazy(() => import('./MechCluster'))
+
+/* ---- what home used to be ----
+
+   A line-up: five 3D subjects standing over a shader horizon, each with a tag
+   that drew itself in on hover, and the name laid across the back of it.
+   `MechCast.tsx`, `MechWave.tsx`, `MechCastPins.tsx`, `castTuning.ts`,
+   `castTags.ts`, `nameTuning.ts` and `tint.ts` are all still here and all
+   still work — nothing was deleted. They are simply not mounted any more.
+
+   The reason is not that any of it was bad. It is that a stage with objects
+   standing on it is a *showroom*, and every other screen on this site is a
+   readout: something is on a stage and the panel around it reports on it. Home
+   was the one page not doing that. See the note at the top of
+   `MechCluster.tsx` for what replaced it, and `git show` this commit for the
+   block that mounted the line-up if it is ever wanted back. */
 
 /* The project screen.
 
@@ -252,22 +260,11 @@ const whenIdle = (run: () => void) => {
   return () => window.clearTimeout(timer)
 }
 
-/** Who this is: the name behind the cast, and the line above it. Fixed —
- *  home no longer has a "nothing pointed at yet" state for this, because
- *  nothing hovered ever changes it any more. See `.mech-hero-name`. */
-const INTRO = {
-  name: 'Tarlok Singh',
-  line: 'designer'
-}
-
-/** Which subject on the home stage belongs to which project — the reverse of
- *  `Hero.project`. Pointing at a project's box in the index brings its
- *  subject forward on the stage, so the two halves of the screen are
- *  obviously about the same thing. Solomon's hero has `project: 'a-game'`
- *  now that the project is in the index. */
-const HERO_BY_PROJECT = new Map(
-  CAST.filter((hero) => hero.project).map((hero) => [hero.project as string, hero.id])
-)
+/** The name, which the corner signature types in on a project screen. Home
+ *  says it for itself, large, in the middle of the cluster — see
+ *  `MechCluster.tsx`, which owns its own copy because it is the one thing on
+ *  that screen the layout is built around. */
+const NAME = 'Tarlok Singh'
 
 /** The project's write-up, in the order it is read.
  *
@@ -763,175 +760,32 @@ interface Props {
 }
 
 
-/* ---- the tag on a cast subject ----
-
-   A ring on the subject, a hairline out to one side, and at the end of it the
-   index box: name on the left, its number on the right, exactly the control
-   the bottom of this screen used to be a row of. That row is gone — the
-   objects are the index now, and you find a project by pointing at the thing
-   rather than by reading a list of names underneath it — so its design is
-   what names a subject instead. Same box, same border, same numbers in the
-   same place; it just arrives one at a time and only for the thing you are
-   actually looking at.
-
-   The order it arrives in is the point. The box draws itself first, empty,
-   and the name is typed into it afterwards — a label that appears whole is a
-   tooltip, and a box that opens and is then filled in is an instrument
-   acquiring something. It leaves the same way round: the name backspaces out
-   (`Typed`'s `back`), then the box shuts, then the line retracts.
-
-   Two elements, one clock. The leader is SVG in the stage's own coordinates,
-   because it is a line; the box is HTML, because it is the index box and a
-   rounded rectangle with two typefaces in it is not something to rebuild in
-   SVG text — the widths would have to be guessed, and they are already
-   correct in CSS. Both are moved by the same rAF off `aim`, so the tag rides
-   the subject's float rather than being pinned to a patch of screen the
-   subject swims away from.
-
-   Getting the outro meant not unmounting on pointer-out. An exit here is the
-   same trick the frame swap uses: its own keyframes under a `data-off` flag,
-   never the entry reversed, because an animation is only restarted when its
-   `animation-name` changes — see `entries, and their inverses` in Mech.css.
-   So the tag stays mounted for `TAG_OUT` after the pointer leaves, playing
-   the retraction, and only then goes. */
-
-/** How long the retraction gets before the leader is taken down. Covers the
- *  longest of the exits below — the line's 520 plus its 210 of delay. */
-const TAG_OUT = 780
-
-function CastTag({
-  space,
-  heroId,
-  title,
-  n,
-  off
-}: {
-  space: Space
-  /** Which subject is being named, so the tag can be drawn where that subject
-   *  has had one placed. See `castTags.ts`. */
-  heroId: string
-  title: string
-  /** Its place in the index, already padded — the same two digits the sheet
-   *  and the old bottom row both print. Empty for a subject that is not a
-   *  project, which is the only case with no number to give. */
-  n: string
-  off: boolean
-}) {
-  const group = useRef<SVGGElement>(null)
-  const wrap = useRef<HTMLDivElement>(null)
-  const node = useRef<HTMLDivElement>(null)
-
-  /* Anything placed by hand for this subject, and the fan if nothing is.
-     Read once, when the tag appears, rather than followed live: a subject
-     drifting across the middle of the stage would otherwise flip the whole
-     label from one side to the other mid-hover. Subscribed to the draft store
-     as well, so dragging a handle in the editor moves the real tag rather
-     than a preview of it. */
-  const drafts = useSyncExternalStore(castPins.subscribe, castPins.snapshot, castPins.snapshot)
-  const seat = useRef(tagFor(heroId, aim.x, drafts))
-  const tag = tagFor(heroId, aim.x, drafts)
-  const held = isPlaced(heroId, drafts) ? tag : seat.current
-
-  const dir = held.to[0] >= held.at[0] ? 1 : -1
-  const elbow = held.to
-  /* Where the box's inner edge sits: a short horizontal off the elbow, so the
-     line lands into the side of the box rather than stopping in mid-air next
-     to it. */
-  const end = elbow[0] + TAG.bar * dir
-  const length = TAG.bar + Math.hypot(elbow[0] - held.at[0], elbow[1] - held.at[1])
-
-  /* One loop for both halves. The subject's projected position is published
-     every frame from inside the Canvas (`aim`, in subject.ts), and both the
-     line and the box are moved off it here — a second clock, however well
-     matched at the start, is two things that disagree a minute later. */
-  useEffect(() => {
-    let raf = 0
-    let across = wrap.current?.clientWidth ?? 0
-    let down = wrap.current?.clientHeight ?? 0
-    const measure = () => {
-      across = wrap.current?.clientWidth ?? 0
-      down = wrap.current?.clientHeight ?? 0
-    }
-    const watch = wrap.current ? new ResizeObserver(measure) : null
-    if (wrap.current && watch) watch.observe(wrap.current)
-
-    const tick = () => {
-      raf = requestAnimationFrame(tick)
-      group.current?.setAttribute('transform', `translate(${aim.x * space.w} ${aim.y * space.h})`)
-      if (node.current && across > 0) {
-        // Frame units into this box's real pixels: the stage is `space` units
-        // wide by definition, so one unit is `across / space.w` of it.
-        const x = aim.x * across + (end * across) / space.w
-        const y = aim.y * down + (elbow[1] * down) / space.h
-        node.current.style.transform = `translate(${x}px, ${y}px)`
-      }
-    }
-    raf = requestAnimationFrame(tick)
-    return () => {
-      cancelAnimationFrame(raf)
-      watch?.disconnect()
-    }
-  }, [space, end, elbow])
-
-  return (
-    <>
-      <svg
-        className="mech-leaders mech-cast-tag"
-        viewBox={`0 0 ${space.w} ${space.h}`}
-        preserveAspectRatio="none"
-        data-off={off}
-        aria-hidden
-      >
-        {/* `--d` is nought: one leader, so there is no cascade to place it in. */}
-        <g ref={group} style={{ ['--d' as string]: '0ms', ['--d-out' as string]: '0ms' }}>
-          <circle className="mech-leader-ping" cx={held.at[0]} cy={held.at[1]} r={13} />
-          <circle className="mech-leader-mark" cx={held.at[0]} cy={held.at[1]} r={6.5} />
-          <circle className="mech-leader-core" cx={held.at[0]} cy={held.at[1]} r={1.9} />
-          <polyline
-            className="mech-leader"
-            points={`${end},${elbow[1]} ${elbow[0]},${elbow[1]} ${held.at[0]},${held.at[1]}`}
-            style={{ ['--l' as string]: length }}
-          />
-        </g>
-      </svg>
-
-      {/* The box, in HTML, over the same stage and moved by the same loop.
-          `data-side` is which way it hangs off the end of the line — the
-          stylesheet turns that into the half-width offset and the corner the
-          box opens from. */}
-      <div className="mech-cast-label" ref={wrap} data-off={off} aria-hidden>
-        <div className="mech-cast-label-at" ref={node}>
-          <div className="mech-cast-box" data-side={dir === 1 ? 'right' : 'left'}>
-            <span className="mech-cast-name">
-              {/* Typed in after the box has opened, and backspaced out before
-                  it shuts — see the note above. */}
-              <Typed text={title} run={heroId} delay={0.46} speed={17} caret={false} back={off} backSpeed={16} />
-            </span>
-            <span className="mech-cast-n">
-              <Typed text={n} run={heroId} delay={0.62} speed={40} caret={false} back={off} backSpeed={16} />
-            </span>
-          </div>
-        </div>
-      </div>
-    </>
-  )
-}
 
 /** What has been shot, everywhere, ever. Its own component so the number
  *  changing does not re-render the readout under it — see `kills.ts`.
  *
- *  It sits in the footer now, on the opposite end of the same line as the
- *  contact address. It used to be its own absolute box pinned to the bottom
- *  right, an inch above that address and sharing its column, which read as
- *  two unrelated things stacked in a corner rather than as one strip of
- *  chrome across the bottom of the panel. */
+ *  It sits in the footer, on the opposite end of the same line as the contact
+ *  address. It used to be its own absolute box pinned to the bottom right, an
+ *  inch above that address and sharing its column, which read as two unrelated
+ *  things stacked in a corner rather than as one strip of chrome across the
+ *  bottom of the panel.
+ *
+ *  And the number is in segments now, the same display the counts on home are
+ *  drawn with — a count of something is a count of something, and it should
+ *  look the same wherever the panel prints one. That is also why this is the
+ *  one part of `Segment` a project screen mounts: the tally is on every
+ *  screen, so the display is too. `settle` is off — this is not a readout
+ *  changing channel, it is a number going up by one, and four frames of noise
+ *  every time you shoot a bird would be the loudest thing on the page. */
 function Tally() {
   const count = useSyncExternalStore(kills.subscribe, kills.snapshot, kills.snapshot)
   if (count === 0) return null
   return (
-    <div className="mech-tally" aria-label="Downed" data-arrive>
+    <div className="mech-tally" aria-label={`${count} downed`} data-arrive>
       <span>downed</span>
-      <span>{String(count).padStart(3, '0')}</span>
+      <span className="mech-tally-n">
+        <Segment text={String(count).padStart(3, '0')} cells={3} settle={false} label={`${count}`} />
+      </span>
     </div>
   )
 }
@@ -951,9 +805,6 @@ export default function Mech({ id, onProject, onHome }: Props) {
      picture to click on. See `labelTuning.ts`. */
   const [handed, setHanded] = useState<Handed>(null)
   const labels = useLabelTuning(setHanded)
-  /* The same half again, for the tags on the home stage: placing is over the
-     stage under **P**, getting the result out is here. See `castTags.ts`. */
-  const castTags = useCastTagTuning()
   /* The project on screen trails the one in the URL by a transit, the same
      way the frame trails the tile you picked. Retargeting is the readout
      swinging over to something else, not a page being replaced. */
@@ -961,16 +812,10 @@ export default function Mech({ id, onProject, onHome }: Props) {
   /* The pieces' own studio, on its own panel. Keyed on the project because
      the per-piece folder shows one piece at a time — see `productTuning.ts`. */
   const pieces = useProductTuning(shownId ?? '')
-  /* Where every subject on the home stage stands. Its own panel, and nothing
-     to do with the two above it: those describe one subject alone at case
-     study size, this one describes a group portrait. See `castTuning.ts`. */
-  const cast = useCastTuning()
-  /* Its own tab: the ground has nothing to do with where a subject stands and
-     should not have to be scrolled past to reach one. */
-  const waveTuning = useWaveTuning()
-  /* The name behind the cast. Its own tab for the same reason the wave has
-     one: this has nothing to do with where a subject stands either. */
-  const nameTuning = useNameTuning()
+  /* Home's own handful of numbers — where the cluster sits, how large the name
+     is, how far it bleeds. The four tabs this replaces (Cast, Tags, Wave,
+     Name) went with the line-up they described. See `clusterTuning.ts`. */
+  const cluster = useClusterTuning()
   const [booting, setBooting] = useState(true)
   const [lit, setLit] = useState<string | null>(null)
   /* `home` is the whole difference between the two states, and it is read
@@ -982,38 +827,12 @@ export default function Mech({ id, onProject, onHome }: Props) {
   const project = found?.project ?? null
   const entry = found?.entry ?? null
   const frames = useMemo(() => (entry ? modelFirst(entry) : []), [entry])
-  /* Which project the home readout is filled in for. Hovering a box in the
-     index swings it over; pressing that box opens what is already being
-     described, which is what makes the transition read as continuous rather
-     than as an answer arriving after the question. */
-  const [eyed, setEyed] = useState<string | null>(null)
-  /* Which subject on the stage is being pointed at, and — separately —
-     whichever one the tag is still showing while it retracts. Two pieces of
-     state rather than one because the leader has an outro: unmounting it the
-     instant the pointer leaves is what made the tag disappear rather than
-     come off. See `CastTag`. */
-  const [onSubject, setOnSubject] = useState<string | null>(null)
-  const [tagged, setTagged] = useState<string | null>(null)
   /* Whether the *screen* is changing, as opposed to the frame on it.
      `phase === 'out'` is true for both — stepping the tile rail runs the same
      beat — and the name handing itself to the header has to happen only on
      the first. See the retarget effect below, which is the one place this is
      ever set. */
   const [transiting, setTransiting] = useState(false)
-
-  /* The tag lingers past the pointer for exactly as long as its retraction
-     takes, then goes. Restarted on every change, so moving straight from one
-     subject to another swaps the label rather than queuing a removal. */
-  useEffect(() => {
-    if (onSubject) {
-      setTagged(onSubject)
-      return
-    }
-    if (!tagged) return
-    const timer = window.setTimeout(() => setTagged(null), TAG_OUT)
-    return () => window.clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onSubject])
   const [index, setIndex] = useState(0)
   /* What is actually on the stage, which trails `index` by the swap. Picking
      a tile lights it immediately — the feedback is instant — while the frame
@@ -1037,11 +856,11 @@ export default function Mech({ id, onProject, onHome }: Props) {
   /* Blocks draw themselves in as they are reached — narrow only, where the
      page scrolls and half of it starts below the fold. See `reveal.ts`. */
   useReveal(root, narrow)
-  /* The panel's own green, turning with the ground under the cast. Home only,
-     and off entirely unless the wave is on and its Panel swing is up — see
-     `tint.ts`. Passed the wave rather than the numbers off it so the two
-     stay one setting. */
-  useAccentDrift(root, home ? waveTuning.wave : null)
+  /* The green does not drift any more. `tint.ts` rotated `--accent` in step
+     with the hue of the wave under the cast, and with the wave gone there is
+     nothing for the panel to be following — a colour that wanders on its own
+     is a screensaver, not an instrument. The hook is still in the file if a
+     drifting supply is ever wanted back. */
   /* What has been pinned in this browser, if anything. Subscribed rather than
      read once: the editor writes to the same store the leaders read from, so
      a drag moves the real line rather than a preview of one. */
@@ -1101,10 +920,6 @@ export default function Mech({ id, onProject, onHome }: Props) {
          of the two names is mounting on the other side of it mounts with
          something to type rather than something to delete. */
       setTransiting(false)
-      // Arriving on a project from the index leaves the readout where it
-      // already was, so the title in the side column does not blink over to
-      // something else on the way in.
-      if (id) setEyed(id)
     }, EXIT_MS)
     return () => window.clearTimeout(timer)
   }, [id, shownId])
@@ -1283,49 +1098,22 @@ export default function Mech({ id, onProject, onHome }: Props) {
      note on its own card, in place of the subject. See `MENU` in `model.ts`
      for why a project with no media is in the index at all. */
   const bare = !home && !current
-  /* What the readout in the side column is currently about. On a project
-     screen that is the project; at home it is always the intro — hovering an
-     index box or a subject on the stage used to swap the title over to that
-     project's name, which fought with the title being the one thing on the
-     page that says whose site this is. `eyed` still drives which subject
-     lights up (see `focusHeroId` below), just not what the title says. */
+  /* What the readout in the side column is about — only ever a project. Home
+     has no side column any more: the whole screen is the cluster, and the name
+     sits in the middle of it. */
   const lede = project ?? null
-
-  /* What the tag says: the project's real name and its number in the index —
-     the same two things the row of boxes along the bottom used to print, now
-     that the subject on the stage *is* that row. A subject with no project of
-     its own falls back to what the subject is called, and has no number to
-     give: it is not in the index, and inventing one would be a lie about
-     where it sits in the work. */
-  const taggedHero = tagged ? CAST.find((item) => item.id === tagged) : null
-  const taggedProject = taggedHero?.project ? findProject(taggedHero.project)?.project : null
-  const taggedAt = taggedHero?.project
-    ? MENU.findIndex((item) => item.project.id === taggedHero.project)
-    : -1
-  const taggedItem = taggedHero
-    ? {
-        title: taggedProject?.title ?? taggedHero.title,
-        n: taggedAt >= 0 ? String(taggedAt + 1).padStart(2, '0') : ''
-      }
-    : null
 
   /* Which panels belong to what is on screen. This is the whole reason the
      panel is tabbed: every panel used to be mounted all the time, so home
      offered a project subject's lighting rig — titled "Subject tuning", which
-     does not say whose subject — and a project screen offered none of the
-     cast's. Mr. Takahashi has no tab of his own any more either: he stands in
-     the cast's scene now, so his rig is the folder with his name on it,
-     alongside everyone else's. */
+     does not say whose subject — and a project screen offered none of home's.
+     Home's four tabs (Cast, Tags, Wave, Name) went with the line-up they
+     described; what is left is the cluster's own handful of numbers. */
   const panels: PanelTab[] = import.meta.env.DEV
     ? narrow
       ? [{ id: 'scale', label: 'Scale', store: narrowStore }]
       : home
-        ? [
-            { id: 'cast', label: 'Cast', store: cast.store },
-            { id: 'tags', label: 'Tags', store: castTags },
-            { id: 'wave', label: 'Wave', store: waveTuning.store },
-            { id: 'name', label: 'Name', store: nameTuning.store }
-          ]
+        ? [{ id: 'cluster', label: 'Cluster', store: cluster.store }]
         : [
             ...(modelFrame ? [{ id: 'subject', label: 'Subject', store: tuning.store }] : []),
             ...(pieceFrame ? [{ id: 'piece', label: 'Piece', store: pieces.store }] : []),
@@ -1340,7 +1128,6 @@ export default function Mech({ id, onProject, onHome }: Props) {
       data-boot={booting}
       data-pins={pinning}
       data-narrow={narrow}
-      data-home={home}
       /* The whole retarget, not just the stage's part of it. The index and the
          tile rail take their exit off this — see `the exchange` in Mech.css. */
       data-covered={covered}
@@ -1365,20 +1152,11 @@ export default function Mech({ id, onProject, onHome }: Props) {
 
       <Source handed={handed} onClose={() => setHanded(null)} />
 
-      {/* Behind the instrument surface and outside the frame. Before
-          `MechHud` in the DOM and on the same stacking level, so the phosphor
-          grid still paints over it — the grid is what the readout is printed
-          on, and a picture on top of it turns the page into wallpaper with
-          widgets. */}
-      {home && (
-        <div className="mech-wave-layer" aria-hidden>
-          <Suspense fallback={null}>
-            <MechWave wave={waveTuning.wave} studio={cast.studio} live={home} />
-          </Suspense>
-        </div>
-      )}
-
-      <MechHud gridOn={waveTuning.wave.grid} />
+      {/* The 3D horizon that used to sit under the line-up is gone with it —
+          `.mech-wave-layer` and `MechWave.tsx` are both still here, unmounted.
+          What is left under the readout is the flat phosphor grid, which is
+          the surface this panel is printed on and the one the reference has. */}
+      <MechHud />
       {/* The grid's cells dealt in from the middle of the window, once, while
           the rest of the machine comes up. It takes itself down when its own
           ripple is over rather than being cut off with the boot flag, which
@@ -1397,21 +1175,21 @@ export default function Mech({ id, onProject, onHome }: Props) {
 
       <div className="mech-frame">
         <header className="mech-head">
-          {/* Home already says whose site this is — `.mech-hero-name`, large,
-              behind the cast. This signature in the corner is a way back from
-              a project, not a second copy of the same name, so it only draws
+          {/* Home already says whose site this is — large, in the middle of
+              the cluster. This signature in the corner is a way back from a
+              project, not a second copy of the same name, so it only draws
               once there is a project to come back from.
 
-              And it is the same name, handed over. Opening a project
-              backspaces the big one out from behind the cast; a beat later
-              this types itself into the corner, one character at a time, in
-              the same typeface. Going home runs it the other way. Two blocks
-              of markup, one gesture — which is the whole reason `transiting`
-              exists as a separate flag from `phase`: stepping the tile rail
-              is also an exit, and the name has no business reacting to it. */}
+              And it is the same name, handed over. Opening a project takes the
+              cluster off screen; a beat later this types itself into the
+              corner, one character at a time, in the same typeface. Going home
+              runs it the other way. Two blocks of markup, one gesture — which
+              is the whole reason `transiting` exists as a separate flag from
+              `phase`: stepping the tile rail is also an exit, and the name has
+              no business reacting to it. */}
           {!home && (
             <button className="mech-wordmark" onClick={onHome}>
-              <Typed text={INTRO.name} run="wordmark" delay={0.12} speed={34} caret={false} back={transiting} />
+              <Typed text={NAME} run="wordmark" delay={0.12} speed={34} caret={false} back={transiting} />
             </button>
           )}
 
@@ -1444,44 +1222,28 @@ export default function Mech({ id, onProject, onHome }: Props) {
           <MechDeck narrow={narrow} />
         </div>
 
-        {/* The name, behind the cast rather than beside it. Used to be the
-            first two things in `.mech-lede` — small, in the side column, and
-            swapped over to whichever project the pointer was on. Both of
-            those were the wrong call for the one thing on the page that says
-            whose site this is: it should not move, and it should not have to
-            share a column with a project's own title. Sits before
-            `.mech-stage` in the DOM and after `.mech-wave-layer` outside this
-            frame entirely, so it paints between the two without a z-index of
-            its own — see the stacking note in Mech.css. */}
+        {/* Home: the whole screen, as one instrument cluster. The lamps, the
+            name, the display that reads out either a title or whatever project
+            the pointer is on, the counts, and the bar graph that is both the
+            work and the way into it. See `MechCluster.tsx`. */}
         {home && (
-          <div
-            className="mech-hero-name"
-            style={{
-              ['--hero-name-len' as string]: INTRO.name.length,
-              ['--hero-name-size' as string]: nameTuning.values.size,
-              ['--hero-name-y' as string]: `${nameTuning.values.y}`,
-              ['--hero-name-opacity' as string]: nameTuning.values.opacity,
-              ['--hero-kicker-gap' as string]: `${nameTuning.values.kickerGap}`,
-              ['--hero-kicker-size' as string]: `${nameTuning.values.kickerSize}`
-            }}
-          >
-            <p className="mech-hero-kicker">
-              <Typed text={INTRO.line} run="intro-kicker" speed={22} caret={false} back={transiting} />
-            </p>
-            <h1 className="mech-hero-title">
-              <Typed text={INTRO.name} run="intro-name" delay={0.3} back={transiting} backSpeed={34} />
-            </h1>
-          </div>
+          <Suspense fallback={null}>
+            <MechCluster onProject={onProject} covered={covered} tuning={cluster.values} />
+          </Suspense>
         )}
 
         {/* The subject and its labels share one box so that scaling the window
-            moves them together. */}
+            moves them together. Only a project has one: home's cluster is the
+            frame's own child and needs no stage under it, and an empty 16:9
+            box sitting in the middle of the cluster is a box that eats the
+            pointer over half of it. */}
+        {!home && (
         <div
           className="mech-stage"
           ref={stage}
           data-covered={covered}
           data-leaving={leaving}
-          data-kind={home ? 'cast' : (current?.kind ?? 'bare')}
+          data-kind={current?.kind ?? 'bare'}
           style={narrow ? { ['--media-scale' as string]: narrowScale.media } : undefined}
         >
           {/* The model is mounted for as long as the project has one, and
@@ -1493,60 +1255,6 @@ export default function Mech({ id, onProject, onHome }: Props) {
               on the main thread — a hitch, every single time you stepped back
               to the model. Hidden and stopped it costs nothing per frame: see
               `live` in MechModel, which puts the render loop to sleep. */}
-          {/* The home line-up: one canvas holding every subject at once,
-              each placed by its slot. Six separate contexts is what this
-              replaces — see the note at the top of `MechCast.tsx`. */}
-          {home && (
-            <div className="mech-model-layer" data-on>
-              <Suspense fallback={null}>
-                <MechCast
-                  /* Narrow, the line-up is pulled in from the sides and
-                     dropped toward the middle of a much taller stage — a
-                     composition drawn across a 16:9 frame puts the two
-                     subjects on the ends past both edges of a portrait
-                     window, and the whole set along its top edge. Applied
-                     here rather than in `CAST_STUDIO` for the same reason
-                     `MechModel` gets `fill * narrowScale.model` here: the
-                     Cast panel describes the wide composition, and this
-                     layout's two adjustments belong on the one panel a phone
-                     actually shows. See `narrowTuning.ts`. */
-                  studio={
-                    narrow
-                      ? {
-                          ...cast.studio,
-                          spread: cast.studio.spread * narrowScale.castSpread,
-                          lift: cast.studio.lift + narrowScale.castLift
-                        }
-                      : cast.studio
-                  }
-                  slots={cast.slots}
-                  lights={cast.lights}
-                  focusHeroId={eyed ? (HERO_BY_PROJECT.get(eyed) ?? null) : null}
-                  /* The stage is the other half of the index: pointing at a
-                     box lights its subject, so pointing at a subject has to
-                     fill in the same readout, and pressing it has to open the
-                     same project. */
-                  onHoverHero={(heroId) => {
-                    const hero = heroId ? CAST.find((item) => item.id === heroId) : null
-                    setEyed(hero?.project ?? null)
-                    setOnSubject(heroId)
-                    if (heroId) aim.id = heroId
-                  }}
-                  onPick={(projectId) => {
-                    sound.select()
-                    onProject(projectId)
-                  }}
-                  /* The retarget's own cover, which is already true for the
-                     whole of an exit — so the cast retracts on the way out
-                     rather than being switched off at the end of it. */
-                  shown={!covered}
-                  live={home}
-                  faceTuning={tuning}
-                />
-              </Suspense>
-            </div>
-          )}
-
           {/* Nothing to put on the stage, and that is the truth about the
               project rather than a failure to load one. */}
           {bare && project && (
@@ -1626,57 +1334,26 @@ export default function Mech({ id, onProject, onHome }: Props) {
             />
           )}
 
-          {/* Names whatever is being pointed at on the home stage, in the
-              project screen's own hand. Keyed on the subject so moving from
-              one to another draws a new leader rather than sliding the old
-              one across.
-
-              Off while the tag editor is open: that draws all five at once,
-              and the hovered one arriving over the top of its own handles is
-              two of the same leader on one subject. */}
-          {home && !pinning && tagged && taggedItem && (
-            <CastTag
-              key={tagged}
-              space={space}
-              heroId={tagged}
-              title={taggedItem.title}
-              n={taggedItem.n}
-              off={!onSubject}
-            />
-          )}
-
-          {import.meta.env.DEV && pinning && !home && current && (
+          {import.meta.env.DEV && pinning && current && (
             <Suspense fallback={null}>
               <MechPins frame={current} notes={notes} onClose={() => setPinning(false)} />
             </Suspense>
           )}
-
-          {/* The same tool, for the stage instead of a picture: **P** on home
-              puts a handle on each end of every subject's tag. The project
-              screen's editor above and this one are never up together — there
-              is a picture to pin notes on or there is a cast to tag, never
-              both. See `MechCastPins.tsx`. */}
-          {import.meta.env.DEV && pinning && home && (
-            <Suspense fallback={null}>
-              <MechCastPins space={space} onClose={() => setPinning(false)} />
-            </Suspense>
-          )}
         </div>
+        )}
 
-        {/* The row of twelve boxes that used to run along the bottom of the
-            home screen is gone. It named every project in type, under a stage
-            with five of those projects standing on it as objects — so the
-            page asked you to read a list and look at a line-up that were
-            about the same thing, and the list was the half that won, because
-            a name is easier to scan than a shape.
+        {/* Home's way into the work is the bar graph in the cluster: twelve
+            projects plotted against the years they were made, which you point
+            at to read and press to open. What that replaced, in order, was a
+            row of twelve named boxes along this edge, and then a line-up of
+            five 3D subjects that each put their own tag up on hover. The list
+            lost to the objects because a shape is not scannable; the objects
+            lost because a stage with things standing on it is a showroom, and
+            seven of the twelve projects had no object to stand there at all.
+            A graph has a bar for every one of them.
 
-            The objects are the index now. Point at one and it steps forward
-            and puts its own box up — the same box, name and number, that used
-            to sit down here twelve at a time (see `CastTag`). Everything the
-            row could reach and the stage cannot — the seven projects with no
-            object, the tags, the way home — is behind the one control in the
-            header, which is where it already was on a phone. See
-            `MechMenu.tsx`. */}
+            Everything the graph cannot reach — the way home, the index by name
+            — is behind the one control in the header. See `MechMenu.tsx`. */}
 
         {/* The tile strip, which is a project's own thing — home has the
             index in this slot instead. Unmounted rather than hidden: the two
@@ -1716,12 +1393,15 @@ export default function Mech({ id, onProject, onHome }: Props) {
         </div>
         )}
 
+        {/* A project's column, and only a project's. It used to be mounted on
+            home too — empty, with a handful of rules re-shaping it around
+            nothing — and everything it once held there is the cluster's now.
+            An empty absolutely-positioned column over half the screen is a
+            column that eats the pointer. */}
+        {!home && (
         <section className="mech-side">
-          {/* Empty on home now — the name lives behind the cast, in
-              `.mech-hero-name` above, and does not react to the pointer.
-              This block only ever fills in on a project screen. See
-              `display: contents` under `narrow viewports` in Mech.css for
-              why it still gets its own wrapper rather than folding straight
+          {/* See `display: contents` under `narrow viewports` in Mech.css for
+              why the title gets its own wrapper rather than folding straight
               into `.mech-side`: a project's title needs to sit above the
               picture on a narrow layout while the write-up stays below the
               tile strip, and that reorder has to happen at this level. */}
@@ -1794,6 +1474,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
             </div>
           </div>
         </section>
+        )}
 
         <footer className="mech-foot" data-arrive>
           <Tally />

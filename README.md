@@ -149,7 +149,245 @@ caught mid-exchange. Hovering a box in the index fills the readout in with
 that project *before* you press it, which is what makes the press feel like it
 lands on something already open rather than like a question being answered.
 
+### Home is a cluster
+
+The character select survived one more pass and then lost the argument.
+
+Two hundred tiles was a contact sheet. A line-up of five 3D subjects was a
+*showroom* — a stage with things standing on it — and every other screen on
+this site is a readout, where something is on a stage and the panel around it
+reports on it. Home was the one page not doing that, and once the two are next
+to each other the mismatch is the whole problem: the front door was built out
+of different material from the rest of the house.
+
+Three smaller things went wrong underneath that, and each one is a reason a
+graph beats a group portrait here:
+
+**Seven of the twelve projects had no object standing there.** The line-up
+could show five, so the index it was supposed to *be* could only reach five and
+everything else lived behind the header key. The bank has a slot for every
+project — and eleven of the twelve turn out to have a subject after all, once
+the eight pieces built out of primitives are counted alongside the three GLBs.
+Visa is the only one with nothing, and its slot says so.
+
+**A shape is not scannable.** The row of twelve named boxes that the line-up
+replaced lost to it for being a list beside a picture of the same twelve
+things — but the list was winning for a reason, and taking it away did not
+change the reason. The bank is both at once: the name and the number are on the
+slot, and the subject is *in* it.
+
+**The colour drifted.** `tint.ts` rotated `--accent` in step with the hue of
+the wave under the cast, so the grid, the title, the index and every lit edge
+turned together. The mechanism was right — one supply, everything lit off it —
+and the effect was a screensaver. An instrument does not change colour.
+
+So home is a panel now, laid out the way a car's instrument cluster is: a row
+of indicator lamps along the top, one dominant readout across the middle with
+a smaller cluster either side of it, and a bar graph filling the bottom.
+`MechCluster.tsx`, and `MechCluster.css` beside it — its own stylesheet
+because this is a whole screen rather than a part of one.
+
+**Nothing on it is decoration.** The big readout is who this is. The left
+flank is the profile paragraph, the right flank is three counts derived from
+the work itself (projects listed, years active, organisations shipped for) —
+a portfolio that states a number it does not derive is a number to keep up to
+date. The bottom is a bank of twelve slots, each holding its project's own 3D
+subject, and it is the navigation.
+
+#### The display
+
+The one thing on the screen that is genuinely a *display*: fourteen segments a
+cell, drawn in SVG (`Segment.tsx`).
+
+There is no segment font in `public/fonts/` and adding one would not have
+done the job. What makes a real VFD read as hardware is not the shape of the
+lit segments, it is the **unlit** ones — sitting there faintly all the time,
+so a word looks like it is being shown by a fixed grid of lamps rather than
+set in a typeface that happens to look blocky. A font cannot draw what is
+switched off. So every cell draws all fourteen of its segments, always, and
+lighting a character is a question of which ones come up.
+
+The lit ones are drawn twice: once sharp, and once through an `feGaussianBlur`
+underneath. That is the bloom off the glass, and neither pass looks like a
+display on its own. It is a filter over a strip of short lines that only
+repaints when the word changes, which is why it is affordable.
+
+**One display, two channels.** With nothing pointed at, it cycles the titles —
+product designer, engineer, filmmaker, game designer, founder — and the scale
+of fields printed under it marks which one the current title falls under,
+exactly the way a speedometer puts a number in the window and a mark on the
+strip beneath. Point at a bar on the graph and the same display takes that
+project's name instead, and the strip becomes that project's line: tagline,
+who it was for, when. Same position, same size, same colour, which is what
+keeps the swap reading as one instrument changing channel rather than as two
+different captions.
+
+A word does not cut to the next one. Each cell runs four frames of random
+segments and then lands on what it should say, left to right, the way a
+display that has just been told something new comes up. This is the one place
+on the screen that fakes a machine doing work and it earns it: the alternative
+for a readout changing is a cross-fade, and a cross-fade is a thing a *screen*
+does, not a thing a panel does.
+
+The same display draws the tally in the footer, which is on every screen — a
+count of something should look the same wherever this panel prints one, and
+tabular figures in Helvetica were not that. `Segment.css` is its own file for
+that reason: a rule set living in the stylesheet of one screen and relied on by
+another is a rule set waiting to be deleted by someone tidying up that screen.
+
+#### Lamps that mean something
+
+The row along the top used to be `PWR`, `GRID` and `SCAN` — three lamps that
+were simply on. Which is what most of the lamps on a real cluster are, and which
+on a screen is three words pretending to be instruments. A warning lamp is only
+worth drawing if there is a state it warns about.
+
+They report on the selection now: whether there is one, whether the project has
+something built in three dimensions behind it, whether it is film, whether it is
+a game, and whether it is under an NDA. Move along the bank and the top of the
+panel answers. `HIT` is the odd one out and stays — it is the gun's, and the
+only lamp about the page rather than about the work.
+
+#### The profile, in the panel's voice
+
+The one block of running prose here was set in the page's Helvetica at body size
+and colour, which made it the single humanist, low-contrast, ragged thing on a
+screen of hard tracked caps: a paragraph pasted onto an instrument rather than
+something the instrument had printed. Same words, in `Chakra Petch` — vendored
+in `public/fonts/` and until now unused — inside a housing, under a label, with
+two corner brackets and a colour pulled toward the phosphor. Nothing else on the
+site wants that face, which is the argument for it being here.
+
+#### The bank is the navigation
+
+Twelve slots across the whole frame: numbered, named, and obviously pressable.
+One is lit; the display above reads it out; the lamps, the field scale and the
+line under the bank all answer to it. Pressing it opens the project.
+
+**What this replaced was a bar graph**, and the argument is worth keeping
+because all three faults were the same fault wearing different clothes.
+
+*A bar is not a thing you press.* Nothing about a column of lit cells says it
+can be chosen, so the bottom half of the screen read as an illustration of the
+work rather than as the way into it.
+
+*A bar is not identifiable.* The axis said 2024 and four projects were made in
+2024, so the only way to find out which bar was which was to sweep the pointer
+along the row and watch a readout somewhere else change.
+
+*And there is no pointer on a phone.* A control whose entire affordance is
+hover has no affordance at all on half the devices that will ever see it.
+
+The bank is the preset row off a car stereo, which is the one control in the
+reference material that was built to be *pressed* rather than read. On a mouse
+the pointer selects on the way in and a click opens, so it is one click. On a
+phone the first tap selects — filling in the display, the lamps and the detail
+line — and the second opens, which is the two taps a control with no hover has
+always needed, with the first one doing real work.
+
+Selection persists rather than following the pointer. A preset bank holds the
+preset you pressed, and a tap has no "leaving" to be cleared by. What releases
+it is the pointer leaving the bank *on a mouse*, after a couple of seconds —
+the instrument returning to its default channel.
+
+#### The subjects in the bank
+
+Each slot holds the project's own subject, live and turning: Mr. Takahashi's
+head, the Capsule C1 enclosure, Solomon's rider, the fish man's flipbook, and
+the eight pieces built out of primitives for the projects with no model. The
+first pass put a still out of each project's media in there, which is a picture
+of a screenshot of the work — the work *is* these objects, and every one of
+them was already being rendered somewhere else on this site.
+
+**One canvas for all of them.** Twelve `<Canvas>` elements is twelve WebGL
+contexts, twelve environment maps and twelve render loops, which is exactly the
+mistake `MechCast.tsx` was written to undo. What is different here is that a
+slot is a box in a CSS grid rather than a place in a composition, so the
+subjects cannot be arranged in one world — they have to land where the grid put
+their boxes. drei's `View` does that: one canvas over the whole viewport, each
+view scissored to the rectangle of its own element.
+
+Four things about it cost real time and are worth writing down.
+
+**`View` renders the element; you do not hand it one.** Outside a Canvas it is
+`HtmlView`, which makes its own `<div>` and tunnels the scene to whichever
+Canvas holds `View.Port`. A `track` prop given to it *there* is not reported as
+a mistake — it is spread onto the div as an unknown attribute and ignored, and
+every view then scissors to wherever drei's own div happened to land. Which,
+rendered in a row after the slots, is a row after the slots: every subject drawn
+two hundred pixels below the one it belonged to, with nothing in the console.
+`track` is only honoured by the inside-a-Canvas variant. So `.mech-slot-shot`
+is a `<View>`, not a `<span>`.
+
+**The canvas has to actually be the viewport.** `View` works the scissor box out
+from the canvas's rect and the tracked element's, and a transformed ancestor
+makes itself the containing block for a `position: fixed` descendant. So
+`.mech-cluster` centres itself by offsetting `top` and `bottom` rather than with
+`translateY(-50%)`, and the bank's band fades in rather than rising — an element
+with a `transform` animation attached has a transform, an identity matrix, and
+that is enough. Both of those look like arithmetic errors in the scissor and are
+stacking rules.
+
+**Each view portals into a scene of its own**, so a light inside one reaches
+nothing outside it. `MechCast` needs three.js layers to stop five rigs lighting
+each other; nothing here does, because every subject is alone. The environment
+map is the exception — it is one texture built once at the canvas and assigned
+per scene, picked up from a frame rather than an effect because the views and
+the canvas are siblings and neither can hand the other anything.
+
+**Every view shares one camera.** `View` sets the aspect from its own rect
+before each pass and every slot is the same shape, so it is set once. Framing is
+therefore the subject's business: each is normalised to a unit cube by `Resize`
+and scaled by its own entry in `FIT`.
+
+#### Twelve renders, on one panel's supply
+
+The subjects come out of the renderer in their own colours, and twelve
+full-colour renders on a two-colour panel is twelve holes cut in it. So a layer
+over the bays turns them into phosphor: greyscale by way of `mix-blend-mode:
+color` with the accent over the top, which takes hue and saturation from the
+layer and lightness from what is under it — the duotone a monitor of this era
+could actually produce — plus a scan at the grid's own pitch.
+
+Where that layer lives took three attempts, and the rule that came out of it is
+worth stating plainly: **`mix-blend-mode` blends against the backdrop of its
+nearest stacking context, and a `z-index` makes one.**
+
+Inside `.mech-slot-shot` it painted *under* the canvas, which is a sibling of
+the slots rather than a child of one. One flat sheet over the bank tinted the
+names and the numbers along with the pictures. And the sheet given a `z-index`
+to lift it above the canvas became its own stacking context, whose backdrop
+starts transparent — so the blend had nothing to blend with and poured flat
+accent over the bays.
+
+What works is a second grid matching the bank cell for cell, `.mech-bank-veil`,
+with no `z-index` at all: it paints over the canvas because it comes after it in
+the markup, and it blends against `.mech-bank`, which is `isolation: isolate` so
+the tint stops at the edge of the bank. Two grids that have to agree also means
+the row height is stated rather than derived — a bay plus a label bar — and that
+the bay is `flex: none`, or a name wrapping to two lines shrinks the picture out
+from under its own tint.
+
+#### What is still here, and unmounted
+
+Nothing was deleted. `MechCast.tsx`, `MechWave.tsx`, `MechCastPins.tsx`,
+`castTuning.ts`, `castTags.ts`, `nameTuning.ts` and `tint.ts` all still exist
+and all still work — they are simply not mounted, and putting the line-up back
+is one block in `Mech.tsx`. The sections below describing them are kept for
+the same reason: what they explain is still true of the code, it is just not
+on screen. Each is marked.
+
+The four dev-panel tabs those files owned (Cast, Tags, Wave, Name) went with
+them. Home gets one tab now, `clusterTuning.ts` — four numbers, and
+deliberately only four. Where the bands sit and how the graph is spaced are
+decisions, and decisions live in the stylesheet next to what they affect; what
+is on the panel is the handful of things that are a matter of taste in front
+of a real screen.
+
 ### The cast
+
+> **Not mounted.** The line-up came off home — see *Home is a cluster*
+> above. `MechCast.tsx` is intact and this still describes it.
 
 Five subjects: Mr. Takahashi, Capsule C1, the Solomon rider, the StitchFam
 loop and Slider Engine's fish man — between them a character, a product, a
@@ -329,6 +567,8 @@ that looks like is a pair of legs hanging in the air a foot above the bike.
 
 ### Pointing at the cast
 
+> **Not mounted.** See *Home is a cluster*.
+
 Hovering a subject names the project it opens and pressing it opens that
 project. Since the row of project names came off the bottom of the screen,
 this is not a nicety on top of the index — **it is the index**, and the tag
@@ -443,6 +683,10 @@ Reflects goes up with it.
 
 ### The index
 
+> **Superseded twice.** The row of names lost to the line-up; the line-up
+> lost to the bar graph. Both arguments are worth keeping — see *Home is a
+> cluster*.
+
 **Home does not carry a row of project names any more.** Twelve boxes ran
 along the bottom edge, two rows of six: the name, and its number out at the
 right. Under them stood a line-up with five of those projects on it as
@@ -545,6 +789,9 @@ grid is simply there, which is what it was before any of this.
 
 ### The wave
 
+> **Not mounted.** The ground went with the line-up standing on it.
+> `MechWave.tsx` is intact.
+
 The ground the cast stands over: a displaced grid running back to a horizon,
 moving.
 
@@ -618,6 +865,9 @@ where "is the ground on" lives and a second tab for one checkbox would be
 worse than a checkbox in the wrong-sounding place.
 
 ### The panel turns with it
+
+> **Not mounted, and not wanted.** The drift was the right mechanism and the
+> wrong effect — see *Home is a cluster*. `tint.ts` is intact.
 
 The wave drifts its hue, and for a while everything else on the home screen
 was fixed at one green while it did — which left the ground looking like a
@@ -795,6 +1045,10 @@ below), but the reasoning is identical: `--title-len`, an average advance and
 a cap said out loud rather than left silent.
 
 ### The name behind the cast
+
+> **Not mounted.** The name is `.mech-ident-name`, in the middle of the
+> cluster, fitted to its own column with `container-type` rather than by the
+> average-advance sum described here.
 
 Home's title used to be the first two things in `.mech-lede` — small, in the
 side column, typed in for whichever project the pointer happened to be over

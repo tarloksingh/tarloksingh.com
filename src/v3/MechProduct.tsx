@@ -221,10 +221,19 @@ const PIECES: Record<string, () => ReactNode> = {
   'slider-engine': () => <SpriteFlipbook frames={FISH_MAN_FRAMES} fps={12} scale={1} />
 }
 
+/** Whether a project has a piece built for it at all. Read by the home
+ *  screen's bank, which puts every project's own subject in its slot. */
+export const hasPiece = (project: string) => project in PIECES
+
 /** Held still across a re-render. Building one of these is where a glTF gets
  *  requested and a video element gets made, and rebuilding it on every tick
- *  of a Leva slider is a fetch per frame. */
-function Piece({ project }: { project: string }) {
+ *  of a Leva slider is a fetch per frame.
+ *
+ *  Exported because the home screen's bank draws the same eight pieces at
+ *  slot size — see `MechSlots.tsx`. It is the piece, centred and normalised to
+ *  one world unit, and nothing else: no studio, no camera, no surface tuning.
+ *  Whatever mounts it lights it. */
+export function Piece({ project }: { project: string }) {
   const node = useMemo(() => PIECES[project]?.() ?? null, [project])
   if (!node) return null
 

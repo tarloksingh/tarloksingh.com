@@ -48,13 +48,12 @@ being false (which is why `navigator.clipboard` does not exist — see
 | `model.ts` | Projects flattened into what the panes draw; `MENU` is the index |
 | `Browse.tsx`, `Detail.tsx`, `Stage.tsx` | The timeline screen |
 | `Mech.tsx` | **Home and a project both** — layout, the swap, transit |
-| `MechCast.tsx`, `castTuning.ts` | The home line-up, and where each one stands |
-| `MechWave.tsx` | The ground it stands over — a shader, not a picture |
-| `nameTuning.ts` | The name behind the cast — `.mech-hero-name` in Mech.tsx |
+| `MechCluster.tsx`, `MechCluster.css` | **Home**: the instrument cluster — name, display, profile, counts, and the bank |
+| `MechSlots.tsx` | Every project's own 3D subject, one per slot, one canvas |
+| `Segment.tsx`, `Segment.css` | The fourteen-segment display, drawn in SVG |
+| `clusterTuning.ts` | Home's four knobs, the **Cluster** tab |
 | `leaders.ts`, `notes.ts` | Where the label lines go, and what they say |
 | `MechPins.tsx`, `labelTuning.ts` | Placing a picture's labels (**P**) and copying them out |
-| `MechCastPins.tsx`, `castTags.ts` | The same, for the tags on the cast (**P** on home) |
-| `tint.ts` | The panel's green, turning with the wave — home only |
 | `MechModel.tsx` | The subject: one GLB, lit, drifting, watching, shootable |
 | `MechHud.tsx`, `MechCursor.tsx` | The dashboard, and the reticle |
 | `MechTiles.tsx` | The boot: the grid's cells struck in a ring from the middle |
@@ -64,6 +63,15 @@ being false (which is why `navigator.clipboard` does not exist — see
 | `subject.ts` | Live facts shared across the Canvas boundary |
 | `modelTuning.ts`, `wallTuning.ts` | Leva panels, and the source they paste back |
 | `clipboard.ts` | Copying that works off localhost |
+
+**Still here, not mounted.** `MechCast.tsx`, `MechWave.tsx`,
+`MechCastPins.tsx`, `castTuning.ts`, `castTags.ts`, `nameTuning.ts` and
+`tint.ts` were the old home screen — a line-up of five 3D subjects over a
+shader horizon, with the name behind it. Nothing was deleted and all of it
+still works; putting it back is one block in `Mech.tsx`. Don't "tidy up" the
+unreferenced files, and don't re-mount them without reading **Home is a
+cluster** in `README.md` — the reasons it came off are design reasons, not
+technical ones.
 
 ## Two things to know before editing
 
@@ -95,24 +103,20 @@ larger than about 1600. Use `MediaItem.still` and `MediaItem.thumb`, never
 
 ## Dev-only tools
 
-- **P** opens a pin editor on either screen, and they are never both up: on a
-  project it is the picture's labels (`MechPins.tsx`), on home it is the five
-  cast tags (`MechCastPins.tsx`). Placing and dragging on the overlay; copying
-  and reverting on the **Labels** / **Tags** panel tab.
+- **P** opens the pin editor on a project screen — the picture's labels
+  (`MechPins.tsx`). Placing and dragging on the overlay; copying and reverting
+  on the **Labels** panel tab. Home has no pin editor: the tag editor belonged
+  to the cast.
 - **One dev panel, top right, with tabs** — `MechPanel.tsx`. The tabs are
-  whatever the current screen can actually change: home gets **Cast** (every
-  subject's placement and its own rig, plus the camera and whole-stage
-  handles), **Tags**
-  (the cast's own labels, **P** to place them), **Wave** (the ground, the flat
-  `.mech-grid`'s own on/off alongside the 3D one's) and **Name** (the big name
-  behind the cast); a project gets **Subject** / **Piece** / **Labels** as
-  they apply; narrow gets **Scale** — subject and picture size, and the home
-  line-up's own spread and lift, which a portrait window needs and a 16:9 one
-  does not. Mr. Takahashi has no tab of his own any
-  more — he stands in the cast's scene now, so his rig is the folder with his
-  name on it under **Cast**, alongside everyone else's. Every tuning hook
-  makes its own store with `useCreateStore` — nothing writes into Leva's
-  default store, and there is no `<Leva>` element.
+  whatever the current screen can actually change: home gets **Cluster** (four
+  numbers — where the cluster sits, how large the name is, how far it bleeds,
+  how tall a slot stands); a project gets **Subject** / **Piece** / **Labels**
+  as they apply; narrow gets **Scale**. Every tuning hook makes its own store
+  with `useCreateStore`, and `MechPanel` renders one `<Leva hidden />` — not a
+  second panel but the absence of one. Home mounts the pieces built for eight
+  projects and several of those register controls on Leva's *default* store,
+  which makes Leva inject its own floating root over the top right unless it
+  is told not to.
 - **Every 3D subject has its own lighting.** There is no shared rig left
   anywhere. On home, each cast member owns two lights on its own three.js
   layer (`castTuning.ts`). On a project screen, each *piece* owns its
@@ -146,6 +150,33 @@ larger than about 1600. Use `MediaItem.still` and `MediaItem.thumb`, never
   separator: `wave.on` silently nests a phantom `wave` folder, and a subject
   titled "Mr. Takahashi" becomes `Mr` containing `Takahashi`. `castTuning.ts`
   namespaces with `__` and strips dots out of labels.
+
+## Home is a cluster now
+
+The line-up is gone from home. What is there instead is an instrument cluster:
+lamps along the top that report on the selection, the name and a
+fourteen-segment display across the middle with the profile and three counts
+either side, and along the bottom a **bank of twelve slots**, each holding that
+project's own 3D subject, live. Point at one and the display reads it out, the
+lamps light for what it is made of, the field scale marks what it touches, and
+the line under the bank names it. Press it and it opens.
+
+Four traps in that, all written up in `README.md` → **Home is a cluster**, and
+all of them look like something other than what they are:
+
+- **drei's `View` ignores `track` outside a Canvas.** It makes its own element
+  and silently drops the prop, so every subject renders wherever drei's div
+  landed. `.mech-slot-shot` *is* a `<View>`.
+- **The canvas must really be the viewport.** Any transform on any ancestor —
+  including the identity matrix an unfinished `transform` animation leaves —
+  makes it the containing block for `position: fixed`, and the scissor boxes go
+  wrong. `.mech-cluster` centres by offsetting `top`/`bottom`, and
+  `.mech-band-bank` fades rather than rises.
+- **`mix-blend-mode` blends against the nearest stacking context, and a
+  `z-index` makes one.** The duotone over the bays carries no `z-index` and
+  paints above the canvas by document order alone.
+- **The bay is `flex: none`.** A name wrapping to two lines otherwise shrinks
+  the picture out from under its own tint.
 
 ## Where this is up to
 

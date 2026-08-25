@@ -416,78 +416,11 @@
    clutter rather than navigation; what replaced them is `.mech-menu-key`
    below, opening the same index sheet a phone gets. See `MechMenu.tsx`. */
 
-/* ---- the name, behind the cast ----
-
-   Full-bleed within the frame and centred both ways — the kicker on top,
-   "designer", and the name filled out to the frame's own width below it,
-   always one line. No z-index of its own: it carries none, `.mech-stage`
-   right after it carries `z-index: 1`, and an explicit z-index always wins
-   over `auto` regardless of which comes first in the document — see the
-   painting-order note by `.mech-wave-layer`, further down, for the same
-   reasoning the other way round (that one stays behind everything in this
-   frame the same way, without a z-index either).
-
-   Width and the size formula share the same number — `--gutter`, the same
-   full-bleed inset the index sheet uses — so "one line, filled to the frame"
-   and "the box it's centred in" can never drift apart. The average-advance
-   heuristic is `.mech-title`'s own: a name of unusually wide letters can
-   still overrun it by a hair, which is meant to show as reaching past the
-   frame rather than as a silent size cut.
-
-   Home only, and it does not react to the pointer — see `INTRO` and
-   `.mech-lede` in Mech.tsx for what this replaced and why. `nameTuning.ts`
-   is the panel: Size nudges the fit, Vertical moves the block off centre,
-   Opacity is how much it stands out from behind the cast. */
-.mech-hero-name {
-  position: absolute;
-  left: 50%;
-  top: calc(50% + var(--hero-name-y, 0) * var(--px));
-  width: calc(1920 * var(--px) - 2 * var(--gutter));
-  transform: translate(-50%, -50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  opacity: var(--hero-name-opacity, 1);
-  pointer-events: none;
-  animation: mech-in 620ms var(--ease) both;
-}
-
-/* Clash Display, like the name under it. It was the page's Helvetica, which
-   made the two lines of one block read as a caption sitting on a title
-   instead of as one signature — the whole reason it is up there is that it
-   belongs to the name. Smaller, spaced out and in the accent, so it is
-   still obviously the line *above* rather than a second title. */
-.mech-hero-kicker {
-  margin: 0 0 calc(var(--hero-kicker-gap, 18) * var(--px));
-  font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  font-size: calc(var(--hero-kicker-size, 20) * var(--type));
-  font-weight: 500;
-  letter-spacing: calc(3 * var(--type));
-  text-transform: uppercase;
-  color: var(--accent);
-  text-shadow: 0 0 calc(9 * var(--px)) rgba(var(--accent-rgb), 0.4);
-}
-
-.mech-hero-title {
-  margin: 0;
-  width: 100%;
-  font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  font-weight: 400;
-  white-space: nowrap;
-  line-height: 1;
-  letter-spacing: calc(-0.4 * var(--type));
-  text-transform: uppercase;
-  color: var(--accent);
-  /* Same two-shadow treatment as `.mech-title` — a tight halo and a wide,
-     faint one — and the same slow flicker, so this reads as the same lit
-     panel rather than as a second, unrelated effect. */
-  text-shadow: 0 0 calc(9 * var(--px)) rgba(var(--accent-rgb), 0.55), 0 0 calc(34 * var(--px)) rgba(var(--accent-rgb), 0.25);
-  animation: mech-flicker 7s steps(1, end) infinite;
-  font-size: calc(
-    var(--hero-name-size, 1) * (1920 * var(--px) - 2 * var(--gutter)) / (var(--hero-name-len, 12) * 0.66)
-  );
-}
+/* The name that used to hang behind the cast — `.mech-hero-name`, its kicker
+   and its title — is gone with the line-up it was drawn over. Home says the
+   name in the middle of the cluster now, and it is a `container-type` fit
+   against its own column rather than the average-advance sum this did against
+   the frame's width. See `.mech-ident-name` in `MechCluster.css`.
 
 /* ---- the subject ---- */
 
@@ -2881,17 +2814,25 @@
 
 .mech-tally {
   display: flex;
-  gap: calc(9 * var(--px));
-  align-items: baseline;
+  gap: calc(11 * var(--px));
+  align-items: center;
   font-size: calc(12.5 * var(--type));
   letter-spacing: calc(1.5 * var(--type));
   color: rgba(var(--accent-rgb), 0.7);
-  font-variant-numeric: tabular-nums;
   text-shadow: 0 0 calc(9 * var(--px)) rgba(var(--accent-rgb), 0.5);
 }
 
-.mech-tally span:last-child {
-  color: #fff;
+/* The number is the segment display, the same one the counts on home are
+   drawn with — a count of something should look the same wherever this panel
+   prints one, and tabular figures in Helvetica were not that. Boxed for the
+   same reason the readouts on home are: a lit thing needs an edge to be lit
+   inside of. See `Segment.tsx`, and `Tally` in Mech.tsx. */
+.mech-tally-n {
+  display: block;
+  width: calc(44 * var(--px));
+  padding: calc(4 * var(--px)) calc(6 * var(--px));
+  border: 1px solid rgba(var(--accent-rgb), 0.28);
+  background: rgba(var(--accent-rgb), 0.04);
 }
 
 /* ---- narrow viewports ----
@@ -3001,52 +2942,10 @@
   order: 5;
 }
 
-/* ---- the name, on a phone ----
-
-   Behind the cast is a wide-layout idea. Here the stage is a tall box in a
-   column that scrolls, `.mech-frame` has no fixed height for a 50% to be
-   half of, and a name laid over five objects at this width is a name over a
-   face. So it comes out of the overlay and becomes the first block of the
-   page: kicker, name, then the line-up under it. Same two lines, same
-   typeface, same order — read down instead of stacked in depth.
-
-   Rebased on 500 rather than 1920 for both the width and the fit, because
-   that is what a frame coordinate is worth on this layout (`--px`, above).
-   Left as it is and the block would be measured against a box nearly four
-   times the width of the window. `--hero-name-y` is not read here at all:
-   it moves the block off the middle of a frame, and there is no middle of a
-   frame to move it off. */
-.mech[data-narrow='true'] .mech-hero-name {
-  position: static;
-  order: 1;
-  transform: none;
-  width: 100%;
-  padding: calc(26 * var(--px)) var(--gutter) calc(10 * var(--px));
-  /* Full strength. The value on the panel is set for type sitting behind a
-     lit line-up; there is nothing behind it here. */
-  opacity: 1;
-}
-
-.mech[data-narrow='true'] .mech-hero-title {
-  font-size: calc(
-    var(--hero-name-size, 1) * (500 * var(--px) - 2 * var(--gutter)) / (var(--hero-name-len, 12) * 0.66)
-  );
-}
-
-/* A floor under the kicker, which the panel sets in type units for a screen
-   four times this wide — at 13 it comes out too small to read as a line of
-   its own here. */
-.mech[data-narrow='true'] .mech-hero-kicker {
-  font-size: max(calc(var(--hero-kicker-size, 20) * var(--type)), calc(11 * var(--type)));
-  margin-bottom: calc(max(var(--hero-kicker-gap, 18), 8) * var(--px));
-}
-
-/* The line-up wants more of the window on home than a single subject in a
-   housing does: five objects in a box sized for one picture is five specks.
-   Home only — a project's stage keeps the height above. */
-.mech[data-narrow='true'][data-home='true'] .mech-stage {
-  height: min(64vh, calc(100vw * 1.25));
-}
+/* The name on a phone, and the taller home stage the line-up needed, are both
+   gone with the line-up. The cluster is one of `.mech-frame`'s flex items here
+   and stacks its own three bands — see `narrow viewports` at the foot of
+   `MechCluster.css`. Home mounts no stage at all now.
 
 /* ---- the header, folded ---- */
 
@@ -3745,24 +3644,11 @@
    there is one box on screen at a time now and it is as wide as its own
    name. `git show 4a322c0` has all of it. */
 
-/* ---- the home readout ----
-
-   `.mech-lede` is empty here now — the name is `.mech-hero-name`, behind the
-   cast, and does not react to the pointer any more. This column on home is
-   only ever the folds: the stack, contact, the rest of the accordion. The
-   paragraph that used to fill in under the name — a project's brief while
-   hovering, the intro paragraph otherwise — is gone outright rather than
-   left empty; `.mech-brief` was never a project screen's, only home's.
-
-   Pulled up off the bottom so it cannot reach the index below it. On a
-   project this column runs to 120 from the bottom because the folds need the
-   room; here there are no folds. */
-.mech[data-home='true'] .mech-side {
-  /* Two rows of one-line boxes, the gap between them, and the 140 the index
-     itself stands off the bottom edge. It was 320 when each box carried a
-     portrait square and a second line of type. */
-  bottom: calc(230 * var(--px));
-}
+/* Home has no side column any more — `.mech-side` is only mounted for a
+   project. What it used to hold on this screen (the name, the line under it,
+   the paragraph, and then a stack of folds) is the cluster's business now:
+   the name is `.mech-ident-name` in the middle, the paragraph is
+   `.mech-profile` down the left. See `MechCluster.css`.
 
 /* ---- nothing to show ----
 
@@ -4168,26 +4054,5 @@
   min-width: calc(120 * var(--px));
 }
 
-/* ---- home's side column ----
-
-   Name, what I do, and the paragraph — one block, centred down the left. On a
-   project this column is a title at the top and a write-up filling the rest,
-   which is right there and wrong here: at home there are three short things
-   and no reason for them to be spread over nine hundred pixels of nothing.
-   Sat together, in the middle, left aligned. */
-.mech[data-home='true'] .mech-side {
-  justify-content: center;
-  bottom: calc(200 * var(--px));
-}
-
-.mech[data-home='true'] .mech-folds-wrap {
-  flex: none;
-  margin-top: calc(20 * var(--px));
-}
-
-/* The spacers that centre the folds on a project screen have nothing to
-   centre here — the whole column is centred instead. */
-.mech[data-home='true'] .mech-folds-wrap::before,
-.mech[data-home='true'] .mech-folds-wrap::after {
-  content: none;
-}
+/* The rules that re-shaped `.mech-side` for home went with home's side
+   column — see the note above `.mech-bare`. */

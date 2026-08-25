@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { LevaPanel } from 'leva'
+import { Leva, LevaPanel } from 'leva'
 import type { StoreType } from 'leva/dist/declarations/src/types'
 
 /* ---- the dev panel ----
@@ -68,6 +68,20 @@ export default function MechPanel({ tabs }: { tabs: PanelTab[] }) {
 
   return (
     <div className="mech-panel">
+      {/* Leva's *default* store, hidden.
+
+          Nothing here writes into it — every tuning hook makes its own with
+          `useCreateStore`, which is the whole reason this panel can be tabbed.
+          But home mounts the pieces built for eight of the projects
+          (`MechSlots.tsx` → `MechProduct`'s `Piece`), and several of those
+          components register controls of their own on the default store the
+          gallery they came from was written against. The moment one does,
+          Leva injects its own floating root and drops an "Objects" panel over
+          the top right of the screen, on top of this one.
+
+          Rendering it once, hidden, is how Leva is told not to. It is not a
+          second panel — it is the absence of one. */}
+      <Leva hidden />
       <div className="mech-panel-tabs" role="tablist">
         {tabs.map((tab) => (
           <button
