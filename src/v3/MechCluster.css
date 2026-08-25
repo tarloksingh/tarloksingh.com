@@ -53,11 +53,7 @@
   z-index: 2;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  /* Tighter than a page's worth of sections — the reference has almost no air
-     between one instrument and the next, and the gap this file used to run
-     read as a website's section spacing sitting on top of a dashboard. */
-  gap: calc(56 * var(--px));
+  gap: calc(20 * var(--px));
 
   /* Every glow in this file is a multiple of this. One knob, on the panel. */
   --g: var(--cluster-glow, 1);
@@ -70,6 +66,35 @@
      to move. */
   --accent: #a2e0cc;
   --accent-rgb: 162, 224, 204;
+}
+
+/* The lamps take their own row, full width, above everything else. Below
+   them the panel splits in two: the rail (the work, pressable, the full
+   height of the panel) and the main column (the identity, the readout, the
+   activity graph). `.mech-cluster` centred its single column of content
+   before the rail existed; now each side centres its own. */
+.mech-body {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
+  gap: calc(48 * var(--px));
+  /* `.mech-cluster` runs the full height of the frame, footer included — it
+     was always the *content's* job to stay clear, and a centred single
+     column did that for free. A rail stretched to fill this box does not, so
+     it gets the room back explicitly: the footer sits `30` up with room for
+     its own line, and this clears it. */
+  padding-bottom: calc(56 * var(--px));
+}
+
+.mech-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: calc(30 * var(--px));
 }
 
 /* The haze the whole panel sits in.
@@ -169,21 +194,29 @@
 /* The pool of light a lit warm lamp throws onto the housing above it.
    This is the single most recognisable thing in the reference — a small bright
    source lighting the surface around it, rather than every element glowing
-   politely inside its own box — and it costs one pseudo-element. */
+   politely inside its own box — and it costs one pseudo-element.
+
+   A short, wide ellipse the size of the lamp's own glow, rather than a large
+   near-circle centred on it, is what read as a hard-edged rectangle instead
+   of a soft pool: the gradient had almost no room to fall off before it hit
+   the box it was drawn in. Round, larger than the lamp by a wide margin, and
+   three stops rather than one, so it actually fades rather than stopping. */
 .mech-lamp[data-warn='true'][data-on='true']::after {
   content: '';
   position: absolute;
   left: 50%;
-  bottom: calc(6 * var(--px));
-  width: calc(150 * var(--px));
-  height: calc(110 * var(--px));
-  transform: translateX(-50%);
+  top: 50%;
+  width: calc(280 * var(--px));
+  height: calc(280 * var(--px));
+  transform: translate(-50%, -50%);
   background: radial-gradient(
-    ellipse at 50% 100%,
-    rgba(var(--warn-rgb), calc(0.3 * var(--g))),
+    circle,
+    rgba(var(--warn-rgb), calc(0.42 * var(--g))) 0%,
+    rgba(var(--warn-rgb), calc(0.16 * var(--g))) 32%,
     transparent 68%
   );
   pointer-events: none;
+  z-index: -1;
   animation: mech-cluster-fade 420ms linear both;
 }
 
@@ -442,31 +475,38 @@
   color: var(--dim);
 }
 
-/* ---- the divider ----
+/* ---- the rail ----
 
-   The rule between the two halves of the panel, and the bank's own label. One
-   hairline doing both jobs: the reference divides its clusters with exactly
-   this — a line with small caps sitting on it — and a separate divider above a
-   separate label would be two lines saying one thing. */
-.mech-divider {
-  position: relative;
+   Work, on the left, the full height of the panel. It ran across the bottom
+   as a bar-graph-shaped bank at first; seeing it beside the readout rather
+   than under it is what made room for the reference's own tachometer to come
+   back full width — see `.mech-tach` below and *the bank is the navigation*
+   in the README for the argument against a graph as a control in the first
+   place. */
+.mech-work-rail {
+  flex: none;
+  width: calc(360 * var(--px));
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  padding-bottom: calc(10 * var(--px));
-  border-bottom: 1px solid rgba(var(--accent-rgb), 0.24);
-  /* Most of the column gap above it, so the rule reads as belonging to the
-     bank below rather than floating between the two bands. */
-  margin-bottom: calc(-40 * var(--px));
-  animation: mech-cluster-in 700ms 340ms var(--ease) both;
+  flex-direction: column;
+  min-height: 0;
+  animation: mech-cluster-fade 700ms 260ms var(--ease) both;
 }
 
-/* A short bright run at each end, which is what the rules on the reference
-   actually look like up close: a hairline that thickens where it starts. */
-.mech-divider::before,
-.mech-divider::after {
+/* The rail's own label and its hairline — stacked rather than side by side,
+   because "press to open red dead redemption 2" beside "selected work" is
+   wider than the rail at any window size, and a divider that only sometimes
+   wraps reads as broken rather than as a caption that stacks on purpose. */
+.mech-work-rail-head {
+  position: relative;
+  padding-bottom: calc(10 * var(--px));
+  border-bottom: 1px solid rgba(var(--accent-rgb), 0.24);
+  margin-bottom: calc(14 * var(--px));
+}
+
+.mech-work-rail-head::before {
   content: '';
   position: absolute;
+  left: 0;
   bottom: -1px;
   width: calc(56 * var(--px));
   height: 1px;
@@ -474,68 +514,48 @@
   box-shadow: 0 0 calc(6 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.6 * var(--g)));
 }
 
-.mech-divider::before {
-  left: 0;
-}
-
-.mech-divider::after {
-  right: 0;
-}
-
-/* What pressing a slot will get you, and it changes as soon as there is
-   something to press. A control that never says what it does is a control
-   people look at instead of using. */
-.mech-divider-do {
+.mech-work-rail-do {
+  display: block;
+  margin-top: calc(5 * var(--px));
   font-size: calc(9.5 * var(--type));
-  letter-spacing: calc(1.8 * var(--type));
+  letter-spacing: calc(1.6 * var(--type));
   text-transform: uppercase;
   color: var(--dim);
   transition: color 220ms linear, text-shadow 220ms linear;
 }
 
-.mech-divider-do[data-on='true'] {
+.mech-work-rail-do[data-on='true'] {
   color: var(--accent);
   text-shadow: 0 0 calc(9 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.55 * var(--g)));
 }
 
-/* ---- the bank ----
-
-   Twelve slots across the whole frame: numbered, named, and obviously
-   pressable. What it replaces is a bar graph, and the note in `MechCluster.tsx`
-   is the argument — the short version is that a column of lit cells is a
-   picture of the work, not a way into it, and on a phone it was not even that.
-
-   Loud on purpose. This is the one control on the screen and it takes the
-   bottom third of it. Everything above answers to whichever slot is lit. */
-
-/* Fades in; it does not rise.
-   
-   `mech-cluster-in` animates `transform`, and an element with a transform
-   animation attached has a transform — an identity matrix, but a transform —
-   which makes it the containing block for any `position: fixed` descendant.
-   The canvas the subjects are drawn into is one of those, and it has to be the
-   viewport for the scissor arithmetic to land (see `.mech-bank-gl`). So this
-   band gets opacity only.
-   
-   Nothing is lost: the slots inside it each rise on their own, staggered, and
-   a row of twelve boxes dealing themselves in is a better arrival than the
-   whole block sliding up as one. */
-.mech-band-bank {
-  display: block;
-  animation: mech-cluster-fade 700ms 340ms var(--ease) both;
+/* Scrolls on its own — twelve rows at a size worth pressing do not all fit a
+   real window's height, and a persistent side rail is allowed to scroll
+   where a row of preset buttons across the bottom of the frame was not. */
+.mech-work-rail-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--accent-rgb), 0.3) transparent;
 }
 
-/* The bank and the veil laid over it are two grids that have to agree cell for
-   cell, and the veil has no content of its own to size its rows with. So the
-   row height is stated rather than derived: a bay plus a label bar. That also
-   fixes the label to two lines' worth of room whatever the name in it wraps
-   to, which is what keeps the twelve boxes a row of boxes rather than twelve
-   different heights. */
+/* ---- the bank ----
+
+   Twelve slots down the rail: numbered, named, and obviously pressable. What
+   it replaces is a bar graph, and the note in `MechCluster.tsx` is the
+   argument — the short version is that a column of lit cells is a picture of
+   the work, not a way into it, and on a phone it was not even that.
+
+   One column now rather than twelve — the bank and the veil laid over it are
+   still two grids that have to agree cell for cell, just rotated: the track
+   that used to be twelve columns of one row is one column of twelve rows. */
 .mech-bank,
 .mech-bank-veil {
   display: grid;
-  grid-template-columns: repeat(12, 1fr);
-  grid-auto-rows: calc((var(--cluster-slot, 150) + var(--slot-label, 56)) * var(--px));
+  grid-template-columns: 1fr;
+  grid-auto-rows: calc(var(--cluster-slot, 150) * var(--px));
   gap: calc(9 * var(--px));
 }
 
@@ -572,7 +592,12 @@
 .mech-bank-gl {
   position: fixed !important;
   inset: 0;
-  pointer-events: none;
+  /* `!important`: r3f's `<Canvas>` sets `pointer-events: auto` as an inline
+     style on this same element (for its own raycasting), and an inline style
+     beats an external rule at equal specificity regardless of source order.
+     Without it this fixed, full-viewport, transparent element captures every
+     click on the page before a button underneath ever sees one. */
+  pointer-events: none !important;
 }
 
 /* The scan lines and the accent, over the bays and nothing else.
@@ -602,10 +627,12 @@
 .mech-bank-veil i {
   position: relative;
   display: block;
-  height: calc(var(--cluster-slot, 150) * var(--px));
-  align-self: start;
+  width: calc(var(--cluster-slot, 150) * var(--px));
+  height: calc(100% - 2px);
+  justify-self: start;
+  align-self: center;
   /* Border-box on the slot means the bay starts one pixel in. */
-  margin-top: 1px;
+  margin-left: 1px;
   background: repeating-linear-gradient(
     to bottom,
     rgba(0, 0, 0, 0.34) 0,
@@ -635,7 +662,13 @@
 .mech-slot {
   position: relative;
   display: flex;
-  flex-direction: column;
+  /* A row down the rail: the bay is a square on the left, the name and the
+     number sit to its right. Narrow resets this back to a column — the tile
+     the bank used to be, which still suits a two-across grid better than a
+     row would. */
+  flex-direction: row;
+  align-items: stretch;
+  width: 100%;
   height: 100%;
   padding: 0;
   border: 1px solid rgba(var(--accent-rgb), 0.14);
@@ -700,16 +733,17 @@
    It keeps a background of its own because a slot with no subject, and a slot
    whose subject has not finished loading, both have to be something other than
    a hole in the panel. */
-/* `flex: none`, and it is load-bearing. The slot is a flex column and the bay
-   is a flex item, so a name that wraps to two lines makes the bar taller and
-   the bay *shrinks* to let it — while the veil cell laid over the bay, which
-   is in a different grid, stays the height it was told. The tint then hangs a
-   few pixels past the picture and over the first line of the name. */
+/* `flex: none`, and it is load-bearing. The slot is a flex row and the bay is
+   a flex item, so a name that wraps to two lines makes the bar wider and the
+   bay would otherwise *shrink* to let it — while the veil cell laid over the
+   bay, which is in a different grid, stays the size it was told. The tint
+   then hangs off the edge of the picture rather than sitting over it. */
 .mech-slot-shot {
   position: relative;
   display: block;
   flex: none;
-  height: calc(var(--cluster-slot, 150) * var(--px));
+  width: calc(var(--cluster-slot, 150) * var(--px));
+  height: 100%;
   overflow: hidden;
   /* Flat, not a vignette. A radial fade to black behind the subject was the
      first pass and it did two things at once, both wrong: it darkened
@@ -740,19 +774,21 @@
   );
 }
 
-/* ---- the label under it ---- */
+/* ---- the label beside it ---- */
 
 .mech-slot-bar {
   display: flex;
   flex-direction: column;
-  gap: calc(2 * var(--px));
-  padding: calc(9 * var(--px));
-  border-top: 1px solid rgba(var(--accent-rgb), 0.2);
+  justify-content: center;
+  gap: calc(4 * var(--px));
+  padding: calc(9 * var(--px)) calc(12 * var(--px));
+  border-left: 1px solid rgba(var(--accent-rgb), 0.2);
+  flex: 1;
   min-width: 0;
 }
 
 .mech-slot[data-on='true'] .mech-slot-bar {
-  border-top-color: rgba(var(--accent-rgb), 0.5);
+  border-left-color: rgba(var(--accent-rgb), 0.5);
 }
 
 /* Two lines at most, and long words broken rather than the size cut. "Red
@@ -839,6 +875,114 @@
   text-shadow: 0 0 calc(8 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.6 * var(--g)));
 }
 
+/* ---- the tach ----
+
+   The one large instrument on the panel — see the note above `TACH_ROWS` in
+   MechCluster.tsx for why it is back and why it does not select anything.
+   Full width of the main column, the way the reference's own tachometer runs
+   most of the width of its half of the dash. */
+.mech-tach {
+  animation: mech-cluster-in 700ms 300ms var(--ease) both;
+}
+
+.mech-tach-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: calc(8 * var(--px));
+  border-bottom: 1px solid rgba(var(--accent-rgb), 0.2);
+}
+
+.mech-tach-unit {
+  font-size: calc(9.5 * var(--type));
+  letter-spacing: calc(1.6 * var(--type));
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+/* Each year a column built out of the same stacked cells every gauge on this
+   panel already uses — a bar that changes colour reads as an instrument, and
+   a flat filled rectangle would have read as a chart pasted in rather than
+   as one more reading off this machine. */
+.mech-tach-bars {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: calc(12 * var(--px));
+  height: calc(180 * var(--px));
+  margin-top: calc(18 * var(--px));
+  padding: 0 calc(8 * var(--px));
+  overflow-x: auto;
+}
+
+/* Fixed to the top three of fourteen rows — a mark on the scale, not a fact
+   about any one column, the way a real tachometer's redline is painted on
+   the face rather than derived from a reading. Kept in sync with
+   `TACH_ROWS` / `TACH_REDLINE` in MechCluster.tsx by hand: 3 of 14 rows. */
+.mech-tach-redline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(21.4% + 8 * var(--px));
+  height: 1px;
+  background: rgba(var(--warn-rgb), 0.4);
+  pointer-events: none;
+}
+
+.mech-tach-redline i {
+  position: absolute;
+  right: 0;
+  bottom: calc(4 * var(--px));
+  font-style: normal;
+  font-size: calc(8.5 * var(--type));
+  letter-spacing: calc(1.6 * var(--type));
+  text-transform: uppercase;
+  color: rgba(var(--warn-rgb), 0.55);
+}
+
+.mech-tach-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(8 * var(--px));
+  flex: none;
+  width: calc(28 * var(--px));
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.mech-tach-cells {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: calc(2 * var(--px));
+  width: 100%;
+  height: 100%;
+}
+
+.mech-tach-cells i {
+  flex: 1;
+  min-height: 0;
+  background: rgba(var(--accent-rgb), 0.07);
+}
+
+.mech-tach-cells i[data-on='true'] {
+  background: var(--accent);
+  box-shadow: 0 0 calc(4 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.4 * var(--g)));
+}
+
+.mech-tach-cells i[data-redline='true'][data-on='true'] {
+  background: var(--warn);
+  box-shadow: 0 0 calc(6 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.55 * var(--g)));
+}
+
+.mech-tach-year {
+  font-size: calc(9 * var(--type));
+  letter-spacing: calc(1 * var(--type));
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---- entries ----
 
    Every block on the cluster arrives the same way, staggered down the screen,
@@ -889,6 +1033,39 @@
   gap: calc(34 * var(--px));
 }
 
+/* The rail was a full-height column beside the main one on a wide window;
+   down here it is one more block in the same downward column, after
+   everything else — the name and the display are the reason anyone opened
+   the page, and the bank is the navigation, not the greeting. */
+.mech[data-narrow='true'] .mech-body {
+  flex-direction: column;
+  gap: calc(34 * var(--px));
+}
+
+.mech[data-narrow='true'] .mech-work-rail {
+  width: 100%;
+  order: 1;
+}
+
+.mech[data-narrow='true'] .mech-main {
+  order: 0;
+  justify-content: flex-start;
+}
+
+/* No inner scroll on a phone — the page itself scrolls, and a scroll region
+   inside a scroll region is two different things fighting the same thumb. */
+.mech[data-narrow='true'] .mech-work-rail-list {
+  flex: none;
+  overflow: visible;
+}
+
+/* The wide layout's bottom clearance for a rail stretched to the full height
+   of the panel — narrow never stretches anything, so it is just dead space
+   here. */
+.mech[data-narrow='true'] .mech-body {
+  padding-bottom: 0;
+}
+
 .mech[data-narrow='true'] .mech-band-top {
   grid-template-columns: 1fr;
   gap: calc(28 * var(--px));
@@ -924,19 +1101,6 @@
   gap: calc(12 * var(--px));
 }
 
-/* The divider's two labels stack rather than fighting for one line — "press
-   to open red dead redemption 2" is more than a phone's width on its own, and
-   set beside the section name it wraps into four ragged lines. */
-.mech[data-narrow='true'] .mech-divider {
-  display: block;
-  margin-bottom: calc(-16 * var(--px));
-}
-
-.mech[data-narrow='true'] .mech-divider-do {
-  display: block;
-  margin-top: calc(4 * var(--px));
-}
-
 /* Twelve slots across a phone is twelve thirty-point boxes, which is a row of
    stamps. Two columns instead — big enough to press with a thumb, big enough
    for the picture in them to be a picture. The bank is the navigation and it
@@ -945,7 +1109,11 @@
    Tapping is the whole interaction here: the first tap selects (filling in the
    display, the lamps and the line under the bank), the second opens. See
    `SlotBox` in MechCluster.tsx — a control whose only affordance is hover has
-   no affordance at all down here. */
+   no affordance at all down here.
+
+   And the tile goes back to being a column — bay on top, label below — which
+   suits a two-across grid of squarish boxes better than the row the rail
+   uses, where the bay is a small square and the label sits beside it. */
 .mech[data-narrow='true'] .mech-bank,
 .mech[data-narrow='true'] .mech-bank-veil {
   grid-template-columns: repeat(2, 1fr);
@@ -953,9 +1121,32 @@
   gap: calc(10 * var(--px));
 }
 
-.mech[data-narrow='true'] .mech-slot-shot,
-.mech[data-narrow='true'] .mech-bank-veil i {
+.mech[data-narrow='true'] .mech-slot {
+  flex-direction: column;
+  width: auto;
+}
+
+.mech[data-narrow='true'] .mech-slot-shot {
+  width: 100%;
   height: calc(110 * var(--px));
+}
+
+.mech[data-narrow='true'] .mech-bank-veil i {
+  width: 100%;
+  height: calc(110 * var(--px));
+  justify-self: stretch;
+  align-self: start;
+  margin-left: 0;
+  margin-top: 1px;
+}
+
+.mech[data-narrow='true'] .mech-slot-bar {
+  border-left: none;
+  border-top: 1px solid rgba(var(--accent-rgb), 0.2);
+}
+
+.mech[data-narrow='true'] .mech-slot[data-on='true'] .mech-slot-bar {
+  border-top-color: rgba(var(--accent-rgb), 0.5);
 }
 
 .mech[data-narrow='true'] .mech-slot-name {

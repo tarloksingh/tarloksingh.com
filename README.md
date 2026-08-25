@@ -182,17 +182,18 @@ turned together. The mechanism was right — one supply, everything lit off it �
 and the effect was a screensaver. An instrument does not change colour.
 
 So home is a panel now, laid out the way a car's instrument cluster is: a row
-of indicator lamps along the top, one dominant readout across the middle with
-a smaller cluster either side of it, and a bank of twelve slots filling the
-bottom. `MechCluster.tsx`, and `MechCluster.css` beside it — its own
-stylesheet because this is a whole screen rather than a part of one.
+of indicator lamps along the top, a rail of twelve pressable slots down the
+left the full height of the panel, and the readout, the field scale and a
+large activity graph filling the rest. `MechCluster.tsx`, and
+`MechCluster.css` beside it — its own stylesheet because this is a whole
+screen rather than a part of one.
 
-**Nothing on it is decoration.** The big readout is who this is. The left
-flank is the profile paragraph, the right flank is three counts derived from
-the work itself (projects listed, years active, organisations shipped for) —
-a portfolio that states a number it does not derive is a number to keep up to
-date. The bottom is a bank of twelve slots, each holding its project's own 3D
-subject, and it is the navigation.
+**Nothing on it is decoration.** The big readout is who this is. Beside it,
+the profile paragraph and three counts derived from the work itself (projects
+listed, years active, organisations shipped for) — a portfolio that states a
+number it does not derive is a number to keep up to date. The rail on the left
+is a bank of twelve slots, each holding its project's own 3D subject, and it
+is the navigation.
 
 **The panel is its own colour, not the site's.** A first pass at this screen
 used the root `--accent` everywhere on it, at more or less one brightness, and
@@ -266,6 +267,16 @@ a game, and whether it is under an NDA. Move along the bank and the top of the
 panel answers. `HIT` is the odd one out and stays — it is the gun's, and the
 only lamp about the page rather than about the work.
 
+**A lit warning lamp throws light on the housing above it**, the pool that
+sells "a lamp behind glass" over "green text with a glow" — the single most
+recognisable thing in the reference. The first pass drew that pool the same
+shape as the lamp itself, a short wide ellipse with almost no room to fall off
+before it hit the edge of its own box, and it rendered as a hard-edged
+rectangle rather than a soft one — a lamp that looked broken rather than lit.
+`.mech-lamp[data-warn='true'][data-on='true']::after` is round now, several
+times the lamp's own size, and three gradient stops rather than one, which is
+what actually fades rather than stops.
+
 #### The profile, in the panel's voice
 
 The one block of running prose here was set in the page's Helvetica at body
@@ -287,9 +298,19 @@ the one the rest of the panel's system text already had.
 
 #### The bank is the navigation
 
-Twelve slots across the whole frame: numbered, named, and obviously pressable.
-One is lit; the display above reads it out; the lamps, the field scale and the
-line under the bank all answer to it. Pressing it opens the project.
+Twelve slots, numbered, named, and obviously pressable. One is lit; the
+display above reads it out; the lamps, the field scale and the line under the
+bank all answer to it. Pressing it opens the project.
+
+**It is a rail down the left now, not a row across the bottom.** That was a
+second move, after the first — the reference's own tachometer is the single
+largest graphic on its dash, and there was nowhere to put one back once the
+bank had taken the full width of the bottom of the frame. Standing the bank up
+the side gave the width back; see `#### The tach` below for what it went to.
+The rail runs the full height of the panel and scrolls on its own — twelve
+rows at a size worth pressing do not all fit a real window, and a persistent
+side rail is allowed to scroll where a row of preset buttons across the bottom
+was not.
 
 **What this replaced was a bar graph**, and the argument is worth keeping
 because all three faults were the same fault wearing different clothes.
@@ -366,6 +387,49 @@ the canvas are siblings and neither can hand the other anything.
 before each pass and every slot is the same shape, so it is set once. Framing is
 therefore the subject's business: each is normalised to a unit cube by `Resize`
 and scaled by its own entry in `FIT`.
+
+**The canvas sets its own `pointer-events`, and it wins.** r3f's `<Canvas>`
+puts an inline `pointer-events: auto` on the element `.mech-bank-gl` targets —
+for its own raycasting, on every `<Canvas>` it ever renders — and an inline
+style beats an external rule at equal specificity no matter which one is
+written second. `.mech-bank-gl { pointer-events: none }` looked correct in the
+stylesheet and did nothing at runtime: this canvas is `position: fixed`,
+`inset: 0`, transparent, and — with an inline style silently overriding a
+plain rule — sat on top of the entire page capturing every click before a
+button under it ever saw one. The whole rail was unpressable, and nothing in
+the console said why; `element.style.pointerEvents` doesn't show up beside the
+stylesheet in the inspector's computed panel the way a specificity fight does.
+Only `!important` gets the stylesheet's rule to actually apply, the same way
+`position: fixed !important` already had to for this same element — see the
+note above it.
+
+The subject is never quite still while it sits in its bay, and it steps rather
+than glides: `Drift` in `MechSlots.tsx` recomputes the pose on a fixed
+twelve-times-a-second tick rather than once a frame, holding the last pose
+between ticks. The canvas itself still renders at whatever the display does —
+the undersampling is deliberate, the difference between an object turning on a
+monitor and one turning on a panel meter.
+
+#### The tach
+
+The reference's own tachometer is the single largest instrument on its dash,
+and there was nothing that size on this screen once the bank stopped taking
+the full width of the bottom of the frame — the gap read as a graphic that had
+been dropped, not as one that had never been load-bearing. `Tach` in
+`MechCluster.tsx` is it, back and full width, under the readout: a bar graph
+again, but a reading now rather than a control, the way a real tachometer does
+not choose a gear. Picking a project happens in the rail; this only reports.
+
+One column a year, activity across the years worked — the same span `YRS
+ACTIVE` already counts, drawn out year by year instead of collapsed to a
+total. Real data, not a decoration standing in the reference's shape: a year
+with nothing shipped is still a column, at zero, because a gap in a timeline
+is information and a chart that hides its gaps is a chart that flatters. Each
+column is the same stacked-cell gauge every other reading on this panel uses
+— `TACH_ROWS` cells, lit bottom-up — and a fixed band near the top of the
+scale (`TACH_REDLINE`) sits in the warm channel regardless of which column
+reaches it, a mark on the face rather than a fact about any one year, exactly
+like a real tachometer's redline.
 
 #### Twelve renders, on one panel's supply
 

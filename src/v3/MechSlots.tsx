@@ -122,7 +122,17 @@ function Gltf({ src }: { src: string }) {
 
    `live` is the whole interaction the bank has past lighting up. A row of
    twelve objects all turning at once is a screensaver; one of them turning to
-   look at you while the other eleven idle is a selection. */
+   look at you while the other eleven idle is a selection.
+
+   Stepped to twelve updates a second rather than the display's own refresh
+   rate — the render still runs at whatever the monitor does, but the pose is
+   only recomputed on a fixed tick, so it holds between ticks. That is a
+   deliberately undersampled motion rather than smooth interpolation: the
+   difference between an object turning on a monitor and one turning on a
+   panel meter drawn a dozen times a second. */
+const STEP_HZ = 12
+const STEP = 1 / STEP_HZ
+
 function Drift({
   fit,
   live,
@@ -134,13 +144,21 @@ function Drift({
 }) {
   const group = useRef<Group>(null)
   const at = useRef({ turn: fit.turn, lift: 0, scale: fit.scale })
+  const nextTick = useRef(0)
 
-  useFrame((state, delta) => {
+  useFrame((state) => {
     const node = group.current
     if (!node) return
     const t = state.clock.elapsedTime
-    // Framerate-independent easing: the same approach at 30fps as at 120.
-    const k = 1 - Math.pow(0.001, delta)
+    if (t < nextTick.current) return
+    // However late this frame landed past the tick, the next one is still a
+    // fixed `STEP` later — so the rate holds even if a frame is dropped,
+    // rather than drifting slower than 12Hz.
+    nextTick.current += STEP
+
+    // Framerate-independent easing, evaluated once a tick rather than once a
+    // frame — the same shape at 12Hz as it was at 60.
+    const k = 1 - Math.pow(0.001, STEP)
 
     // Selected, it squares up to the camera and comes forward a little.
     at.current.turn += ((live ? fit.turn * 0.25 : fit.turn) - at.current.turn) * k

@@ -25,9 +25,9 @@ import './MechCluster.css'
    it. Home was the one page not doing that.
 
    So home is a panel now, laid out the way a car's instrument cluster is: a
-   row of indicator lamps along the top, one dominant readout across the middle
-   with a smaller cluster either side of it, and a bank of selectable slots
-   filling the bottom.
+   row of indicator lamps along the top, a rail of selectable slots down the
+   left the full height of the panel, and the readout, the field scale and a
+   large activity graph filling the rest.
 
    `MechCast.tsx`, `MechWave.tsx`, `castTuning.ts`, `castTags.ts` and
    `MechCastPins.tsx` are all still here and still work; they are simply not
@@ -55,10 +55,12 @@ import './MechCluster.css'
    And there is no pointer on a phone. A control whose entire affordance is
    hover has no affordance at all on half the devices that will see it.
 
-   What replaced it is the bank of preset buttons off a car stereo: a row of
-   numbered, named, pressable slots, one lit, with the display above reading
-   out whichever it is. It is loud — twelve boxes across the whole frame — and
-   there is nothing to work out.
+   What replaced it is the bank of preset buttons off a car stereo: numbered,
+   named, pressable slots, one lit, with the display above reading out
+   whichever it is. It ran across the bottom of the frame at first; it is a
+   rail down the left now, so it can be the one large graphic on the panel
+   without also being the one control on it — see `Tach` for what took the
+   width it gave up.
 
    And a slot holds the project's own subject, live and turning: Mr.
    Takahashi's head, the Capsule C1 enclosure, Solomon's rider, the fish man,
@@ -177,6 +179,43 @@ const COUNTS = (() => {
  *  difference between a gauge and a progress bar. */
 const TICKS = 16
 
+/* ---- the tach ----
+
+   The reference's own tachometer is the single largest thing on its dash —
+   a wide bar graph, colour running from the panel's green into a fixed
+   redline near the top of the scale. This screen had nothing that size once
+   the bank stopped being a bar graph, and the gap was the wrong read: it
+   looked like the graphic had been dropped rather than like it had never
+   been load-bearing. It comes back here purely as a reading — work is
+   picked in the rail now, and this does not select anything, the same way a
+   real tachometer does not choose a gear.
+
+   One column a year, activity across the years worked — real data, the same
+   span `YRS ACTIVE` already counts, drawn out year by year instead of
+   collapsed to a total. A year with nothing shipped is still a column, at
+   zero, because a gap in a timeline is information and not a hole in the
+   graph. */
+const TACH_ROWS = 14
+/** Rows at or above this index sit in the fixed warm band near the top of
+ *  every column's scale — a mark on the face, not a fact about any one
+ *  column, exactly like a real tachometer's redline. `.mech-tach-redline`'s
+ *  `bottom` offset in MechCluster.css is hand-tuned to this fraction
+ *  ((TACH_ROWS - TACH_REDLINE) / TACH_ROWS); move one and move the other. */
+const TACH_REDLINE = 11
+
+const ACTIVITY = (() => {
+  const years = SLOTS.map((slot) => slot.year)
+  const min = Math.min(...years)
+  const max = Math.max(...years)
+  const byYear = (year: number) => SLOTS.filter((slot) => slot.year === year).length
+  const peak = Math.max(...Array.from({ length: max - min + 1 }, (_, i) => byYear(min + i)))
+  return Array.from({ length: max - min + 1 }, (_, i) => {
+    const year = min + i
+    const count = byYear(year)
+    return { year, count, lit: peak ? Math.round((count / peak) * TACH_ROWS) : 0 }
+  })
+})()
+
 /* ---- the lamps ----
 
    The row along the top, and every one of them now says something.
@@ -262,6 +301,35 @@ function Gauge({ label, unit, value, of }: (typeof COUNTS)[number]) {
       </span>
       <span className="mech-gauge-label">{label}</span>
       <span className="mech-gauge-unit">{unit}</span>
+    </div>
+  )
+}
+
+/** The one large instrument on the panel, the way the reference's own
+ *  tachometer is the single biggest thing on its dash. Not a control — see
+ *  the note above `TACH_ROWS`. */
+function Tach() {
+  return (
+    <div className="mech-tach">
+      <div className="mech-tach-head">
+        <span className="mech-cap">activity</span>
+        <span className="mech-tach-unit">projects / year</span>
+      </div>
+      <div className="mech-tach-bars">
+        <span className="mech-tach-redline">
+          <i>peak</i>
+        </span>
+        {ACTIVITY.map(({ year, count, lit }) => (
+          <div key={year} className="mech-tach-col" aria-label={`${count} shipped in ${year}`}>
+            <span className="mech-tach-cells">
+              {Array.from({ length: TACH_ROWS }, (_, row) => (
+                <i key={row} data-on={row < lit} data-redline={row >= TACH_REDLINE} />
+              ))}
+            </span>
+            <span className="mech-tach-year">{String(year).slice(-2)}</span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -411,127 +479,130 @@ export default function MechCluster({ onProject, covered, tuning }: Props) {
     >
       <Lamps slot={slot} />
 
-      {/* ---- the identity band ---- */}
-      <div className="mech-band mech-band-top">
-        {/* The profile, as a readout rather than as a paragraph on a page.
-            It used to be set in the site's Helvetica at body size and colour,
-            which made it the one humanist, low-contrast, ragged thing on a
-            panel of hard tracked caps — it read as a paragraph someone had
-            pasted onto an instrument. Same words, in the panel's own voice:
-            a technical face, in a housing, under a label, on the phosphor. */}
-        <section className="mech-profile">
-          <span className="mech-cap">profile</span>
-          <p>{PROFILE}</p>
-        </section>
+      <div className="mech-body">
+        {/* ---- the rail ----
 
-        <section className="mech-ident">
-          <h1 className="mech-ident-name" style={{ ['--name-len' as string]: NAME.length }}>
-            <Typed text={NAME} run="cluster-name" delay={0.4} speed={44} caret={false} />
-          </h1>
-
-          {/* The display, and the scale under it. Boxed, because the one on the
-              reference is boxed and because a lit thing needs an edge to be lit
-              *inside* of — a segment word floating on the grid is a graphic.
-
-              The warm channel is the redline and nothing else: a project that
-              cannot be shown. Every other reading is green. */}
-          <div className="mech-readout" data-warn={slot?.restricted ?? false} data-on={slot !== null}>
-            <Segment
-              text={reading}
-              cells={CELLS}
-              warn={slot?.restricted ?? false}
-              label={reading}
-            />
+            Work, on the left, the full height of the panel — see *the bank is
+            the navigation* for why it is pressable slots rather than a graph.
+            It moved off the bottom of the frame and onto the side of it once
+            the reference's own tachometer came back as a reading rather than
+            a control: the two were fighting for the same "wide graphic across
+            the bottom" position, and only one of them is actually a button. */}
+        <aside className="mech-work-rail">
+          <div className="mech-work-rail-head">
+            <span className="mech-cap">selected work</span>
+            <span className="mech-work-rail-do" data-on={slot !== null}>
+              {slot ? `press to open ${slot.title.toLowerCase()}` : `${SLOTS.length} entries · pick one`}
+            </span>
           </div>
 
-          <div className="mech-scale-row">
-            {FIELDS.map((name) => (
-              <FieldGauge key={name} name={name} on={marked.includes(name)} />
-            ))}
+          {/* Scrolls on its own — twelve rows at a size worth pressing do not
+              all fit a real window's height, and a rail is allowed to scroll
+              where a row of preset buttons across the bottom was not. */}
+          <div className="mech-work-rail-list">
+            <div className="mech-bank" onPointerEnter={hold} onPointerLeave={letGo}>
+              {SLOTS.map((item, n) => (
+                <SlotBox
+                  key={item.id}
+                  slot={item}
+                  n={n}
+                  on={picked === n}
+                  onPick={() => {
+                    hold()
+                    setPicked(n)
+                  }}
+                  onOpen={() => onProject(item.id)}
+                />
+              ))}
+
+              {/* The one canvas every bay above draws into. Mounted inside the
+                  bank so it stacks with them — it covers the whole viewport
+                  and paints only in the rectangles the views give it. */}
+              <MechSlots />
+
+              {/* The scan lines and the accent that turn twelve full-colour
+                  renders into the panel's own phosphor. A grid of its own,
+                  matching the bank cell for cell — see *twelve renders, on one
+                  panel's supply* for why it cannot be a child of a bay or a
+                  flat sheet over the whole rail. */}
+              <span className="mech-bank-veil" aria-hidden>
+                {SLOTS.map((item) => (
+                  <i key={item.id} />
+                ))}
+              </span>
+            </div>
           </div>
-        </section>
 
-        <section className="mech-counts">
-          {COUNTS.map((count) => (
-            <Gauge key={count.label} {...count} />
-          ))}
-        </section>
-      </div>
+          {/* The selected project's own line. Fixed height whether or not
+              there is one, so the rail does not shift every time the display
+              is released. */}
+          <div className="mech-detail" data-on={slot !== null}>
+            {slot && (
+              <>
+                <span>{slot.tagline}</span>
+                <i />
+                <span>{slot.company}</span>
+                <i />
+                <span>{slot.timeline}</span>
+                {slot.restricted && (
+                  <>
+                    <i />
+                    <span className="mech-detail-warn">restricted</span>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        </aside>
 
-      {/* The rule between the two halves of the panel, and the bank's own
-          label. One hairline doing both jobs: the reference divides its
-          clusters with exactly this — a line with small caps sitting on it —
-          and a separate divider above a separate label would be two lines
-          saying one thing. */}
-      <div className="mech-divider">
-        <span className="mech-cap">selected work</span>
-        {/* What to do about it, and it changes as soon as there is something
-            to do. A control that never says what pressing it will get you is
-            a control people look at. */}
-        <span className="mech-divider-do" data-on={slot !== null}>
-          {slot ? `press to open ${slot.title.toLowerCase()}` : `${SLOTS.length} entries · pick one`}
-        </span>
-      </div>
+        {/* ---- the main column ---- */}
+        <div className="mech-main">
+          <div className="mech-band mech-band-top">
+            {/* The profile, as a readout rather than as a paragraph on a page.
+                It used to be set in the site's Helvetica at body size and
+                colour, which made it the one humanist, low-contrast, ragged
+                thing on a panel of hard tracked caps. Same words, in the
+                panel's own monospace, under a label. */}
+            <section className="mech-profile">
+              <span className="mech-cap">profile</span>
+              <p>{PROFILE}</p>
+            </section>
 
-      {/* ---- the bank ---- */}
-      <div className="mech-band mech-band-bank">
-        <div className="mech-bank" onPointerEnter={hold} onPointerLeave={letGo}>
-          {SLOTS.map((item, n) => (
-            <SlotBox
-              key={item.id}
-              slot={item}
-              n={n}
-              on={picked === n}
-              onPick={() => {
-                hold()
-                setPicked(n)
-              }}
-              onOpen={() => onProject(item.id)}
-            />
-          ))}
+            <section className="mech-ident">
+              <h1 className="mech-ident-name" style={{ ['--name-len' as string]: NAME.length }}>
+                <Typed text={NAME} run="cluster-name" delay={0.4} speed={44} caret={false} />
+              </h1>
 
+              {/* The display, and the scale under it. Boxed, because the one on the
+                  reference is boxed and because a lit thing needs an edge to be lit
+                  *inside* of — a segment word floating on the grid is a graphic.
 
-          {/* The one canvas every bay above draws into. Mounted inside the
-              bank so it stacks with them — it covers the whole viewport and
-              paints only in the rectangles the views give it. */}
-          <MechSlots />
+                  The warm channel is the redline and nothing else: a project that
+                  cannot be shown. Every other reading is green. */}
+              <div className="mech-readout" data-warn={slot?.restricted ?? false} data-on={slot !== null}>
+                <Segment
+                  text={reading}
+                  cells={CELLS}
+                  warn={slot?.restricted ?? false}
+                  label={reading}
+                />
+              </div>
 
-          {/* The scan lines and the accent that turn twelve full-colour
-              renders into the panel's own phosphor.
+              <div className="mech-scale-row">
+                {FIELDS.map((name) => (
+                  <FieldGauge key={name} name={name} on={marked.includes(name)} />
+                ))}
+              </div>
+            </section>
 
-              A grid of its own, matching the bank cell for cell, rather than
-              one sheet over the whole thing. Both are forced by where the
-              canvas sits: it is a sibling of the slots, so a `::after` inside
-              `.mech-slot-shot` would paint *under* the very picture it is
-              meant to be over — and one flat sheet across the bank would tint
-              the names and the numbers along with the pictures. One cell per
-              bay, the same twelve columns, the same gap. */}
-          <span className="mech-bank-veil" aria-hidden>
-            {SLOTS.map((item) => (
-              <i key={item.id} />
-            ))}
-          </span>
-        </div>
+            <section className="mech-counts">
+              {COUNTS.map((count) => (
+                <Gauge key={count.label} {...count} />
+              ))}
+            </section>
+          </div>
 
-        {/* The selected project's own line. Fixed height whether or not there
-            is one, so the bank does not shift up the screen every time the
-            display is released. */}
-        <div className="mech-detail" data-on={slot !== null}>
-          {slot && (
-            <>
-              <span>{slot.tagline}</span>
-              <i />
-              <span>{slot.company}</span>
-              <i />
-              <span>{slot.timeline}</span>
-              {slot.restricted && (
-                <>
-                  <i />
-                  <span className="mech-detail-warn">restricted</span>
-                </>
-              )}
-            </>
-          )}
+          <Tach />
         </div>
       </div>
     </div>

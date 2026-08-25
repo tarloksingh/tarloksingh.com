@@ -154,12 +154,14 @@ larger than about 1600. Use `MediaItem.still` and `MediaItem.thumb`, never
 ## Home is a cluster now
 
 The line-up is gone from home. What is there instead is an instrument cluster:
-lamps along the top that report on the selection, the name and a
-fourteen-segment display across the middle with the profile and three counts
-either side, and along the bottom a **bank of twelve slots**, each holding that
-project's own 3D subject, live. Point at one and the display reads it out, the
-lamps light for what it is made of, the field scale marks what it touches, and
-the line under the bank names it. Press it and it opens.
+lamps along the top that report on the selection, a **rail of twelve slots**
+down the left the full height of the panel, each holding that project's own 3D
+subject, live, and beside it the name, a fourteen-segment display, the profile,
+three counts, and a large bar-graph activity readout (`Tach`). Point at a slot
+and the display reads it out, the lamps light for what it is made of, the field
+scale marks what it touches, and the line under the rail names it. Press it and
+it opens. The activity graph is a reading, not a control — it does not select
+anything.
 
 Four traps in that, all written up in `README.md` → **Home is a cluster**, and
 all of them look like something other than what they are:
