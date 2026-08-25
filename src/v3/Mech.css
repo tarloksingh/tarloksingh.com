@@ -3362,48 +3362,6 @@
 
    See the note on `Props.id` in Mech.tsx. */
 
-/* Mr. Takahashi's own layer over the cast's canvas. He is not in it — his rig
-   is his own — so he is laid over it and placed from the same slot, in
-   percent of the stage rather than in the cast's world units. His *size* is
-   his `fill`, set in Mech.tsx, not a transform here: this layer is a canvas,
-   and scaling a canvas in CSS magnifies the pixels it was drawn at instead of
-   drawing more of them. See `CastSlot` in castTuning.ts. */
-.mech-cast-face {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  transition: opacity 300ms linear;
-  /* It is a full-stage canvas sitting over the cast's, so left alone it
-     swallows every pointer event on the stage and nothing underneath can be
-     hovered at all. What stands in for the head as something to point at is
-     an invisible sphere in the cast's own scene — see `Subject` in
-     MechCast.tsx. */
-  pointer-events: none;
-}
-
-/* The whole subtree, not just the layer. `pointer-events: none` on a parent
-   does not stop a descendant that sets `auto`, and r3f sets it on both the
-   canvas *and* the two wrapper divs it puts around it — so setting it on the
-   layer alone changed nothing, and setting it on the canvas alone only moved
-   the problem up to the wrappers. Neither of these layers is ever a target:
-   the face is pointed at through an invisible sphere in the cast's own scene
-   (see `Subject` in MechCast.tsx) and the wave is scenery. */
-.mech-cast-face,
-.mech-cast-face *,
-.mech-wave-layer,
-.mech-wave-layer * {
-  /* `!important` because r3f writes `pointer-events: auto` as an *inline*
-     style on the div it wraps the canvas in, and an inline style beats any
-     selector. Three passes to find that: the layer, then the canvas, then the
-     wrapper — each fix moved the capture one element up. */
-  pointer-events: none !important;
-}
-
-.mech-stage[data-covered='true'] .mech-cast-face {
-  opacity: 0;
-  transition-duration: 240ms;
-}
-
 /* ---- the exchange ----
 
    The index and the tile rail are the same slot in the machine holding two
@@ -3767,6 +3725,114 @@
   display: none;
 }
 
+/* ---- the wave's layer ----
+
+   Full window, not the frame. `.mech-frame` is 1920 coordinates wide and
+   `--px` takes the smaller of a width term and a height term, so on anything
+   wider than 16:9 the frame is letterboxed — and the wave, drawn inside it,
+   stopped dead at the black bars while the grid behind it ran to the edges.
+
+   Fixed and inset like `.mech-hud`, at the same stacking level and earlier in
+   the DOM, so the grid, the bloom and the sweep all still paint over it. It
+   takes no pointer: the gun and the reticle have to reach the page through
+   it. See `MechWave.tsx`. */
+.mech-wave-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  /* Fades with the retarget, the same as everything else that belongs to
+     home — so opening a project takes the ground out with the cast rather
+     than cutting it. */
+  opacity: 1;
+  transition: opacity 700ms var(--ease);
+}
+
+.mech[data-covered='true']:not([data-boot='true']) .mech-wave-layer {
+  opacity: 0;
+}
+
+.mech-wave-layer canvas {
+  display: block;
+}
+
+/* ---- the dev panel ----
+
+   One window, tabbed, and it scrolls. What it replaces was four Leva panels
+   stacked down this edge — a panel grows to its content and the page behind
+   it does not scroll, so anything past the bottom of the window was simply
+   unreachable. Capped at the viewport with its own scroller, and the tab
+   strip stays put at the top of it.
+
+   Development only. See `MechPanel.tsx`. */
+.mech-panel {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+  width: min(340px, calc(100vw - 20px));
+  display: flex;
+  flex-direction: column;
+  /* Never taller than the window, so there is always a way to reach the
+     bottom of a long tab. */
+  max-height: calc(100vh - 20px);
+  border-radius: 6px;
+  overflow: hidden;
+  background: #141414;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.mech-panel-tabs {
+  flex: none;
+  display: flex;
+  border-bottom: 1px solid #272727;
+  background: #1b1b1b;
+}
+
+.mech-panel-tabs button {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 8px 6px;
+  border: 0;
+  border-right: 1px solid #272727;
+  background: transparent;
+  color: #7a7a7a;
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 120ms linear, background-color 120ms linear;
+}
+
+.mech-panel-tabs button:last-child {
+  border-right: 0;
+}
+
+.mech-panel-tabs button:hover {
+  color: #d0d0d0;
+}
+
+/* The one you are on, marked along its bottom edge — inside the strip, so
+   switching tabs does not move anything. */
+.mech-panel-tabs button[aria-selected='true'] {
+  color: var(--accent);
+  background: #141414;
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.mech-panel-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.mech-panel-body[hidden] {
+  display: none;
+}
+
 /* ---- the tag on a subject ----
 
    Hovering a subject on the home stage names the project it opens, in the
@@ -3829,4 +3895,91 @@
   letter-spacing: calc(1.4 * var(--type));
   text-transform: uppercase;
   color: rgba(var(--accent-rgb), 0.85);
+}
+
+/* ---- the tag on a cast subject ----
+
+   The same leader the project screen draws — it reuses `.mech-leaders` and
+   every `.mech-leader-*` rule outright, so the circles, the hairline, the
+   Clash Display label and the Helvetica value under it are not a second
+   design that resembles the first. All that is added here is the way out.
+
+   The exits are the four `data-covered` rules from `entries, and their
+   inverses`, rescoped to this leader's own flag. They cannot be shared:
+   `data-covered` belongs to the stage and is true for a frame swap and the
+   whole of the boot, neither of which has anything to do with a pointer
+   leaving a subject.
+
+   Its own keyframes, never the entry reversed — an animation is only
+   restarted when its `animation-name` changes, so `mech-draw reverse` would
+   leave the finished entry running and the line would simply be gone on the
+   next frame. Same reasoning, at length, beside the rules it comes from. */
+.mech-cast-tag[data-off='true'] .mech-leader-mark,
+.mech-cast-tag[data-off='true'] .mech-leader-core {
+  animation: mech-out 260ms var(--ease) both;
+}
+
+.mech-cast-tag[data-off='true'] .mech-leader-value {
+  animation: mech-out 240ms var(--ease) 60ms both;
+}
+
+.mech-cast-tag[data-off='true'] .mech-leader-label {
+  animation: mech-out 240ms var(--ease) 110ms both;
+}
+
+.mech-cast-tag[data-off='true'] .mech-leader {
+  animation: mech-undraw 420ms var(--ease) 140ms both;
+}
+
+.mech-cast-tag[data-off='true'] .mech-leader-ping {
+  animation: mech-out 220ms var(--ease) both;
+}
+
+/* Quicker in than a project's leaders. Those are the last beat of a machine
+   booting and can take their time; this one answers a pointer, and anything
+   that answers a pointer has to be under way before you have finished
+   arriving. */
+.mech-cast-tag .mech-leader {
+  animation-duration: 420ms;
+}
+
+.mech-cast-tag .mech-leader-label {
+  animation-delay: calc(var(--d) + 180ms);
+}
+
+.mech-cast-tag .mech-leader-value {
+  animation-delay: calc(var(--d) + 240ms);
+}
+
+.mech-cast-tag .mech-leader-mark,
+.mech-cast-tag .mech-leader-core {
+  animation-delay: calc(var(--d) + 240ms);
+}
+
+.mech-cast-tag .mech-leader-ping {
+  animation-delay: calc(var(--d) + 340ms);
+}
+
+/* ---- home's side column ----
+
+   Name, what I do, and the paragraph — one block, centred down the left. On a
+   project this column is a title at the top and a write-up filling the rest,
+   which is right there and wrong here: at home there are three short things
+   and no reason for them to be spread over nine hundred pixels of nothing.
+   Sat together, in the middle, left aligned. */
+.mech[data-home='true'] .mech-side {
+  justify-content: center;
+  bottom: calc(200 * var(--px));
+}
+
+.mech[data-home='true'] .mech-folds-wrap {
+  flex: none;
+  margin-top: calc(20 * var(--px));
+}
+
+/* The spacers that centre the folds on a project screen have nothing to
+   centre here — the whole column is centred instead. */
+.mech[data-home='true'] .mech-folds-wrap::before,
+.mech[data-home='true'] .mech-folds-wrap::after {
+  content: none;
 }

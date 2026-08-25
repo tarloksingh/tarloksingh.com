@@ -511,7 +511,6 @@ export default function MechModel({
      too, and the renderer's default of 1 against this page's 0.6 is a
      visibly brighter frame. Both are now right before anything is drawn. */
   const distance = distanceFor(tuning.focalLength, tuning.fill)
-  const look = useGaze(tuning.watchBird, tuning.watchCatch)
 
   return (
     <Canvas
@@ -532,19 +531,50 @@ export default function MechModel({
       <directionalLight position={[tuning.keyX, tuning.keyY, tuning.keyZ]} intensity={tuning.keyIntensity} />
       <directionalLight position={[tuning.fillX, tuning.fillY, tuning.fillZ]} intensity={tuning.fillIntensity} />
 
-      <Suspense fallback={null}>
-        <Lean degrees={tuning.lean} look={look}>
-          <Float
-            speed={tuning.floatSpeed}
-            rotationIntensity={tuning.floatRotation}
-            floatIntensity={0.5}
-            floatingRange={[-tuning.floatRange, tuning.floatRange]}
-          >
-            <Drift fill={tuning.fill} />
-            <Model src={src} tuning={tuning} look={look} />
-          </Float>
-        </Lean>
-      </Suspense>
+      <FaceScene src={src} tuning={tuning} />
     </Canvas>
+  )
+}
+
+/** Everything the face is, minus the canvas, the lens and the room.
+ *
+ *  Exported so the home screen can stand him in the cast's own scene instead
+ *  of over it. He used to be a second full-stage canvas laid on top, which
+ *  worked while he was the only subject with a rig — but it meant he was in a
+ *  different camera from everyone else, so the cast's dolly, tilt, lift and
+ *  spread moved the other four and left him where he was, and his placement
+ *  had to be faked as a CSS percentage. He is a cast member now: same camera,
+ *  same handles, hoverable and taggable like the rest, on his own three.js
+ *  layer with his own two lights. The reason he was ever separate — his rig —
+ *  travels with him, because it is this.
+ *
+ *  `driftFill` is the framing the leaders are laid out against, which is the
+ *  project screen's `fill` and not the cast's. On home nothing reads `drift`,
+ *  so it only matters there. */
+export function FaceScene({
+  src,
+  tuning,
+  driftFill
+}: {
+  src: string
+  tuning: ModelTuning
+  driftFill?: number
+}) {
+  const look = useGaze(tuning.watchBird, tuning.watchCatch)
+
+  return (
+    <Suspense fallback={null}>
+      <Lean degrees={tuning.lean} look={look}>
+        <Float
+          speed={tuning.floatSpeed}
+          rotationIntensity={tuning.floatRotation}
+          floatIntensity={0.5}
+          floatingRange={[-tuning.floatRange, tuning.floatRange]}
+        >
+          <Drift fill={driftFill ?? tuning.fill} />
+          <Model src={src} tuning={tuning} look={look} />
+        </Float>
+      </Lean>
+    </Suspense>
   )
 }

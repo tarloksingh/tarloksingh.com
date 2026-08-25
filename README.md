@@ -184,15 +184,31 @@ which is what the first arrangement did.
 Adding a subject to the home page is one entry in `CAST` (`heroes.ts`) and one
 in `CAST_SLOTS`. Nothing else.
 
-**Mr. Takahashi is still not in that canvas**, for the reason he never was: he
-is the one subject on this site with a lighting rig built around him, and
-lighting him a second way would be a second face. `MechModel` is laid over the
-cast as its own layer and placed from the same slot — but only two of its six
-numbers reach him. `x`/`y` are converted from the cast's world units into a
-percentage of the stage (one world unit is `fill` of its *height*, so across
-it has to be divided by the aspect), and `scale` multiplies his own `fill`
-rather than transforming the layer, because scaling a canvas in CSS magnifies
-the pixels it was drawn at instead of drawing more of them.
+**Mr. Takahashi is in that canvas.** He used to be a second full-stage canvas
+laid over it, which was fine while he was the only subject with a rig — but it
+meant he was in a *different camera* from everyone else, so the cast's dolly,
+tilt, lift and spread moved the other four and left him where he was, and his
+placement had to be faked as a CSS percentage. He is a cast member now: same
+camera, same handles, hoverable and taggable like the rest, on his own layer
+with his own two lights. `FaceScene` in `MechModel.tsx` is his rig with the
+canvas, lens and room taken off, so the reason he was ever separate travels
+with him.
+
+Two things had to give for that. **`turn` and `tilt` were dead numbers on his
+slot** while he was a layer, and the moment he became a real subject the
+`-180` sitting in one of them came through as the back of his head. And **the
+canvas wears his lens and his exposure**, which is the part worth writing
+down: focal length is free to copy, because `fill` decides how much world the
+frame holds and the camera backs off to hold it — so a lens change is a
+perspective change and not a framing one. Exposure is not free. It is one
+number for the whole canvas and ACES tone mapping is not linear, so lighting
+him at 28.5 under an exposure of 0.05 and lighting him at 1.43 under an
+exposure of 1 are *not* the same picture even though the product matches: the
+first lands on the shoulder of the curve and gives the dark, moody face his
+page has, the second sits in the middle and gives a flat, washed one. The
+canvas takes his 0.05, his lights are copied across untouched, and the other
+four are scaled twentyfold to suit. The wave keeps a lens of its own — a grid
+running to a horizon through a 200mm barely converges.
 
 Nothing is dimmed. The old roster faded every subject that was not selected,
 which made a cast of five read as one subject and four rejected candidates.
@@ -261,9 +277,24 @@ that looks like is a pair of legs hanging in the air a foot above the bike.
 
 ### Pointing at the cast
 
-Hovering a subject names the project it opens, in the same hand the project
-screen's leaders are drawn in: a ring on the thing, a line off it, the name at
-the end. Pressing it opens that project. It is the index arriving from the
+Hovering a subject names the project it opens and pressing it opens that
+project. The tag is **the same leader the project screen draws** — not
+something that resembles one. It reuses `.mech-leaders` and every
+`.mech-leader-*` rule outright, so it is the same three circles, the same
+hairline drawn on out of nothing, the same Clash Display label over the same
+Helvetica value, and the same cascade in.
+
+Getting the cascade *out* meant not unmounting on pointer-out. The exit is the
+same trick the frame swap uses — its own keyframes under a `data-off` flag,
+never the entry reversed, because an animation is only restarted when its
+`animation-name` changes. So the leader stays mounted for `TAG_OUT` after the
+pointer leaves, plays the retraction, and only then goes.
+
+It is drawn *outside* the Canvas, because it is type: SVG text in the stage's
+own coordinates stays crisp and stays in the page's fonts, where a label built
+in three would be a texture. One number a frame crosses the boundary — where
+the subject ended up on screen, through `aim` in `subject.ts`, which is the
+same pattern `drift` already uses. It is the index arriving from the
 other end — pointing at a box lights its subject and fills in the readout, so
 pointing at the subject has to fill in the same readout and pressing it has to
 open the same project.

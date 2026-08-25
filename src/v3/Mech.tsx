@@ -8,7 +8,7 @@ import MechLaser from './MechLaser'
 import MechHud from './MechHud'
 import { useModelTuning } from './modelTuning'
 import { useProductTuning } from './productTuning'
-import { useCastTuning, useWaveTuning, slotFor } from './castTuning'
+import { useCastTuning, useWaveTuning } from './castTuning'
 import { CAST } from './heroes'
 import MechDeck from './MechDeck'
 import MechMenu from './MechMenu'
@@ -16,7 +16,7 @@ import { useNarrowTuning } from './narrowTuning'
 import { sound } from './sound'
 import { useNarrow } from './narrow'
 import { useReveal } from './reveal'
-import { drift, flinch, quarry } from './subject'
+import { aim, drift, flinch, quarry } from './subject'
 import { kills } from './kills'
 import { findProject, MENU, portraitOf, thumbOf, type Entry, type Frame } from './model'
 import { focus, notesFor, pins, type Note } from './notes'
@@ -256,7 +256,7 @@ const whenIdle = (run: () => void) => {
  *  which is what filling the readout in with `MENU[0]` on arrival did. */
 const INTRO = {
   name: 'Tarlok Singh',
-  line: 'product designer',
+  line: 'designer',
   text:
     'Product designer with 8+ years building 0→1 developer tools, AI applications, and consumer products. ' +
     'I rapidly ship working products from concept to launch. I\u2019ve scaled a business from $800K to $1.5M+ ' +
@@ -809,6 +809,86 @@ function Typed({ text, run }: { text: string; run: string }) {
   )
 }
 
+/* ---- the tag on a cast subject ----
+
+   The same leader the project screen draws, not something that looks like
+   one. It reuses `.mech-leaders` and every `.mech-leader-*` class outright,
+   so it is the same three circles, the same hairline drawn on out of nothing,
+   the same Clash Display label over the same Helvetica value — and the same
+   cascade in and, more to the point, the same cascade back out.
+
+   Getting the outro meant not unmounting on pointer-out. An exit here is the
+   same trick the frame swap uses: its own keyframes under a `data-off` flag,
+   never the entry reversed, because an animation is only restarted when its
+   `animation-name` changes — see `entries, and their inverses` in Mech.css.
+   So the leader stays mounted for `TAG_OUT` after the pointer leaves, playing
+   the retraction, and only then goes.
+
+   It is drawn outside the Canvas because it is type: SVG text in the stage's
+   own coordinates stays crisp and stays in the page's fonts, where a label
+   built in three would be a texture. What crosses the boundary is one number
+   a frame — where the subject ended up on screen — through `aim`. */
+
+/** The leader's shape, in frame coordinates, measured from the subject. */
+const TAG = { rise: 84, run: 110, bar: 190 }
+
+/** How long the retraction gets before the leader is taken down. Covers the
+ *  longest of the exits below — the line's 520 plus its 210 of delay. */
+const TAG_OUT = 780
+
+function CastTag({ space, title, value, off }: { space: Space; title: string; value: string; off: boolean }) {
+  const group = useRef<SVGGElement>(null)
+  /** Which way the leader reaches. Fixed when it appears rather than followed
+   *  live: a subject drifting across the middle of the stage would otherwise
+   *  flip the whole label from one side to the other mid-hover. */
+  const side = useRef(aim.x > 0.55 ? -1 : 1)
+
+  useEffect(() => {
+    let raf = 0
+    const tick = () => {
+      raf = requestAnimationFrame(tick)
+      group.current?.setAttribute('transform', `translate(${aim.x * space.w} ${aim.y * space.h})`)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [space])
+
+  const dir = side.current
+  const elbow = [TAG.run * dir, -TAG.rise]
+  const end = elbow[0] + TAG.bar * dir
+  const length = Math.abs(end - elbow[0]) + Math.hypot(elbow[0], TAG.rise)
+  const anchor = dir === 1 ? 'start' : 'end'
+  const textX = elbow[0]
+
+  return (
+    <svg
+      className="mech-leaders mech-cast-tag"
+      viewBox={`0 0 ${space.w} ${space.h}`}
+      preserveAspectRatio="none"
+      data-off={off}
+      aria-hidden
+    >
+      {/* `--d` is nought: one leader, so there is no cascade to place it in. */}
+      <g ref={group} style={{ ['--d' as string]: '0ms', ['--d-out' as string]: '0ms' }}>
+        <circle className="mech-leader-ping" cx={0} cy={0} r={13} />
+        <circle className="mech-leader-mark" cx={0} cy={0} r={6.5} />
+        <circle className="mech-leader-core" cx={0} cy={0} r={1.9} />
+        <polyline
+          className="mech-leader"
+          points={`${end},${elbow[1]} ${elbow[0]},${elbow[1]} 0,0`}
+          style={{ ['--l' as string]: length }}
+        />
+        <text className="mech-leader-label" x={textX} y={elbow[1] - 9} textAnchor={anchor}>
+          {title}
+        </text>
+        <text className="mech-leader-value" x={textX} y={elbow[1] + 21} textAnchor={anchor}>
+          {value}
+        </text>
+      </g>
+    </svg>
+  )
+}
+
 /** What has been shot, everywhere, ever. Its own component so the number
  *  changing does not re-render the readout under it — see `kills.ts`. */
 function Tally() {
@@ -863,6 +943,27 @@ export default function Mech({ id, onProject, onHome }: Props) {
      described, which is what makes the transition read as continuous rather
      than as an answer arriving after the question. */
   const [eyed, setEyed] = useState<string | null>(null)
+  /* Which subject on the stage is being pointed at, and — separately —
+     whichever one the tag is still showing while it retracts. Two pieces of
+     state rather than one because the leader has an outro: unmounting it the
+     instant the pointer leaves is what made the tag disappear rather than
+     come off. See `CastTag`. */
+  const [onSubject, setOnSubject] = useState<string | null>(null)
+  const [tagged, setTagged] = useState<string | null>(null)
+
+  /* The tag lingers past the pointer for exactly as long as its retraction
+     takes, then goes. Restarted on every change, so moving straight from one
+     subject to another swaps the label rather than queuing a removal. */
+  useEffect(() => {
+    if (onSubject) {
+      setTagged(onSubject)
+      return
+    }
+    if (!tagged) return
+    const timer = window.setTimeout(() => setTagged(null), TAG_OUT)
+    return () => window.clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onSubject])
   const [index, setIndex] = useState(0)
   /* What is actually on the stage, which trails `index` by the swap. Picking
      a tile lights it immediately — the feedback is instant — while the frame
@@ -1138,21 +1239,32 @@ export default function Mech({ id, onProject, onHome }: Props) {
      it. */
   const eyedItem = home && eyed ? (MENU.find((item) => item.project.id === eyed) ?? null) : null
   const lede = project ?? eyedItem?.project ?? null
-  /* Mr. Takahashi on the home stage. He is not in the cast's canvas — his rig
-     is his own, and always has been — so he is laid over it as a second layer
-     and placed from the same slot the rest of the line-up uses. Only two of
-     its six numbers reach him; see `CastSlot`. */
+
+  /* What the tag says: the project's real name, and its line under it — the
+     same pairing every leader on a project screen has. A subject with no
+     project of its own falls back to what the subject is called. */
+  const taggedHero = tagged ? CAST.find((item) => item.id === tagged) : null
+  const taggedProject = taggedHero?.project ? findProject(taggedHero.project)?.project : null
+  const taggedItem = taggedHero
+    ? {
+        title: taggedProject?.title ?? taggedHero.title,
+        value: taggedProject?.tagline?.toLowerCase() ?? taggedHero.role
+      }
+    : null
+
   /* Which panels belong to what is on screen. This is the whole reason the
-     panel is tabbed: the home page used to offer a project subject's lighting
-     rig and a project screen used to offer none of the cast's, because every
-     panel was mounted all the time regardless of what it could reach. */
+     panel is tabbed: every panel used to be mounted all the time, so home
+     offered a project subject's lighting rig — titled "Subject tuning", which
+     does not say whose subject — and a project screen offered none of the
+     cast's. Mr. Takahashi has no tab of his own any more either: he stands in
+     the cast's scene now, so his rig is the folder with his name on it,
+     alongside everyone else's. */
   const panels: PanelTab[] = import.meta.env.DEV
     ? narrow
       ? [{ id: 'scale', label: 'Scale', store: narrowStore }]
       : home
         ? [
             { id: 'cast', label: 'Cast', store: cast.store },
-            { id: 'face', label: 'Takahashi', store: tuning.store },
             { id: 'wave', label: 'Wave', store: waveTuning.store }
           ]
         : [
@@ -1161,24 +1273,6 @@ export default function Mech({ id, onProject, onHome }: Props) {
             { id: 'labels', label: 'Labels', store: labels }
           ]
     : []
-
-  const faceHero = CAST.find((hero) => hero.kind === 'face')
-  const faceSlot = faceHero ? (cast.slots[faceHero.id] ?? slotFor(faceHero.id)) : null
-  /* His slot's `x`/`y` are the cast's world units like everyone else's, and
-     this is where they are converted — the one place the canvas's world and
-     the frame's coordinates have to be reconciled by hand, because he is not
-     in the canvas.
- 
-     One world unit is `fill` of the stage's *height*. The layer is the stage,
-     so a percentage translate on it is a percentage of the stage: vertically
-     that is `fill` straight through, and horizontally the same length has to
-     be divided by the stage's aspect to stay the same number of pixels. */
-  const faceShift = faceSlot
-    ? {
-        x: (faceSlot.x * cast.studio.fill * 100) / (1920 / 1080),
-        y: -faceSlot.y * cast.studio.fill * 100
-      }
-    : null
 
   return (
     <div
@@ -1307,40 +1401,19 @@ export default function Mech({ id, onProject, onHome }: Props) {
                   onHoverHero={(heroId) => {
                     const hero = heroId ? CAST.find((item) => item.id === heroId) : null
                     setEyed(hero?.project ?? null)
+                    setOnSubject(heroId)
+                    if (heroId) aim.id = heroId
                   }}
                   onPick={(projectId) => {
                     sound.select()
                     onProject(projectId)
-                  }}
-                  titleFor={(heroId) => {
-                    const hero = CAST.find((item) => item.id === heroId)
-                    return (hero?.project ? findProject(hero.project)?.project.title : null) ?? hero?.title ?? ''
                   }}
                   /* The retarget's own cover, which is already true for the
                      whole of an exit — so the cast retracts on the way out
                      rather than being switched off at the end of it. */
                   shown={!covered}
                   live={home}
-                />
-              </Suspense>
-            </div>
-          )}
-
-          {/* And the face over it, in his own rig. `fill` rather than a CSS
-              scale: the layer is a canvas, and magnifying a canvas magnifies
-              the pixels it was drawn at. Placed by the same slot, in percent
-              of the stage — the one place the cast's world units and the
-              frame's coordinates have to be reconciled by hand. */}
-          {home && faceHero?.src && faceSlot && (
-            <div
-              className="mech-cast-face"
-              style={{ transform: `translate(${faceShift?.x ?? 0}%, ${faceShift?.y ?? 0}%)` }}
-            >
-              <Suspense fallback={null}>
-                <MechModel
-                  src={faceHero.src}
-                  tuning={{ ...tuning, fill: tuning.fill * faceSlot.scale }}
-                  live={home}
+                  faceTuning={tuning}
                 />
               </Suspense>
             </div>
@@ -1422,6 +1495,20 @@ export default function Mech({ id, onProject, onHome }: Props) {
               floats={current.kind !== 'flat'}
               lit={lit}
               onLit={setLit}
+            />
+          )}
+
+          {/* Names whatever is being pointed at on the home stage, in the
+              project screen's own hand. Keyed on the subject so moving from
+              one to another draws a new leader rather than sliding the old
+              one across. */}
+          {home && taggedItem && (
+            <CastTag
+              key={tagged ?? 'tag'}
+              space={space}
+              title={taggedItem.title}
+              value={taggedItem.value}
+              off={!onSubject}
             />
           )}
 

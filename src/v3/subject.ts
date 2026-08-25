@@ -73,3 +73,16 @@ export interface Creature {
  *  inside the Canvas's frame loop; written from a pointer event outside it.
  *  Zero means it has never happened. */
 export const flinch = { at: 0 }
+
+/** Where on the home stage the subject being pointed at currently is, as a
+ *  fraction of the canvas — `{0,0}` top left, `{1,1}` bottom right.
+ *
+ *  Published rather than passed, and for the same reason `drift` is: it
+ *  changes every frame and nothing that reads it wants a re-render. The tag
+ *  that names the subject is an SVG leader drawn *outside* the Canvas, in the
+ *  stage's own coordinates, so it has to be told where the thing it is
+ *  pointing at ended up on screen — which is only knowable after the camera
+ *  has projected it, inside the frame loop.
+ *
+ *  `id` is which subject, or null while nothing is being pointed at. */
+export const aim = { x: 0.5, y: 0.5, id: null as string | null }

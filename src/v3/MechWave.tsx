@@ -235,7 +235,13 @@ interface Props {
 }
 
 export default function MechWave({ wave, studio = CAST_STUDIO, live = true }: Props) {
-  const distance = distanceFor(studio.focalLength, studio.fill)
+  /* Its own focal length, the cast's `fill`. Framing is set by `fill` — the
+     camera backs off to hold it — so sharing that keeps this canvas showing
+     the same amount of world vertically as the cast's, and the horizon lands
+     where the cast's ground would. The lens is the wave's own because the
+     cast wears a 200mm for Mr. Takahashi's sake, and a grid running to a
+     horizon through a 200mm barely converges at all. */
+  const distance = distanceFor(wave.lens, studio.fill)
 
   if (!wave.on) return null
 
@@ -247,7 +253,7 @@ export default function MechWave({ wave, studio = CAST_STUDIO, live = true }: Pr
       dpr={1}
       frameloop={live ? 'always' : 'never'}
       camera={{
-        fov: fovForFocalLength(studio.focalLength),
+        fov: fovForFocalLength(wave.lens),
         position: [0, 0, distance],
         near: 0.5,
         // Nothing shares this scene, so there is no depth fighting to lose by

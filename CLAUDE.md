@@ -127,6 +127,13 @@ project. Do not reintroduce a second root component for home; the flash that
 used to be there was the second one painting over the first. See **Home is the
 project screen** in `README.md`.
 
+**The home canvas wears Mr. Takahashi's lens and exposure.** Focal length is
+free to copy across subjects — `fill` sets the framing and the camera backs
+off to hold it — but exposure is one number for the whole canvas and ACES is
+not linear, so his `28.5 @ 0.05` cannot be rewritten as `1.43 @ 1`. The cast
+runs at his 0.05 and the other four are scaled to suit; the wave has a lens of
+its own. Don't "tidy" the exposure back to 1.
+
 **Type is on its own unit.** `--type: max(var(--px), 0.0651rem)` — the same rem
 that caps `--px`, but a `max()`, so type has a floor on a small window and
 browser zoom can move it. At the cap it renders identically to the frame

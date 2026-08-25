@@ -77,9 +77,27 @@ export interface CastStudio {
 }
 
 export const CAST_STUDIO: CastStudio = {
-  focalLength: 78,
+  /* Mr. Takahashi's own lens and his own exposure, because he is the subject
+     that has to match a page of his own and the other four are not.
+
+     Focal length is free to copy: `fill` sets how much world the frame holds,
+     and the camera backs off to hold it, so changing the lens changes the
+     *perspective* and not the framing. 200mm is the flat, compressed look his
+     project screen has.
+
+     Exposure is not free, and this is the part that caught me. It is one
+     number for the whole canvas, and ACES tone mapping is not linear — so
+     lighting him at 28.5 under an exposure of 0.05 and lighting him at 1.43
+     under an exposure of 1 are not the same picture, even though the product
+     is the same. The first lands on the shoulder of the curve and gives the
+     dark, moody face his page has; the second sits in the middle of it and
+     gives a flat, washed one. There is no way to have both on one canvas, so
+     the canvas takes his exposure and the other four are scaled to suit —
+     see the intensities in `CAST_LIGHTS`, which are twentyfold what they
+     would be at 1. */
+  focalLength: 200,
   fill: 0.34,
-  exposure: 1,
+  exposure: 0.05,
   dolly: 0,
   camY: 0,
   tilt: 0,
@@ -100,14 +118,13 @@ export const CAST_STUDIO: CastStudio = {
  *  something toward the lens. Measured from the middle of the stage, then
  *  offset by the studio's `lift` and `spread`.
  *
- *  **The face reads two of these differently.** Mr. Takahashi is not in the
- *  cast's canvas — he is `MechModel`, his own context with his own rig, laid
- *  over the stage as a second layer, because he is the one subject on this
- *  site with a lighting setup built around him. So for `kind: 'face'` the
- *  placement is applied to that layer: `x`/`y` become a fraction of the stage
- *  box and `scale` multiplies his own `fill`, which keeps him sharp — scaling
- *  the canvas element would magnify the pixels he was drawn at. `z`, `turn`
- *  and `tilt` do nothing for him; his rig owns those. */
+ *  Every subject reads all six the same way, Mr. Takahashi included. He used
+ *  to be the exception — a second canvas laid over the stage, placed as a CSS
+ *  percentage, with `z`, `turn` and `tilt` doing nothing at all. That meant
+ *  the camera handles moved the other four and left him behind, which is not
+ *  a cast. His rig travels with him instead (`FaceScene` in MechModel.tsx),
+ *  so he stands in this scene on his own layer with his own two lights, like
+ *  everyone else. */
 export interface CastSlot {
   x: number
   y: number
@@ -122,7 +139,13 @@ export interface CastSlot {
 export const CAST_SLOT_FALLBACK: CastSlot = { x: 0, y: 0, z: 0, scale: 1, turn: 0, tilt: 0 }
 
 export const CAST_SLOTS: Record<string, CastSlot> = {
-  takahashi: { x: -0.1, y: 0.08, z: 0, scale: 0.65, turn: -180, tilt: 0 },
+  /* `turn` back to 0 and `scale` re-read as world units. Both were dead
+     numbers while he was a layer over the canvas rather than in it — the
+     docs on `CastSlot` used to say so — and `turn: -180` came through as
+     soon as he became a real cast member, which is the back of his head.
+     `scale` was a multiplier on his own `fill` and is now a size like
+     everyone else's. */
+  takahashi: { x: -0.1, y: 0.08, z: 0, scale: 1.05, turn: 0, tilt: 0 },
   capsule: { x: 0.53, y: 0.42, z: -1.73, scale: 0.64, turn: -53.5, tilt: 25.5 },
   rider: { x: -0.62, y: -0.27, z: -1.06, scale: 0.81, turn: 130.5, tilt: 27 },
   stitchfam: { x: -0.53, y: 0.38, z: -0.86, scale: 0.43, turn: 0, tilt: 0 },
@@ -171,11 +194,19 @@ export const CAST_LIGHT_FALLBACK: CastLight = {
 }
 
 export const CAST_LIGHTS: Record<string, CastLight> = {
-  takahashi: { keyIntensity: 2.6, keyX: 3, keyY: 4, keyZ: 5, fillIntensity: 1, fillX: -4, fillY: 1, fillZ: -3, env: 1 },
-  capsule: { keyIntensity: 2.4, keyX: -3.6, keyY: -2.5, keyZ: 5.5, fillIntensity: 1.4, fillX: -6.5, fillY: -3.6, fillZ: -10, env: 0.35 },
-  rider: { keyIntensity: 2.2, keyX: -10, keyY: -10, keyZ: -10, fillIntensity: 1.1, fillX: -4, fillY: -10, fillZ: -3, env: 1 },
-  stitchfam: { keyIntensity: 2.2, keyX: 1, keyY: 3, keyZ: 6, fillIntensity: 1.6, fillX: -3, fillY: 1, fillZ: 2, env: 0.8 },
-  fish: { keyIntensity: 2.4, keyX: 2, keyY: 3, keyZ: 5, fillIntensity: 1.5, fillX: -3, fillY: 2, fillZ: -1, env: 0.9 }
+  /* Copied outright from `MODEL_DEFAULTS` — the same two intensities from the
+     same two directions — because the canvas now runs at his exposure. This
+     is his project screen's rig, not an approximation of it. `env` is 0
+     because his rig uses no environment at all. */
+  takahashi: { keyIntensity: 28.5, keyX: 12, keyY: 0.22, keyZ: 12, fillIntensity: 71.3, fillX: -0.32, fillY: 0.08, fillZ: -0.66, env: 0 },
+  /* Twentyfold what these were, because the exposure they were set against
+     went from 1 to 0.05. A starting point rather than a match — ACES is not
+     linear, so scaling by the exposure ratio gets the brightness roughly back
+     and not the contrast. These four are the ones to re-tune. */
+  capsule: { keyIntensity: 48, keyX: -3.6, keyY: -2.5, keyZ: 5.5, fillIntensity: 28, fillX: -6.5, fillY: -3.6, fillZ: -10, env: 7 },
+  rider: { keyIntensity: 44, keyX: -10, keyY: -10, keyZ: -10, fillIntensity: 22, fillX: -4, fillY: -10, fillZ: -3, env: 20 },
+  stitchfam: { keyIntensity: 44, keyX: 1, keyY: 3, keyZ: 6, fillIntensity: 32, fillX: -3, fillY: 1, fillZ: 2, env: 16 },
+  fish: { keyIntensity: 48, keyX: 2, keyY: 3, keyZ: 5, fillIntensity: 30, fillX: -3, fillY: 2, fillZ: -1, env: 18 }
 }
 
 export const lightFor = (id: string): CastLight => CAST_LIGHTS[id] ?? CAST_LIGHT_FALLBACK
@@ -215,6 +246,11 @@ export interface CastWave {
   low: string
   mid: string
   high: string
+  /** Its own lens, in millimetres. Not the cast's: the cast wears Mr.
+   *  Takahashi's 200mm so his face matches his own page, and a receding grid
+   *  seen through a 200mm has almost no convergence left in it. The wave is
+   *  the one thing on this screen that is *only* perspective. */
+  lens: number
   /** World units square, and vertices per side. Cost, not look — neither is
    *  on the panel, because changing either rebuilds the buffer. */
   size: number
@@ -238,6 +274,7 @@ export const CAST_WAVE: CastWave = {
   low: '#8d77b4',
   mid: '#684596',
   high: '#c07cff',
+  lens: 55,
   size: 90,
   segments: 200
 }
@@ -276,7 +313,7 @@ const SLOT_KEYS = ['x', 'y', 'z', 'scale', 'turn', 'tilt'] as const
 const LIGHT_KEYS = Object.keys(CAST_LIGHT_FALLBACK) as Array<keyof CastLight>
 const WAVE_NUMBERS = [
   'amp', 'scale', 'speed', 'y', 'depth', 'cells', 'fade',
-  'opacity', 'gain', 'glow', 'hue', 'hueSpeed'
+  'opacity', 'gain', 'glow', 'hue', 'hueSpeed', 'lens'
 ] as const
 
 const tidy = (value: number) => String(Number(value.toFixed(4)))
@@ -346,7 +383,7 @@ export function useCastTuning() {
           fill: { value: startStudio.fill, min: 0.05, max: 0.95, step: 0.01, label: 'Fills' },
           /* The one light left that is not a subject's own — there is a single
              tone map for the canvas and it cannot be split. */
-          exposure: { value: startStudio.exposure, min: 0.01, max: 4, step: 0.01, label: 'Exposure' },
+          exposure: { value: startStudio.exposure, min: 0.005, max: 4, step: 0.005, label: 'Exposure' },
           lean: { value: startStudio.lean, min: 0, max: 40, step: 0.5, label: 'Lean' }
         },
         { collapsed: false }
@@ -487,6 +524,7 @@ export function useWaveTuning() {
       glow: { value: startWave.glow, min: 0, max: 5, step: 0.01, label: 'Glow' },
       hue: { value: startWave.hue, min: 0, max: 360, step: 1, label: 'Hue spread' },
       hueSpeed: { value: startWave.hueSpeed, min: -90, max: 90, step: 0.5, label: 'Hue drift' },
+      lens: { value: startWave.lens, min: 18, max: 200, step: 1, label: 'Lens mm' },
       low: { value: startWave.low, label: 'Trough' },
       mid: { value: startWave.mid, label: 'Middle' },
       high: { value: startWave.high, label: 'Crest' }

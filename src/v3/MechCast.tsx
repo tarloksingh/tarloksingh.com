@@ -1,12 +1,16 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { Center, Float, Html, Resize, useGLTF } from '@react-three/drei'
+import { Center, Float, Resize, useGLTF } from '@react-three/drei'
 import { ACESFilmicToneMapping, MathUtils, PMREMGenerator, SRGBColorSpace, Vector3 } from 'three'
+import { useThree as useThreeState } from '@react-three/fiber'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import VideoFrame from '../three/VideoFrame'
 import { SpriteFlipbook } from '../three/CapsuleStage'
 import { CAST, FISH_MAN_FRAMES, type Hero } from './heroes'
+import { aim } from './subject'
+import { FaceScene } from './MechModel'
+import { MODEL_DEFAULTS, type ModelTuning } from './modelTuning'
 import { CAST_STUDIO, lightFor, slotFor, type CastLight, type CastSlot, type CastStudio } from './castTuning'
 import type { Group, Mesh, PerspectiveCamera } from 'three'
 
@@ -300,23 +304,6 @@ function Rider({ src, rpm, shake }: { src: string; rpm: number; shake: number })
 }
 
 function Subject({ hero, studio }: { hero: Hero; studio: CastStudio }) {
-  /* Mr. Takahashi is drawn by his own canvas over this one, so what stands
-     here is only something to point at: an invisible sphere roughly the size
-     of the head, at the same slot the layer above is placed from.
- 
-     A hit target in *this* scene rather than a hotspot in the DOM, because
-     then all five subjects are hovered by one raycaster and the tag comes off
-     the same code path — a second, DOM-shaped way of noticing a hover would
-     be a second set of rules about which one wins. `visible={false}` would
-     also stop it being raycast, so it is a transparent material instead. */
-  if (hero.kind === 'face') {
-    return (
-      <mesh>
-        <sphereGeometry args={[0.52, 12, 12]} />
-        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-      </mesh>
-    )
-  }
   if (hero.kind === 'gltf' && hero.src) {
     return hero.id === 'rider' ? (
       <Rider src={hero.src} rpm={studio.wheelRpm} shake={studio.shake} />
@@ -370,9 +357,7 @@ function Placed({
   focus,
   lift,
   spread,
-  title,
   openable,
-  unlit,
   onHover,
   onPick,
   children
@@ -390,20 +375,17 @@ function Placed({
    *  handles for moving the whole line-up without re-placing any of it. */
   lift: number
   spread: number
-  /** What the tag says while the pointer is on it. */
-  title: string
   /** Whether pressing it goes anywhere. A subject that opened nothing would
    *  be a tag promising a page that is not there. */
   openable: boolean
-  /** The face: a hit target only, lit by its own canvas. */
-  unlit: boolean
   onHover: (over: boolean) => void
   onPick: () => void
   children: React.ReactNode
 }) {
   const outer = useRef<Group>(null)
   const inner = useRef<Group>(null)
-  const bare = unlit
+  const camera = useThreeState((state) => state.camera)
+  const at = useMemo(() => new Vector3(), [])
   const grow = useRef(0)
   const depth = useRef(0)
   const since = useRef(0)
@@ -445,7 +427,18 @@ function Placed({
       slot.y + lift - (1 - eased) * RISE,
       slot.z + depth.current
     )
-    body.scale.setScalar(Math.max(0.0001, (bare ? 1 : slot.scale) * eased))
+
+    /* Where this subject has ended up on screen, for the leader that names
+       it. Only worth computing for the one being pointed at, and published to
+       a module rather than lifted into state because it changes every frame
+       and the thing reading it draws itself in its own loop. */
+    if (focus === true) {
+      group.getWorldPosition(at)
+      at.project(camera)
+      aim.x = at.x * 0.5 + 0.5
+      aim.y = -at.y * 0.5 + 0.5
+    }
+    body.scale.setScalar(Math.max(0.0001, slot.scale * eased))
     body.visible = eased > 0.005
   })
 
@@ -470,7 +463,7 @@ function Placed({
           Not for the face: what stands here for him is an invisible hit
           target, and his real rig is his own canvas's. Two lights aimed at
           nothing would be two lights to wonder about on the panel. */}
-      {!unlit && (
+      {true && (
         <>
           <directionalLight
             position={[light.keyX, light.keyY, light.keyZ]}
@@ -484,26 +477,6 @@ function Placed({
       )}
       <group ref={inner}>{children}</group>
 
-      {/* The tag, in the project screen's own hand: a ring on the thing, a
-          line off it, and the name at the end. Drawn as DOM through `Html`
-          rather than as geometry so it is set in the page's type at the page's
-          size — a label built out of triangles is a label that has to be
-          re-rendered to say anything else, and this one has to stay crisp at
-          whatever distance hover has pushed the subject to.
-
-          Anchored at the subject's origin and offset in CSS, so it travels
-          with the float and the lean instead of being pinned to a screen
-          position that the subject then drifts away from. */}
-      {focus === true && (
-        <Html center distanceFactor={undefined} zIndexRange={[8, 8]} wrapperClass="mech-tag-anchor">
-          <div className="mech-tag" data-open={openable}>
-            <i className="mech-tag-ring" />
-            <i className="mech-tag-line" />
-            <span className="mech-tag-name">{title}</span>
-            {openable && <span className="mech-tag-go">open</span>}
-          </div>
-        </Html>
-      )}
     </group>
   )
 }
@@ -564,6 +537,9 @@ interface Props {
   slots?: Record<string, CastSlot>
   /** Every subject's own rig, keyed the same way. */
   lights?: Record<string, CastLight>
+  /** Mr. Takahashi's rig — his eyes, his blink, his materials. Seeded from
+   *  `MODEL_DEFAULTS`, which is how he is lit on his own project screen. */
+  faceTuning?: ModelTuning
   /** Which project is being looked at, if any — the hero whose `project`
    *  matches comes forward and the rest drop back. Hovering a subject
    *  directly does the same thing and wins while it lasts. */
@@ -577,8 +553,6 @@ interface Props {
    *  index — pointing at a box lights its subject, so pressing the subject
    *  has to be the same gesture arriving from the other end. */
   onPick?: (projectId: string) => void
-  /** How each hero's project is named, for its tag. */
-  titleFor?: (heroId: string) => string
   /** Off entirely while the page is not looking at the stage. A cast of five
    *  idling behind a project screen is five subjects' worth of frame loop
    *  spent on something nobody can see. */
@@ -592,9 +566,9 @@ export default function MechCast({
   focusHeroId,
   shown = true,
   live = true,
+  faceTuning = MODEL_DEFAULTS,
   onHoverHero,
-  onPick,
-  titleFor
+  onPick
 }: Props) {
   /* Built from the studio actually in force, not from the shipped constant.
      A `camera` prop is read once at mount and `Lens` corrects it in an
@@ -661,30 +635,48 @@ export default function MechCast({
             focus={focused === null ? null : focused === hero.id}
             lift={studio.lift}
             spread={studio.spread}
-            title={titleFor?.(hero.id) ?? hero.title}
             openable={Boolean(hero.project)}
-            unlit={hero.kind === 'face'}
             onHover={(on) => take(hero.id, on)}
             onPick={() => hero.project && onPick?.(hero.project)}
           >
-            {/* Per subject rather than one around the cast: a suspended
-                sibling would hold the whole line-up off the screen until the
-                slowest file in it had arrived. Each one appears as it
-                lands. */}
-            <Suspense fallback={null}>
-              <Env amount={light.env}>
-                <Float
-                  speed={studio.floatSpeed}
-                  rotationIntensity={studio.floatRotation}
-                  floatIntensity={0.5}
-                  floatingRange={[-studio.floatRange, studio.floatRange]}
-                >
-                  <Lean degrees={studio.lean} turn={slot.turn} tilt={slot.tilt}>
-                    <Subject hero={hero} studio={studio} />
-                  </Lean>
-                </Float>
-              </Env>
-            </Suspense>
+            {hero.kind === 'face' && hero.src ? (
+              /* His own rig, standing in the cast's scene rather than in a
+                 canvas of its own over it — see `FaceScene` in MechModel.tsx.
+                 Not wrapped in this file's `Float` or `Lean`: he has both
+                 already, and his lean follows his gaze rather than the raw
+                 pointer, which is most of what makes him read as a character
+                 rather than as a prop. `Env` is skipped for the same reason —
+                 his `Model` writes `envMapIntensity` itself, from the tuning
+                 handed to it. */
+              <group
+                rotation={[MathUtils.degToRad(slot.tilt), MathUtils.degToRad(slot.turn), 0]}
+              >
+                <FaceScene
+                  src={hero.src}
+                  tuning={{ ...faceTuning, envMapIntensity: light.env }}
+                  driftFill={studio.fill}
+                />
+              </group>
+            ) : (
+              /* Per subject rather than one around the cast: a suspended
+                 sibling would hold the whole line-up off the screen until the
+                 slowest file in it had arrived. Each one appears as it
+                 lands. */
+              <Suspense fallback={null}>
+                <Env amount={light.env}>
+                  <Float
+                    speed={studio.floatSpeed}
+                    rotationIntensity={studio.floatRotation}
+                    floatIntensity={0.5}
+                    floatingRange={[-studio.floatRange, studio.floatRange]}
+                  >
+                    <Lean degrees={studio.lean} turn={slot.turn} tilt={slot.tilt}>
+                      <Subject hero={hero} studio={studio} />
+                    </Lean>
+                  </Float>
+                </Env>
+              </Suspense>
+            )}
           </Placed>
         )
       })}
