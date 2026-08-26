@@ -191,7 +191,9 @@ the arrangement is the design:
   tally of what has come down docked directly above it (see *Two animals, and
   a tally*);
 - the **name**, red-orange rather than the panel's phosphor, on its own line
-  between the warning pair and the instrument — not laid over it any more;
+  between the warning pair and the instrument — not laid over it any more —
+  and set in Audiowide, a display face built for exactly this register rather
+  than the site's own Clash Display;
 - the **tachometer**, the single largest instrument, filling the middle, with
   `INTRO` and the profile set in its quiet left corner where the name used to
   sit;
@@ -219,6 +221,18 @@ it. Both halves moved to stand next to what they actually describe instead:
 the job title under the counts it is a share of, the project's name above the
 bank of slots it names. Neither carries a border any more either — see `####
 The display` below for why nothing on this panel is boxed now.
+
+**The body centres now rather than sitting on the floor of its own box.**
+`.mech-body` was bottom-aligned, and with the name and the warning pair off the
+top of it into their own line, a body still pinned to the bottom of what was
+left read as sunk into the lower half of the frame — the graph, the intro and
+the counts all crowded low with a slab of empty panel above them. Centred
+instead, with the top and bottom padding brought closer to even. The counts'
+bars still land on the same floor the tach's columns do — `align-items:
+center` centres each of the three columns on its own midpoint rather than
+their shared bottom edge, so `.mech-flank` carries a small negative
+`margin-bottom` pulling it down past where centring alone would put it, tuned
+by eye against the tach's own floor.
 
 **The counts lost `PROJ LISTED`.** It was counting the list that is on the
 same screen — the rail's own head says "12 entries · pick one" a few hundred
@@ -279,11 +293,17 @@ still changes what it reads. The field meters become every field that project
 touches — usually two or three of the five at once, which is why it is a
 scale and not a single needle.
 
-Both are twenty-one cells, which is wider than either needs. Twenty-one is
-"Red Dead Redemption 2", because the one display whose job is naming a project
-is not the place to abbreviate one; the titles sit inside it with ghost cells
-either side, which is what a fixed grid of lamps looks like with a short word
-on it.
+**Right is twenty-one cells and centred; left is seventeen and set to the
+edge.** Twenty-one is "Red Dead Redemption 2" — the one display whose job is
+naming a project is not the place to abbreviate one, and a centred word inside
+that width reads as a title with room to breathe either side. The role reel
+never has to hold a project name; seventeen is "Product Designer" with a
+little to spare, and `align="left"` on that `Segment` keeps the word pinned to
+the same edge the counts above it start from rather than drifting toward the
+middle of a box that width was never fighting for. A box built for the longer
+word and left centred anyway is what "the block is really wide" was — the fix
+is both a narrower box and text that starts where the box does, not either
+alone.
 
 **Neither carries a border.** The first pass ran both in a strip with a
 hairline box around each cell group — the "thin rectangular outline" that
@@ -400,27 +420,66 @@ been hiding.
 
 So `.mech-ident` is its own line now, between the warning pair and the
 tachometer, centred, set in `--warn` with the same three-shadow glow every
-other lit thing on the panel carries — the same face, the same fit-to-width
-`cqw` trick against a character count that `.mech-console` used to do, just no
-longer laid over anything. Fitting it to a fixed-width block rather than the
-full column is still necessary: `.mech-cluster` is a flex column and stretches
-its children to the panel's full width by default, and a name fitted to *that*
+other lit thing on the panel carries — the same fit-to-width `cqw` trick
+against a character count that `.mech-console` used to do, just no longer
+laid over anything. Fitting it to a fixed-width block rather than the full
+column is still necessary: `.mech-cluster` is a flex column and stretches its
+children to the panel's full width by default, and a name fitted to *that*
 renders several times too large before it can be read as a bug — `.mech-ident`
 carries its own `width` for exactly this reason, `640` frame units, centred
 with `margin: 0 auto`.
+
+**Not the same face any more, either.** Audiowide, self-hosted from
+`public/fonts/audiowide/` the same way Clash Display is — the site's own
+display face is a magazine headline, and the name wanted something closer to
+the reference's own dashboard signage: wide, geometric, built for exactly
+this register. Two things change with the font, not just the `font-family`.
+Audiowide is drawn wide already, so the negative tracking Clash Display's own
+`-0.5 * var(--type)` wanted here crowds it — a hair of positive tracking
+instead. And its average advance runs much wider per character than Clash
+Display's: the fit-to-width divisor that stood in for "0.6 of an em, on
+average, per uppercase glyph" is `1.15` now, measured against the twelve
+characters of the actual name rather than carried over from the old face — so
+`--cluster-name`'s by-eye scale on top still means the same thing after the
+swap.
 
 The quiet corner it left behind did not stay empty. `.mech-intro` sits there
 now — the label reads `INTRO` in the same fourteen-segment glyphs as the rest
 of the panel's readouts (`Segment`, not a heading font) and the profile
 underneath it, still the same `ui-monospace` paragraph it was as a caption on
-the instrument's own reading rather than a title pasted over it.
+the instrument's own reading rather than a title pasted over it. Lower, too —
+under the label rather than a full gap above the tach, so it reads as
+belonging to the graph it now sits beside instead of floating in the corner
+above it.
+
+**And the profile is typed now, not dropped in.** Every other line on this
+panel arrives a character at a time; a paragraph that simply appeared —
+which is what it did, because `.mech-intro` had no exit animation of its own
+either — read as the one line the machine had not actually switched on, and
+opening a project left it frozen behind the cover rather than leaving with
+everything else. `Typed` fixes both: `back={covered}` backspaces it out on
+the same beat the rest of the cluster leaves, the way the header's wordmark
+already hands the name back and forth on the way in and out of a project (see
+*The name behind the cast*, mounted or not). A hundred and fifty-odd
+characters is a lot to type or delete inside `EXIT_MS`'s one second, so this
+one runs much faster both ways than the wordmark or a tagline does — `speed`
+and `backSpeed` are a fraction of theirs, closer to a held key repeating than
+someone typing.
 
 #### The bank is the navigation
 
-Twelve slots, numbered, named, and obviously pressable. One is lit; the right
-half of the run reads it out, the left half reads out what I did on it, the
-field meters mark what it is made of and the line under the bank names the
-company and the years. Pressing it opens the project.
+Twelve slots, numbered, named, and obviously pressable. One is lit; the
+display above the bank reads it out, the role reel under the counts reads out
+what I did on it, and the field meters under the bank mark what it is made
+of. Pressing it opens the project.
+
+**The line naming the company and the years is gone.** It sat under the field
+meters, opacity zero until something was selected, and it was the one thing on
+this rail that only ever showed up on hover — a control built to work on a
+tap as well as a mouse growing a piece that a thumb would have to press and
+release just to see. The name and the number on the slot itself, and the
+field meters saying what a project is made of, were already saying what this
+line was for.
 
 **It is a rail down the right, not a row across the bottom.** That was a
 second move, after the first — the reference's own tachometer is the single
@@ -435,13 +494,7 @@ name on it.
 The rail runs the full height of the panel and scrolls on its own — twelve
 rows at a size worth pressing do not all fit a real window, and a persistent
 side rail is allowed to scroll where a row of preset buttons across the bottom
-was not. `.mech-body`'s bottom padding is what keeps the line under the bank
-off the contact address: the rail and the address are on the same edge now, and
-a stretched rail does not clear the footer for free the way a centred column
-did. That line is also `white-space: nowrap` and clipped — "Openup Technologies
-Inc. · 2024 — 2025" wraps to two lines in a rail this wide, and a caption that
-wraps for eight of the twelve projects moves the bottom of the bank every time
-the pointer crosses it.
+was not.
 
 **What this replaced was a bar graph**, and the argument is worth keeping
 because all three faults were the same fault wearing different clothes.
@@ -616,21 +669,44 @@ two polylines, not one, because a single element cannot change stroke half way
 along and the trace goes warm where the face does; they share the column either
 side of the mark so the join is a point rather than a gap.
 
-#### The counts wander
+#### The counts wander, and now they answer
 
 Three gauges, bled off the left edge of the frame so the block reads as part of
 a panel that carries on past the window rather than as a card floating near the
 corner of one — `margin-left` of exactly the inset `.mech-cluster` carries, put
 back as padding, so it runs to the edge of the frame rather than to a guess at
-it.
+it. No border either any more — see `#### The display` for why nothing on this
+panel is boxed.
 
-The bars do not sit still. `Counts` runs one rAF for all three: they climb from
-nothing to their reading on arrival, eased out of the cube like the compass
-spins up, and then wander a cell or so either side of it on a pair of slow sines
-at different rates. **The number in the window above never moves** — that part
-is true, and the wander is a fraction of the bar. A stack of cells frozen at
-two-thirds is a progress bar wearing an instrument's styling; a needle that will
-not sit perfectly still is the one thing that says something is being measured.
+**They used to be frozen at the whole roster's numbers regardless of what the
+panel was saying elsewhere**, which read as decoration wearing an instrument's
+styling: a gauge that never moves is a sticker. `countsFor` in
+`MechCluster.tsx` filters the roster to whichever field is current — the field
+the cycling title falls under with nothing picked, or every field the selected
+project touches — and recomputes all three from that slice. Point at
+"filmmaker" and `YRS ACTIVE` becomes years active *as one*, not the whole
+career; `roles` and `orgs` shrink to match. The scale each bar reads against
+(`of`) stays fixed to the whole roster regardless, so a field with two
+projects in it reads as a short bar against the same ceiling rather than a
+gauge that rescales itself every time the reading changes — a fixed ceiling is
+what makes "short" mean something.
+
+The bars do not sit still, and they do not simply reset either. `Counts` runs
+one rAF for all three: a fraction per gauge (`shownFrac`) chases whatever
+`countsFor` currently returns at a fixed rate, the same framerate-independent
+easing `Drift` and the tachometer both use — so landing on a new field mid-
+cycle slides the bars to the new reading rather than dropping them back to
+empty and climbing again, which is what re-running the old arrival-only
+animation on every change would have looked like. Once a bar is within a
+cell of its target it also wanders — a pair of slow sines at different rates,
+a fraction of the bar either way. **The number in the window above never
+moves once it has landed** — that part is true, and the wander is on top of
+it, never instead of it. A stack of cells frozen at two-thirds is a progress
+bar wearing an instrument's styling; a needle that will not sit perfectly
+still is the one thing that says something is being measured. The `Segment`
+readouts above the bars scramble-settle on every change now too, rather than
+skipping straight to the new number — a count that changes should say so the
+same way every other reading on this panel does.
 
 Same trick as the tachometer, one axis over: the loop writes a cell count to
 `--lit` on the bar and each cell compares its own `--n` against it, so a reading
@@ -728,6 +804,18 @@ deliberately only four. Where the bands sit and how the graph is spaced are
 decisions, and decisions live in the stylesheet next to what they affect; what
 is on the panel is the handful of things that are a matter of taste in front
 of a real screen.
+
+**The cluster's own pool of light is on a project screen now too.**
+`.mech-cluster::before` — the haze the whole panel sits in, described at the
+top of this section — is one radial wash behind the readout, tied to where
+the cluster actually is rather than to the middle of the screen. `.mech-
+stage::before` in Mech.css is the same recipe behind the subject on a project
+screen instead: a still, a clip and a model are all just "whatever is on the
+stage" as far as it is concerned, so it is drawn once, behind all three,
+rather than being a property of any one media kind. Root `--accent-rgb`
+there rather than the cluster's own paler sage — a project screen reads off
+the root pair for everything else already lit on it, and this should not be
+the one exception.
 
 ### The cast
 
@@ -2105,6 +2193,19 @@ the second to mount silently replaces the first and only one of them is ever
 shootable. It is `quarry.creatures`, a `Set`, now — each creature registers
 `{ at, hit }` and removes itself on unmount, and the gun walks the set without
 knowing what is in it, exactly as it never knew before.
+
+**Firing at nothing costs a point now.** `STOP` is not only a lamp — it is
+telling you the range is empty, and pulling the trigger anyway is the one
+thing on this page the reticle actively warns against. `MechLaser.tsx` asks
+the same question `Alarm` asks every frame — is anything in `quarry.creatures`
+currently `.at()` — at the moment a shot actually leaves the muzzle, and
+`kills.miss()` takes one back if the answer is no. Judged at the trigger, not
+at where the bolt lands: a shot fired at empty black is a shot fired at empty
+black whether or not it happens to cross paths with the subject on its way
+there, so a hit on the model itself does not save a shot taken while `STOP`
+was lit. Floored at zero rather than run negative — `kills.miss()` on an
+empty tally is a no-op, because the display was never built to show a number
+below the one that hides it.
 
 **The tally** (`kills.ts`) counts what has come down, across every screen and
 across a reload. It cannot be React state on a screen: `V3.tsx` swaps `Home`,

@@ -32,7 +32,7 @@ export const CLUSTER_DEFAULTS: ClusterTuning = {
   y: 0,
   name: 0.88,
   glow: 1.2,
-  slot: 104
+  slot: 82
 }
 
 const STORE_KEY = 'v3.cluster.tuning.v1'
@@ -65,7 +65,7 @@ export function useClusterTuning() {
       y: { value: start.y, min: -220, max: 220, step: 1, label: 'Vertical' },
       name: { value: start.name, min: 0.4, max: 1.4, step: 0.01, label: 'Name size' },
       glow: { value: start.glow, min: 0, max: 2, step: 0.01, label: 'Bloom' },
-      slot: { value: start.slot, min: 90, max: 260, step: 1, label: 'Slot height' },
+      slot: { value: start.slot, min: 64, max: 260, step: 1, label: 'Slot height' },
       'Copy for source': button(() => {
         const text = asSource(live)
         void copyText(text)

@@ -42,6 +42,24 @@ export const kills = {
     for (const listener of listeners) listener()
   },
 
+  /** A shot fired while the alarm read `STOP` — nothing in the air to aim
+   *  at. Called from `MechLaser.tsx` at the moment a bolt leaves the muzzle,
+   *  not at the moment it lands: whether the shot cost a point is a fact
+   *  about the state of the range when you pulled the trigger, not about
+   *  where the bolt happened to end up. Floored at zero rather than run
+   *  negative — the tally is a count of what has come down, and a negative
+   *  one is not a number this display was built to show. */
+  miss() {
+    if (count === 0) return
+    count -= 1
+    try {
+      window.localStorage.setItem(STORE_KEY, String(count))
+    } catch {
+      /* private mode, a full quota — the count is not worth breaking a page */
+    }
+    for (const listener of listeners) listener()
+  },
+
   snapshot: () => count,
 
   subscribe(listener: () => void) {

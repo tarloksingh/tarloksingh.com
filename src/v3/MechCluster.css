@@ -26,6 +26,17 @@
    **Type is small and there is a lot of it.** Labels are lower-case, tracked
    out, and dim. The only large thing on the screen is the name. */
 
+/* Self-hosted, the same way every other face on this site is — no request to
+   a third party for a name that is on screen the moment the panel arrives.
+   Only the latin subset: this is one word, in caps, with no accents in it. */
+@font-face {
+  font-family: 'Audiowide';
+  src: url('/fonts/audiowide/Audiowide-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+  font-style: normal;
+}
+
 /* Centred by flex rather than by `translateY(-50%)`, and that is not a style
    preference — it is load-bearing.
 
@@ -87,21 +98,20 @@
 .mech-body {
   display: flex;
   flex-direction: row;
-  /* Bottom-aligned rather than centred: the counts' bars and the tach's
-     columns are two gauges on the same instrument and read as one only when
-     they share a floor. */
-  align-items: flex-end;
+  /* Centred rather than bottom-aligned — with the name and the warning pair
+     off the top of it now (see `.mech-ident`), a body still pinned to the
+     bottom of its own box read as sunk into the lower half of the frame. */
+  align-items: center;
   flex: 1;
   min-height: 0;
   gap: calc(32 * var(--px));
   /* `.mech-cluster` runs the full height of the frame, footer included — it
      was always the *content's* job to stay clear, and a centred column did
-     that for free. A rail stretched to fill this box does not, and the rail is
-     on the same side as the contact address: the bottom clearance is the
-     footer's `30` plus its own line plus room to breathe, or the line under
-     the bank sits on top of the address. The top clears the warning pair and
-     the deck docked in the corner beside it. */
-  padding: calc(58 * var(--px)) 0 calc(96 * var(--px));
+     that for free. The rail is on the same side as the contact address, so
+     the bottom still keeps some clearance for it — a stretched rail does not
+     get that for free the way a centred column does, or the line under the
+     bank sits on top of the address. */
+  padding: calc(24 * var(--px)) 0 calc(48 * var(--px));
 }
 
 .mech-main {
@@ -109,7 +119,7 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: calc(24 * var(--px));
+  gap: calc(10 * var(--px));
 }
 
 /* The haze the whole panel sits in.
@@ -292,16 +302,16 @@
   display: flex;
   flex-direction: column;
   gap: calc(14 * var(--px));
-  /* Pulls the flank down past `.mech-body`'s own flex-end line so the
-     counts' bars land on the same floor the tach's columns do — the role
-     display below the bars would otherwise be the thing that floor lines up
-     on instead, leaving the bars themselves noticeably higher. Tuned by eye
-     against the tach's column floor. */
-  margin-bottom: calc(-70 * var(--px));
+  /* Nudges the flank so the counts' bars land on the same floor the tach's
+     columns do — `.mech-body` centres its three columns on their own
+     midpoints, and the role display below the bars would otherwise be the
+     extra weight that pulls the bars themselves above that line. Tuned by
+     eye against the tach's column floor. */
+  margin-bottom: calc(-24 * var(--px));
 }
 
 .mech-display-role {
-  width: calc(380 * var(--px));
+  width: calc(300 * var(--px));
   max-width: 100%;
 }
 
@@ -324,17 +334,25 @@
 
 .mech-ident-name {
   margin: 0;
-  font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  /* Audiowide rather than the site's Clash Display — a display face built
+     for exactly this register (LED signage, dashboards, arcade marquees),
+     wide and geometric where Clash Display is a magazine headline face.
+     Self-hosted, like every other face here — see the `@font-face` above. */
+  font-family: 'Audiowide', 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-weight: 400;
   text-transform: uppercase;
   white-space: nowrap;
-  line-height: 0.94;
-  letter-spacing: calc(-0.5 * var(--type));
+  line-height: 1;
+  /* Audiowide is drawn wide already; the negative tracking Clash Display
+     wanted here crowds it. A hair of room instead. */
+  letter-spacing: calc(0.5 * var(--type));
   color: var(--warn);
   /* Fitted to the block: its width, over the character count times an average
-     advance for this face at these caps. `--cluster-name` is the by-eye scale
-     on top of the fit — see `clusterTuning.ts`. */
-  font-size: calc(var(--cluster-name, 1) * 100cqw / (var(--name-len, 12) * 0.6));
+     advance for this face at these caps. Audiowide's own advance runs much
+     wider than Clash Display's — `0.6` there, `0.86` here — so `--cluster-
+     name`'s by-eye scale on top still means the same thing across a font
+     swap. See `clusterTuning.ts`. */
+  font-size: calc(var(--cluster-name, 1) * 100cqw / (var(--name-len, 12) * 1.15));
   /* Three, not two. The reference's digits carry a hot edge, a halo and then
      a wash of light on the housing well past the glyph — and the third term is
      the one that turns "warm type with a glow" into "a lamp behind glass". */
@@ -358,7 +376,7 @@
   z-index: 2;
   width: calc(430 * var(--px));
   max-width: 100%;
-  padding: calc(16 * var(--px)) calc(4 * var(--px)) 0;
+  padding: 0 calc(4 * var(--px));
 }
 
 .mech-intro-cap {
@@ -621,8 +639,6 @@
   /* Out past the panel's own left inset and off the side of the frame. */
   margin-left: calc(-1 * var(--bleed));
   padding: calc(26 * var(--px)) calc(26 * var(--px)) calc(24 * var(--px)) var(--bleed);
-  border: 1px solid rgba(var(--accent-rgb), 0.13);
-  border-left: 0;
   background: linear-gradient(90deg, transparent, rgba(var(--accent-rgb), 0.025));
 }
 
@@ -1018,52 +1034,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* ---- the line under the bank ----
-
-   The selected project's own facts. A fixed height whether or not there is a
-   selection, so releasing the display does not shift the whole bank down the
-   screen. */
-/* One line, always. "Openup Technologies Inc. · 2024 — 2025" is wider than the
-   rail at the size the rest of this furniture is set at, and a caption that
-   wraps to two lines for eight of the twelve projects is a caption that moves
-   the bottom of the bank every time the pointer crosses it. Smaller, tracked
-   in, and clipped rather than wrapped. */
-.mech-detail {
-  display: flex;
-  align-items: center;
-  gap: calc(12 * var(--px));
-  min-height: calc(20 * var(--px));
-  margin-top: calc(16 * var(--px));
-  font-size: calc(9.5 * var(--type));
-  letter-spacing: calc(1.2 * var(--type));
-  text-transform: uppercase;
-  white-space: nowrap;
-  overflow: hidden;
-  color: var(--mid);
-  opacity: 0;
-  transition: opacity 220ms linear;
-}
-
-.mech-detail i {
-  flex: none;
-}
-
-.mech-detail[data-on='true'] {
-  opacity: 1;
-}
-
-.mech-detail i {
-  width: calc(3 * var(--px));
-  height: calc(3 * var(--px));
-  background: rgba(var(--warn-rgb), 0.75);
-  border-radius: 50%;
-}
-
-.mech-detail-warn {
-  color: var(--warn);
-  text-shadow: 0 0 calc(8 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.6 * var(--g)));
-}
-
 /* ---- coming up, and going down ----
 
    Every block on the panel arrives on its own beat and leaves on its own beat,
@@ -1168,6 +1138,7 @@
   animation: mech-cluster-in 620ms 300ms var(--ease) both;
 }
 
+.mech-cluster[data-covered='false'] .mech-intro,
 .mech-cluster[data-covered='false'] .mech-tach {
   animation: mech-cluster-in 620ms 420ms var(--ease) both;
 }
@@ -1207,6 +1178,7 @@
   animation: mech-cluster-unfade 200ms 30ms linear both;
 }
 
+.mech-cluster[data-covered='true'] .mech-intro,
 .mech-cluster[data-covered='true'] .mech-tach {
   animation: mech-cluster-out 200ms 70ms var(--ease) both;
 }
@@ -1374,9 +1346,4 @@
 
 .mech[data-narrow='true'] .mech-slot-name {
   font-size: calc(12 * var(--type));
-}
-
-.mech[data-narrow='true'] .mech-detail {
-  flex-wrap: wrap;
-  gap: calc(8 * var(--px));
 }

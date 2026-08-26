@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Segment from './Segment'
 import Typed from './Typed'
 import { MENU } from './model'
@@ -137,6 +137,12 @@ const PROFILE =
  *  text box. */
 const CELLS = 21
 
+/** Cells in the role reel under the counts. Wide enough for the longest title
+ *  or role — "Product Designer" is sixteen — and deliberately narrower than
+ *  `CELLS`: it never has to hold a project name, and a box sized for one read
+ *  as a word adrift in too much housing. */
+const ROLE_CELLS = 17
+
 /** What the right-hand display says with nothing picked. A dark box on
  *  arrival reads as broken; this labels what the box is for, and it goes out
  *  the moment there is something real to put there. */
@@ -206,16 +212,33 @@ const SLOTS: Slot[] = MENU.map((item) => ({
    because it is the one number on this panel that is not visible anywhere else
    on it, and because it is what the display opposite is reading out — point at
    a project and the left half of the strip cycles that project's share of this
-   count. */
-const COUNTS = (() => {
-  const years = SLOTS.map((slot) => slot.year)
-  const roles = new Set(SLOTS.flatMap((slot) => slot.roles))
+   count.
+
+   **The three read a slice now, not the whole roster.** Frozen at the same
+   three numbers regardless of what the panel is actually saying elsewhere read
+   as decoration wearing an instrument's styling — a gauge that never moves is
+   a sticker. So the gauges are filtered to whichever field is current: the
+   field the cycling title falls under with nothing picked, or every field the
+   selected project touches. Point at "filmmaker" and `YRS ACTIVE` becomes
+   years active *as one* — the span between the earliest and latest film work,
+   not the whole career. The scale each bar is read against (`of`) stays fixed
+   to the whole roster, though, so a field with two projects in it reads as a
+   short bar against the same ceiling rather than a differently-scaled gauge
+   every time the reading changes. */
+const COUNT_OF = { yrs: 16, roles: 12, orgs: 8 }
+
+const countsFor = (fields: Field[]) => {
+  const pool = SLOTS.filter((slot) => slot.fields.some((f) => fields.includes(f)))
+  const rows = pool.length ? pool : SLOTS
+  const years = rows.map((slot) => slot.year)
+  const roles = new Set(rows.flatMap((slot) => slot.roles))
+  const orgs = new Set(rows.map((slot) => slot.company))
   return [
-    { label: 'yrs', unit: 'active', value: Math.max(...years) - Math.min(...years) + 1, of: 16 },
-    { label: 'roles', unit: 'worn', value: roles.size, of: 12 },
-    { label: 'orgs', unit: 'shipped', value: new Set(SLOTS.map((slot) => slot.company)).size, of: 8 }
+    { label: 'yrs', unit: 'active', value: Math.max(...years) - Math.min(...years) + 1, of: COUNT_OF.yrs },
+    { label: 'roles', unit: 'worn', value: roles.size, of: COUNT_OF.roles },
+    { label: 'orgs', unit: 'shipped', value: orgs.size, of: COUNT_OF.orgs }
   ]
-})()
+}
 
 /** Cells in a count's bar. Small enough to be counted, which is the whole
  *  difference between a gauge and a progress bar. */
@@ -502,13 +525,25 @@ function FieldGauge({ name, on }: { name: Field; on: boolean }) {
  *  One rAF for the block rather than one per gauge, and it writes a cell count
  *  onto each bar rather than a state update — three custom properties on three
  *  elements, and only on the frames the reading actually crosses a cell. See
- *  `RISE` and `SWAY` for what it is doing and why. */
-function Counts() {
+ *  `RISE` and `SWAY` for what it is doing and why.
+ *
+ *  `fields` drives which slice of the roster the three numbers describe — see
+ *  `countsFor`. The bars ease toward whatever it currently resolves to rather
+ *  than restarting the climb from zero on every change: `shownFrac` is a
+ *  fraction per gauge that chases its target at a fixed rate, so landing on
+ *  "filmmaker" mid-cycle slides the bars to that reading rather than dropping
+ *  them back to empty and climbing again, which is what happens if the
+ *  arrival animation is simply re-run. */
+function Counts({ fields }: { fields: Field[] }) {
   const bars = useRef<Array<HTMLSpanElement | null>>([])
+  const rows = useMemo(() => countsFor(fields), [fields.join(',')])
+  const rowsRef = useRef(rows)
+  rowsRef.current = rows
+  const shownFrac = useRef(rows.map(() => 0))
 
   useEffect(() => {
     const settle = () =>
-      COUNTS.forEach((count, n) =>
+      rowsRef.current.forEach((count, n) =>
         bars.current[n]?.style.setProperty('--lit', String(Math.round((count.value / count.of) * TICKS)))
       )
 
@@ -518,42 +553,45 @@ function Counts() {
     }
 
     let raf = 0
-    const started = performance.now()
-    const shown = COUNTS.map(() => -1)
+    let previous = performance.now()
+    const shownCells = rowsRef.current.map(() => -1)
 
     const tick = (now: number) => {
       raf = requestAnimationFrame(tick)
-      const since = (now - started) / 1000
-      const rise = Math.min(1, since / RISE)
-      // Out of the cube, the same easing the compass spins up on.
-      const eased = 1 - Math.pow(1 - rise, 3)
+      const dt = Math.min(0.05, (now - previous) / 1000)
+      previous = now
+      const since = now / 1000
+      // Framerate-independent: the same time-to-settle at any frame rate,
+      // the way `Drift`'s `k` and the tach's own easing both work.
+      const k = 1 - Math.pow(0.001, dt / RISE)
 
-      COUNTS.forEach((count, n) => {
-        const base = (count.value / count.of) * eased
-        const sway =
-          rise < 1
-            ? 0
-            : (Math.sin(since * SWAY.rate + n * 2.1) + Math.sin(since * SWAY.rate * 2.7 + n) * 0.4) * SWAY.depth
-        const cells = Math.round(clamp(base + sway, 0, 1) * TICKS)
-        if (cells === shown[n]) return
-        shown[n] = cells
+      rowsRef.current.forEach((count, n) => {
+        const target = count.value / count.of
+        const frac = (shownFrac.current[n] += (target - shownFrac.current[n]) * k)
+        const settled = Math.abs(target - frac) < 0.01
+        const sway = settled
+          ? (Math.sin(since * SWAY.rate + n * 2.1) + Math.sin(since * SWAY.rate * 2.7 + n) * 0.4) * SWAY.depth
+          : 0
+        const cells = Math.round(clamp(frac + sway, 0, 1) * TICKS)
+        if (cells === shownCells[n]) return
+        shownCells[n] = cells
         bars.current[n]?.style.setProperty('--lit', String(cells))
       })
     }
 
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (
     <section className="mech-counts">
-      {COUNTS.map((count, n) => (
+      {rows.map((count, n) => (
         <div className="mech-gauge" key={count.label}>
           <span className="mech-gauge-n">
             <Segment
               text={String(count.value).padStart(2, '0')}
               cells={2}
-              settle={false}
               label={`${count.value} ${count.label}`}
             />
           </span>
@@ -791,14 +829,17 @@ export default function MechCluster({ onProject, covered, tuning }: Props) {
       <div className="mech-body">
         {/* ---- the left flank ---- */}
         <div className="mech-flank">
-          <Counts />
+          <Counts fields={marked} />
 
           {/* What I do — cycling the titles with nothing picked, or what I
               did on the selected project. Sat under the counts rather than
               in a run across the top: it is a reading off the same block of
-              facts, not a caption for the whole panel. */}
+              facts, not a caption for the whole panel. Left-aligned and in a
+              narrower box than the other two displays — it never needs
+              "Red Dead Redemption 2"'s width, and centred in a box that wide
+              read as adrift in it. */}
           <div className="mech-display mech-display-role" data-on={slot !== null}>
-            <Segment text={reading} cells={CELLS} label={reading} />
+            <Segment text={reading} cells={ROLE_CELLS} align="left" label={reading} />
           </div>
         </div>
 
@@ -817,8 +858,21 @@ export default function MechCluster({ onProject, covered, tuning }: Props) {
                 page. It used to be set in the site's Helvetica at body size
                 and colour, which made it the one humanist, low-contrast,
                 ragged thing on a panel of hard tracked caps. Same words, in
-                the panel's own monospace. */}
-            <p className="mech-profile">{PROFILE}</p>
+                the panel's own monospace.
+
+                Typed rather than dropped in — every other line on this panel
+                arrives a character at a time, and a paragraph that simply
+                appeared read as the one line the machine had not actually
+                switched on. `back` follows `covered`: opening a project
+                backspaces it out rather than leaving it frozen on screen
+                behind the cover, which is what a paragraph with no exit of
+                its own did. Fast both ways — `speed`/`backSpeed` are a
+                fraction of the name's, or a hundred and fifty-odd characters
+                either takes several seconds to arrive or is still typing
+                itself out after `EXIT_MS` has already unmounted it. */}
+            <p className="mech-profile">
+              <Typed text={PROFILE} run="cluster-intro" delay={0.6} speed={9} caret={false} back={covered} backSpeed={4} />
+            </p>
           </section>
 
           <Tach />
@@ -894,25 +948,6 @@ export default function MechCluster({ onProject, covered, tuning }: Props) {
             {FIELDS.map((name) => (
               <FieldGauge key={name} name={name} on={marked.includes(name)} />
             ))}
-          </div>
-
-          {/* The selected project's own line. Fixed height whether or not
-              there is one, so the rail does not shift every time the display
-              is released. */}
-          <div className="mech-detail" data-on={slot !== null}>
-            {slot && (
-              <>
-                <span>{slot.company}</span>
-                <i />
-                <span>{slot.timeline}</span>
-                {slot.restricted && (
-                  <>
-                    <i />
-                    <span className="mech-detail-warn">restricted</span>
-                  </>
-                )}
-              </>
-            )}
           </div>
         </aside>
       </div>

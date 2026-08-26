@@ -1,6 +1,7 @@
 import { useEffect, useRef, memo } from 'react'
 import { sound } from './sound'
 import { quarry } from './subject'
+import { kills } from './kills'
 
 /* The gun.
 
@@ -172,9 +173,27 @@ function MechLaser() {
       }
     }
 
+    /* Whether there is anything up right now — the same question `Alarm` in
+       `MechCluster.tsx` asks every frame to decide between `SHOOT` and
+       `STOP`. Asked again here, at the moment a shot actually leaves the
+       muzzle, because firing at an empty range is what `STOP` is telling you
+       not to do. */
+    const anyUp = () => {
+      for (const creature of quarry.creatures) {
+        if (creature.at()) return true
+      }
+      return false
+    }
+
     const fire = (to: { x: number; y: number }) => {
       const host = layer.current
       if (!host) return
+
+      // A shot taken while the range reads `STOP` costs what it would have
+      // brought down. Judged on the state at the trigger, not on where the
+      // bolt lands — a shot fired at nothing is a shot fired at nothing
+      // whether or not it happens to cross paths with the subject.
+      if (!anyUp()) kills.miss()
 
       const from = {
         x: window.innerWidth / 2,

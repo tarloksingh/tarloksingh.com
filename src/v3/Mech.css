@@ -434,6 +434,22 @@
   z-index: 1;
 }
 
+/* The same pool of light home's cluster sits in — `.mech-cluster::before` in
+   MechCluster.css — behind the subject here instead of behind the readout.
+   A still, a clip and a model are all just "whatever is on the stage" as far
+   as this is concerned: it is drawn once, behind all three, rather than
+   being a property of any one media kind. Root `--accent-rgb`, not the
+   cluster's paler one — this is a project screen, and every other lit thing
+   on it already reads off the root pair. */
+.mech-stage::before {
+  content: '';
+  position: absolute;
+  inset: calc(-200 * var(--px));
+  background: radial-gradient(ellipse 50% 46% at 50% 48%, rgba(var(--accent-rgb), 0.12), transparent 72%);
+  pointer-events: none;
+  z-index: -1;
+}
+
 .mech-stage canvas {
   display: block;
 }
