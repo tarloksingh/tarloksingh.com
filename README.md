@@ -1219,6 +1219,13 @@ resized to the same fixed box as the two keys and its glyphs went white too,
 so the row reads as three lamps in one housing rather than two switches
 either side of a stray number.
 
+**A seventh pass put the footer in the panel's own voice.** `hello@` and
+`developed by tarlok singh` were still the site's body font, the one thing on
+this screen not set in the panel's own system-text face — see *The profile,
+in the panel's voice* above for why that face (`ui-monospace`) is what every
+other piece of running text down here already uses. `.mech-foot` now sets it
+once, for both lines, rather than each one carrying its own copy.
+
 ### The cast
 
 > **Not mounted.** The line-up came off home — see *Home is a cluster*

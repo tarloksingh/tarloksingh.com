@@ -2766,6 +2766,11 @@
      entirely (see `Alarm.tsx`) — so the two corners can hold each other
      apart honestly instead of one faking it with `margin-left: auto`. */
   justify-content: space-between;
+  /* Same voice as the intro paragraph (`.mech-profile` in MechCluster.css) —
+     the panel's system-text face, not the site's body font, since this line
+     is one more thing the panel is printing rather than a caption pasted
+     under it. */
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: calc(13 * var(--type));
   color: var(--mid);
 }
