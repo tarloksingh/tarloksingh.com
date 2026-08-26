@@ -2771,7 +2771,10 @@
      is one more thing the panel is printing rather than a caption pasted
      under it. */
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: calc(13 * var(--type));
+  /* Same size as the intro paragraph (`.mech-profile`), not the site's own
+     footer scale — one more reading in the panel's system-text voice should
+     print at the size that voice already reads at elsewhere on the page. */
+  font-size: calc(10.5 * var(--type));
   color: var(--mid);
 }
 

@@ -1224,7 +1224,9 @@ either side of a stray number.
 this screen not set in the panel's own system-text face — see *The profile,
 in the panel's voice* above for why that face (`ui-monospace`) is what every
 other piece of running text down here already uses. `.mech-foot` now sets it
-once, for both lines, rather than each one carrying its own copy.
+once, for both lines, rather than each one carrying its own copy, at
+`.mech-profile`'s own size (`10.5`, not the footer's old `13`) — the same
+voice at a different size would still have read as a second document.
 
 ### The cast
 
