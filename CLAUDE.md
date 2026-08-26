@@ -186,6 +186,15 @@ five parts:
 Every block has its own entrance *and* its own exit, both hung off
 `data-covered` — see **Coming up, and going down** in `README.md`.
 
+**Warm is what the pointer changes; green is what the machine reports.** The
+name, the rail's project names and the field dials are `--warn`; every reading
+is phosphor.
+
+**Bloom belongs to the room, not to home.** `--g` is declared on `.mech` and
+`--cluster-glow` is written onto that root from `Mech.tsx`, so a project screen
+is lit exactly as home is — see **One room, both screens** in `README.md` for
+the bug that came of having it on `.mech-cluster`.
+
 Six traps in that, all written up in `README.md` → **Home is a cluster**, and
 all of them look like something other than what they are:
 

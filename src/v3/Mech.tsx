@@ -1129,6 +1129,12 @@ export default function Mech({ id, onProject, onHome }: Props) {
     <div
       className="mech"
       ref={root}
+      /* Bloom is a property of the room, not of home. It is set here rather
+         than on `.mech-cluster` — which only exists on home — because a knob
+         living on the screen it lights means every glow on the site falls back
+         to 1 the moment a project opens, and the swap reads as the lights
+         changing. See *one room, both screens* in Mech.css. */
+      style={{ ['--cluster-glow' as string]: cluster.values.glow }}
       data-boot={booting}
       data-pins={pinning}
       data-narrow={narrow}

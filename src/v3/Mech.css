@@ -32,6 +32,13 @@
      root, which puts the frame's natural width at 2300 — its cap. Past that
      the page would be a poster seen from across a room. */
   --px: min(0.0749rem, 0.0520833vw, 0.0925926vh);
+
+  /* How far the lit things bleed, for the whole site rather than for home.
+     `--cluster-glow` is written onto this element from `Mech.tsx` — deliberately
+     here and not on `.mech-cluster`, which only exists on home: set there, `--g`
+     fell back to 1 the moment a project opened and the room changed brightness
+     under you. See *one room, both screens* below. */
+  --g: var(--cluster-glow, 1);
   /* Side padding for full-bleed overlays — the index sheet, on the wide
      layout. The same inset the header and rail already sit at, so the sheet
      lines up with the chrome it covers. Narrow redefines this smaller of its
@@ -1648,14 +1655,38 @@
 /* The room the panel is in. A rose sign off to the left, sodium off the
    right, and the panel's own green wash in the middle — all far enough under
    the readout that no white text ever sits on a tint. */
+/* ---- one room, both screens ----
+
+   The reference is not a lit display on a black page — it is a lit display in a
+   dark *room*, and what sells that is the light not stopping at the edge of
+   anything. The first three washes here are the room; the last three are the
+   pool the instruments sit in, and they used to live on `.mech-cluster::before`
+   instead.
+
+   Moving them was a fix. The cluster only exists on home, so its whole haze
+   went out the moment you opened a project — and `--cluster-glow` was set
+   inline on that element, which meant `--g` fell back to 1 on a project screen
+   however far up the Bloom knob was left. Wound up on home, the two screens
+   were lit differently and the swap read as the room's lights changing rather
+   than as a page moving. This element is on every screen and `--g` is set on
+   `.mech`, so the bloom is now one setting for the whole site.
+
+   Bled well past the frame on every side: a wash that stops at an edge is a
+   rectangle, and the whole point of it is that the light does not stop. */
 .mech-bloom {
   position: absolute;
-  inset: 0;
+  inset: calc(-200 * var(--px));
   background:
     radial-gradient(ellipse 55% 50% at 50% 52%, rgba(var(--accent-rgb), 0.075), transparent 72%),
     radial-gradient(ellipse 46% 60% at 6% 88%, rgba(var(--wash-blue), 0.11), transparent 70%),
     radial-gradient(ellipse 42% 55% at 96% 12%, rgba(var(--wash-lime), 0.07), transparent 70%),
-    radial-gradient(ellipse 38% 44% at 88% 92%, rgba(var(--wash-blue), 0.06), transparent 70%);
+    radial-gradient(ellipse 38% 44% at 88% 92%, rgba(var(--wash-blue), 0.06), transparent 70%),
+    radial-gradient(ellipse 44% 36% at 50% 48%, rgba(var(--accent-rgb), calc(0.1 * var(--g))), transparent 72%),
+    radial-gradient(ellipse 36% 28% at 50% 82%, rgba(var(--accent-rgb), calc(0.06 * var(--g))), transparent 74%),
+    /* The warm pool the reference's brake light throws — a single wash the size
+       of half the panel, most of it faded out before it reaches anything else
+       lit. Nothing on either screen is `--warn` this large. */
+    radial-gradient(ellipse 36% 26% at 50% 0%, rgba(var(--warn-rgb), calc(0.06 * var(--g))), transparent 68%);
   animation: mech-bloom-drift 24s ease-in-out infinite alternate;
 }
 

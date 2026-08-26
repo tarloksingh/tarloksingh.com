@@ -65,21 +65,24 @@
   display: flex;
   flex-direction: column;
 
-  /* Every glow in this file is a multiple of this. One knob, on the panel. */
-  --g: var(--cluster-glow, 1);
+  /* Every glow in this file is a multiple of `--g`, which is declared on
+     `.mech` and inherited here — see the note beside it in Mech.css for why it
+     is not declared on this element any more. */
+
+  /* The counts' drawing width — and, through `--flank-w`, the rail's too.
+     The reel over the gauges is boxed to exactly this, so the two blocks share
+     a left and a right edge instead of the reel hanging off the side of the
+     gauges it belongs to. */
+  --count-w: calc(253 * var(--px));
 
   /* The two flanks are the same width, and that is what centres the middle.
      `.mech-body` hands what is left over to `.mech-main`, so a left flank that
      sized itself to whatever the role display happened to be left the
      instrument — and the name above it, which is centred in the frame — an
-     inch out of line with each other. One number for both. */
-  --flank-w: calc(380 * var(--px));
-
-  /* The counts' own drawing width, inside the bleed and the right-hand pad.
-     The role reel under them is boxed to exactly this, so the two blocks share
-     a left and a right edge instead of the reel hanging off the side of the
-     gauges it belongs to. */
-  --count-w: calc(253 * var(--px));
+     inch out of line with each other. One number for both, and it is the
+     counts' own: the rail used to be half again as wide as the block opposite
+     it, which made the panel lopsided about an axis its own name sits on. */
+  --flank-w: var(--count-w);
 
   /* The instrument's height, and the rail's. One token because they are meant
      to be the same block: the rail used to stretch to the full height of the
@@ -166,31 +169,18 @@
   align-items: center;
 }
 
-/* The haze the whole panel sits in.
+/* The haze the panel sits in used to be `.mech-cluster::before` — the cluster's
+   own pool of light, tied to where the cluster is rather than to the middle of
+   the window.
 
-   The reference is not a lit display on a black page — it is a lit display in
-   a dark *room*, and what sells that is the light not stopping at the edge of
-   anything. `.mech-bloom` in MechHud already washes the window; this is the
-   cluster's own pool, tied to where the cluster actually is rather than to the
-   middle of the screen, and it is what the readout and the graph appear to be
-   sitting inside of.
-
-   Behind everything in the cluster and taking no pointer, so it is atmosphere
-   and not a surface. */
-.mech-cluster::before {
-  content: '';
-  position: absolute;
-  inset: calc(-260 * var(--px)) calc(-180 * var(--px));
-  background:
-    radial-gradient(ellipse 50% 42% at 50% 46%, rgba(var(--accent-rgb), calc(0.1 * var(--g))), transparent 72%),
-    radial-gradient(ellipse 40% 32% at 50% 88%, rgba(var(--accent-rgb), calc(0.06 * var(--g))), transparent 74%),
-    /* The warm pool the reference's brake light throws — a single wash the
-       size of half the panel, most of it faded out before it reaches
-       anything else lit. Nothing on this screen is `--warn` this large. */
-    radial-gradient(ellipse 40% 30% at 50% 0%, rgba(var(--warn-rgb), calc(0.06 * var(--g))), transparent 68%);
-  pointer-events: none;
-  z-index: -1;
-}
+   It has moved to `.mech-bloom` in Mech.css, and that is a fix rather than a
+   tidy-up. The cluster only exists on home, so every glow it threw went out the
+   instant you opened a project — and `--cluster-glow` was set inline on this
+   element, so on a project screen `--g` fell back to 1 no matter where the
+   Bloom knob was left. Wound up on home, the two screens were lit differently
+   and the swap read as the room's lights changing. The wash is on the one
+   element that is on every screen now, and `--g` is set on `.mech`. See
+   *one room, both screens* in Mech.css. */
 
 /* A label. Every small caption on this screen is one of these: lower case,
    tracked out, and dim enough that it reads as printed on the panel rather
@@ -356,13 +346,6 @@
      between the counts and the graph they are read against. */
   align-items: flex-end;
   gap: calc(14 * var(--px));
-  /* Drops the flank until the counts' bars stand on the same floor the tach's
-     columns do. The bars and the face are the same height (`--face`), so this
-     is purely the difference in what sits *above* each of them: the intro and
-     the head row on the instrument, the reel of what I do on the gauges.
-     Measured off the built page — it is all type, and type does not answer to
-     `--px`. */
-  margin-top: calc(58 * var(--px));
 }
 
 /* Boxed to the counts' own drawing width, not to a number of its own. At three
@@ -551,7 +534,7 @@
    else on this panel. It stays under the lit one so a field that is off is
    still a dial and not a hole. */
 .mech-field-track {
-  stroke: rgba(var(--accent-rgb), 0.09);
+  stroke: rgba(var(--warn-rgb), 0.12);
 }
 
 /* Instant out, staggered in — the delay is only applied by the lit rule below,
@@ -562,26 +545,34 @@
   transition: stroke 160ms linear;
 }
 
+/* Warm, not phosphor.
+
+   This row and the rail beside it are the two blocks on the panel that say
+   what has been *picked* rather than what is being measured, and the panel has
+   had a colour for that since the name went red: `--warn` is the one channel
+   here that is not a reading. Everything the pointer changes is warm now and
+   everything the machine reports is green, which is a rule anyone can read off
+   the screen without being told it. */
 .mech-field-gauge[data-on='true'] .mech-field-lit {
-  stroke: var(--accent);
+  stroke: var(--warn);
   transition-delay: calc(var(--n, 0) * 34ms);
 }
 
 .mech-field-gauge[data-on='true'] .mech-field-ring {
-  filter: drop-shadow(0 0 calc(5 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.6 * var(--g))));
+  filter: drop-shadow(0 0 calc(5 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.6 * var(--g))));
 }
 
 .mech-field-label {
   font-size: calc(8.5 * var(--type));
   letter-spacing: calc(1.6 * var(--type));
   text-transform: uppercase;
-  color: rgba(var(--accent-rgb), 0.28);
+  color: rgba(var(--warn-rgb), 0.34);
   transition: color 220ms linear, text-shadow 220ms linear;
 }
 
 .mech-field-gauge[data-on='true'] .mech-field-label {
-  color: var(--accent);
-  text-shadow: 0 0 calc(9 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.55 * var(--g)));
+  color: var(--warn);
+  text-shadow: 0 0 calc(9 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.55 * var(--g)));
 }
 
 /* ---- the tachometer ----
@@ -801,12 +792,17 @@
   flex-direction: column-reverse;
   gap: calc(2.5 * var(--px));
   width: calc(26 * var(--px));
-  /* Exactly the tachometer's face — `--face` again, the same cell ladder that
-     sizes the graph and the rail. Three gauges standing to their own height
-     next to an instrument standing to another was the panel's parts each
-     picking a number; one token means the counts' floor and the graph's floor
-     are the same line across the frame. */
-  height: calc(var(--face, 240) * var(--px));
+  /* The tachometer's face, plus whatever the graph carries above it that these
+     do not.
+
+     The two blocks are aligned at the *top* — the reel of what I do sits level
+     with `INTRO` across the panel, which is the line the eye actually reads
+     along — so the bars have to be taller than the face to come down onto the
+     same floor as its columns. `--face` is the cell ladder (see `TACH_FACE` in
+     MechCluster.tsx); the constant is the head row the graph has and the reel
+     does not, measured off the built page because it is type and type does not
+     answer to `--px`. Both edges land on one line either way. */
+  height: calc((var(--face, 240) + 58) * var(--px));
 }
 
 .mech-gauge-bar i {
@@ -1130,12 +1126,16 @@
    Dead Redemption 2" in a slot a hundred and forty units wide is going to lose
    something either way, and losing the tail of a name you can still recognise
    beats losing the size that made the whole bank readable. */
+/* Warm, like the field dials under the bank and the name over the whole panel.
+   The rail and the scale row are what the *pointer* changes; everything else on
+   this screen is the machine reporting. One channel for each, so which is which
+   is legible without a legend. */
 .mech-slot-name {
   font-size: calc(11 * var(--type));
   letter-spacing: calc(0.5 * var(--type));
   line-height: 1.18;
   text-transform: uppercase;
-  color: rgba(var(--accent-rgb), 0.6);
+  color: rgba(var(--warn-rgb), 0.62);
   transition: color 180ms linear, text-shadow 180ms linear;
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -1145,8 +1145,8 @@
 }
 
 .mech-slot[data-on='true'] .mech-slot-name {
-  color: #fff;
-  text-shadow: 0 0 calc(10 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.7 * var(--g)));
+  color: var(--warn);
+  text-shadow: 0 0 calc(10 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.75 * var(--g)));
 }
 
 .mech-slot-foot {

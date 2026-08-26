@@ -149,6 +149,27 @@ caught mid-exchange. Hovering a box in the index fills the readout in with
 that project *before* you press it, which is what makes the press feel like it
 lands on something already open rather than like a question being answered.
 
+### One room, both screens
+
+The bloom is a property of the room, not of home, and it took a bug to notice.
+
+`--cluster-glow` is the Bloom knob on the dev panel, and every glow radius and
+glow alpha in `MechCluster.css` is a multiple of it. It used to be written
+inline onto `.mech-cluster` — which only exists on home. So `--g` fell back to
+1 the moment a project opened, the cluster's own pool of light went out with
+the element that carried it, and the swap read as the room's lights changing
+rather than as a page moving. Wound up, the two screens were lit differently.
+
+Two moves fix it. `--g` is declared on `.mech`, and `Mech.tsx` writes
+`--cluster-glow` onto that same root whichever screen is up. And the cluster's
+haze — the accent pools and the warm one the reference's brake light throws —
+moved onto `.mech-bloom` in `MechHud.tsx`, which is on every screen. One knob,
+one room, and a project screen is now lit exactly as home is.
+
+The wash bleeds two hundred units past the frame on every side: a wash that
+stops at an edge is a rectangle, and the whole point of it is that the light
+does not stop.
+
 ### Home is a cluster
 
 The character select survived one more pass and then lost the argument.
@@ -246,9 +267,19 @@ sizing itself to whatever the role reel happened to be left the instrument an
 inch to the left of the name centred in the frame above it — close enough to
 look like a mistake and not close enough to look like one on purpose.
 `--flank-w` is one number for both the counts column and the rail, and the
-tachometer lands under the middle of the name because of it. The counts still
-bleed off the left edge inside their flank; the bleed is a fact about the
-counts, not about the column they stand in.
+tachometer lands under the middle of the name because of it.
+
+And that number is `--count-w`, the counts' own width. The rail used to be half
+again as wide as the block opposite it, which made the panel lopsided about the
+axis its own name sits on — the rail is narrow enough to want a two-line project
+name either way, and it already scrolls.
+
+**Warm is what the pointer changes; green is what the machine reports.** The
+rail's names and the field dials under it are `--warn` now, the same channel the
+name over the whole panel is set in. Everything else stays phosphor. It is a
+rule you can read off the screen without being told it, and it is why the name
+went red in the first place — it is the one line on the page that is not a
+reading.
 
 **The name is fitted to its box, so the box is how it grows.** `.mech-ident` is
 a container and the font size is a `cqw` sum over the character count — which
@@ -828,6 +859,12 @@ side of the mark so the join is a point rather than a gap.
 
 Three bars, their labels, and the reel of what I do standing over them. No
 border — see `#### The display` for why nothing on this panel is boxed.
+
+**The bars are taller than the graph's face, on purpose.** The two blocks are
+aligned at the *top* — the reel of what I do sits level with `INTRO` across the
+panel, which is the line the eye reads along — and the tachometer carries a head
+row above its face that the gauges do not. So the bars are `--face` plus that
+head, and both blocks land on one floor as well as one ceiling.
 
 **They used to be bled off the left edge of the frame**, on the argument that a
 block running past the glass reads as a panel carrying on rather than as a card
