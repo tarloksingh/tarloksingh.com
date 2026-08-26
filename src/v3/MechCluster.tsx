@@ -583,11 +583,16 @@ function Alarm() {
 
   return (
     <div className="mech-alarm" aria-hidden>
+      {/* `cells` matches each word exactly now — `STOP` at `cells={5}` left a
+          trailing blank cell (Segment centres by padding blanks on both
+          sides, and one spare cell over an even split rounds down to zero
+          leading blanks), which is what was reading as the word sitting in
+          the upper-left of its box instead of centred in it. */}
       <i className="mech-alarm-key" data-on={up}>
         <Segment text="SHOOT" cells={5} settle={false} label="shoot" />
       </i>
       <i className="mech-alarm-key" data-warn data-on={!up}>
-        <Segment text="STOP" cells={5} warn settle={false} label="stop" />
+        <Segment text="STOP" cells={4} warn settle={false} label="stop" />
       </i>
     </div>
   )
@@ -969,7 +974,8 @@ export default function MechCluster({ onProject, covered, tuning }: Props) {
         ['--cluster-y' as string]: tuning.y,
         ['--cluster-name' as string]: tuning.name,
         ['--cluster-glow' as string]: tuning.glow,
-        ['--cluster-slot' as string]: tuning.slot
+        ['--cluster-slot' as string]: tuning.slot,
+        ['--cluster-tach' as string]: tuning.tach
       }}
     >
       <Alarm />

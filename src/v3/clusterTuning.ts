@@ -4,14 +4,15 @@ import { copyText } from './clipboard'
 
 /* ---- the home cluster's own panel ----
 
-   Four numbers, and deliberately only four. The cluster is a fixed layout in
-   frame coordinates — where the bands sit, how wide the flanks are and how the
+   Five numbers now, not four. The cluster is a fixed layout in frame
+   coordinates — where the bands sit, how wide the flanks are and how the
    graph is spaced are all decisions, written in `MechCluster.css` where they
    can be read next to what they affect. What is on here is the handful of
    things that are genuinely a matter of taste in front of a real screen:
    whether the whole cluster sits high or low, how large the name is against
-   the readout under it, how far the panel bleeds, and how tall the graph
-   stands.
+   the readout under it, how far the panel bleeds, how tall the graph stands,
+   and — the newest one — how wide the instrument itself stands against the
+   counts and the rail either side of it.
 
    The tabs this replaces — Cast, Tags, Wave, Name — went with the line-up they
    described. Their files are all still here; see the note at the top of
@@ -29,13 +30,24 @@ export interface ClusterTuning {
   glow: number
   /** How tall a slot in the bank stands, in frame units. */
   slot: number
+  /** How wide the tachometer stands, in frame units — `--tach-w`.
+   *
+   *  `.mech-main`, the column it sits in, is `flex: 1` and centres it; wind
+   *  this up and the instrument's own edges move out to meet the counts and
+   *  the rail either side of it, which is the actual knob for "the middle
+   *  column feels far from its neighbours" — the gap between the three
+   *  columns (`.mech-body`'s own `gap`) is a much smaller number than the
+   *  dead air `flex: 1` leaves either side of a fixed-width instrument, and
+   *  turning that gap down further does nothing about the second one. */
+  tach: number
 }
 
 export const CLUSTER_DEFAULTS: ClusterTuning = {
   y: 0,
   name: 0.88,
   glow: 1.2,
-  slot: 82
+  slot: 82,
+  tach: 900
 }
 
 const STORE_KEY = 'v3.cluster.tuning.v1'
@@ -69,6 +81,7 @@ export function useClusterTuning() {
       name: { value: start.name, min: 0.4, max: 2.2, step: 0.01, label: 'Name size' },
       glow: { value: start.glow, min: 0, max: 5, step: 0.01, label: 'Bloom' },
       slot: { value: start.slot, min: 64, max: 260, step: 1, label: 'Slot height' },
+      tach: { value: start.tach, min: 500, max: 1190, step: 5, label: 'Instrument width' },
       'Copy for source': button(() => {
         const text = asSource(live)
         void copyText(text)

@@ -1081,6 +1081,34 @@ layout scrolls the whole page rather than a fixed frame, and a fixed pair
 there would sit stuck over whatever scrolled underneath it instead of taking
 its place in the column.
 
+**A third pass fixed what the second one got wrong, and added a fifth knob.**
+`STOP` at `cells={5}` (matched to `SHOOT`'s own length so the two boxes came
+out the same width) left a trailing blank cell — Segment centres a word by
+padding blanks on both sides, and one spare cell over an even split rounds
+down to zero leading blanks, so the word sat in the upper-left of its box
+rather than the middle of it. Fixed two ways: `STOP` is `cells={4}`, its own
+length, and `.mech-alarm-key` is a flex container now rather than a block one,
+so a mismatch like that centres regardless. The box is smaller, and moved
+down to `top: calc(90 * var(--px))` — level with `.mech-deck-slot`, the audio
+widget, rather than sitting above it. And the `::after` throwing a 300-unit
+radial pool of light behind a lit key is gone outright: sized for the
+reference's own dashboard rather than this one, it was several times the
+key's own box, and — the real complaint — it did not answer to `--g` (the
+Bloom knob) the way the `box-shadow` beside it already did, so it read as a
+glow with a source somewhere else on the page.
+
+The other note was that the gap between the counts, the instrument and the
+rail had not actually closed. It hadn't, because it was never `.mech-body`'s
+`gap` doing that: `.mech-main` is `flex: 1` and centres a fixed-width
+`.mech-tach` inside it, and *that* — the leftover room either side of a
+720-unit instrument in a column wider than that — was the real distance, a
+number several times the row's own `gap`. `tach` is the cluster panel's fifth
+knob now (`--cluster-tach`, "Instrument width"), wired straight to `--tach-w`,
+so winding the instrument wider is what actually pulls its neighbours in —
+the tool asked for, rather than another guess at a constant. Default moved
+up to `900` at the same time, so the panel reads closer at rest and the knob
+is there for taste from that point rather than to fix a gap by itself.
+
 ### The cast
 
 > **Not mounted.** The line-up came off home — see *Home is a cluster*

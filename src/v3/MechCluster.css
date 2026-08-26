@@ -101,8 +101,14 @@
   /* How wide the tachometer stands. Narrower than the column it sits in — a
      graph run to the full width of the middle put twenty-two columns so far
      apart they stopped reading as one instrument. The intro is boxed to the
-     same width so the two share a left edge. */
-  --tach-w: calc(720 * var(--px));
+     same width so the two share a left edge.
+
+     `--cluster-tach`, from `tuning.tach` in MechCluster.tsx (the Cluster
+     panel's "Instrument width" knob) — `.mech-main` is `flex: 1` and centres
+     this, so winding it up is what actually closes the gap between the
+     instrument and the counts/rail either side of it. `.mech-body`'s own
+     `gap` is a much smaller number and was never the real distance. */
+  --tach-w: calc(var(--cluster-tach, 720) * var(--px));
 
   /* The panel's own phosphor, paler and less saturated than the site's
      `--accent` — the reference is a muted sage-mint, not a terminal green,
@@ -207,16 +213,21 @@
    `--cluster-y`, the panel's Vertical knob, and this pair is meant to stay
    welded to the tally above it — the reticle's count and the reticle's own
    instruction — rather than drifting with whatever the rest of the panel is
-   doing underneath. */
+   doing underneath.
+
+   `top` matches `.mech-deck-slot` in Mech.css (the audio widget, docked at
+   the same 90 units) rather than sitting on its own higher up the frame —
+   the two are meant to read as one row, the reticle's own instrument next to
+   the deck's, not as one thing floating above the other. */
 .mech-alarm {
   position: fixed;
   left: 50%;
-  top: calc(52 * var(--px));
+  top: calc(90 * var(--px));
   transform: translateX(-50%);
   z-index: 3;
   display: flex;
   justify-content: center;
-  gap: calc(9 * var(--px));
+  gap: calc(7 * var(--px));
 }
 
 /* The word is drawn in the panel's own segment glyphs now, not typed — see
@@ -231,12 +242,22 @@
   --shoot: #f2c230;
   --shoot-rgb: 242, 194, 48;
   position: relative;
-  display: block;
-  width: calc(112 * var(--px));
-  padding: calc(9 * var(--px)) calc(12 * var(--px));
+  /* Flex, not block — a block container only ever aligns its content along
+     the inline axis (Segment's own centre-padding), and gave the box no way
+     to centre a word shorter than its own height's worth of padding on the
+     cross axis. This centres both. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(78 * var(--px));
+  padding: calc(6 * var(--px)) calc(9 * var(--px));
   border: 1px solid rgba(var(--accent-rgb), 0.14);
   background: rgba(var(--accent-rgb), 0.03);
   transition: border-color 200ms linear, background-color 200ms linear, box-shadow 200ms linear;
+}
+
+.mech-alarm-key .mech-seg {
+  width: 100%;
 }
 
 /* Unlit: dim, and in the key's own colour rather than the panel's green —
@@ -296,43 +317,14 @@
   stroke: rgba(0, 0, 0, 0.18);
 }
 
-/* The pool of light a lit key throws onto the housing around it.
-   This is the single most recognisable thing in the reference — a small bright
-   source lighting the surface around it, rather than every element glowing
-   politely inside its own box — and it costs one pseudo-element.
-
-   A short, wide ellipse the size of the lamp's own glow, rather than a large
-   near-circle centred on it, is what read as a hard-edged rectangle instead
-   of a soft pool: the gradient had almost no room to fall off before it hit
-   the box it was drawn in. Round, larger than the lamp by a wide margin, and
-   three stops rather than one, so it actually fades rather than stopping. */
-.mech-alarm-key[data-on='true']::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: calc(300 * var(--px));
-  height: calc(300 * var(--px));
-  transform: translate(-50%, -50%);
-  background: radial-gradient(
-    circle,
-    rgba(var(--shoot-rgb), calc(0.34 * var(--g))) 0%,
-    rgba(var(--shoot-rgb), calc(0.13 * var(--g))) 32%,
-    transparent 68%
-  );
-  pointer-events: none;
-  z-index: -1;
-  animation: mech-cluster-fade 420ms linear both;
-}
-
-.mech-alarm-key[data-warn][data-on='true']::after {
-  background: radial-gradient(
-    circle,
-    rgba(var(--warn-rgb), calc(0.34 * var(--g))) 0%,
-    rgba(var(--warn-rgb), calc(0.13 * var(--g))) 32%,
-    transparent 68%
-  );
-}
+/* No separate pool of light any more. There was a `::after` here throwing a
+   300-unit radial wash behind a lit key — sized for the reference's own
+   dashboard, several times the key's own box, and it read as a stray glow
+   with no source rather than light off the lamp. The `box-shadow` above is
+   the actual light this key throws, and it already answers to `--g` (the
+   Bloom knob) the same as everything else on the panel — this pool did not,
+   which was the other half of "looks unnatural": every other glow on the
+   screen breathes with Bloom, and this one did not. */
 
 /* ---- the readouts ----
 
