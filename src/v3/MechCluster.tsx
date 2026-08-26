@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Segment from './Segment'
 import Typed from './Typed'
 import { MENU } from './model'
-import { kills } from './kills'
+import { quarry } from './subject'
 import { sound } from './sound'
 import MechSlots, { hasSubject, SlotView } from './MechSlots'
 import type { Tag } from '../data/projects'
@@ -24,10 +24,18 @@ import './MechCluster.css'
    is a readout: something is on a stage and the panel around it *reports* on
    it. Home was the one page not doing that.
 
-   So home is a panel now, laid out the way a car's instrument cluster is: a
-   row of indicator lamps along the top, a rail of selectable slots down the
-   left the full height of the panel, and the readout, the field scale and a
-   large activity graph filling the rest.
+   So home is a panel now, laid out the way a car's instrument cluster is.
+   Five things, and the arrangement is the whole design:
+
+   - a **warning pair** at the top of the frame, `SHOOT` / `STOP`, which is
+     the one lamp on the page about the page rather than about the work: it
+     reports whether there is anything in the air to shoot at.
+   - a **strip of displays** across the top of the panel — what I do on the
+     left, what is selected on the right, one continuous run of lamp cells.
+   - the **tachometer**, the single largest instrument, filling the middle.
+   - the **name and the profile**, laid over the quiet left end of it.
+   - the **counts** bled off the left edge, and the **rail of work** down the
+     right.
 
    `MechCast.tsx`, `MechWave.tsx`, `castTuning.ts`, `castTags.ts` and
    `MechCastPins.tsx` are all still here and still work; they are simply not
@@ -58,9 +66,8 @@ import './MechCluster.css'
    What replaced it is the bank of preset buttons off a car stereo: numbered,
    named, pressable slots, one lit, with the display above reading out
    whichever it is. It ran across the bottom of the frame at first; it is a
-   rail down the left now, so it can be the one large graphic on the panel
-   without also being the one control on it — see `Tach` for what took the
-   width it gave up.
+   rail down the right now, opposite the counts, with the tachometer between
+   them taking the width it gave up.
 
    And a slot holds the project's own subject, live and turning: Mr.
    Takahashi's head, the Capsule C1 enclosure, Solomon's rider, the fish man,
@@ -105,7 +112,10 @@ const FIELD_OF: Record<Tag, Field> = {
   work: 'product'
 }
 
-/** How long a title holds before the display settles onto the next one. */
+/** How long a reading holds before the display settles onto the next one.
+ *  It is one interval for both halves of the strip: with nothing selected the
+ *  left display cycles the titles, and with a project up it cycles whatever I
+ *  actually did on that project — "founder", then "product designer". */
 const TITLE_MS = 2600
 
 /** How long the display keeps a project after the pointer has left the bank
@@ -119,10 +129,33 @@ const NAME = 'Tarlok Singh'
 const PROFILE =
   'Artist with 10+ years building 0→1 developer tools, AI applications, and consumer products and films. In love with building and designing beautiful things.'
 
-/** How many cells the main display has. Wide enough for the longest title and
- *  the longest project name, and fixed — a readout is a fixed number of lamps,
- *  and one that resized itself around each word would be a text box. */
+/** How many cells each half of the strip has. Wide enough for the longest
+ *  title and the longest project name — "Red Dead Redemption 2" is twenty-one
+ *  characters and it is not going to be abbreviated on the one display whose
+ *  job is naming it. Fixed, and the same on both sides: a readout is a fixed
+ *  number of lamps, and one that resized itself around each word would be a
+ *  text box. */
 const CELLS = 21
+
+/** The three dark cell groups between the two displays. They read nothing and
+ *  they are not decoration either — they are what makes the strip one run of
+ *  lamps with two words lit on it rather than two boxes with a hole between
+ *  them, which is the difference between a panel and a pair of widgets. */
+const GAPS = [3, 3, 3]
+
+/** What the right-hand display says with nothing picked. A dark box on
+ *  arrival reads as broken; this labels what the box is for, and it goes out
+ *  the moment there is something real to put there. */
+const IDLE = 'select'
+
+/** A role, split into the things it actually is. "Founder & Product Designer"
+ *  is two jobs printed as one string, and the display cycles them — see
+ *  `TITLE_MS`. */
+const rolesOf = (role: string): string[] =>
+  role
+    .split(/[&,/]/)
+    .map((part) => part.trim().toUpperCase())
+    .filter(Boolean)
 
 /* ---- the bank ----
 
@@ -141,13 +174,16 @@ interface Slot {
   timeline: string
   year: number
   fields: Field[]
+  /** What I did on it, one job per entry — what the left display reads out
+   *  while this slot is up. */
+  roles: string[]
   /** No material yet: Visa is under an NDA, Solomon's write-up is still to
    *  come. The slot says so rather than being left out of the bank — both are
    *  real work, and a gap at position 01 would read as a bug. */
   restricted: boolean
   /** Whether there is a subject to stand in the slot — a model or a piece.
    *  Visa is the only one without, and its slot says so rather than being left
-   *  out of the bank. Also what the 3D lamp reports. */
+   *  out of the bank. */
   solid: boolean
 }
 
@@ -159,18 +195,30 @@ const SLOTS: Slot[] = MENU.map((item) => ({
   timeline: item.project.timeline,
   year: item.project.year,
   fields: [...new Set(item.project.tags.map((tag) => FIELD_OF[tag]).filter(Boolean))],
+  roles: rolesOf(item.project.role),
   restricted: Boolean(item.project.restricted),
   solid: hasSubject(item.project.id)
 }))
 
-/** The counts down the right-hand side. All three come off the work itself —
- *  a portfolio that states a number it does not derive is a portfolio with a
- *  number to keep up to date. */
+/* ---- the counts ----
+
+   Three gauges bled off the left edge of the frame, and all three come off the
+   work itself — a portfolio that states a number it does not derive is a
+   portfolio with a number to keep up to date.
+
+   What used to be here was `PROJ LISTED`, `YRS ACTIVE` and `ORGS SHIPPED`, and
+   the first of those was counting the list that is on the same screen: the
+   rail's own head already says "12 entries". `ROLES WORN` took its place
+   because it is the one number on this panel that is not visible anywhere else
+   on it, and because it is what the display opposite is reading out — point at
+   a project and the left half of the strip cycles that project's share of this
+   count. */
 const COUNTS = (() => {
   const years = SLOTS.map((slot) => slot.year)
+  const roles = new Set(SLOTS.flatMap((slot) => slot.roles))
   return [
-    { label: 'proj', unit: 'listed', value: SLOTS.length, of: 16 },
     { label: 'yrs', unit: 'active', value: Math.max(...years) - Math.min(...years) + 1, of: 16 },
+    { label: 'roles', unit: 'worn', value: roles.size, of: 12 },
     { label: 'orgs', unit: 'shipped', value: new Set(SLOTS.map((slot) => slot.company)).size, of: 8 }
   ]
 })()
@@ -179,94 +227,269 @@ const COUNTS = (() => {
  *  difference between a gauge and a progress bar. */
 const TICKS = 16
 
-/* ---- the tach ----
+/** Seconds a bar takes to climb to its reading on arrival, and how far it
+ *  wanders around it afterwards.
+ *
+ *  The wander is the reason these are drawn as gauges at all. A stack of cells
+ *  frozen at two-thirds is a progress bar with the styling of an instrument;
+ *  a needle that will not sit perfectly still is the one thing that says
+ *  something is being *measured*. It is a fraction of the bar either way — the
+ *  number in the window above never moves, because that part is true. */
+const RISE = 1.1
+const SWAY = { rate: 0.55, depth: 0.055 }
 
-   The reference's own tachometer is the single largest thing on its dash —
-   a wide bar graph, colour running from the panel's green into a fixed
-   redline near the top of the scale. This screen had nothing that size once
-   the bank stopped being a bar graph, and the gap was the wrong read: it
-   looked like the graphic had been dropped rather than like it had never
-   been load-bearing. It comes back here purely as a reading — work is
-   picked in the rail now, and this does not select anything, the same way a
-   real tachometer does not choose a gear.
+const clamp = (n: number, low: number, high: number) => Math.max(low, Math.min(high, n))
 
-   One column a year, activity across the years worked — real data, the same
-   span `YRS ACTIVE` already counts, drawn out year by year instead of
-   collapsed to a total. A year with nothing shipped is still a column, at
-   zero, because a gap in a timeline is information and not a hole in the
-   graph. */
-const TACH_ROWS = 14
-/** Rows at or above this index sit in the fixed warm band near the top of
- *  every column's scale — a mark on the face, not a fact about any one
- *  column, exactly like a real tachometer's redline. `.mech-tach-redline`'s
- *  `bottom` offset in MechCluster.css is hand-tuned to this fraction
- *  ((TACH_ROWS - TACH_REDLINE) / TACH_ROWS); move one and move the other. */
-const TACH_REDLINE = 11
+const reduced = () =>
+  typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-const ACTIVITY = (() => {
-  const years = SLOTS.map((slot) => slot.year)
-  const min = Math.min(...years)
-  const max = Math.max(...years)
-  const byYear = (year: number) => SLOTS.filter((slot) => slot.year === year).length
-  const peak = Math.max(...Array.from({ length: max - min + 1 }, (_, i) => byYear(min + i)))
-  return Array.from({ length: max - min + 1 }, (_, i) => {
-    const year = min + i
-    const count = byYear(year)
-    return { year, count, lit: peak ? Math.round((count / peak) * TACH_ROWS) : 0 }
-  })
-})()
+/* ---- the tachometer ----
 
-/* ---- the lamps ----
+   The single largest instrument on the panel, the way the reference's own
+   tachometer is the biggest thing on its dash, and the thing the name and the
+   profile are laid over.
 
-   The row along the top, and every one of them now says something.
+   It is not a chart. What was here before was: one column a year, projects
+   shipped against the years worked — real data, and it read as a graph pasted
+   onto a dashboard, because a bar chart of twelve things sitting under a bank
+   that lists the same twelve things is the same information drawn twice.
 
-   They used to be `PWR`, `GRID` and `SCAN` — three lamps that were simply on,
-   which is what most of the lamps on a real cluster are, and which on a screen
-   is three words pretending to be instruments. A warning lamp is only worth
-   drawing if there is a state it is warning about.
+   So it is an instrument instead, and it reports on nothing: revs, sweeping
+   up the scale and falling back, the way a tachometer does with a foot on the
+   throttle. The columns stand at a fixed power curve; what moves is how far
+   along that curve the needle has got, and the red zone at the top of the
+   scale is painted on the face — a mark, not a reading, exactly like a real
+   one. Nothing on this screen selects anything here. The work is picked in
+   the rail. */
+const TACH_COLS = 34
 
-   So the row reports on whatever is selected in the bank below: what the
-   project is made of, and whether it can be shown at all. Move along the slots
-   and the top of the panel answers — which is the same trick the display
-   plays, and it is what makes the cluster read as one machine rather than as
-   three unrelated widgets stacked up. `HIT` is the odd one out and stays: it
-   is the gun's, and it is the only lamp that is about the page rather than
-   about the work. */
-function Lamps({ slot }: { slot: Slot | null }) {
-  const downed = useSyncExternalStore(kills.subscribe, kills.snapshot, kills.snapshot)
+/** Where the red zone starts, as a fraction of the scale. The throttle is
+ *  wound up to just short of it and only occasionally clips in — a needle that
+ *  lives in the red is a needle nobody looks at. */
+const TACH_RED = 0.82
 
-  const lamps = [
-    { key: 'sel', on: slot !== null, warn: false },
-    { key: '3d', on: slot?.solid ?? false, warn: false },
-    { key: 'film', on: slot?.fields.includes('film') ?? false, warn: false },
-    { key: 'game', on: slot?.fields.includes('games') ?? false, warn: false },
-    { key: 'nda', on: slot?.restricted ?? false, warn: true },
-    { key: 'hit', on: downed > 0, warn: true }
-  ]
+/** How many cells tall a column can be. The face is drawn in whole cells and
+ *  every column's height is snapped to one, so the rows line up across the
+ *  graph rather than each column ending wherever its own curve happened to
+ *  fall. */
+const TACH_ROWS = 20
+
+/** The power curve, one entry per column: up off idle, a long plateau, and
+ *  falling away past the red mark. A hair of wobble on top, because a curve
+ *  that is perfectly smooth is a function plotted rather than an engine
+ *  measured — deterministic, so it is the same shape on every load. */
+const CURVE = Array.from({ length: TACH_COLS }, (_, i) => {
+  const t = i / (TACH_COLS - 1)
+  const rise = 1 / (1 + Math.exp(-(t - 0.34) * 9))
+  const fall = 1 - 0.16 * Math.pow(Math.max(0, t - 0.68) / 0.32, 2)
+  const raw = 0.12 + 0.88 * rise * fall + 0.018 * Math.sin(i * 2.7)
+  return Math.round(clamp(raw, 0.06, 1) * TACH_ROWS) / TACH_ROWS
+})
+
+/** Where the needle idles, and the range it is blipped to. It spends longer
+ *  wound up than resting on purpose: an instrument sitting at its stop is an
+ *  instrument that reads as switched off, and the columns near idle are the
+ *  short ones at the quiet end of the curve. */
+const REV_IDLE = 0.2
+const REV_PEAK = [0.64, 0.92]
+const REV_HOLD = { idle: [0.45, 1.1], wound: [1, 2.2] }
+
+const rand = (a: number, b: number) => a + Math.random() * (b - a)
+
+/** The dotted trace over the tops of the columns — the envelope the columns
+ *  are standing under, which is what makes the graph read as a face with a
+ *  curve printed on it rather than as a row of bars. Drawn in a 100 × 100
+ *  viewBox stretched to the face, so it needs no measurement. */
+const tracePoints = (from: number, to: number) =>
+  CURVE.slice(from, to)
+    .map((h, n) => {
+      const i = from + n
+      const x = ((i + 0.5) / TACH_COLS) * 100
+      // Lifted clear of the cells it caps, in the same units.
+      const y = (1 - h) * 100 - 3.4
+      return `${x.toFixed(2)},${y.toFixed(2)}`
+    })
+    .join(' ')
+
+const REDLINE_AT = Math.round(TACH_RED * TACH_COLS)
+
+function Tach() {
+  const face = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const node = face.current
+    if (!node) return
+    if (reduced()) {
+      node.style.setProperty('--rev', String(Math.round(0.62 * TACH_COLS) / TACH_COLS))
+      return
+    }
+
+    let raf = 0
+    let rev = 0
+    /* The machine coming up: the first thing the needle does is sweep the
+       scale and drop back, which is what a cluster does when the ignition is
+       turned and is the reason a real one is worth watching at all. */
+    let target = REV_PEAK[1]
+    let hold = 0.95
+    let previous = performance.now()
+    let shown = -1
+
+    const tick = (now: number) => {
+      raf = requestAnimationFrame(tick)
+      const dt = Math.min(0.05, (now - previous) / 1000)
+      previous = now
+
+      hold -= dt
+      if (hold <= 0) {
+        const wound = target > REV_IDLE + 0.01
+        target = wound ? REV_IDLE : rand(REV_PEAK[0], REV_PEAK[1])
+        const next = wound ? REV_HOLD.idle : REV_HOLD.wound
+        hold = rand(next[0], next[1])
+      }
+
+      // Up fast and down slow, which is the whole character of a throttle
+      // being blipped — the same rise and fall at the same rate is a slider.
+      rev += (target - rev) * Math.min(1, (target > rev ? 3.6 : 1.9) * dt)
+      const shake = Math.sin(now / 61) * 0.006 + Math.sin(now / 23) * 0.003
+
+      /* Snapped to whole columns before it is written. A bar graph lights
+         lamps, so a value between two of them is a value with nowhere to go —
+         and snapping also means the property is only written when the reading
+         has actually moved, which is what keeps a style invalidation over
+         thirty-four columns off most frames. */
+      const at = Math.round(clamp(rev + shake, 0, 1) * TACH_COLS) / TACH_COLS
+      if (at === shown) return
+      shown = at
+      node.style.setProperty('--rev', String(at))
+    }
+
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [])
 
   return (
-    <div className="mech-lamps" aria-hidden>
-      {lamps.map((lamp) => (
-        <i key={lamp.key} className="mech-lamp" data-on={lamp.on} data-warn={lamp.warn}>
-          <span>{lamp.key}</span>
-        </i>
-      ))}
+    <div className="mech-tach">
+      <div className="mech-tach-head">
+        <span className="mech-cap">output</span>
+        <span className="mech-tach-unit">× 1000</span>
+      </div>
+
+      {/* `--cols` is handed to the stylesheet rather than written into it: each
+          column works out whether the sweep has reached it from its own index
+          against `--rev`, and that arithmetic needs to know how many there
+          are. Hard-code it in the CSS and changing `TACH_COLS` here leaves a
+          graph that lights the wrong half of itself. */}
+      <div
+        className="mech-tach-face"
+        ref={face}
+        style={{ ['--cols' as string]: TACH_COLS, ['--red' as string]: TACH_RED }}
+        aria-hidden
+      >
+        <div className="mech-tach-bank">
+          {CURVE.map((h, i) => (
+            <span
+              key={i}
+              className="mech-tach-col"
+              data-red={i >= REDLINE_AT}
+              style={{ ['--h' as string]: h, ['--i' as string]: i }}
+            />
+          ))}
+        </div>
+
+        {/* Two polylines rather than one dashed in two colours: the trace goes
+            warm where the face does, and a single element cannot change stroke
+            half way along. They share the column either side of the mark so
+            the join is a point and not a gap. */}
+        <svg className="mech-tach-trace" viewBox="0 0 100 100" preserveAspectRatio="none" focusable="false">
+          <polyline className="mech-tach-line" points={tracePoints(0, REDLINE_AT + 1)} vectorEffect="non-scaling-stroke" />
+          <polyline
+            className="mech-tach-line mech-tach-line-red"
+            points={tracePoints(REDLINE_AT, TACH_COLS)}
+            vectorEffect="non-scaling-stroke"
+          />
+        </svg>
+
+        <span className="mech-tach-redline" />
+      </div>
+
+      <div className="mech-tach-axis" aria-hidden>
+        {['0.5', '1', '2', '3', '4', '5', '6', '7'].map((mark, n) => (
+          <span key={mark} data-red={n >= 6}>
+            {mark}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/* ---- the warning pair ----
+
+   The top of the frame, and the one lamp on this page that is about the page
+   rather than about the work. There is a bird crossing the readout and a moth
+   on it, both of them shootable, and until now the only thing that said so was
+   a tally in the footer counting what you had already brought down — which
+   only ever appeared *after* you had worked out on your own that the reticle
+   was a gun.
+
+   So it is a pair rather than a single lamp, and only one of them is ever lit:
+   `STOP` while there is nothing in the air, `SHOOT` the moment there is. Two
+   states of one instruction, which is what a shift light is, and what makes
+   the row read as an instruction rather than as a label.
+
+   It asks `quarry` rather than being told. The gun already walks that set
+   several times a frame to find out what a bolt has hit; this is the same
+   question one frame at a time, and it means a third creature mounted
+   tomorrow lights the lamp with nothing wired up. */
+function Alarm() {
+  const [up, setUp] = useState(false)
+
+  useEffect(() => {
+    let raf = 0
+    const tick = () => {
+      raf = requestAnimationFrame(tick)
+      let any = false
+      for (const creature of quarry.creatures) {
+        if (creature.at()) {
+          any = true
+          break
+        }
+      }
+      // Returning the same value is a bail-out, not a render — which is what
+      // makes asking this every frame affordable.
+      setUp((was) => (was === any ? was : any))
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [])
+
+  return (
+    <div className="mech-alarm" aria-hidden>
+      <i className="mech-alarm-key" data-on={up}>
+        shoot
+      </i>
+      <i className="mech-alarm-key" data-warn data-on={!up}>
+        stop
+      </i>
     </div>
   )
 }
 
 /** How many cells a field's bar stands in — the same bar-and-label grammar as
- *  the counts opposite it, not a word with a tick over it. The scale used to
- *  be five words in a row with a lit mark above the ones that applied, which
- *  read as a caption next to the boxy, weighted gauges on the other side of
- *  the readout — a proportion mismatch as much as a styling one. A field is
- *  on or it isn't, so its bar is either full or a ghost outline; there is no
- *  partial reading to plot, unlike a count. */
+ *  the counts opposite it, not a word with a tick over it. A field is on or it
+ *  isn't, so its bar is either full or a ghost outline; there is no partial
+ *  reading to plot, unlike a count. */
 const FIELD_CELLS = 6
 
-/** One mark on the scale under the display, drawn as a small vertical meter —
+/** One mark on the scale under the profile, drawn as a small vertical meter —
  *  the same shape the temperature and oil pressure take on the reference,
- *  rather than a word that changes colour. */
+ *  rather than a word that changes colour.
+ *
+ *  It sits under the profile rather than under the display now. The row of
+ *  indicator lamps that used to report the same thing along the top of the
+ *  frame is gone — see `Alarm`, which took that position — so this is the only
+ *  place left that says what a project is made of, and it belongs next to the
+ *  paragraph that says what I make. */
 function FieldGauge({ name, on }: { name: Field; on: boolean }) {
   return (
     <div className="mech-field-gauge" data-on={on}>
@@ -280,67 +503,96 @@ function FieldGauge({ name, on }: { name: Field; on: boolean }) {
   )
 }
 
-/** A count, drawn the way the temperature and the oil pressure are on the
- *  reference: the number in segments over a stack of lit cells, with what it
- *  measures printed underneath. */
-function Gauge({ label, unit, value, of }: (typeof COUNTS)[number]) {
-  const lit = Math.round((value / of) * TICKS)
-  return (
-    <div className="mech-gauge">
-      <span className="mech-gauge-n">
-        <Segment text={String(value).padStart(2, '0')} cells={2} settle={false} label={`${value} ${label}`} />
-      </span>
-      {/* Stacked bottom-up: the strip is `column-reverse`, so the first cell
-          is the one at the foot of the gauge and lighting the first `lit` of
-          them fills it from the bottom, which is the only direction a gauge
-          has ever filled. */}
-      <span className="mech-gauge-bar">
-        {Array.from({ length: TICKS }, (_, n) => (
-          <i key={n} data-on={n < lit} />
-        ))}
-      </span>
-      <span className="mech-gauge-label">{label}</span>
-      <span className="mech-gauge-unit">{unit}</span>
-    </div>
-  )
-}
+/** The three counts, and the one loop that moves all three.
+ *
+ *  One rAF for the block rather than one per gauge, and it writes a cell count
+ *  onto each bar rather than a state update — three custom properties on three
+ *  elements, and only on the frames the reading actually crosses a cell. See
+ *  `RISE` and `SWAY` for what it is doing and why. */
+function Counts() {
+  const bars = useRef<Array<HTMLSpanElement | null>>([])
 
-/** The one large instrument on the panel, the way the reference's own
- *  tachometer is the single biggest thing on its dash. Not a control — see
- *  the note above `TACH_ROWS`. */
-function Tach() {
+  useEffect(() => {
+    const settle = () =>
+      COUNTS.forEach((count, n) =>
+        bars.current[n]?.style.setProperty('--lit', String(Math.round((count.value / count.of) * TICKS)))
+      )
+
+    if (reduced()) {
+      settle()
+      return
+    }
+
+    let raf = 0
+    const started = performance.now()
+    const shown = COUNTS.map(() => -1)
+
+    const tick = (now: number) => {
+      raf = requestAnimationFrame(tick)
+      const since = (now - started) / 1000
+      const rise = Math.min(1, since / RISE)
+      // Out of the cube, the same easing the compass spins up on.
+      const eased = 1 - Math.pow(1 - rise, 3)
+
+      COUNTS.forEach((count, n) => {
+        const base = (count.value / count.of) * eased
+        const sway =
+          rise < 1
+            ? 0
+            : (Math.sin(since * SWAY.rate + n * 2.1) + Math.sin(since * SWAY.rate * 2.7 + n) * 0.4) * SWAY.depth
+        const cells = Math.round(clamp(base + sway, 0, 1) * TICKS)
+        if (cells === shown[n]) return
+        shown[n] = cells
+        bars.current[n]?.style.setProperty('--lit', String(cells))
+      })
+    }
+
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [])
+
   return (
-    <div className="mech-tach">
-      <div className="mech-tach-head">
-        <span className="mech-cap">activity</span>
-        <span className="mech-tach-unit">projects / year</span>
-      </div>
-      <div className="mech-tach-bars">
-        <span className="mech-tach-redline">
-          <i>peak</i>
-        </span>
-        {ACTIVITY.map(({ year, count, lit }) => (
-          <div key={year} className="mech-tach-col" aria-label={`${count} shipped in ${year}`}>
-            <span className="mech-tach-cells">
-              {Array.from({ length: TACH_ROWS }, (_, row) => (
-                <i key={row} data-on={row < lit} data-redline={row >= TACH_REDLINE} />
-              ))}
-            </span>
-            <span className="mech-tach-year">{String(year).slice(-2)}</span>
-          </div>
-        ))}
-      </div>
-    </div>
+    <section className="mech-counts">
+      {COUNTS.map((count, n) => (
+        <div className="mech-gauge" key={count.label}>
+          <span className="mech-gauge-n">
+            <Segment
+              text={String(count.value).padStart(2, '0')}
+              cells={2}
+              settle={false}
+              label={`${count.value} ${count.label}`}
+            />
+          </span>
+          {/* Stacked bottom-up: the strip is `column-reverse`, so the first
+              cell is the one at the foot of the gauge and lighting the first
+              `--lit` of them fills it from the bottom, which is the only
+              direction a gauge has ever filled. Each cell knows its own index
+              and works out whether it is under the level itself — one property
+              written per bar per change, rather than sixteen. */}
+          <span
+            className="mech-gauge-bar"
+            ref={(node) => {
+              bars.current[n] = node
+            }}
+          >
+            {Array.from({ length: TICKS }, (_, cell) => (
+              <i key={cell} style={{ ['--n' as string]: cell }} />
+            ))}
+          </span>
+          <span className="mech-gauge-label">{count.label}</span>
+          <span className="mech-gauge-unit">{count.unit}</span>
+        </div>
+      ))}
+    </section>
   )
 }
 
 /** One slot in the bank.
  *
- *  The loop is mounted only for the selected slot. Twelve `<video>` elements
- *  decoding at once is most of a second of main thread and a fan spinning up,
- *  and eleven of them would be playing where nobody is looking. Selected, the
- *  slot comes alive; at rest it is its own still, dim. Which is also the
- *  clearest thing the bank does: the one you are on is the one that is moving. */
+ *  The subject is live only for the selected slot. Twelve of them turning at
+ *  once is work nobody is looking at; selected, the slot comes alive. Which is
+ *  also the clearest thing the bank does: the one you are on is the one that
+ *  is moving. */
 function SlotBox({
   slot,
   n,
@@ -372,7 +624,7 @@ function SlotBox({
            other selects it first. On a mouse that is one click either way,
            because the pointer selected it on the way in. On a phone it is the
            two taps a control with no hover has always needed — and the first
-           one is not wasted, it fills in the display and the lamps. */
+           one is not wasted, it fills in the display and the scale. */
         if (on) onOpen()
         else onPick()
       }}
@@ -409,8 +661,9 @@ function SlotBox({
 interface Props {
   onProject: (id: string) => void
   /** Held back while the machine is still booting, and again while the screen
-   *  is leaving for a project — the same cover every other slot on this page
-   *  takes. */
+   *  is leaving for a project. It is not a fade any more: every block on the
+   *  panel has its own entrance and its own exit, and this is what runs both —
+   *  see *coming up, and going down* in MechCluster.css. */
   covered: boolean
   tuning: ClusterTuning
 }
@@ -421,18 +674,29 @@ export default function MechCluster({ onProject, covered, tuning }: Props) {
      "leaving" for it to be cleared by. What does release it is the pointer
      leaving the bank on a mouse, after a beat — see `RELEASE_MS`. */
   const [picked, setPicked] = useState<number | null>(null)
-  const [title, setTitle] = useState(0)
+  const [step, setStep] = useState(0)
   const release = useRef(0)
 
   const slot = picked === null ? null : SLOTS[picked]
 
-  /* The titles cycle only while the display is theirs. A rotation running on
-     underneath a project's name would snatch the display back mid-read. */
+  /* What the left display is working through. With nothing picked it is the
+     titles; with a project up it is what I did on that project, which is
+     usually one thing and sometimes two. One reel either way, so there is no
+     second code path for the case that happens to have one entry. */
+  const reel = slot ? slot.roles : TITLES.map((title) => title.title)
+  const at = step % Math.max(1, reel.length)
+
+  /* Back to the top whenever the reel changes. Landing on "product designer"
+     because that is where the titles happened to have got to is a display
+     reading out its own scroll position. */
+  useEffect(() => setStep(0), [slot?.id])
+
   useEffect(() => {
-    if (slot) return
-    const timer = window.setInterval(() => setTitle((at) => (at + 1) % TITLES.length), TITLE_MS)
+    if (reel.length < 2) return
+    const timer = window.setInterval(() => setStep((n) => n + 1), TITLE_MS)
     return () => window.clearInterval(timer)
-  }, [slot])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reel.length, slot?.id])
 
   useEffect(() => () => window.clearTimeout(release.current), [])
 
@@ -446,18 +710,18 @@ export default function MechCluster({ onProject, covered, tuning }: Props) {
       const step = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0
       if (!step) return
       window.clearTimeout(release.current)
-      setPicked((at) => (at === null ? (step > 0 ? 0 : SLOTS.length - 1) : (at + step + SLOTS.length) % SLOTS.length))
+      setPicked((was) => (was === null ? (step > 0 ? 0 : SLOTS.length - 1) : (was + step + SLOTS.length) % SLOTS.length))
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  const reading = slot ? slot.title : TITLES[title].title
+  const reading = reel[at] ?? ''
   /* What the scale marks. With a project up it is every field that project
      touches — usually two or three of the five lit at once, which is the whole
      reason it is a scale and not a single needle. Otherwise it is the one
      field the current title falls under. */
-  const marked = slot ? slot.fields : [TITLES[title].field]
+  const marked = slot ? slot.fields : [TITLES[at % TITLES.length].field]
 
   const hold = () => window.clearTimeout(release.current)
   const letGo = (event: React.PointerEvent) => {
@@ -477,17 +741,93 @@ export default function MechCluster({ onProject, covered, tuning }: Props) {
         ['--cluster-slot' as string]: tuning.slot
       }}
     >
-      <Lamps slot={slot} />
+      <Alarm />
 
       <div className="mech-body">
+        <Counts />
+
+        {/* ---- the middle ---- */}
+        <div className="mech-main">
+          {/* ---- the strip ----
+
+              One run of lamp cells across the top of the panel with two words
+              lit on it: what I do on the left, what is selected on the right.
+              The dark groups between them are the same display with nothing to
+              say — see `GAPS`. */}
+          <div className="mech-run" style={{ ['--strikes' as string]: GAPS.length + 1 }}>
+            {/* `--strike` is where each box falls in the run, and it is what
+                both the entrance and the exit are staggered on — left to right
+                coming up, right to left going down. See *coming up, and going
+                down* in MechCluster.css. */}
+            <div className="mech-display" data-on={slot !== null} style={{ ['--strike' as string]: 0 }}>
+              <Segment text={reading} cells={CELLS} label={reading} />
+            </div>
+
+            {GAPS.map((cells, n) => (
+              <div
+                className="mech-display mech-display-gap"
+                key={n}
+                style={{ ['--strike' as string]: n + 1 }}
+                aria-hidden
+              >
+                <Segment text="" cells={cells} settle={false} label="" />
+              </div>
+            ))}
+
+            <div
+              className="mech-display"
+              data-on={slot !== null}
+              data-idle={slot === null}
+              data-warn={slot?.restricted ?? false}
+              style={{ ['--strike' as string]: GAPS.length + 1 }}
+            >
+              <Segment
+                text={slot ? slot.title : IDLE}
+                cells={CELLS}
+                warn={slot?.restricted ?? false}
+                label={slot ? slot.title : 'nothing selected'}
+              />
+            </div>
+          </div>
+
+          {/* The instrument, and the identity laid over the quiet end of it.
+              They are one block on purpose: the name sits *on* the panel's
+              biggest gauge rather than beside it, which is the only
+              arrangement where the largest thing on the screen and the most
+              important thing on it are the same object. */}
+          <div className="mech-console">
+            <section className="mech-ident">
+              <h1 className="mech-ident-name" style={{ ['--name-len' as string]: NAME.length }}>
+                <Typed text={NAME} run="cluster-name" delay={0.4} speed={44} caret={false} />
+              </h1>
+
+              {/* The profile, as a readout rather than as a paragraph on a
+                  page. It used to be set in the site's Helvetica at body size
+                  and colour, which made it the one humanist, low-contrast,
+                  ragged thing on a panel of hard tracked caps. Same words, in
+                  the panel's own monospace. */}
+              <p className="mech-profile">{PROFILE}</p>
+            </section>
+
+            <Tach />
+          </div>
+
+          {/* Under the instrument rather than inside the plate above it: the
+              plate is laid over the graph, and five meters hanging off the
+              bottom of it landed in the middle of the columns. Here it reads
+              as the scale the instrument is calibrated against, which is what
+              it is. */}
+          <div className="mech-scale-row">
+            {FIELDS.map((name) => (
+              <FieldGauge key={name} name={name} on={marked.includes(name)} />
+            ))}
+          </div>
+        </div>
+
         {/* ---- the rail ----
 
-            Work, on the left, the full height of the panel — see *the bank is
-            the navigation* for why it is pressable slots rather than a graph.
-            It moved off the bottom of the frame and onto the side of it once
-            the reference's own tachometer came back as a reading rather than
-            a control: the two were fighting for the same "wide graphic across
-            the bottom" position, and only one of them is actually a button. */}
+            Work, on the right, the full height of the panel — see *the bank is
+            the navigation* for why it is pressable slots rather than a graph. */}
         <aside className="mech-work-rail">
           <div className="mech-work-rail-head">
             <span className="mech-cap">selected work</span>
@@ -539,8 +879,6 @@ export default function MechCluster({ onProject, covered, tuning }: Props) {
           <div className="mech-detail" data-on={slot !== null}>
             {slot && (
               <>
-                <span>{slot.tagline}</span>
-                <i />
                 <span>{slot.company}</span>
                 <i />
                 <span>{slot.timeline}</span>
@@ -554,56 +892,6 @@ export default function MechCluster({ onProject, covered, tuning }: Props) {
             )}
           </div>
         </aside>
-
-        {/* ---- the main column ---- */}
-        <div className="mech-main">
-          <div className="mech-band mech-band-top">
-            {/* The profile, as a readout rather than as a paragraph on a page.
-                It used to be set in the site's Helvetica at body size and
-                colour, which made it the one humanist, low-contrast, ragged
-                thing on a panel of hard tracked caps. Same words, in the
-                panel's own monospace, under a label. */}
-            <section className="mech-profile">
-              <span className="mech-cap">profile</span>
-              <p>{PROFILE}</p>
-            </section>
-
-            <section className="mech-ident">
-              <h1 className="mech-ident-name" style={{ ['--name-len' as string]: NAME.length }}>
-                <Typed text={NAME} run="cluster-name" delay={0.4} speed={44} caret={false} />
-              </h1>
-
-              {/* The display, and the scale under it. Boxed, because the one on the
-                  reference is boxed and because a lit thing needs an edge to be lit
-                  *inside* of — a segment word floating on the grid is a graphic.
-
-                  The warm channel is the redline and nothing else: a project that
-                  cannot be shown. Every other reading is green. */}
-              <div className="mech-readout" data-warn={slot?.restricted ?? false} data-on={slot !== null}>
-                <Segment
-                  text={reading}
-                  cells={CELLS}
-                  warn={slot?.restricted ?? false}
-                  label={reading}
-                />
-              </div>
-
-              <div className="mech-scale-row">
-                {FIELDS.map((name) => (
-                  <FieldGauge key={name} name={name} on={marked.includes(name)} />
-                ))}
-              </div>
-            </section>
-
-            <section className="mech-counts">
-              {COUNTS.map((count) => (
-                <Gauge key={count.label} {...count} />
-              ))}
-            </section>
-          </div>
-
-          <Tach />
-        </div>
       </div>
     </div>
   )

@@ -48,7 +48,7 @@ being false (which is why `navigator.clipboard` does not exist — see
 | `model.ts` | Projects flattened into what the panes draw; `MENU` is the index |
 | `Browse.tsx`, `Detail.tsx`, `Stage.tsx` | The timeline screen |
 | `Mech.tsx` | **Home and a project both** — layout, the swap, transit |
-| `MechCluster.tsx`, `MechCluster.css` | **Home**: the instrument cluster — name, display, profile, counts, and the bank |
+| `MechCluster.tsx`, `MechCluster.css` | **Home**: the instrument cluster — the shoot lamp, the display run, the tachometer, the name, the counts, and the bank |
 | `MechSlots.tsx` | Every project's own 3D subject, one per slot, one canvas |
 | `Segment.tsx`, `Segment.css` | The fourteen-segment display, drawn in SVG |
 | `clusterTuning.ts` | Home's four knobs, the **Cluster** tab |
@@ -153,17 +153,31 @@ larger than about 1600. Use `MediaItem.still` and `MediaItem.thumb`, never
 
 ## Home is a cluster now
 
-The line-up is gone from home. What is there instead is an instrument cluster:
-lamps along the top that report on the selection, a **rail of twelve slots**
-down the left the full height of the panel, each holding that project's own 3D
-subject, live, and beside it the name, a fourteen-segment display, the profile,
-three counts, and a large bar-graph activity readout (`Tach`). Point at a slot
-and the display reads it out, the lamps light for what it is made of, the field
-scale marks what it touches, and the line under the rail names it. Press it and
-it opens. The activity graph is a reading, not a control — it does not select
-anything.
+The line-up is gone from home. What is there instead is an instrument cluster,
+five parts:
 
-Four traps in that, all written up in `README.md` → **Home is a cluster**, and
+- **`SHOOT` / `STOP`** at the top of the frame (`Alarm`) — one lit at a time,
+  reporting whether there is a bird or a moth in the air to shoot at. It asks
+  `quarry.creatures` once a frame rather than being wired to either.
+- **A run of lamp cells** across the top of the panel (`.mech-run`): the left
+  display cycles my titles, or — with a project selected — the jobs I did on
+  *that* project one at a time; the right one names the selection. Three dark
+  cell groups between them make it one run rather than two boxes.
+- **The tachometer** (`Tach`), the largest instrument, filling the middle. It
+  reports on nothing: revs sweeping up a fixed power curve and falling back,
+  with the red zone painted on the x axis. One property (`--rev`) on the face
+  drives all thirty-four columns.
+- **The name and the profile** on a plate laid *over* the quiet left end of
+  it, plus the five field meters under the graph.
+- **The counts** bled off the left edge of the frame (years active, roles
+  worn, orgs shipped — the bars wander around the reading, the numbers do
+  not), and the **rail of twelve slots** down the right, each holding that
+  project's own 3D subject, live. Press one and it opens.
+
+Every block has its own entrance *and* its own exit, both hung off
+`data-covered` — see **Coming up, and going down** in `README.md`.
+
+Six traps in that, all written up in `README.md` → **Home is a cluster**, and
 all of them look like something other than what they are:
 
 - **drei's `View` ignores `track` outside a Canvas.** It makes its own element
@@ -172,13 +186,20 @@ all of them look like something other than what they are:
 - **The canvas must really be the viewport.** Any transform on any ancestor —
   including the identity matrix an unfinished `transform` animation leaves —
   makes it the containing block for `position: fixed`, and the scissor boxes go
-  wrong. `.mech-cluster` centres by offsetting `top`/`bottom`, and
-  `.mech-band-bank` fades rather than rises.
+  wrong. `.mech-cluster`, `.mech-body` and `.mech-work-rail` all carry no
+  transform — the cluster centres by offsetting `top`/`bottom`, and the rail is
+  the one block that arrives and leaves by fading.
 - **`mix-blend-mode` blends against the nearest stacking context, and a
   `z-index` makes one.** The duotone over the bays carries no `z-index` and
   paints above the canvas by document order alone.
 - **The bay is `flex: none`.** A name wrapping to two lines otherwise shrinks
   the picture out from under its own tint.
+- **`.mech-run` is not `.mech-strip`.** The compass along the bottom of every
+  screen (`MechHud.tsx`) already owns `.mech-strip`, and giving the display
+  run the same class put it across the foot of the window at full width.
+- **Every exit has its own keyframes.** Reusing the entrance with
+  `animation-direction: reverse` never plays: an animation only restarts when
+  its `animation-name` changes. Same rule as the frame swap.
 
 ## Where this is up to
 

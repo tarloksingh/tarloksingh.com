@@ -181,19 +181,35 @@ the wave under the cast, so the grid, the title, the index and every lit edge
 turned together. The mechanism was right — one supply, everything lit off it —
 and the effect was a screensaver. An instrument does not change colour.
 
-So home is a panel now, laid out the way a car's instrument cluster is: a row
-of indicator lamps along the top, a rail of twelve pressable slots down the
-left the full height of the panel, and the readout, the field scale and a
-large activity graph filling the rest. `MechCluster.tsx`, and
-`MechCluster.css` beside it — its own stylesheet because this is a whole
-screen rather than a part of one.
+So home is a panel now, laid out the way a car's instrument cluster is.
+`MechCluster.tsx`, and `MechCluster.css` beside it — its own stylesheet
+because this is a whole screen rather than a part of one. Five things, and the
+arrangement is the design:
 
-**Nothing on it is decoration.** The big readout is who this is. Beside it,
-the profile paragraph and three counts derived from the work itself (projects
-listed, years active, organisations shipped for) — a portfolio that states a
-number it does not derive is a number to keep up to date. The rail on the left
-is a bank of twelve slots, each holding its project's own 3D subject, and it
-is the navigation.
+- a **warning pair** at the top of the frame, `SHOOT` / `STOP` — the one lamp
+  on the page that is about the page rather than about the work;
+- a **run of lamp cells** across the top of the panel, with two words lit on
+  it: what I do on the left, and whatever is selected on the right;
+- the **tachometer**, the single largest instrument, filling the middle;
+- the **name and the profile**, on a plate laid over the quiet left end of it;
+- the **counts** bled off the left edge of the frame, and the **rail of work**
+  down the right.
+
+**Almost nothing on it is decoration.** The two displays and the five field
+meters under them all report on whatever is selected in the rail. The counts
+are derived from the work itself — years active, roles worn, organisations
+shipped for — because a portfolio that states a number it does not derive is a
+number to keep up to date. The rail is a bank of twelve slots, each holding
+its project's own 3D subject, and it is the navigation. The tachometer is the
+exception, and the argument for allowing exactly one is under `#### The
+tachometer` below.
+
+**The counts lost `PROJ LISTED`.** It was counting the list that is on the
+same screen — the rail's own head says "12 entries · pick one" a few hundred
+units to the right of it. `ROLES WORN` took the slot because it is the one
+number on this panel that is not already visible somewhere else on it, and
+because it is what the display opposite is reading out: point at a project and
+the left half of the run cycles that project's share of this count.
 
 **The panel is its own colour, not the site's.** A first pass at this screen
 used the root `--accent` everywhere on it, at more or less one brightness, and
@@ -203,8 +219,8 @@ twelve slot names all lit at once, with almost nothing held back for contrast.
 saturated sage (`#a2e0cc`) that only this screen's descendants see — the grid,
 the cursor, the gun and every project screen still read the root value and
 none of them moved. Most of what used to sit at a bright, always-on opacity
-(lamp borders, field labels, a slot's border and name) sits dimmer at rest now
-too, so the accent — in either colour — only reads as *lit* where something
+(display housings, field labels, a slot's border and name) sits dimmer at rest
+now too, so the accent — in either colour — only reads as *lit* where something
 is actually selected, rather than as the resting colour of the whole panel.
 
 #### The display
@@ -225,21 +241,50 @@ underneath. That is the bloom off the glass, and neither pass looks like a
 display on its own. It is a filter over a strip of short lines that only
 repaints when the word changes, which is why it is affordable.
 
-**One display, two channels.** With nothing pointed at, it cycles the titles —
-product designer, engineer, filmmaker, game designer, founder — and the scale
-of fields under it marks which one the current title falls under. Press a slot
-in the bank and the same display takes that project's name instead, and the
-strip becomes every field that project touches — usually two or three of the
-five at once, which is why it is a scale and not a single needle. Same
-position, same size, same colour, which is what keeps the swap reading as one
-instrument changing channel rather than as two different captions.
+**Two displays on one run of cells.** There used to be one, changing channel:
+with nothing pointed at it cycled the titles, and pressing a slot swapped it
+over to that project's name. Same position, same size — which is what made the
+swap read as one instrument rather than two captions, and which also meant the
+two facts could never be on screen at once. A cluster has a window for the gear
+and a window for the speed.
 
-The scale itself is drawn as five small vertical meters, not five words with a
-tick above the lit ones — `FieldGauge` in `MechCluster.tsx`, the same
-bar-and-label shape the three counts on the other side of the readout use. A
-word that changes colour reads as a caption; a bar that fills reads as an
-instrument, and a flat row of text was the one thing on that half of the
-panel with no mass to match the boxy gauges opposite it.
+So the strip is both now, left and right, with three dark cell groups between
+them. **Left is what I do.** With nothing selected it cycles the titles —
+product designer, engineer, filmmaker, game designer, design engineer — and
+the five field meters under the instrument mark which one the current title
+falls under. Select a project and it cycles what I actually did *on that
+project*, one job at a time: `role` in projects.ts is a single string, and
+"Founder & Product Designer" is two jobs printed as one, so `rolesOf` splits it
+and the display works through them on the same interval the titles use.
+**Right is what is selected**, by name, and the field meters become every field
+that project touches — usually two or three of the five at once, which is why
+it is a scale and not a single needle.
+
+Both halves are twenty-one cells, which is wider than either needs and the same
+on both sides. Twenty-one is "Red Dead Redemption 2", because the one display
+whose job is naming a project is not the place to abbreviate one; the titles
+sit inside it with ghost cells either side, which is what a fixed grid of lamps
+looks like with a short word on it. The dark groups between them are the same
+component with nothing to say — they are what makes this one run of lamps with
+two words lit on it rather than two boxes with a hole between them.
+
+The three boxes are sized by flex weights that *are* their cell counts, and
+none of them carries horizontal padding. Every box then works out to the same
+width per cell, so all three heights agree without a measurement anywhere; put
+padding on them and the middle groups come out a different height from the
+ends.
+
+With nothing selected the right-hand display reads `SELECT`, held at label
+brightness rather than lit. A dark box on arrival reads as broken, and a
+display whose own name is in it is a display saying what it is for.
+
+The field scale itself is drawn as five small vertical meters, not five words
+with a tick above the lit ones — `FieldGauge` in `MechCluster.tsx`, the same
+bar-and-label shape the counts on the other side of the panel use. A word that
+changes colour reads as a caption; a bar that fills reads as an instrument. It
+sits under the tachometer rather than beside the display: laid inside the
+identity plate, which is itself laid over the graph, five meters hung off the
+bottom of it landed in the middle of the columns.
 
 A word does not cut to the next one. Each cell runs four frames of random
 segments and then lands on what it should say, left to right, the way a
@@ -254,28 +299,52 @@ tabular figures in Helvetica were not that. `Segment.css` is its own file for
 that reason: a rule set living in the stylesheet of one screen and relied on by
 another is a rule set waiting to be deleted by someone tidying up that screen.
 
-#### Lamps that mean something
+#### The warning pair
 
-The row along the top used to be `PWR`, `GRID` and `SCAN` — three lamps that
-were simply on. Which is what most of the lamps on a real cluster are, and which
-on a screen is three words pretending to be instruments. A warning lamp is only
-worth drawing if there is a state it warns about.
+The row of small lamps that used to run along the top of the panel is gone, and
+what took the position is two keys in the middle of the frame: `SHOOT` and
+`STOP`, one lit at a time.
 
-They report on the selection now: whether there is one, whether the project has
-something built in three dimensions behind it, whether it is film, whether it is
-a game, and whether it is under an NDA. Move along the bank and the top of the
-panel answers. `HIT` is the odd one out and stays — it is the gun's, and the
-only lamp about the page rather than about the work.
+That row went through two passes before it went. It started as `PWR`, `GRID`
+and `SCAN` — three lamps that were simply on, which is what most of the lamps
+on a real cluster are and which on a screen is three words pretending to be
+instruments. A second pass made all six report on the selection: whether there
+is one, whether the project has something built in three dimensions behind it,
+whether it is film, whether it is a game, whether it is under an NDA. That was
+honest, and it was also the third readout on the same screen saying the same
+thing — the field meters mark what a project is made of, the display names it,
+and the housing goes warm when it is restricted. Six lamps saying it again is
+not a fourth instrument, it is redundancy with a border around it.
 
-**A lit warning lamp throws light on the housing above it**, the pool that
+What was *not* being said anywhere is that the reticle is a gun. There is a
+bird crossing the readout and a moth sitting on it, both shootable, and the
+only sign of either was a tally in the footer counting what you had already
+brought down — which appears strictly *after* you work it out on your own.
+
+So: `STOP` while there is nothing in the air, `SHOOT` the moment there is. Two
+states of one instruction, which is what a shift light is, and which is what
+makes the pair read as an instruction rather than as a label. `Alarm` asks
+`quarry.creatures` once a frame rather than being told — the gun already walks
+that set several times a frame to find out what a bolt has hit, so a third
+creature mounted tomorrow lights the lamp with nothing wired up. The state is
+held in React and set through a functional updater that returns the same value
+when nothing changed, which React bails out of without rendering; that is what
+makes asking every frame affordable.
+
+Both keys are **filled** when lit, which is the one place on this panel that
+breaks the no-solids rule everything else follows. A shift light on a dash is a
+block of colour, and an instruction set at the weight of a caption is an
+instruction nobody follows.
+
+**A lit warning key throws light on the housing around it**, the pool that
 sells "a lamp behind glass" over "green text with a glow" — the single most
 recognisable thing in the reference. The first pass drew that pool the same
 shape as the lamp itself, a short wide ellipse with almost no room to fall off
 before it hit the edge of its own box, and it rendered as a hard-edged
 rectangle rather than a soft one — a lamp that looked broken rather than lit.
-`.mech-lamp[data-warn='true'][data-on='true']::after` is round now, several
-times the lamp's own size, and three gradient stops rather than one, which is
-what actually fades rather than stops.
+`.mech-alarm-key[data-warn][data-on='true']::after` is round, several times the
+key's own size, and three gradient stops rather than one, which is what
+actually fades rather than stops.
 
 #### The profile, in the panel's voice
 
@@ -288,29 +357,71 @@ two corner brackets — which fixed the voice and broke the picture-frame
 problem differently: it now read as a card floating on the panel, competing
 with the boxed readout next to it rather than sitting beside it.
 
-What is there now is plainer: the same label and hairline, and the paragraph
-itself in `ui-monospace` — the face this site already reserves for its other
-system text — at no more weight than a caption, with nothing drawn around it.
-A MAGI screen or a Blade Runner overlay both print a block of prose in the same
-monospace their other readouts are in rather than framing it separately, and
-that turned out to be the actual fix: not a face for this one paragraph, but
-the one the rest of the panel's system text already had.
+What is there now is plainer: the paragraph in `ui-monospace` — the face this
+site already reserves for its other system text — at no more weight than a
+caption, with nothing drawn around it. A MAGI screen or a Blade Runner overlay
+both print a block of prose in the same monospace their other readouts are in
+rather than framing it separately, and that turned out to be the actual fix:
+not a face for this one paragraph, but the one the rest of the panel's system
+text already had.
+
+#### The name is on the instrument
+
+The name and the profile are one plate, `.mech-ident`, and it is laid **over**
+the left end of the tachometer rather than set beside it. That is the only
+arrangement where the largest thing on the screen and the most important thing
+on it are the same object; everything else makes the graph the biggest thing on
+a page that has somebody's name on it somewhere.
+
+It works because the power curve in `CURVE` starts low. The quiet end of a
+torque curve is a corner of empty face, and that corner is where the plate
+goes — which means the shape of the curve is not only a drawing decision, it is
+what makes room for the name. Raise the left end of it and the profile is
+sitting on top of lit cells.
+
+The plate carries two washes rather than a fill: a breath of the panel's own
+phosphor over a near-black, both fading out downward, so the columns show
+through the bottom of it. A plate that hid what it was on would be a card
+floating in front of a graph, which is the picture-frame problem the profile
+already lost once.
+
+It fits the name to its own width with `cqw` against a character count rather
+than guessing at a frame width the way `.mech-title` has to. Note that
+`container-type: inline-size` also makes the plate a containing block for
+positioned descendants — harmless here, and exactly the trap `.mech-cluster`
+avoids for the bank's fixed canvas.
+
+Narrow drops the overlay entirely: the plate goes static and sits above the
+graph. Laying a four-line paragraph over a phone-width instrument covers the
+instrument.
 
 #### The bank is the navigation
 
-Twelve slots, numbered, named, and obviously pressable. One is lit; the
-display above reads it out; the lamps, the field scale and the line under the
-bank all answer to it. Pressing it opens the project.
+Twelve slots, numbered, named, and obviously pressable. One is lit; the right
+half of the run reads it out, the left half reads out what I did on it, the
+field meters mark what it is made of and the line under the bank names the
+company and the years. Pressing it opens the project.
 
-**It is a rail down the left now, not a row across the bottom.** That was a
+**It is a rail down the right, not a row across the bottom.** That was a
 second move, after the first — the reference's own tachometer is the single
 largest graphic on its dash, and there was nowhere to put one back once the
 bank had taken the full width of the bottom of the frame. Standing the bank up
-the side gave the width back; see `#### The tach` below for what it went to.
+the side gave the width back; see `#### The tachometer` below for what it went
+to. It stood up the *left* first and moved across when the counts came off the
+readout and went to the edge of the frame, which put the two flanks on the
+sides the reference has them and left the instrument in the middle with the
+name on it.
+
 The rail runs the full height of the panel and scrolls on its own — twelve
 rows at a size worth pressing do not all fit a real window, and a persistent
 side rail is allowed to scroll where a row of preset buttons across the bottom
-was not.
+was not. `.mech-body`'s bottom padding is what keeps the line under the bank
+off the contact address: the rail and the address are on the same edge now, and
+a stretched rail does not clear the footer for free the way a centred column
+did. That line is also `white-space: nowrap` and clipped — "Openup Technologies
+Inc. · 2024 — 2025" wraps to two lines in a rail this wide, and a caption that
+wraps for eight of the twelve projects moves the bottom of the bank every time
+the pointer crosses it.
 
 **What this replaced was a bar graph**, and the argument is worth keeping
 because all three faults were the same fault wearing different clothes.
@@ -329,9 +440,9 @@ hover has no affordance at all on half the devices that will ever see it.
 The bank is the preset row off a car stereo, which is the one control in the
 reference material that was built to be *pressed* rather than read. On a mouse
 the pointer selects on the way in and a click opens, so it is one click. On a
-phone the first tap selects — filling in the display, the lamps and the detail
-line — and the second opens, which is the two taps a control with no hover has
-always needed, with the first one doing real work.
+phone the first tap selects — filling in both displays, the field meters and
+the detail line — and the second opens, which is the two taps a control with no
+hover has always needed, with the first one doing real work.
 
 Selection persists rather than following the pointer. A preset bank holds the
 preset you pressed, and a tap has no "leaving" to be cleared by. What releases
@@ -371,10 +482,10 @@ is a `<View>`, not a `<span>`.
 from the canvas's rect and the tracked element's, and a transformed ancestor
 makes itself the containing block for a `position: fixed` descendant. So
 `.mech-cluster` centres itself by offsetting `top` and `bottom` rather than with
-`translateY(-50%)`, and the bank's band fades in rather than rising — an element
-with a `transform` animation attached has a transform, an identity matrix, and
-that is enough. Both of those look like arithmetic errors in the scissor and are
-stacking rules.
+`translateY(-50%)`, and the rail fades in and out rather than moving — an
+element with a `transform` animation attached has a transform, an identity
+matrix, and that is enough. Both of those look like arithmetic errors in the
+scissor and are stacking rules.
 
 **Each view portals into a scene of its own**, so a light inside one reaches
 nothing outside it. `MechCast` needs three.js layers to stop five rigs lighting
@@ -410,26 +521,118 @@ between ticks. The canvas itself still renders at whatever the display does —
 the undersampling is deliberate, the difference between an object turning on a
 monitor and one turning on a panel meter.
 
-#### The tach
+#### The tachometer
 
-The reference's own tachometer is the single largest instrument on its dash,
-and there was nothing that size on this screen once the bank stopped taking
-the full width of the bottom of the frame — the gap read as a graphic that had
-been dropped, not as one that had never been load-bearing. `Tach` in
-`MechCluster.tsx` is it, back and full width, under the readout: a bar graph
-again, but a reading now rather than a control, the way a real tachometer does
-not choose a gear. Picking a project happens in the rail; this only reports.
+The single largest instrument on the panel, and the one thing on this screen
+that reports on nothing at all.
 
-One column a year, activity across the years worked — the same span `YRS
-ACTIVE` already counts, drawn out year by year instead of collapsed to a
-total. Real data, not a decoration standing in the reference's shape: a year
-with nothing shipped is still a column, at zero, because a gap in a timeline
-is information and a chart that hides its gaps is a chart that flatters. Each
-column is the same stacked-cell gauge every other reading on this panel uses
-— `TACH_ROWS` cells, lit bottom-up — and a fixed band near the top of the
-scale (`TACH_REDLINE`) sits in the warm channel regardless of which column
-reaches it, a mark on the face rather than a fact about any one year, exactly
-like a real tachometer's redline.
+It came back first as a chart: one column a year, projects shipped against the
+years worked, real data drawn out year by year. Honest, and wrong — a bar chart
+of twelve things sitting under a rail that lists the same twelve things is the
+same information drawn twice, and the second copy is the one nobody can read.
+The `YRS ACTIVE` gauge on the other side of the panel was already the total.
+
+So it is an instrument: revs, sweeping up the scale and falling back, the way a
+tachometer does with a foot on the throttle. A dashboard is allowed exactly one
+thing that is only a dial, and this is it — everything else on the screen
+answers to the rail.
+
+**The columns stand at a fixed power curve and never move.** `CURVE` is a
+logistic rise, a long plateau and a fall away past the red mark, with a hair of
+deterministic wobble on top so it reads as measured rather than plotted. What
+moves is `--rev`, one custom property on the face, and each column works out
+whether the sweep has reached it from its own index:
+`clamp(0, calc(var(--rev) * var(--cols) - var(--i)), 1)`. So a frame where the
+reading has moved costs
+one property write, not thirty-four, and the alpha of the column's own gradient
+and the strength of its glow both come off that number.
+
+**The value is snapped to whole columns before it is written.** A bar graph
+lights lamps, so a value between two of them has nowhere to go — and snapping
+also means the property is only written on the frames the reading actually
+crosses a column, which keeps a style invalidation over the whole graph off
+most of them.
+
+**The red zone is painted on the face, on the x axis.** Columns past
+`TACH_RED` carry the warm channel whether or not the needle has ever been
+there, exactly like a real one being red at six thousand with the engine off.
+`TACH_RED` is handed to the stylesheet as `--red` rather than written into it,
+along with `--cols`, so changing either in `MechCluster.tsx` cannot leave a
+graph lighting the wrong half of itself.
+
+**Up fast and down slow.** `REV_HOLD` keeps it wound up longer than it rests
+and the rise is nearly twice the fall, which is the whole character of a
+throttle being blipped; the same rate both ways is a slider. The peaks stop
+just short of the red and occasionally clip into it — a needle that lives in
+the red is a needle nobody looks at — and the very first thing it does on
+arrival is sweep the whole scale and drop back, which is what a cluster does
+when the ignition is turned.
+
+The dotted envelope riding just clear of the tops is the same `CURVE`, drawn in
+a 100 × 100 viewBox stretched to the face with `preserveAspectRatio="none"` —
+which is why the stroke has to opt out of being stretched with it
+(`vector-effect="non-scaling-stroke"`), or the dashes come out as ovals. It is
+two polylines, not one, because a single element cannot change stroke half way
+along and the trace goes warm where the face does; they share the column either
+side of the mark so the join is a point rather than a gap.
+
+#### The counts wander
+
+Three gauges, bled off the left edge of the frame so the block reads as part of
+a panel that carries on past the window rather than as a card floating near the
+corner of one — `margin-left` of exactly the inset `.mech-cluster` carries, put
+back as padding, so it runs to the edge of the frame rather than to a guess at
+it.
+
+The bars do not sit still. `Counts` runs one rAF for all three: they climb from
+nothing to their reading on arrival, eased out of the cube like the compass
+spins up, and then wander a cell or so either side of it on a pair of slow sines
+at different rates. **The number in the window above never moves** — that part
+is true, and the wander is a fraction of the bar. A stack of cells frozen at
+two-thirds is a progress bar wearing an instrument's styling; a needle that will
+not sit perfectly still is the one thing that says something is being measured.
+
+Same trick as the tachometer, one axis over: the loop writes a cell count to
+`--lit` on the bar and each cell compares its own `--n` against it, so a reading
+that has moved costs one property write instead of sixteen and a reading that
+has not costs nothing. Both bars and columns go static under
+`prefers-reduced-motion`, in the JS as well as the stylesheet — an animation
+turned off in CSS while a rAF keeps writing to it is an animation that stutters
+instead of stopping.
+
+#### Coming up, and going down
+
+Every block on the panel arrives on its own beat and leaves on its own beat, and
+both are hung off the same `data-covered` the rest of this screen takes its
+cover from. It comes up from the middle outward — the run of displays, then the
+name, then the instrument, then the flanks — and goes down from the outside in.
+
+**Both directions are on the attribute, not just the exit.** The entrances used
+to be plain `animation` declarations on the blocks themselves, which meant they
+ran during the boot, while `.mech[data-boot='true'] .mech-cluster` still had the
+whole thing at `opacity: 0`, and were finished by the time anybody could see
+them. Home arrived as one flat cross-fade and the stagger was never once
+visible. On the attribute, the entrance starts on the beat the cover lifts —
+and it plays again coming back from a project, which is the same beat.
+
+**Every exit has its own keyframes.** Never the entrance with
+`animation-direction: reverse`: an animation is only restarted when its
+`animation-name` changes, so reusing the name leaves the finished entrance
+sitting there and the exit never plays at all. Same rule, and the same failure,
+as the frame swap — see *The swap*.
+
+**The exit is half the length of the entrance, and it has to be.** `EXIT_MS` is
+a little over a second, but the first frames of it are not free: pressing a slot
+mounts the project's model, and fetching a chunk, cloning a scene graph and
+compiling its shaders is a few hundred milliseconds of main thread with nothing
+painting. An exit timed against the second is an exit whose first half never
+draws.
+
+**The rail only ever fades.** It is an ancestor of the fixed canvas the bank's
+subjects are scissored into, and a transform on it — including the identity
+matrix an unfinished one leaves behind — makes it the containing block for that
+canvas. Same rule as `.mech-cluster` and `.mech-body`, which is why none of the
+three carries one either.
 
 #### Twelve renders, on one panel's supply
 
