@@ -1189,6 +1189,36 @@ pulse, so it reads as a bulb catching rather than breathing) with the second
 dot's `animation-delay` staggered off the first so the two never dim
 together.
 
+**A sixth pass: the comms line took the name's own colour, and the warning
+pair's keys were redrawn to a client-supplied lamp design.** `hello@` and its
+dot are `--warn` now — the same warm the name at the top of the panel is lit
+in, its own three-shadow glow scaled down to a footer line — because it is
+the way to reach the person that name belongs to, not a fact the machine is
+reporting. The dot's own class had to move first: `.mech-dot` was already
+taken, by the small circle at the reticle's own centre in `MechCursor.tsx`,
+and a second element answering to it was the class-collision mistake this
+file has been bitten by twice before. Renamed `.mech-foot-dot`, scoped to
+the footer, and `.mech-comms .mech-foot-dot` takes `--warn` while
+`.mech-credit`'s stays the panel's default phosphor.
+
+`SHOOT` / `STOP` moved from "black glyph on a filled block" to "white glyph,
+glowing, on a filled block" — a backlit LED cell rather than a shift light —
+and picked up a fixed box each (`81.6 × 34` design units, close enough to
+this panel's own frame that they carry over as `--px` multiples outright)
+instead of a box sized to its own word. Fixed-width boxes on their own would
+have reopened the third pass's bug — `STOP` at four cells over the same
+width as `SHOOT`'s five renders a taller glyph — so the fix keeps the fourth
+pass's answer underneath: `.mech-seg` still scales by a fixed **height**,
+and the result is centred inside the now fixed-width `.mech-alarm-key`,
+which gets equal boxes and equal glyphs at once rather than trading one for
+the other. Idle is the housing's own colour at low opacity — wired but not
+lit, not a dead lamp — and lit inverts it: a half-saturated fill, a bright
+border, and the glyphs' `stroke` overridden to white so the colour comes from
+the glow and the glass, not the ink. The centre cell — the inline tally — was
+resized to the same fixed box as the two keys and its glyphs went white too,
+so the row reads as three lamps in one housing rather than two switches
+either side of a stray number.
+
 ### The cast
 
 > **Not mounted.** The line-up came off home — see *Home is a cluster*

@@ -386,46 +386,51 @@
 .mech-alarm {
   position: fixed;
   left: 50%;
-  top: calc(24 * var(--px));
+  top: calc(25 * var(--px));
   transform: translateX(-50%);
   z-index: 3;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: calc(10 * var(--px));
+  gap: calc(4 * var(--px));
 }
 
-/* The word is drawn in the panel's own segment glyphs, not typed — see
-   `Segment.tsx`. Lit is a filled block with the word in black, the way a
-   real shift light is — a lamp behind coloured glass, not glowing green or
-   red text. Both keys are the panel's own green/warm split — `SHOOT` in
-   `--accent`, `STOP` in `--warn`.
+/* Three equal cells now, to a client-supplied lamp design — a fixed box each
+   (`81.6 × 34`, the design's own units, which line up close enough with this
+   panel's frame that they carry over as `--px` multiples directly), not a
+   box sized to its own word.
 
-   Fixed **height**, not width: `STOP` at its own length (`cells={4}`) has a
-   narrower viewBox than `SHOOT` (`cells={5}`), and scaling both to the same
-   width made `STOP`'s glyphs render smaller. Scaling both to the same
-   height instead means a cell is the same size on both keys and only the
-   box's width differs. Smaller than the first pass — this is meant to read
-   at the scale of a header instrument, not the loudest thing on the
-   screen. */
+   The word is still drawn in the panel's own segment glyphs, not typed — see
+   `Segment.tsx` — and still scaled by fixed **height**, not width: `STOP` at
+   its own length (`cells={4}`) has a narrower viewBox than `SHOOT`
+   (`cells={5}`), and scaling both to the same *box* width would size their
+   glyphs differently even though the boxes now match. Height-scaling and
+   then centring the result in a fixed-width cell gets both: identical glyph
+   size and identical cell width. */
 .mech-alarm-key {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: calc(19 * var(--px));
-  padding: 0 calc(6 * var(--px));
-  border: 1px solid rgba(var(--accent-rgb), 0.14);
-  background: rgba(var(--accent-rgb), 0.03);
+  width: calc(81.6 * var(--px));
+  height: calc(34 * var(--px));
+  border-radius: calc(3 * var(--px));
+  border: 1px solid rgba(var(--accent-rgb), 0.22);
+  background: rgba(var(--accent-rgb), 0.07);
   transition: border-color 200ms linear, background-color 200ms linear, box-shadow 200ms linear;
 }
 
-/* Scaled by height, not width — see the note above. `Segment.css` sets
-   `width: 100%; height: auto` for every other mount of this component; this
-   is the one place that inverts it. */
+.mech-alarm-key[data-warn] {
+  border-color: rgba(var(--warn-rgb), 0.22);
+  background: rgba(var(--warn-rgb), 0.07);
+}
+
+/* A fixed pixel height, not `100%` of the key — the key is a lamp housing
+   now, much taller than the word it holds, and a glyph stretched to fill it
+   would swallow the housing rather than sit inside it. */
 .mech-alarm-key .mech-seg {
   display: block;
-  height: 100%;
+  height: calc(13 * var(--px));
   width: auto;
 }
 
@@ -434,61 +439,47 @@
   height: 100%;
 }
 
-/* Unlit: dim. */
-.mech-alarm-key .mech-seg-on line,
-.mech-alarm-key .mech-seg-glow line {
-  stroke: var(--accent);
-}
-
-.mech-alarm-key[data-warn] .mech-seg-on line,
-.mech-alarm-key[data-warn] .mech-seg-glow line {
-  stroke: var(--warn);
-}
-
+/* Idle: the housing's colour, dim — a lamp that is wired but not lit, not a
+   dead one. */
 .mech-alarm-key .mech-seg-on,
 .mech-alarm-key .mech-seg-glow {
-  opacity: 0.32;
+  opacity: 0.4;
   transition: opacity 200ms linear;
 }
 
-/* Lit: the block fills with the key's own colour and the glyphs themselves
-   turn black, on top of it. Fill and glow both turned down from the first
-   pass — a solid saturated fill read as a second light source next to the
-   header rather than an instrument in it. */
+/* Lit: the housing fills with its own colour and the glyphs turn white on
+   top of it, glowing in the housing's colour — a backlit LED cell, not green
+   or red text with a border around it. */
 .mech-alarm-key[data-on='true'] {
-  border-color: var(--accent);
-  background: rgba(var(--accent-rgb), 0.55);
+  border-color: rgba(var(--accent-rgb), 0.7);
+  background: rgba(var(--accent-rgb), 0.5);
   box-shadow:
-    0 0 calc(8 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.3 * var(--g))),
-    0 0 calc(28 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.16 * var(--g)));
+    0 0 calc(10 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.35 * var(--g))),
+    0 0 calc(30 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.18 * var(--g)));
 }
 
 .mech-alarm-key[data-warn][data-on='true'] {
-  border-color: var(--warn);
-  background: rgba(var(--warn-rgb), 0.55);
+  border-color: rgba(var(--warn-rgb), 0.85);
+  background: rgba(var(--warn-rgb), 0.75);
   box-shadow:
-    0 0 calc(9 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.32 * var(--g))),
-    0 0 calc(32 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.17 * var(--g)));
+    0 0 calc(11 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.4 * var(--g))),
+    0 0 calc(34 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.2 * var(--g)));
+}
+
+.mech-alarm-key[data-on='true'] .mech-seg-on,
+.mech-alarm-key[data-on='true'] .mech-seg-glow {
+  opacity: 1;
 }
 
 .mech-alarm-key[data-on='true'] .mech-seg-on line {
-  stroke: #0a0500;
+  stroke: #fff;
 }
 
-.mech-alarm-key[data-on='true'] .mech-seg-glow {
-  /* No bloom off black ink — the glow was the light coming off green or red
-     glass, and there is no light coming off the word once it is the dark
-     shape printed on a lit lamp instead. */
-  display: none;
-}
-
-.mech-alarm-key[data-on='true'] .mech-seg-on {
-  opacity: 1;
-  filter: none;
-}
-
+/* The unlit segments still show through a lit cell — the same "grid of lamps,
+   not a font" the rest of the display relies on — just lightened so they read
+   against a filled housing instead of a bare one. */
 .mech-alarm-key[data-on='true'] .mech-seg-off line {
-  stroke: rgba(0, 0, 0, 0.18);
+  stroke: rgba(255, 255, 255, 0.16);
 }
 
 /* The subject arrives out of nothing rather than out of a cover — on the
@@ -2807,18 +2798,29 @@
   margin: 0;
 }
 
-.mech-comms-to,
 .mech-credit span {
   color: var(--mid);
 }
 
-.mech-comms:hover .mech-comms-to {
-  color: #fff;
+/* The one warm reading down here — the address is the way to reach the
+   person the name at the top of the page belongs to, so it takes the name's
+   own colour and its own glow (`.mech-ident-name` in MechCluster.css),
+   scaled down to a footer line rather than a headline. */
+.mech-comms-to {
+  color: var(--warn);
+  text-shadow: 0 0 calc(6 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.4 * var(--g)));
 }
 
-/* Unlit phosphor, not warm — this dot answers to nothing the pointer does,
-   it is the panel idling, so it takes the machine's own colour. */
-.mech-dot {
+.mech-comms:hover .mech-comms-to {
+  color: #fff;
+  text-shadow: none;
+}
+
+/* Named `-foot-` and not the bare `.mech-dot` the reticle's own hotspot
+   already owns (`MechCursor`'s crosshair centre) — same word, two unrelated
+   circles, and the class collision silently mixed their rules the first
+   time this was tried. */
+.mech-foot-dot {
   flex: none;
   width: calc(3 * var(--px));
   height: calc(3 * var(--px));
@@ -2828,7 +2830,13 @@
   animation: mech-dot-flicker 4.8s ease-in-out infinite;
 }
 
-.mech-credit .mech-dot {
+/* The comms dot matches its own line, not the panel's default green. */
+.mech-comms .mech-foot-dot {
+  background: var(--warn);
+  box-shadow: 0 0 calc(4 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.5 * var(--g)));
+}
+
+.mech-credit .mech-foot-dot {
   animation-delay: 1.4s;
 }
 
@@ -2855,7 +2863,7 @@
 
   .mech-ring,
   .mech-pin,
-  .mech-dot {
+  .mech-foot-dot {
     animation: none;
   }
 
@@ -3025,12 +3033,30 @@
   text-shadow: 0 0 calc(9 * var(--px)) rgba(var(--accent-rgb), 0.5);
 }
 
+/* The middle cell of the warning pair now — the same fixed box the two keys
+   either side of it use (`.mech-alarm-key`, `81.6 × 34`), so the row reads as
+   three lamps in one housing rather than two keys either side of a stray
+   number. No fill or border of its own: it is a reading, not a switch, and
+   its glyphs go white-on-glow to match the lit key beside it rather than
+   the panel's usual dim phosphor. */
 .mech-tally[data-inline='true'] {
   position: static;
   left: auto;
   top: auto;
   transform: none;
   z-index: auto;
+  width: calc(81.6 * var(--px));
+  height: calc(34 * var(--px));
+  justify-content: center;
+}
+
+.mech-tally[data-inline='true'] .mech-tally-n {
+  width: calc(40 * var(--px));
+  padding: 0;
+}
+
+.mech-tally[data-inline='true'] .mech-seg-on line {
+  stroke: #fff;
 }
 
 /* The number is the segment display, the same one the counts on home are
@@ -3043,11 +3069,6 @@
   width: calc(44 * var(--px));
   padding: calc(4 * var(--px)) calc(6 * var(--px));
 }
-
-/* Same size as the default reading, not a larger one — enlarging it here
-   read as louder than the two keys either side of it, and the point of
-   sharing `Segment` across every count on the panel is that a number reads
-   the same size wherever it is printed. */
 
 /* ---- narrow viewports ----
 

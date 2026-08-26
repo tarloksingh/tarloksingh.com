@@ -1456,10 +1456,10 @@ export default function Mech({ id, onProject, onHome }: Props) {
         <footer className="mech-foot" data-arrive>
           <a className="mech-comms" href="mailto:hello@tarloksingh.com">
             <span className="mech-comms-to">hello@tarloksingh.com</span>
-            <i className="mech-dot" aria-hidden />
+            <i className="mech-foot-dot" aria-hidden />
           </a>
           <p className="mech-credit">
-            <i className="mech-dot" aria-hidden />
+            <i className="mech-foot-dot" aria-hidden />
             <span>developed by tarlok singh</span>
           </p>
         </footer>
