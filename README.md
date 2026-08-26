@@ -255,8 +255,17 @@ a container and the font size is a `cqw` sum over the character count — which
 means widening `.mech-ident` is what makes the name larger, and
 `--cluster-name` on the panel stays a nudge either side of that rather than
 being wound up to carry the whole change. It sits lower than it did as well:
-the padding above it is what drops it clear of the warning pair, and the panel
-below re-centres itself in what is left.
+the padding above it is what drops it clear of the warning pair.
+
+**It is centred with flex, not `text-align`, and that distinction is the whole
+bug.** `text-align: center` only positions a line *inside* the space it has.
+Wind `--cluster-name` up far enough and the line is wider than its box — and an
+over-wide line does not centre, it starts at the box's left edge and runs off
+the right. Which is exactly what it looked like: turn the name up and it stops
+being centred and starts growing rightward. A flex item larger than its
+container under `justify-content: center` overflows both ends equally instead,
+so the name stays on the frame's centre line at any size and simply runs out of
+room symmetrically.
 
 **The rail is as tall as the instrument, and no taller.** It used to be
 `align-self: stretch`, which is the full height of the body — and the body runs
@@ -270,23 +279,27 @@ tachometer's own cell ladder, so the two cannot drift apart. What that costs is
 four slots visible instead of eight; the rail scrolls, and a bank you scroll is
 still a bank, where a bank sitting on top of the footer is a bug.
 
-**`INTRO` and the profile are the tachometer's readout box.** The reference has
-a black box hard against the top-left of its bank with the current reading in
-it and the scale's unit set small and dim beside it; that box is the model. It
-took three passes to get there. Stacked above the graph, the two were a caption
-on top of a chart and the middle column read as two unrelated blocks. Laid
-*over* the top-left of the face, they were furniture on the instrument — right
-idea — but they cost the power curve its shape, because the only way to keep
-the columns off a paragraph is to hold the graph at idle across half its own
-face. In the head row it is furniture *and* the curve is free, and the box gets
-to be short and wide (three lines across four hundred and forty units, not five
-down three hundred and thirty) which is what a readout on a dash looks like.
+**`INTRO` and the profile sit in the tachometer's head row, short and wide, and
+drawn on nothing.** Four passes to get there, and each one was wrong in a way
+worth writing down. Stacked above the graph, they were a caption on top of a
+chart and the middle column read as two unrelated blocks. Laid *over* the
+top-left of the face, they were furniture on the instrument — right idea — but
+they cost the power curve its shape, because the only way to keep the columns
+off a paragraph is to hold the graph at idle across half its own face. Set in a
+filled black readout box, the shape the reference gives its own digits, they
+became a *card* — this panel has no other solid on it, so one block of fill
+turned the only piece of prose on the screen into something sitting on top of
+the instrument rather than something the instrument had printed. Nothing here
+is boxed; that rule does not have an exception for the paragraph either.
 
-`Tach` takes the box as `children` and renders it in `.mech-tach-head`,
-because the box is the instrument's furniture and the words inside it are not.
-It is the one properly black fill on the panel — everything else here is a
-hairline or a lit cell over the page's own dark — and it earns the exception by
-being a hole cut in the housing rather than a shape drawn on it.
+What is left is the position and the proportion: three lines across four
+hundred and forty units, on the head row, directly above the left end of the
+bank. `Tach` takes it as `children` and renders it into `.mech-tach-head`,
+because the row is the instrument's furniture and the words on it are not.
+
+**`OUTPUT × 1000` is gone with it.** It was a unit for a scale that measures
+nothing — a label explaining how to read a number this instrument does not
+have.
 
 **Its height is fixed, and that is the point.** The paragraph types itself in a
 character at a time, and while it was in the flow every character it added
@@ -400,23 +413,26 @@ own, and a reader had four rows of climbing cells to tell apart by position
 alone. A dial is the one instrument grammar a dashboard has that this panel was not
 using yet.
 
-**The blocks ramp, and the arc sweeps.** An even ring of ticks was the first
-try at it and it read as a loading spinner — nothing about it said which end
-was the start. What a digital speedometer actually draws is a C open at the
-bottom with each block reaching further out from the middle than the one
-before, so the lit run is a wedge whose length is legible without counting it.
-`ARC_SEGS` is thirteen straight spokes rather than thirteen arc segments: at a
-gauge thirty units across on a 1920 frame the curvature over one block is under
-a pixel, and a spoke is a `<line>` with four numbers where an arc is a path with
-a sweep flag per cell.
+**Even blocks, and a sweep that lights them one after another.** There was a
+pass where the blocks *ramped* — a C open at the bottom with each one reaching
+further out than the last, the way a digital speedometer's arc is drawn. It
+looks right on a speedometer and it was wrong here, because the wedge is a
+shape doing a second job: it says how far round a reading has got, and there is
+no reading. A field is on or it is off, so a ring of identical blocks tells the
+truth and a fan draws a scale nothing is plotted against.
 
-A field is on or it is not, so there is no partial reading to plot — but the
-arc does not simply *appear*. Each block carries its own index as `--n` and the
-stylesheet turns that into a transition delay, so switching a field on runs the
-arc round from the bottom-left in about half a second. Switching it off drops
-the lot at once, and that asymmetry is the point: a gauge sweeping up is a gauge
+What survived the ramp is the *movement*, which was the good part. Each block
+carries its own index as `--n` and the stylesheet turns that into a transition
+delay, so switching a field on runs the ring round from twelve o'clock in about
+a third of a second rather than lighting it whole. Switching it off drops the
+lot at once, and that asymmetry is the point: a gauge sweeping up is a gauge
 taking a reading, and a gauge sweeping down is a gauge pretending the reading
 faded away.
+
+`ARC_SEGS` is twelve straight spokes rather than twelve arc segments: at a gauge
+thirty units across on a 1920 frame the curvature over one block is under a
+pixel, and a spoke is a `<line>` with four numbers where an arc is a path with a
+sweep flag per cell.
 
 It sits under the bank rather than under the instrument: it is what a selection
 is made of, next to the thing you selected, rather than a caption strung under
@@ -810,12 +826,32 @@ side of the mark so the join is a point rather than a gap.
 
 #### The counts wander, and now they answer
 
-Three gauges, bled off the left edge of the frame so the block reads as part of
-a panel that carries on past the window rather than as a card floating near the
-corner of one — `margin-left` of exactly the inset `.mech-cluster` carries, put
-back as padding, so it runs to the edge of the frame rather than to a guess at
-it. No border either any more — see `#### The display` for why nothing on this
-panel is boxed.
+Three bars, their labels, and the reel of what I do standing over them. No
+border — see `#### The display` for why nothing on this panel is boxed.
+
+**They used to be bled off the left edge of the frame**, on the argument that a
+block running past the glass reads as a panel carrying on rather than as a card
+floating near a corner. It does, and it also put the three gauges a third of
+the frame away from the instrument they are read against with nothing in
+between. They are pulled in against the middle column now: `.mech-flank` stays
+`--flank-w` wide, because that width is what balances the rail and keeps the
+middle centred, but its contents sit at the *right* of it. The empty run
+belongs on the outside edge, not between two things being compared.
+
+**The numbers over them are gone, and so is the line under them.** Each gauge
+used to carry a two-cell segment number on top and a second caption below —
+`11` over `YRS` over `ACTIVE`. Between the digits, the noun and the qualifier,
+one reading was printed three times, and the block ran so tall that the bars it
+exists for were the least of it. What the numbers said the bars already say,
+which is the whole job of a gauge: a bar against a fixed ceiling means "a lot
+of" or "a few", and that is the honest resolution of these three. The count is
+still in the markup as an `aria-label`, because a screen reader has no bar to
+look at.
+
+**The reel of what I do stands where the digits were.** Under the bars it was a
+fourth line on a block that was already three deep; over them it is the block's
+one reading with the bars beneath it as the scale, which is the arrangement
+every other instrument on this panel uses.
 
 **They used to be frozen at the whole roster's numbers regardless of what the
 panel was saying elsewhere**, which read as decoration wearing an instrument's

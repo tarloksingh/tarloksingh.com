@@ -68,11 +68,6 @@
   /* Every glow in this file is a multiple of this. One knob, on the panel. */
   --g: var(--cluster-glow, 1);
 
-  /* How far the counts reach past the left edge of the panel and off the side
-     of the frame. The same number `.mech-cluster` is inset by, so the block
-     runs exactly to the edge of the window rather than to a guess at it. */
-  --bleed: calc(101 * var(--px));
-
   /* The two flanks are the same width, and that is what centres the middle.
      `.mech-body` hands what is left over to `.mech-main`, so a left flank that
      sized itself to whatever the role display happened to be left the
@@ -354,13 +349,20 @@
   width: var(--flank-w);
   display: flex;
   flex-direction: column;
+  /* Its contents sit at the *right* of that width, hard against the
+     instrument. The column has to stay `--flank-w` wide to balance the rail
+     and keep the middle centred; nothing says the gauges have to be spread
+     across it, and the empty run belongs on the outside edge rather than
+     between the counts and the graph they are read against. */
+  align-items: flex-end;
   gap: calc(14 * var(--px));
   /* Drops the flank until the counts' bars stand on the same floor the tach's
      columns do. The bars and the face are the same height (`--face`), so this
-     is purely the difference in what sits *above* each of them: the readout box
-     and the head row on the instrument, a two-cell number on a gauge. Measured
-     off the built page — it is all type, and type does not answer to `--px`. */
-  margin-top: calc(45 * var(--px));
+     is purely the difference in what sits *above* each of them: the intro and
+     the head row on the instrument, the reel of what I do on the gauges.
+     Measured off the built page — it is all type, and type does not answer to
+     `--px`. */
+  margin-top: calc(58 * var(--px));
 }
 
 /* Boxed to the counts' own drawing width, not to a number of its own. At three
@@ -389,13 +391,28 @@
   width: calc(1060 * var(--px));
   max-width: 100%;
   margin: 0 auto;
-  text-align: center;
   padding: calc(46 * var(--px)) 0 calc(22 * var(--px));
   container-type: inline-size;
+
+  /* Flex, not `text-align: center`, and that is the whole fix for "the name
+     stops being centred once it gets big".
+
+     `text-align` only ever positions a line *inside* the space it has. Wind
+     `--cluster-name` up far enough and the line is wider than this box — and
+     an over-wide line does not centre, it starts at the box's left edge and
+     runs off the right, which is exactly what it looked like. A flex item
+     larger than its container under `justify-content: center` overflows both
+     ends equally instead, so the name stays on the frame's centre line at any
+     size and simply runs out of room symmetrically. */
+  display: flex;
+  justify-content: center;
 }
 
 .mech-ident-name {
   margin: 0;
+  /* Never shrunk and never wrapped, so the flex centring above has a real
+     over-wide item to centre rather than a squeezed one. */
+  flex: none;
   /* Audiowide rather than the site's Clash Display — a display face built
      for exactly this register (LED signage, dashboards, arcade marquees),
      wide and geometric where Clash Display is a magazine headline face.
@@ -431,18 +448,18 @@
    name used to sit before it went up to the top of the frame. Two things about
    this are load-bearing.
 
-   **It is the readout box in the instrument's head.** The reference's
-   tachometer has a black box hard against the top-left of its bank with the
-   current reading in it, and the scale's unit set small and dim beside it —
-   that box is the model for this. Not a caption stacked above a graph (which
-   made the middle column read as two unrelated blocks) and not laid over the
-   columns either: that was a pass in between, and it cost the power curve its
-   shape, because the only way to keep the columns off the paragraph was to
-   hold the graph at idle across the left half of its own face.
+   **Short and wide, in the instrument's head row, and drawn on nothing.**
+   Three lines across four hundred and forty units, sitting directly above the
+   left end of the bank. There was a pass where it was a filled black readout
+   box — the shape the reference gives its own digits — and it was wrong here:
+   this panel has no other solid on it, so one block of fill turned the one
+   piece of prose on the screen into a card sitting on top of the instrument
+   rather than something the instrument had printed. Nothing on this panel is
+   boxed; see `.mech-display` for the same argument about the displays.
 
-   In the head row it is furniture on the instrument, the curve is free to be
-   the curve, and the box gets to be *short and wide* — three lines across
-   four hundred and forty units rather than five down three hundred and thirty.
+   Not laid over the columns either — that was the pass before, and it cost the
+   power curve its shape, because the only way to keep the columns off a
+   paragraph is to hold the graph at idle across the left half of its own face.
 
    **Its height is fixed.** The paragraph types itself in a character at a
    time, and a block that grows as it types pushes everything under it down for
@@ -451,16 +468,8 @@
 .mech-intro {
   flex: none;
   width: calc(440 * var(--px));
-  height: calc(96 * var(--px));
+  height: calc(86 * var(--px));
   max-width: 100%;
-  padding: calc(10 * var(--px)) calc(14 * var(--px));
-  /* The one properly black thing on the panel. Everything else here is a
-     hairline or a lit cell over the page's own dark; this is a hole cut in the
-     housing with a display behind it, which is why it is allowed a fill at
-     all — see *nothing is a solid* at the top of this file. */
-  background: #040705;
-  border: 1px solid rgba(var(--accent-rgb), 0.16);
-  overflow: hidden;
 }
 
 .mech-intro-cap {
@@ -601,30 +610,15 @@
   flex-direction: column;
 }
 
-/* The reference's own top line: the readout box hard against the left end of
-   the bank, the unit set small and dim beside it, and nothing else. The box is
-   handed in as children (`.mech-intro`); this row is only the arrangement.
-   `flex-end` so the unit sits on the box's floor rather than floating half way
-   up a box eight times its height. */
+/* The instrument's top line, which is now only whatever is handed in as
+   children — on this panel, the intro. `OUTPUT × 1000` used to sit at the
+   right end of it and is gone: it is a unit for a scale that measures nothing
+   (see the note above `TACH_COLS`), so it was a label telling you how to read a
+   number that does not exist. */
 .mech-tach-head {
   display: flex;
   align-items: flex-end;
-  gap: calc(18 * var(--px));
   padding-bottom: calc(6 * var(--px));
-}
-
-.mech-tach-unit {
-  display: flex;
-  align-items: baseline;
-  gap: calc(8 * var(--px));
-  padding-bottom: calc(4 * var(--px));
-}
-
-.mech-tach-scale {
-  font-size: calc(9.5 * var(--type));
-  letter-spacing: calc(1.6 * var(--type));
-  text-transform: uppercase;
-  color: var(--dim);
 }
 
 /* The face. `--rev` is where the needle is, 0 to 1, written onto this element
@@ -771,21 +765,20 @@
    of a panel that carries on past the window rather than as a card floating
    near the corner of one. See `COUNTS` in MechCluster.tsx for what the three
    are and why `PROJ LISTED` is not one of them any more. */
+/* No longer bled off the edge of the frame. The block used to run out past the
+   cluster's own left inset and off the side of the window, on the argument that
+   it read as a panel carrying on past the glass — and it does, but it also put
+   the three gauges a third of the frame away from the instrument they are read
+   against, with nothing in between. Pulled in against the middle column
+   instead, which is where a comparison belongs. */
 .mech-counts {
   position: relative;
   flex: none;
-  /* The drawing width, plus what it is bled and padded by — so `--count-w` is
-     the width of the gauges themselves and the role reel below can simply be
-     told the same number. */
-  width: calc(var(--count-w) + var(--bleed) + 26 * var(--px));
+  width: var(--count-w);
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: calc(20 * var(--px));
-  /* Out past the panel's own left inset and off the side of the frame. */
-  margin-left: calc(-1 * var(--bleed));
-  padding: calc(26 * var(--px)) calc(26 * var(--px)) calc(24 * var(--px)) var(--bleed);
-  background: linear-gradient(90deg, transparent, rgba(var(--accent-rgb), 0.025));
 }
 
 .mech-gauge {
@@ -793,11 +786,6 @@
   flex-direction: column;
   align-items: center;
   gap: calc(9 * var(--px));
-}
-
-.mech-gauge-n {
-  display: block;
-  width: calc(52 * var(--px));
 }
 
 /* Filled from the foot up — `column-reverse`, so the first cell in the markup
@@ -834,13 +822,6 @@
   letter-spacing: calc(1.8 * var(--type));
   text-transform: uppercase;
   color: rgba(var(--accent-rgb), 0.8);
-}
-
-.mech-gauge-unit {
-  font-size: calc(8.5 * var(--type));
-  letter-spacing: calc(1.4 * var(--type));
-  text-transform: uppercase;
-  color: var(--dim);
 }
 
 /* ---- the rail ----

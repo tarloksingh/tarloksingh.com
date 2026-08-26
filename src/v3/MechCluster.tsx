@@ -239,9 +239,9 @@ const countsFor = (fields: Field[]) => {
   const roles = new Set(rows.flatMap((slot) => slot.roles))
   const orgs = new Set(rows.map((slot) => slot.company))
   return [
-    { label: 'yrs', unit: 'active', value: Math.max(...years) - Math.min(...years) + 1, of: COUNT_OF.yrs },
-    { label: 'roles', unit: 'worn', value: roles.size, of: COUNT_OF.roles },
-    { label: 'orgs', unit: 'shipped', value: orgs.size, of: COUNT_OF.orgs }
+    { label: 'yrs', value: Math.max(...years) - Math.min(...years) + 1, of: COUNT_OF.yrs },
+    { label: 'roles', value: roles.size, of: COUNT_OF.roles },
+    { label: 'orgs', value: orgs.size, of: COUNT_OF.orgs }
   ]
 }
 
@@ -468,18 +468,10 @@ function Tach({ children }: { children?: React.ReactNode }) {
 
   return (
     <div className="mech-tach">
-      {/* The head is the reference's own top line: a black readout box hard
-          against the left edge of the face, and the scale's unit set small and
-          dim beside it. What goes in the box is handed in from outside — on
-          this panel it is the intro — because the box is the tachometer's
-          furniture and the words in it are not. */}
-      <div className="mech-tach-head">
-        {children}
-        <div className="mech-tach-unit">
-          <span className="mech-cap">output</span>
-          <span className="mech-tach-scale">× 1000</span>
-        </div>
-      </div>
+      {/* The top line, and whatever is handed in goes on it — on this panel,
+          the intro. It is a slot rather than content of its own because the row
+          is the instrument's furniture and the words on it are not. */}
+      <div className="mech-tach-head">{children}</div>
 
       {/* `--cols` is handed to the stylesheet rather than written into it: each
           column works out whether the sweep has reached it from its own index
@@ -588,42 +580,45 @@ function Alarm() {
 
 /* ---- the field dials ----
 
-   The arc off a digital speedometer: a C of separate blocks around the face,
-   open at the bottom, each one reaching further out from the middle than the
-   one before it. The ramp is the whole read — a plain ring of even ticks is a
-   loading spinner, and what makes the reference's arc look like a *reading* is
-   that the blocks grow as they go, so the lit run is a wedge and you can see
-   how far round it has got without counting anything.
+   A ring of even blocks, and a sweep that lights them one after another from
+   the top.
+
+   The blocks used to *ramp* — a C open at the bottom with each one reaching
+   further out than the last, the way a digital speedometer's arc is drawn.
+   That was a shape doing two jobs: the wedge says how far round a reading has
+   got, and there is no reading here. A field is on or it is off, so a ring
+   whose blocks are all the same is telling the truth and a ring that fans out
+   is drawing a scale nothing is being plotted against.
+
+   What survived the ramp is the *movement*, which was the good part: the
+   blocks light in sequence rather than all at once. That is what makes it read
+   as a gauge answering rather than a lamp switching, and it costs a transition
+   delay per block.
 
    Straight spokes rather than arc segments. At this size (a gauge about thirty
    units across on a 1920 frame) the curvature across one block is under a
-   pixel, and a spoke is a `<line>` with two numbers where an arc is a path
+   pixel, and a spoke is a `<line>` with four numbers where an arc is a path
    with a sweep flag and an `A` command per cell. */
 const ARC = {
   box: 40,
   mid: 20,
-  /** Where every block starts. The hole in the middle is what makes it a dial
-   *  face rather than a pie. */
-  r0: 9,
-  /** Bottom-left round to bottom-right, the way every speedometer since the
-   *  first one has run. */
-  from: 138,
-  sweep: 264,
-  cells: 13,
-  /** How far the first and last blocks reach past `r0`. */
-  near: 2.6,
-  far: 8.4
+  /** Where every block starts and ends. The hole in the middle is what makes
+   *  it a dial face rather than a pie. */
+  r0: 9.5,
+  len: 5.5,
+  /** From twelve o'clock, clockwise, all the way round — so the sweep starts
+   *  where a dial's own zero is. */
+  from: -90,
+  cells: 12
 }
 
 const ARC_SEGS = Array.from({ length: ARC.cells }, (_, n) => {
-  const t = n / (ARC.cells - 1)
-  const a = ((ARC.from + (n + 0.5) * (ARC.sweep / ARC.cells)) * Math.PI) / 180
-  const out = ARC.r0 + ARC.near + (ARC.far - ARC.near) * t
+  const a = ((ARC.from + n * (360 / ARC.cells)) * Math.PI) / 180
   return {
     x1: ARC.mid + Math.cos(a) * ARC.r0,
     y1: ARC.mid + Math.sin(a) * ARC.r0,
-    x2: ARC.mid + Math.cos(a) * out,
-    y2: ARC.mid + Math.sin(a) * out
+    x2: ARC.mid + Math.cos(a) * (ARC.r0 + ARC.len),
+    y2: ARC.mid + Math.sin(a) * (ARC.r0 + ARC.len)
   }
 })
 
@@ -635,13 +630,13 @@ const ARC_SEGS = Array.from({ length: ARC.cells }, (_, n) => {
  *  other four had not already said in the same shape. A dial is the one
  *  instrument grammar a dashboard has that this panel was not using.
  *
- *  A field is on or it isn't, so the arc lights all the way round or not at
+ *  A field is on or it isn't, so the ring lights all the way round or not at
  *  all — but it does not simply *appear*. Each block carries its own index as
  *  `--n` and the stylesheet turns that into a transition delay, so switching a
- *  field on runs the arc round from the bottom-left in about half a second and
- *  switching it off drops the lot at once. Which is the right way round: a
- *  gauge sweeping up is a gauge taking a reading, and a gauge sweeping *down*
- *  is a gauge pretending the reading went away gradually. */
+ *  field on runs the ring round from twelve o'clock in about a third of a
+ *  second and switching it off drops the lot at once. Which is the right way
+ *  round: a gauge sweeping up is a gauge taking a reading, and a gauge sweeping
+ *  *down* is a gauge pretending the reading went away gradually. */
 function FieldGauge({ name, on }: { name: Field; on: boolean }) {
   return (
     <div className="mech-field-gauge" data-on={on}>
@@ -723,16 +718,20 @@ function Counts({ fields }: { fields: Field[] }) {
   }, [])
 
   return (
+    /* Bars and their labels, and nothing else on top of them.
+
+       The two-cell number over each gauge is gone, and so is the second line
+       under it — `active`, `worn`, `shipped`. Between the digits, the noun and
+       the qualifier, one reading was being printed three times, and the block
+       ran so tall that the bars it exists for were the least of it. What the
+       numbers said the bars already say, which is all a gauge is for: a bar
+       against a fixed ceiling means "a lot of" or "a few", and that is the
+       honest resolution of these three. The reel of what I do stands where the
+       digits were — see the flank in `MechCluster` — so the top of the block is
+       still a readout, just one that is not repeating the row below it. */
     <section className="mech-counts">
       {rows.map((count, n) => (
-        <div className="mech-gauge" key={count.label}>
-          <span className="mech-gauge-n">
-            <Segment
-              text={String(count.value).padStart(2, '0')}
-              cells={2}
-              label={`${count.value} ${count.label}`}
-            />
-          </span>
+        <div className="mech-gauge" key={count.label} aria-label={`${count.value} ${count.label}`}>
           {/* Stacked bottom-up: the strip is `column-reverse`, so the first
               cell is the one at the foot of the gauge and lighting the first
               `--lit` of them fills it from the bottom, which is the only
@@ -750,7 +749,6 @@ function Counts({ fields }: { fields: Field[] }) {
             ))}
           </span>
           <span className="mech-gauge-label">{count.label}</span>
-          <span className="mech-gauge-unit">{count.unit}</span>
         </div>
       ))}
     </section>
@@ -974,21 +972,24 @@ export default function MechCluster({ onProject, covered, tuning }: Props) {
       <div className="mech-body">
         {/* ---- the left flank ---- */}
         <div className="mech-flank">
-          <Counts fields={marked} />
-
           {/* What I do — cycling the titles with nothing picked, or what I
-              did on the selected project. Sat under the counts rather than
-              in a run across the top: it is a reading off the same block of
-              facts, not a caption for the whole panel. In a narrower box than
-              the other two displays — it never needs "Red Dead Redemption 2"'s
-              width — and centred in it, over the middle of the three gauges
-              above rather than pinned to the left edge of the first one. It
-              was left-set while the box was wider than the gauges and drifting
-              looked like the problem; the box is the gauges' own width now
-              (`--count-w`), so centring is what puts it under them. */}
+              did on the selected project.
+
+              It stands *over* the gauges now, in the place the three two-cell
+              numbers used to occupy. Under them it was a fourth line on a block
+              that was already digits, noun and qualifier deep; over them it is
+              the block's one reading, with the bars beneath it as the scale —
+              which is the arrangement the whole panel uses everywhere else.
+
+              Centred in a box that is the gauges' own width (`--count-w`), so
+              it lands over the middle of the three. It was left-set for a pass
+              while the box was still wider than they were and drifting looked
+              like the problem. */}
           <div className="mech-display mech-display-role" data-on={slot !== null}>
             <Segment text={reading} cells={ROLE_CELLS} label={reading} />
           </div>
+
+          <Counts fields={marked} />
         </div>
 
         {/* ---- the middle ---- */}

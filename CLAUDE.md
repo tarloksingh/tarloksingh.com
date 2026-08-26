@@ -171,16 +171,17 @@ five parts:
   height *is* that ladder's sum, handed to the panel as `--face`; `--panel-h`
   (the middle column's height, and the rail's) and the counts' bar height are
   both derived from it. Wide and shallow, ~2.5:1.
-- **`INTRO` and the profile** in the tachometer's own **readout box** — the
-  black panel at the top-left of its head row, handed to `Tach` as children.
-  Fixed height, so typing them in moves nothing under them.
-- **The counts** bled off the left edge of the frame (years active, roles
-  worn, orgs shipped — the bars wander around the reading, the numbers do
-  not), bars the graph's own height, with the role reel under them boxed to
-  the same `--count-w` and centred in it; and the **rail of twelve slots**
-  down the right — as tall as the instrument and no taller — each holding that
-  project's own 3D subject, live. Press one and it opens. Under the bank, the
-  five fields as **ramping speedometer arcs** that sweep round on selection.
+- **`INTRO` and the profile** on the tachometer's head row, above the left end
+  of the bank — handed to `Tach` as children, short and wide, on no background
+  at all. Fixed height, so typing them in moves nothing under them.
+- **The counts** (years active, roles worn, orgs shipped) pulled in against
+  the instrument rather than bled off the frame, bars the graph's own height,
+  no numbers over them and no captions under them — the reel of what I do
+  stands where the digits were, centred on `--count-w`. And the **rail of
+  twelve slots** down the right — as tall as the instrument and no taller —
+  each holding that project's own 3D subject, live. Press one and it opens.
+  Under the bank, the five fields as **rings of even blocks** that sweep round
+  from twelve o'clock on selection and drop all at once on release.
 
 Every block has its own entrance *and* its own exit, both hung off
 `data-covered` — see **Coming up, and going down** in `README.md`.
