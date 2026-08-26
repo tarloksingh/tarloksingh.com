@@ -92,8 +92,10 @@ const TITLES: Array<{ title: string; field: Field }> = [
 
 type Field = 'design' | 'code' | 'film' | 'games' | 'product'
 
-/** The scale, in the order it is printed. */
-const FIELDS: Field[] = ['design', 'code', 'film', 'games', 'product']
+/** The scale, in the order it is printed. Three now, not five — `games` and
+ *  `product` dropped off the dial row entirely rather than being left to
+ *  overflow the rail's own width. */
+const FIELDS: Field[] = ['design', 'code', 'film']
 
 /** Which field each of a project's tags falls under.
  *
@@ -151,7 +153,7 @@ const ROLE_CELLS = 16
 /** What the right-hand display says with nothing picked. A dark box on
  *  arrival reads as broken; this labels what the box is for, and it goes out
  *  the moment there is something real to put there. */
-const IDLE = 'select'
+const IDLE = 'projects'
 
 /** A role, split into the things it actually is. "Founder & Product Designer"
  *  is two jobs printed as one string, and the display cycles them — see
@@ -569,10 +571,10 @@ function Alarm() {
   return (
     <div className="mech-alarm" aria-hidden>
       <i className="mech-alarm-key" data-on={up}>
-        shoot
+        <Segment text="SHOOT" cells={5} settle={false} label="shoot" />
       </i>
       <i className="mech-alarm-key" data-warn data-on={!up}>
-        stop
+        <Segment text="STOP" cells={5} warn settle={false} label="stop" />
       </i>
     </div>
   )
@@ -959,17 +961,23 @@ export default function MechCluster({ onProject, covered, tuning }: Props) {
     >
       <Alarm />
 
-      {/* The identity, on its own now — between the warning pair and the
-          instrument rather than laid over the quiet end of it. Red-orange,
-          the panel's one warm colour, because this is the one line on the
-          screen that is not a reading: it is who built it. */}
-      <section className="mech-ident">
-        <h1 className="mech-ident-name" style={{ ['--name-len' as string]: NAME.length }}>
-          <Typed text={NAME} run="cluster-name" delay={0.4} speed={44} caret={false} />
-        </h1>
-      </section>
+      {/* The name and the panel below it, as one group that centres in
+          whatever room is left under the warning pair — rather than the
+          panel's own `flex: 1` pinning everything to the top the moment a
+          window is taller than the content needs. `SHOOT` / `STOP` and the
+          tally above them stay where they are; only this group moves. */}
+      <div className="mech-panel-mid">
+        {/* The identity, on its own now — between the warning pair and the
+            instrument rather than laid over the quiet end of it. Red-orange,
+            the panel's one warm colour, because this is the one line on the
+            screen that is not a reading: it is who built it. */}
+        <section className="mech-ident">
+          <h1 className="mech-ident-name" style={{ ['--name-len' as string]: NAME.length }}>
+            <Typed text={NAME} run="cluster-name" delay={0.4} speed={44} caret={false} />
+          </h1>
+        </section>
 
-      <div className="mech-body">
+        <div className="mech-body">
         {/* ---- the left flank ---- */}
         <div className="mech-flank">
           {/* What I do — cycling the titles with nothing picked, or what I
@@ -1100,6 +1108,7 @@ export default function MechCluster({ onProject, covered, tuning }: Props) {
             ))}
           </div>
         </aside>
+        </div>
       </div>
     </div>
   )

@@ -1029,6 +1029,31 @@ there rather than the cluster's own paler sage — a project screen reads off
 the root pair for everything else already lit on it, and this should not be
 the one exception.
 
+**Six client-marked-up fixes, in one pass.** The scale row under the bank
+lost two dials — `FIELDS` in MechCluster.tsx is `design`, `code`, `film` now,
+not five, because five at `--flank-w` ran past the rail's own right edge and
+`justify-content: space-between` spread the overflow rather than causing it.
+The rail's own names (`.mech-slot-name`) are `var(--warn)` unconditionally
+now instead of dimmed until selected — every project in the bank reads red,
+not just the one under the pointer. The rail's idle header reads `PROJECTS`
+(`IDLE` in MechCluster.tsx), not `SELECT`. `SHOOT` / `STOP` are drawn in
+`Segment` glyphs now rather than typed — see the note on `.mech-alarm-key` in
+MechCluster.css for why the lit state had to give up its filled background
+(a solid fill in the segment's own colour swallows the segments drawn in it;
+the border and the glow carry "lit" instead). The compass heading in
+`MechHud.tsx` reads in the panel's own monospace rather than Helvetica, and
+its box is bigger. And the name plus the panel under it — `.mech-panel-mid`
+in MechCluster.css, wrapping `.mech-ident` and `.mech-body` — centre as one
+group in whatever room is left under the warning pair, rather than the panel
+claiming the cluster's whole leftover height and pinning its contents to the
+top of it: `SHOOT` / `STOP` and the tally above them are not part of that
+group, and stay put while a tall window gives the name and the instrument
+room to sit in the middle of the frame instead of hugging its top. (Note:
+`mech-panel` was already taken, by the dev tools panel in MechPanel.tsx — a
+global class collision, not a scoped one, caught by the name rendering
+inside the Leva root instead of the cluster. `mech-panel-mid` is the one
+this file owns.)
+
 ### The cast
 
 > **Not mounted.** The line-up came off home — see *Home is a cluster*

@@ -126,34 +126,32 @@
    rail of work down the right. The flanks are fixed and the middle takes what
    is left, so the instrument is centred in the frame rather than centred in
    whatever is spare. */
+/* The name and the panel below it, as one group — see `.mech-panel-mid`.
+   `mech-panel` was already taken, by the dev tools panel in MechPanel.tsx —
+   a global class collision, not a scoped one, and this one lost the name.
+
+   This is no longer the flex item that claims the cluster's leftover
+   vertical space; the wrapper does that now, so this sizes to its own
+   content and the wrapper centres it rather than pinning it to the top of a
+   box it does not fill. */
+.mech-panel-mid {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
 .mech-body {
   display: flex;
   flex-direction: row;
-  /* Top-aligned, with the padding above deciding how far under the name the
-     panel sits.
-
-     It was centred, and centring is what put a hand's width of empty frame
-     between the name and the instrument: the body box runs from the name to
-     the bottom of the frame, and half of whatever the panel does not use ends
-     up above it. That is fine when the panel nearly fills the box and absurd
-     when it does not — and this panel got shorter twice over (a shallower
-     graph, a readout box instead of a stacked paragraph). Pinned to the top
-     the gap is a number in this file rather than a consequence of one.
-
-     The three columns top-align to each other as well, which is what the
-     counts wanted anyway: their bars are the graph's own height now, so both
-     start their climb from the same line. */
+  /* The three columns top-align to each other — their bars and rows are the
+     graph's own height, so all three start their climb from the same line.
+     `.mech-panel-mid` is what keeps the *group* off the top of a tall window
+     now; this only ever governs the columns relative to one another. */
   align-items: flex-start;
-  flex: 1;
-  min-height: 0;
   gap: calc(32 * var(--px));
-  /* `.mech-cluster` runs the full height of the frame, footer included — it
-     was always the *content's* job to stay clear, and a centred column did
-     that for free. The rail is on the same side as the contact address, so
-     the bottom still keeps some clearance for it — a stretched rail does not
-     get that for free the way a centred column does, or the line under the
-     bank sits on top of the address. */
-  padding: calc(46 * var(--px)) 0 calc(48 * var(--px));
+  padding: 0 0 calc(24 * var(--px));
 }
 
 /* The middle column is the instrument and nothing else — the intro is laid
@@ -208,28 +206,34 @@
   margin: calc(52 * var(--px)) auto 0;
 }
 
+/* The word is drawn in the panel's own segment glyphs now, not typed — see
+   `Segment.tsx`. Lit is a glow rather than a filled block, because a solid
+   fill in the segments' own colour would swallow them: the shift-light
+   reading survives as the border coming up and the halo, not as a background
+   swap. */
 .mech-alarm-key {
   position: relative;
   display: block;
-  padding: calc(5 * var(--px)) calc(14 * var(--px));
+  width: calc(112 * var(--px));
+  padding: calc(9 * var(--px)) calc(12 * var(--px));
   border: 1px solid rgba(var(--accent-rgb), 0.1);
   background: rgba(var(--accent-rgb), 0.03);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: calc(12 * var(--type));
-  letter-spacing: calc(3.2 * var(--type));
-  text-transform: uppercase;
-  font-style: normal;
-  color: rgba(var(--accent-rgb), 0.2);
-  transition: color 200ms linear, border-color 200ms linear, background-color 200ms linear;
+  transition: border-color 200ms linear, background-color 200ms linear, box-shadow 200ms linear;
 }
 
-/* Lit, and lit *hard*. Both of these are filled rather than outlined, which is
-   the one place on this panel that breaks the no-solids rule above — a shift
-   light on a dash is a block of colour, and an instruction that reads at the
-   same weight as a caption is an instruction nobody follows. */
+.mech-alarm-key .mech-seg-on,
+.mech-alarm-key .mech-seg-glow {
+  opacity: 0.3;
+  transition: opacity 200ms linear;
+}
+
+.mech-alarm-key[data-on='true'] .mech-seg-on,
+.mech-alarm-key[data-on='true'] .mech-seg-glow {
+  opacity: 1;
+}
+
 .mech-alarm-key[data-on='true'] {
-  color: #04120c;
-  background: var(--accent);
+  background: rgba(var(--accent-rgb), 0.08);
   border-color: var(--accent);
   box-shadow:
     0 0 calc(14 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.55 * var(--g))),
@@ -237,8 +241,7 @@
 }
 
 .mech-alarm-key[data-warn][data-on='true'] {
-  color: #180500;
-  background: var(--warn);
+  background: rgba(var(--warn-rgb), 0.08);
   border-color: var(--warn);
   box-shadow:
     0 0 calc(16 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.6 * var(--g))),
@@ -500,12 +503,15 @@
    a transition delay per block off its own `--n`. Off is instant: a gauge
    sweeping up is taking a reading, a gauge sweeping down is pretending the
    reading faded away. See `ARC` and `FieldGauge` in MechCluster.tsx. */
+/* Three now, not five — `space-between` across a fixed-width rail was what
+   spread five of these past the rail's own right edge. Centred with an
+   explicit gap keeps them aligned as a group at any width instead. */
 .mech-scale-row {
   flex: none;
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: flex-start;
-  gap: calc(8 * var(--px));
+  gap: calc(20 * var(--px));
   margin-top: calc(12 * var(--px));
 }
 
@@ -768,8 +774,8 @@
   width: var(--count-w);
   display: flex;
   align-items: flex-end;
-  justify-content: space-between;
-  gap: calc(20 * var(--px));
+  justify-content: center;
+  gap: calc(12 * var(--px));
 }
 
 .mech-gauge {
@@ -1135,7 +1141,7 @@
   letter-spacing: calc(0.5 * var(--type));
   line-height: 1.18;
   text-transform: uppercase;
-  color: rgba(var(--warn-rgb), 0.62);
+  color: var(--warn);
   transition: color 180ms linear, text-shadow 180ms linear;
   display: -webkit-box;
   -webkit-box-orient: vertical;

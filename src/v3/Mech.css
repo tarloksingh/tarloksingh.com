@@ -1778,9 +1778,12 @@
 
 .mech-heading {
   fill: #180500;
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  /* The panel's own digital face rather than Helvetica — the same monospace
+     every other readout on this screen is set in, so a number in a box reads
+     as hardware and not as UI chrome typed over the top of it. */
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-weight: 700;
-  font-size: calc(13px * var(--type-k, 1));
+  font-size: calc(15px * var(--type-k, 1));
   letter-spacing: calc(1.5px * var(--type-k, 1));
   font-variant-numeric: tabular-nums;
 }
