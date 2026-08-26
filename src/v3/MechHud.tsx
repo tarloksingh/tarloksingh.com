@@ -38,10 +38,71 @@ const pad = (n: number, width = 4) => String(Math.round(n)).padStart(width, '0')
  *  switched on; one that races and settles has. */
 const SPIN = 1.15
 
+/* ---- the heading, drawn rather than typed ----
+
+   The same seven-segment grammar as `Segment.tsx` — a digit is which of eight
+   short lines come up, not a glyph in a font — but reimplemented small and
+   local instead of mounting `Segment` here. `Segment` holds its word in React
+   state and re-renders on every change, which is exactly right for a display
+   that changes when someone picks a project; this one changes on every
+   `pointermove`, and the file's whole architecture is "nothing here goes
+   through React state" for precisely that reason. So the geometry is drawn
+   once, and only the lit segments' opacity is written per frame — three
+   digits, eight segments each, the same shape as every write already made
+   in this file. */
+const HEADING_CELL = { w: 11, advance: 16 }
+const HEADING_L = 1.5
+const HEADING_R = 12.5
+const HEADING_T = 1.5
+const HEADING_MY = 8
+const HEADING_B = 14.5
+const HEADING_MX = (HEADING_L + HEADING_R) / 2
+const HEADING_GAP = 1.3
+const HEADING_HUB = 0.9
+
+const HEADING_SEGMENTS: Record<string, [number, number, number, number]> = {
+  A: [HEADING_L + HEADING_GAP, HEADING_T, HEADING_R - HEADING_GAP, HEADING_T],
+  B: [HEADING_R, HEADING_T + HEADING_GAP, HEADING_R, HEADING_MY - HEADING_GAP],
+  C: [HEADING_R, HEADING_MY + HEADING_GAP, HEADING_R, HEADING_B - HEADING_GAP],
+  D: [HEADING_L + HEADING_GAP, HEADING_B, HEADING_R - HEADING_GAP, HEADING_B],
+  E: [HEADING_L, HEADING_MY + HEADING_GAP, HEADING_L, HEADING_B - HEADING_GAP],
+  F: [HEADING_L, HEADING_T + HEADING_GAP, HEADING_L, HEADING_MY - HEADING_GAP],
+  G1: [HEADING_L + HEADING_GAP, HEADING_MY, HEADING_MX - HEADING_HUB, HEADING_MY],
+  G2: [HEADING_MX + HEADING_HUB, HEADING_MY, HEADING_R - HEADING_GAP, HEADING_MY]
+}
+
+const HEADING_KEYS = Object.keys(HEADING_SEGMENTS)
+
+/** Digits only — the heading never shows a letter, so there is no reason to
+ *  carry the other six segments `Segment.tsx` needs for the alphabet. */
+const HEADING_FONT: Record<string, string[]> = {
+  '0': ['A', 'B', 'C', 'D', 'E', 'F'],
+  '1': ['B', 'C'],
+  '2': ['A', 'B', 'G1', 'G2', 'E', 'D'],
+  '3': ['A', 'B', 'C', 'D', 'G1', 'G2'],
+  '4': ['F', 'G1', 'G2', 'B', 'C'],
+  '5': ['A', 'F', 'G1', 'G2', 'C', 'D'],
+  '6': ['A', 'F', 'E', 'D', 'C', 'G1', 'G2'],
+  '7': ['A', 'B', 'C'],
+  '8': ['A', 'B', 'C', 'D', 'E', 'F', 'G1', 'G2'],
+  '9': ['A', 'B', 'C', 'D', 'F', 'G1', 'G2']
+}
+
+const HEADING_DIGITS = 3
+/** The block's own width and height, in the same local unit its segments are
+ *  drawn in — three cells wide, one cell tall, folded into the `<g transform>`
+ *  below so the block centres on the marker box regardless of where that box
+ *  is sized in `Mech.css`. */
+const HEADING_W = HEADING_DIGITS * HEADING_CELL.advance
+const HEADING_H = HEADING_B + HEADING_T
+
 function MechHud({ gridOn = true }: { gridOn?: boolean }) {
   const hud = useRef<HTMLDivElement>(null)
   const strip = useRef<SVGGElement>(null)
-  const heading = useRef<SVGTextElement>(null)
+  const headingLines = useRef<Array<Record<string, SVGLineElement | null>>>(
+    Array.from({ length: HEADING_DIGITS }, () => ({}))
+  )
+  const lastHeading = useRef('')
   const readX = useRef<HTMLSpanElement>(null)
   const readY = useRef<HTMLSpanElement>(null)
 
@@ -121,9 +182,17 @@ function MechHud({ gridOn = true }: { gridOn?: boolean }) {
         const slide = -across * window.innerWidth * TRAVEL - settle * window.innerWidth * 2.2
         strip.current.setAttribute('transform', `translate(${slide} 0)`)
       }
-      if (heading.current) {
-        const value = spinning ? Math.random() * 360 : (degrees + 360) % 360
-        heading.current.textContent = pad(value, 3)
+      const value = spinning ? Math.random() * 360 : (degrees + 360) % 360
+      const text = pad(value, 3)
+      if (text !== lastHeading.current) {
+        lastHeading.current = text
+        for (let n = 0; n < HEADING_DIGITS; n += 1) {
+          const mask = HEADING_FONT[text[n]] ?? []
+          for (const key of HEADING_KEYS) {
+            const line = headingLines.current[n][key]
+            if (line) line.style.opacity = mask.includes(key) ? '1' : '0'
+          }
+        }
       }
       if (readX.current) readX.current.textContent = pad(spinning ? Math.random() * 4000 : at.x)
       if (readY.current) readY.current.textContent = pad(spinning ? Math.random() * 4000 : at.y)
@@ -168,9 +237,41 @@ function MechHud({ gridOn = true }: { gridOn?: boolean }) {
           {/* The marker and its readout do not move — the strip moves under
               them, the same way an artificial horizon works. */}
           <rect className="mech-marker-box" x="-28" y="-10.5" width="56" height="21" />
-          <text className="mech-heading" ref={heading} x="0" y="4.5" textAnchor="middle">
-            000
-          </text>
+
+          {/* Centred on the box: half its own width and height either side of
+              the origin, in the digits' own local unit — see the note above
+              `HEADING_CELL`. */}
+          <g className="mech-heading" transform={`translate(${-HEADING_W / 2} ${-HEADING_H / 2})`}>
+            <g className="mech-heading-off">
+              {Array.from({ length: HEADING_DIGITS }, (_, n) =>
+                HEADING_KEYS.map((key) => {
+                  const [x1, y1, x2, y2] = HEADING_SEGMENTS[key]
+                  const dx = n * HEADING_CELL.advance + (HEADING_CELL.advance - HEADING_CELL.w) / 2
+                  return <line key={`${n}-${key}`} x1={x1 + dx} y1={y1} x2={x2 + dx} y2={y2} />
+                })
+              )}
+            </g>
+            <g className="mech-heading-on">
+              {Array.from({ length: HEADING_DIGITS }, (_, n) =>
+                HEADING_KEYS.map((key) => {
+                  const [x1, y1, x2, y2] = HEADING_SEGMENTS[key]
+                  const dx = n * HEADING_CELL.advance + (HEADING_CELL.advance - HEADING_CELL.w) / 2
+                  return (
+                    <line
+                      key={`${n}-${key}`}
+                      ref={(el) => {
+                        headingLines.current[n][key] = el
+                      }}
+                      x1={x1 + dx}
+                      y1={y1}
+                      x2={x2 + dx}
+                      y2={y2}
+                    />
+                  )
+                })
+              )}
+            </g>
+          </g>
         </svg>
       </div>
 

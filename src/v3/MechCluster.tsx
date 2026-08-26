@@ -93,9 +93,22 @@ const TITLES: Array<{ title: string; field: Field }> = [
 type Field = 'design' | 'code' | 'film' | 'games' | 'product'
 
 /** The scale, in the order it is printed. Three now, not five — `games` and
- *  `product` dropped off the dial row entirely rather than being left to
+ *  `film` dropped off the dial row entirely rather than being left to
  *  overflow the rail's own width. */
-const FIELDS: Field[] = ['design', 'code', 'film']
+const FIELDS: Field[] = ['product', 'code', 'design']
+
+/** What each field reads on the dial row — not always the field's own key.
+ *  `design` prints as "brand" here: the row is Product / Code / Brand, and the
+ *  underlying `Field` stays `design` because that is still what `FIELD_OF`
+ *  maps `3d` tags onto. Cosmetic, and kept separate from the key on purpose —
+ *  the key is a fact about the data, the label is a fact about this scale. */
+const FIELD_LABEL: Record<Field, string> = {
+  design: 'brand',
+  code: 'code',
+  film: 'film',
+  games: 'games',
+  product: 'product'
+}
 
 /** Which field each of a project's tags falls under.
  *
@@ -650,7 +663,7 @@ function FieldGauge({ name, on }: { name: Field; on: boolean }) {
           <line key={`l${n}`} className="mech-field-lit" style={{ ['--n' as string]: n }} {...seg} />
         ))}
       </svg>
-      <span className="mech-field-label">{name}</span>
+      <span className="mech-field-label">{FIELD_LABEL[name]}</span>
     </div>
   )
 }
@@ -1045,16 +1058,19 @@ export default function MechCluster({ onProject, covered, tuning }: Props) {
               across the top of the panel — pressing a slot still changes
               what this reads. */}
           <div className="mech-work-rail-head">
-            <div
-              className="mech-display"
-              data-on={slot !== null}
-              data-idle={slot === null}
-              data-warn={slot?.restricted ?? false}
-            >
+            {/* Always the warm channel — this is what has been picked, and
+                the rail and the scale under it are the two things on the
+                panel that report a *pick* rather than a *reading*. It does
+                not drop back to green with nothing selected, unlike the
+                rest of the panel's readouts: the row it sits above is warm
+                too now (see `.mech-slot-name`), and a header that changed
+                colour depending on what it named would say the opposite of
+                what the row under it says. */}
+            <div className="mech-display" data-on={slot !== null} data-idle={slot === null} data-warn>
               <Segment
                 text={slot ? slot.title : IDLE}
                 cells={CELLS}
-                warn={slot?.restricted ?? false}
+                warn
                 label={slot ? slot.title : 'nothing selected'}
               />
             </div>

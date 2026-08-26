@@ -1776,16 +1776,21 @@
   filter: drop-shadow(0 0 7px rgba(var(--warn-rgb), 0.8));
 }
 
-.mech-heading {
-  fill: #180500;
-  /* The panel's own digital face rather than Helvetica — the same monospace
-     every other readout on this screen is set in, so a number in a box reads
-     as hardware and not as UI chrome typed over the top of it. */
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-weight: 700;
-  font-size: calc(15px * var(--type-k, 1));
-  letter-spacing: calc(1.5px * var(--type-k, 1));
-  font-variant-numeric: tabular-nums;
+/* Drawn, not typed — the same seven-segment grammar `Segment.tsx` draws
+   everywhere else on this panel, reimplemented small and local in
+   `MechHud.tsx` because this number changes on every `pointermove` and has
+   to stay off React state. See the note above `HEADING_CELL` there. */
+.mech-heading-off line {
+  stroke: rgba(0, 0, 0, 0.18);
+  stroke-width: 1.4;
+  stroke-linecap: butt;
+}
+
+.mech-heading-on line {
+  stroke: #0a0500;
+  stroke-width: 1.7;
+  stroke-linecap: butt;
+  opacity: 0;
 }
 
 .mech-coords {
