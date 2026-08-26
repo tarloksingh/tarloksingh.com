@@ -115,14 +115,12 @@ function Gltf({ src }: { src: string }) {
 
 /* ---- the drift ----
 
-   The subject is never quite still, and it leans toward you when its slot is
-   the one selected. Both are the same two lines: a slow bob on two
-   incommensurable rates so the loop never settles into a period you can see,
-   and a turn that eases between a resting angle and a face-on one.
-
-   `live` is the whole interaction the bank has past lighting up. A row of
-   twelve objects all turning at once is a screensaver; one of them turning to
-   look at you while the other eleven idle is a selection.
+   The subject is never quite still: it turns, all the time, at the same rate
+   whether or not the pointer is anywhere near its slot. Selection used to
+   also nudge the turn toward face-on, which read as the picture "spinning"
+   the moment you hovered it and sitting dead still the rest of the time — the
+   opposite of what a bank of live subjects should look like. Selected now
+   only grows the subject a little; the turn itself never answers `live`.
 
    Stepped to twelve updates a second rather than the display's own refresh
    rate — the render still runs at whatever the monitor does, but the pose is
@@ -132,6 +130,11 @@ function Gltf({ src }: { src: string }) {
    panel meter drawn a dozen times a second. */
 const STEP_HZ = 12
 const STEP = 1 / STEP_HZ
+
+/** Radians a subject turns per second, constant and unrelated to selection —
+ *  a full turn every fourteen seconds or so, slow enough to read as a subject
+ *  on a turntable rather than a spinner. */
+const SPIN_RATE = 0.45
 
 function Drift({
   fit,
@@ -143,7 +146,7 @@ function Drift({
   children: React.ReactNode
 }) {
   const group = useRef<Group>(null)
-  const at = useRef({ turn: fit.turn, lift: 0, scale: fit.scale })
+  const at = useRef({ spin: 0, scale: fit.scale })
   const nextTick = useRef(0)
 
   useFrame((state) => {
@@ -160,11 +163,12 @@ function Drift({
     // frame — the same shape at 12Hz as it was at 60.
     const k = 1 - Math.pow(0.001, STEP)
 
-    // Selected, it squares up to the camera and comes forward a little.
-    at.current.turn += ((live ? fit.turn * 0.25 : fit.turn) - at.current.turn) * k
+    // The turn accumulates at a fixed rate, always — selection only grows
+    // the subject and brings it forward a little.
+    at.current.spin += SPIN_RATE * STEP
     at.current.scale += ((live ? fit.scale * 1.12 : fit.scale) - at.current.scale) * k
 
-    node.rotation.y = at.current.turn + Math.sin(t * 0.42 + fit.turn * 4) * (live ? 0.16 : 0.06)
+    node.rotation.y = fit.turn + at.current.spin + Math.sin(t * 0.42 + fit.turn * 4) * 0.06
     node.rotation.x = fit.tilt + Math.sin(t * 0.31 + fit.turn * 7) * 0.02
     node.position.y = fit.lift + Math.sin(t * 0.53 + fit.turn * 9) * 0.022
     node.scale.setScalar(at.current.scale)

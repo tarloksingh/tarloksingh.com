@@ -87,7 +87,10 @@
 .mech-body {
   display: flex;
   flex-direction: row;
-  align-items: center;
+  /* Bottom-aligned rather than centred: the counts' bars and the tach's
+     columns are two gauges on the same instrument and read as one only when
+     they share a floor. */
+  align-items: flex-end;
   flex: 1;
   min-height: 0;
   gap: calc(32 * var(--px));
@@ -227,52 +230,25 @@
   animation: mech-cluster-fade 420ms linear both;
 }
 
-/* ---- the strip ----
+/* ---- the readouts ----
 
-   One run of lamp cells across the top of the middle column, with two words
-   lit on it: what I do on the left, and whatever is selected in the rail on
-   the right. The dark groups between them are the same display with nothing to
-   say, and they are what makes this one strip rather than two boxes with a
-   hole between them.
-
-   Sized by flex weights that are the cell counts themselves, and with no
-   horizontal padding anywhere: every box then works out to the same width per
-   cell, so all three heights agree without a single measurement. Put padding
-   on these and the middle groups come out a different height from the ends. */
-.mech-run {
-  display: flex;
-  align-items: stretch;
-  gap: calc(8 * var(--px));
-}
-
+   Two of these now: what I do (under the counts, on the left) and what is
+   selected (over the bank, on the right). No box around either — the first
+   pass ran both in one bordered strip across the top of the panel, which is
+   the "thin rectangular outline" every display on this screen used to carry.
+   What is left is the segment glyphs themselves and the light they throw,
+   with no housing drawn around them. */
 .mech-display {
   position: relative;
   display: flex;
   align-items: center;
-  flex: 21 1 0;
   min-width: 0;
-  padding: calc(8 * var(--px)) 0;
-  border: 1px solid rgba(var(--accent-rgb), 0.28);
-  background: rgba(var(--accent-rgb), 0.03);
-  transition: border-color 300ms linear;
+  padding: calc(6 * var(--px)) 0;
 }
 
 .mech-display > .mech-seg {
   flex: 1;
   min-width: 0;
-}
-
-/* Pointing at a project brightens the housing rather than recolouring it —
-   the display is being *used*, which is a different fact from what it is
-   reading. */
-.mech-display[data-on='true'] {
-  border-color: rgba(var(--accent-rgb), 0.55);
-}
-
-.mech-display[data-warn='true'],
-.mech-display[data-warn='true'][data-on='true'] {
-  border-color: rgba(var(--warn-rgb), 0.55);
-  background: rgba(var(--warn-rgb), 0.04);
 }
 
 /* Nothing picked. The word is a label for the box rather than a reading off
@@ -285,65 +261,64 @@
   opacity: calc(0.2 * var(--g));
 }
 
-/* The three dark groups between the two words. Present, unlit, and quieter
-   than either end of the strip. */
-.mech-display-gap {
-  flex: 3 1 0;
-  border-color: rgba(var(--accent-rgb), 0.14);
-  background: none;
-}
-
-/* The light a lit display throws onto the panel behind it. Sits under the box
-   rather than inside it, which is why it can be larger than the box is. */
+/* The light a lit display throws onto the panel behind it. */
 .mech-display::before {
   content: '';
   position: absolute;
-  inset: calc(-46 * var(--px)) calc(-40 * var(--px));
-  background: radial-gradient(ellipse at 50% 50%, rgba(var(--accent-rgb), calc(0.1 * var(--g))), transparent 72%);
+  inset: calc(-30 * var(--px)) calc(-24 * var(--px));
+  background: radial-gradient(ellipse at 50% 50%, rgba(var(--accent-rgb), calc(0.08 * var(--g))), transparent 72%);
   pointer-events: none;
   z-index: -1;
+  opacity: 0;
   transition: opacity 300ms linear;
 }
 
-.mech-display-gap::before {
-  display: none;
+.mech-display[data-on='true']::before {
+  opacity: 1;
 }
 
 .mech-display[data-warn='true']::before {
+  opacity: 1;
   background: radial-gradient(ellipse at 50% 50%, rgba(var(--warn-rgb), calc(0.12 * var(--g))), transparent 70%);
 }
 
-/* ---- the console ----
+/* ---- the left flank ----
 
-   The instrument and the identity, as one block. The name is laid *over* the
-   quiet left end of the graph rather than set beside it, which is the only
-   arrangement where the largest thing on the screen and the most important
-   thing on it are the same object — and the reason the power curve in
-   `CURVE` starts as low as it does is so there is a quiet end to lay it on. */
-.mech-console {
-  position: relative;
-  padding-top: calc(62 * var(--px));
+   The counts, and the role reel underneath them — see `Counts` and the
+   role `.mech-display` in MechCluster.tsx. One column now rather than the
+   counts alone, so the job title that used to sit in the strip across the
+   top reads as part of the same block of facts about me. */
+.mech-flank {
+  display: flex;
+  flex-direction: column;
+  gap: calc(14 * var(--px));
+  /* Pulls the flank down past `.mech-body`'s own flex-end line so the
+     counts' bars land on the same floor the tach's columns do — the role
+     display below the bars would otherwise be the thing that floor lines up
+     on instead, leaving the bars themselves noticeably higher. Tuned by eye
+     against the tach's column floor. */
+  margin-bottom: calc(-70 * var(--px));
 }
 
-.mech-ident {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: calc(430 * var(--px));
+.mech-display-role {
+  width: calc(380 * var(--px));
   max-width: 100%;
-  z-index: 2;
-  padding: calc(16 * var(--px)) calc(24 * var(--px)) calc(20 * var(--px)) calc(20 * var(--px));
-  /* Two washes: a breath of the panel's own phosphor over a near-black, so
-     the block reads as a lit plate sitting in front of the graph rather than
-     as a hole punched through it. The columns underneath show through the
-     bottom of it, which is the whole point of laying it there. */
-  background:
-    linear-gradient(180deg, rgba(var(--accent-rgb), 0.075), rgba(var(--accent-rgb), 0.02) 62%, transparent),
-    linear-gradient(180deg, rgba(4, 10, 8, 0.9), rgba(4, 10, 8, 0.72) 62%, rgba(4, 10, 8, 0.32));
-  /* So the name can be fitted to this block's real width with `cqw` — the
-     alternative is the average-advance heuristic `.mech-title` uses against a
-     hard-coded frame width, and there is no reason to guess a width the
-     browser is willing to hand over. */
+}
+
+/* ---- the identity ----
+
+   The name, on its own line between the warning pair and the instrument —
+   see `MechCluster.tsx`. It used to be laid over the quiet left end of the
+   graph; it is centred chrome now, the one line on the panel that says who
+   built it rather than reading something out, and it is set in the panel's
+   one warm colour rather than its phosphor for exactly that reason. */
+.mech-ident {
+  flex: none;
+  width: calc(640 * var(--px));
+  max-width: 100%;
+  margin: 0 auto;
+  text-align: center;
+  padding: calc(6 * var(--px)) 0 calc(18 * var(--px));
   container-type: inline-size;
 }
 
@@ -355,24 +330,43 @@
   white-space: nowrap;
   line-height: 0.94;
   letter-spacing: calc(-0.5 * var(--type));
-  color: var(--accent);
+  color: var(--warn);
   /* Fitted to the block: its width, over the character count times an average
      advance for this face at these caps. `--cluster-name` is the by-eye scale
      on top of the fit — see `clusterTuning.ts`. */
   font-size: calc(var(--cluster-name, 1) * 100cqw / (var(--name-len, 12) * 0.6));
   /* Three, not two. The reference's digits carry a hot edge, a halo and then
      a wash of light on the housing well past the glyph — and the third term is
-     the one that turns "green type with a glow" into "a lamp behind glass". */
+     the one that turns "warm type with a glow" into "a lamp behind glass". */
   text-shadow:
-    0 0 calc(9 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.58 * var(--g))),
-    0 0 calc(42 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.34 * var(--g))),
-    0 0 calc(130 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.2 * var(--g)));
+    0 0 calc(9 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.58 * var(--g))),
+    0 0 calc(42 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.34 * var(--g))),
+    0 0 calc(130 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.2 * var(--g)));
   animation: mech-flicker 7s steps(1, end) infinite;
 }
 
-/* ---- the profile ----
+/* ---- the intro ----
 
-   Plain system text, not a paragraph in a box. The first pass bracketed it
+   Where the name used to sit, over the quiet end of the graph. The label is
+   drawn in the same fourteen-segment glyphs as every other reading on the
+   panel — a caption that reads like the rest of the chrome rather than a
+   heading typeset over it — and the paragraph under it is the one block of
+   prose left on the screen. No box around either: see `.mech-display` for
+   why nothing on this panel is bordered any more. */
+.mech-intro {
+  position: relative;
+  z-index: 2;
+  width: calc(430 * var(--px));
+  max-width: 100%;
+  padding: calc(16 * var(--px)) calc(4 * var(--px)) 0;
+}
+
+.mech-intro-cap {
+  display: block;
+  width: calc(96 * var(--px));
+}
+
+/* Plain system text, not a paragraph in a box. The first pass bracketed it
    like a picture and set it in a humanist face — Chakra Petch, now unused
    again — at body size, which made it read as a card floating on the panel
    rather than something the panel had printed. What a MAGI screen or a Blade
@@ -389,7 +383,7 @@
   line-height: 1.62;
 }
 
-/* ---- the scale under the profile ----
+/* ---- the scale, under the bank ----
 
    With nothing picked this is a scale and the field the current title falls
    under is the mark. With a project selected it is every field that project
@@ -398,13 +392,17 @@
 
    Five small vertical meters, not five words with a tick over the lit ones. A
    word that changes colour reads as a caption; a bar that fills reads as an
-   instrument — the same bar-and-label grammar the counts use on the other side
-   of the panel. */
+   instrument — the same bar-and-label grammar the counts use on the other
+   flank. Moved down from under the instrument to under the rail's own bank —
+   see `MechCluster.tsx` — it reads as what a selection is made of, next to
+   the thing you selected rather than under the graph across the panel. */
 .mech-scale-row {
+  flex: none;
   display: flex;
+  justify-content: space-between;
   align-items: flex-end;
-  gap: calc(20 * var(--px));
-  padding-left: calc(8 * var(--px));
+  gap: calc(12 * var(--px));
+  margin-top: calc(16 * var(--px));
 }
 
 .mech-field-gauge {
@@ -694,46 +692,20 @@
   min-height: 0;
 }
 
-/* The rail's own label and its hairline — stacked rather than side by side,
-   because "press to open red dead redemption 2" beside "selected work" is
-   wider than the rail at any window size, and a divider that only sometimes
-   wraps reads as broken rather than as a caption that stacks on purpose. */
+/* The project's own title, above the bank. Pressing a slot changes what this
+   reads — see `.mech-display` for the box it draws in, which is the same one
+   the role reel uses on the other flank. */
 .mech-work-rail-head {
-  position: relative;
-  padding-bottom: calc(10 * var(--px));
-  border-bottom: 1px solid rgba(var(--accent-rgb), 0.24);
-  margin-bottom: calc(14 * var(--px));
-}
-
-.mech-work-rail-head::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  bottom: -1px;
-  width: calc(56 * var(--px));
-  height: 1px;
-  background: var(--accent);
-  box-shadow: 0 0 calc(6 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.6 * var(--g)));
-}
-
-.mech-work-rail-do {
-  display: block;
-  margin-top: calc(5 * var(--px));
-  font-size: calc(9.5 * var(--type));
-  letter-spacing: calc(1.6 * var(--type));
-  text-transform: uppercase;
-  color: var(--dim);
-  transition: color 220ms linear, text-shadow 220ms linear;
-}
-
-.mech-work-rail-do[data-on='true'] {
-  color: var(--accent);
-  text-shadow: 0 0 calc(9 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.55 * var(--g)));
+  flex: none;
+  margin-bottom: calc(10 * var(--px));
 }
 
 /* Scrolls on its own — twelve rows at a size worth pressing do not all fit a
    real window's height, and a persistent side rail is allowed to scroll
-   where a row of preset buttons across the bottom of the frame was not. */
+   where a row of preset buttons across the bottom of the frame was not.
+   Condensed from the first pass: a shorter row is still a square worth
+   pressing, and twelve of them no longer read as taller than everything
+   else on the panel put together. */
 .mech-work-rail-list {
   flex: 1;
   min-height: 0;
@@ -800,6 +772,19 @@
      Without it this fixed, full-viewport, transparent element captures every
      click on the page before a button underneath ever sees one. */
   pointer-events: none !important;
+  /* Clipped to the rail's own scrolled band, in viewport pixels.
+
+     `getBoundingClientRect` (what `View` scissors against) does not know
+     `.mech-work-rail-list` clips its overflow — a slot half scrolled past
+     the top or bottom of the list is clipped as a *button* by the browser,
+     but its picture is a scissor test against a rect that never shrank, so
+     it painted straight through the clip and out the top or bottom of the
+     rail. `--rail-clip-top` / `--rail-clip-bottom` are written onto the list
+     itself from a scroll/resize listener in MechCluster.tsx and inherit down
+     to this canvas — a `position: fixed` element still inherits custom
+     properties from its DOM ancestors, inheritance being a tree concept and
+     not a layout one. */
+  clip-path: inset(var(--rail-clip-top, 0px) 0 var(--rail-clip-bottom, 0px) 0);
 }
 
 /* The scan lines and the accent, over the bays and nothing else.
@@ -1176,20 +1161,18 @@
 }
 
 .mech-cluster[data-covered='false'] .mech-display {
-  animation: mech-cluster-strike 420ms var(--ease) both;
-  animation-delay: calc(60ms + var(--strike, 0) * 70ms);
+  animation: mech-cluster-strike 420ms 90ms var(--ease) both;
 }
 
 .mech-cluster[data-covered='false'] .mech-ident {
   animation: mech-cluster-in 620ms 300ms var(--ease) both;
 }
 
-.mech-cluster[data-covered='false'] .mech-tach,
-.mech-cluster[data-covered='false'] .mech-scale-row {
+.mech-cluster[data-covered='false'] .mech-tach {
   animation: mech-cluster-in 620ms 420ms var(--ease) both;
 }
 
-.mech-cluster[data-covered='false'] .mech-counts {
+.mech-cluster[data-covered='false'] .mech-flank {
   animation: mech-cluster-left-in 580ms 420ms var(--ease) both;
 }
 
@@ -1216,7 +1199,7 @@
    half never draws — so the whole sequence lands inside the budget that is
    actually left, and the last thing out is still gone well before the cover
    lifts on the project. */
-.mech-cluster[data-covered='true'] .mech-counts {
+.mech-cluster[data-covered='true'] .mech-flank {
   animation: mech-cluster-left-out 200ms linear both;
 }
 
@@ -1224,8 +1207,7 @@
   animation: mech-cluster-unfade 200ms 30ms linear both;
 }
 
-.mech-cluster[data-covered='true'] .mech-tach,
-.mech-cluster[data-covered='true'] .mech-scale-row {
+.mech-cluster[data-covered='true'] .mech-tach {
   animation: mech-cluster-out 200ms 70ms var(--ease) both;
 }
 
@@ -1234,12 +1216,7 @@
 }
 
 .mech-cluster[data-covered='true'] .mech-display {
-  animation: mech-cluster-unstrike 180ms var(--ease) both;
-  /* Right to left, which is the entrance backwards: `--strikes` is the index
-     of the last box in the run, handed down from the markup so adding a dark
-     group between the two words does not leave the stagger counting to the
-     wrong number. */
-  animation-delay: calc(160ms + (var(--strikes, 4) - var(--strike, 0)) * 24ms);
+  animation: mech-cluster-unstrike 180ms 160ms var(--ease) both;
 }
 
 .mech-cluster[data-covered='true'] .mech-alarm {
@@ -1302,7 +1279,7 @@
   order: 0;
 }
 
-.mech[data-narrow='true'] .mech-counts {
+.mech[data-narrow='true'] .mech-flank {
   order: 1;
 }
 
@@ -1330,38 +1307,8 @@
   background: none;
 }
 
-/* Fifty cells across a phone is fifty two-point cells. Stacked instead, one
-   display over the other, and the dark groups between them go — they were the
-   run of lamps joining two boxes on one line, and there is no line left. */
-.mech[data-narrow='true'] .mech-run {
-  flex-direction: column;
-  gap: calc(10 * var(--px));
-}
-
 .mech[data-narrow='true'] .mech-display {
-  flex: none;
-  padding: calc(9 * var(--px)) calc(10 * var(--px));
-}
-
-.mech[data-narrow='true'] .mech-display-gap {
-  display: none;
-}
-
-/* The name comes off the front of the instrument. Overlaying it works on a
-   panel a thousand units wide and nowhere near a phone, where the block would
-   cover the graph outright. */
-.mech[data-narrow='true'] .mech-console {
-  padding-top: 0;
-  display: flex;
-  flex-direction: column;
-  gap: calc(24 * var(--px));
-}
-
-.mech[data-narrow='true'] .mech-ident {
-  position: static;
-  width: 100%;
-  padding: 0;
-  background: none;
+  padding: calc(9 * var(--px)) 0;
 }
 
 .mech[data-narrow='true'] .mech-tach-face {

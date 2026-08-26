@@ -183,26 +183,42 @@ and the effect was a screensaver. An instrument does not change colour.
 
 So home is a panel now, laid out the way a car's instrument cluster is.
 `MechCluster.tsx`, and `MechCluster.css` beside it — its own stylesheet
-because this is a whole screen rather than a part of one. Five things, and the
-arrangement is the design:
+because this is a whole screen rather than a part of one. Six things now, and
+the arrangement is the design:
 
 - a **warning pair** at the top of the frame, `SHOOT` / `STOP` — the one lamp
-  on the page that is about the page rather than about the work;
-- a **run of lamp cells** across the top of the panel, with two words lit on
-  it: what I do on the left, and whatever is selected on the right;
-- the **tachometer**, the single largest instrument, filling the middle;
-- the **name and the profile**, on a plate laid over the quiet left end of it;
-- the **counts** bled off the left edge of the frame, and the **rail of work**
-  down the right.
+  on the page that is about the page rather than about the work — with the
+  tally of what has come down docked directly above it (see *Two animals, and
+  a tally*);
+- the **name**, red-orange rather than the panel's phosphor, on its own line
+  between the warning pair and the instrument — not laid over it any more;
+- the **tachometer**, the single largest instrument, filling the middle, with
+  `INTRO` and the profile set in its quiet left corner where the name used to
+  sit;
+- the **left flank**: the counts bled off the edge of the frame, and under
+  them the reel of what I do — what used to run in a strip across the top of
+  the panel;
+- the **rail of work** down the right, the project's own name above the bank
+  now rather than in that same strip, and the five field meters under the
+  bank rather than under the graph.
 
 **Almost nothing on it is decoration.** The two displays and the five field
-meters under them all report on whatever is selected in the rail. The counts
-are derived from the work itself — years active, roles worn, organisations
-shipped for — because a portfolio that states a number it does not derive is a
-number to keep up to date. The rail is a bank of twelve slots, each holding
-its project's own 3D subject, and it is the navigation. The tachometer is the
-exception, and the argument for allowing exactly one is under `#### The
-tachometer` below.
+meters under the bank all report on whatever is selected in the rail. The
+counts are derived from the work itself — years active, roles worn,
+organisations shipped for — because a portfolio that states a number it does
+not derive is a number to keep up to date. The rail is a bank of twelve
+slots, each holding its project's own 3D subject, and it is the navigation.
+The tachometer is the exception, and the argument for allowing exactly one is
+under `#### The tachometer` below.
+
+**The second pass took the strip apart.** The run of lamp cells that used to
+sit across the top of the middle column — what I do on the left, what is
+selected on the right, three dark groups between them — read as a caption for
+the whole panel rather than as a reading off the block of facts either side of
+it. Both halves moved to stand next to what they actually describe instead:
+the job title under the counts it is a share of, the project's name above the
+bank of slots it names. Neither carries a border any more either — see `####
+The display` below for why nothing on this panel is boxed now.
 
 **The counts lost `PROJ LISTED`.** It was counting the list that is on the
 same screen — the rail's own head says "12 entries · pick one" a few hundred
@@ -241,38 +257,43 @@ underneath. That is the bloom off the glass, and neither pass looks like a
 display on its own. It is a filter over a strip of short lines that only
 repaints when the word changes, which is why it is affordable.
 
-**Two displays on one run of cells.** There used to be one, changing channel:
-with nothing pointed at it cycled the titles, and pressing a slot swapped it
-over to that project's name. Same position, same size — which is what made the
-swap read as one instrument rather than two captions, and which also meant the
-two facts could never be on screen at once. A cluster has a window for the gear
-and a window for the speed.
+**Two displays, apart rather than in one run of cells.** There used to be one,
+changing channel: with nothing pointed at it cycled the titles, and pressing a
+slot swapped it over to that project's name. Same position, same size — which
+is what made the swap read as one instrument rather than two captions, and
+which also meant the two facts could never be on screen at once. A cluster has
+a window for the gear and a window for the speed — it turns out it does not
+need them on the same line to have both.
 
-So the strip is both now, left and right, with three dark cell groups between
-them. **Left is what I do.** With nothing selected it cycles the titles —
-product designer, engineer, filmmaker, game designer, design engineer — and
-the five field meters under the instrument mark which one the current title
-falls under. Select a project and it cycles what I actually did *on that
-project*, one job at a time: `role` in projects.ts is a single string, and
-"Founder & Product Designer" is two jobs printed as one, so `rolesOf` splits it
-and the display works through them on the same interval the titles use.
-**Right is what is selected**, by name, and the field meters become every field
-that project touches — usually two or three of the five at once, which is why
-it is a scale and not a single needle.
+**Left is what I do**, under the counts rather than across the top of the
+panel: with nothing selected it cycles the titles — product designer,
+engineer, filmmaker, game designer, design engineer — and the five field
+meters under the bank mark which one the current title falls under. Select a
+project and it cycles what I actually did *on that project*, one job at a
+time: `role` in projects.ts is a single string, and "Founder & Product
+Designer" is two jobs printed as one, so `rolesOf` splits it and the display
+works through them on the same interval the titles use. **Right is what is
+selected**, by name, over the bank rather than beside that first display — the
+project's own title is above the products it names now, and pressing a slot
+still changes what it reads. The field meters become every field that project
+touches — usually two or three of the five at once, which is why it is a
+scale and not a single needle.
 
-Both halves are twenty-one cells, which is wider than either needs and the same
-on both sides. Twenty-one is "Red Dead Redemption 2", because the one display
-whose job is naming a project is not the place to abbreviate one; the titles
-sit inside it with ghost cells either side, which is what a fixed grid of lamps
-looks like with a short word on it. The dark groups between them are the same
-component with nothing to say — they are what makes this one run of lamps with
-two words lit on it rather than two boxes with a hole between them.
+Both are twenty-one cells, which is wider than either needs. Twenty-one is
+"Red Dead Redemption 2", because the one display whose job is naming a project
+is not the place to abbreviate one; the titles sit inside it with ghost cells
+either side, which is what a fixed grid of lamps looks like with a short word
+on it.
 
-The three boxes are sized by flex weights that *are* their cell counts, and
-none of them carries horizontal padding. Every box then works out to the same
-width per cell, so all three heights agree without a measurement anywhere; put
-padding on them and the middle groups come out a different height from the
-ends.
+**Neither carries a border.** The first pass ran both in a strip with a
+hairline box around each cell group — the "thin rectangular outline" that
+turned out to be the wrong idea once the two displays stood apart: a border
+drawn around a caption for the whole panel made sense in a strip, and drawn
+around a reading sitting next to the thing it describes it just repeats the
+edge that thing already has. What is left of the housing is the light a lit
+display throws onto the panel behind it (`.mech-display::before`), on when
+something is actually selected and off at rest — the glow says "lit", not a
+box around it.
 
 With nothing selected the right-hand display reads `SELECT`, held at label
 brightness rather than lit. A dark box on arrival reads as broken, and a
@@ -282,9 +303,9 @@ The field scale itself is drawn as five small vertical meters, not five words
 with a tick above the lit ones — `FieldGauge` in `MechCluster.tsx`, the same
 bar-and-label shape the counts on the other side of the panel use. A word that
 changes colour reads as a caption; a bar that fills reads as an instrument. It
-sits under the tachometer rather than beside the display: laid inside the
-identity plate, which is itself laid over the graph, five meters hung off the
-bottom of it landed in the middle of the columns.
+sits under the bank now rather than under the instrument: it is what a
+selection is made of, next to the thing you selected, rather than a caption
+strung under the graph across the whole panel.
 
 A word does not cut to the next one. Each cell runs four frames of random
 segments and then lands on what it should say, left to right, the way a
@@ -365,35 +386,34 @@ rather than framing it separately, and that turned out to be the actual fix:
 not a face for this one paragraph, but the one the rest of the panel's system
 text already had.
 
-#### The name is on the instrument
+#### The name came off the instrument
 
-The name and the profile are one plate, `.mech-ident`, and it is laid **over**
-the left end of the tachometer rather than set beside it. That is the only
-arrangement where the largest thing on the screen and the most important thing
-on it are the same object; everything else makes the graph the biggest thing on
-a page that has somebody's name on it somewhere.
+The name used to be laid **over** the quiet left end of the tachometer, on a
+plate with the profile under it — the only arrangement where the largest thing
+on the screen and the most important thing on it were the same object. It
+moved for a reason that had nothing to do with that argument: the name is
+signature, not a reading, and warming it to `--warn` — the panel's one red-
+orange, the colour `STOP` and the tally are lit in — made it read as a third
+thing sitting *on* an instrument rather than an instrument's own display. A
+signature in the instrument's own phosphor was a quieter problem the plate had
+been hiding.
 
-It works because the power curve in `CURVE` starts low. The quiet end of a
-torque curve is a corner of empty face, and that corner is where the plate
-goes — which means the shape of the curve is not only a drawing decision, it is
-what makes room for the name. Raise the left end of it and the profile is
-sitting on top of lit cells.
+So `.mech-ident` is its own line now, between the warning pair and the
+tachometer, centred, set in `--warn` with the same three-shadow glow every
+other lit thing on the panel carries — the same face, the same fit-to-width
+`cqw` trick against a character count that `.mech-console` used to do, just no
+longer laid over anything. Fitting it to a fixed-width block rather than the
+full column is still necessary: `.mech-cluster` is a flex column and stretches
+its children to the panel's full width by default, and a name fitted to *that*
+renders several times too large before it can be read as a bug — `.mech-ident`
+carries its own `width` for exactly this reason, `640` frame units, centred
+with `margin: 0 auto`.
 
-The plate carries two washes rather than a fill: a breath of the panel's own
-phosphor over a near-black, both fading out downward, so the columns show
-through the bottom of it. A plate that hid what it was on would be a card
-floating in front of a graph, which is the picture-frame problem the profile
-already lost once.
-
-It fits the name to its own width with `cqw` against a character count rather
-than guessing at a frame width the way `.mech-title` has to. Note that
-`container-type: inline-size` also makes the plate a containing block for
-positioned descendants — harmless here, and exactly the trap `.mech-cluster`
-avoids for the bank's fixed canvas.
-
-Narrow drops the overlay entirely: the plate goes static and sits above the
-graph. Laying a four-line paragraph over a phone-width instrument covers the
-instrument.
+The quiet corner it left behind did not stay empty. `.mech-intro` sits there
+now — the label reads `INTRO` in the same fourteen-segment glyphs as the rest
+of the panel's readouts (`Segment`, not a heading font) and the profile
+underneath it, still the same `ui-monospace` paragraph it was as a caption on
+the instrument's own reading rather than a title pasted over it.
 
 #### The bank is the navigation
 
@@ -514,12 +534,32 @@ Only `!important` gets the stylesheet's rule to actually apply, the same way
 `position: fixed !important` already had to for this same element — see the
 note above it.
 
-The subject is never quite still while it sits in its bay, and it steps rather
-than glides: `Drift` in `MechSlots.tsx` recomputes the pose on a fixed
-twelve-times-a-second tick rather than once a frame, holding the last pose
-between ticks. The canvas itself still renders at whatever the display does —
-the undersampling is deliberate, the difference between an object turning on a
-monitor and one turning on a panel meter.
+**The rail scrolls; the canvas does not know that.** `getBoundingClientRect`
+— what `View` scissors every bay against — has no idea `.mech-work-rail-list`
+clips its own overflow, so a slot half scrolled past the top or bottom of the
+list was clipped as a *button* by the browser while its picture, a scissor
+test against a rect that never shrank, kept painting straight through the clip
+and out the top or bottom of the rail. `MechCluster.tsx` measures the list's
+own distance from the top and bottom of the viewport on scroll and resize and
+writes it onto the list itself as `--rail-clip-top` / `--rail-clip-bottom`;
+`.mech-bank-gl` reads them back as a `clip-path: inset(...)`. A `position:
+fixed` element still inherits custom properties from its DOM ancestors —
+inheritance is a tree relationship, not a layout one — so the fixed canvas,
+nested inside the list in the markup despite covering the whole viewport,
+picks the values up without anything having to be passed to it directly.
+
+The subject is never quite still while it sits in its bay, and it turns all
+the time — a full rotation every fourteen seconds or so, at a fixed rate that
+has nothing to do with whether the pointer is anywhere near its slot. It used
+to: selection eased the turn toward face-on as well as growing the subject a
+little, which read as the picture "spinning" the moment you hovered it and
+sitting dead still the rest of the time, the opposite of a bank of twelve live
+subjects. Selection only grows the subject now; the turn itself never answers
+`live`. Either way it steps rather than glides: `Drift` in `MechSlots.tsx`
+recomputes the pose on a fixed twelve-times-a-second tick rather than once a
+frame, holding the last pose between ticks. The canvas itself still renders at
+whatever the display does — the undersampling is deliberate, the difference
+between an object turning on a monitor and one turning on a panel meter.
 
 #### The tachometer
 
@@ -2077,18 +2117,17 @@ forever. It renders as one more digit readout on the instrument panel, and not
 at all at zero, because a counter saying nothing has happened is a counter
 advertising a feature.
 
-It sits at the **left end of the footer** now, opposite the contact address.
-It used to be its own absolutely positioned box pinned to the bottom right, an
-inch directly above that address and sharing its column — so the corner of the
-screen read as two unrelated readouts stacked on each other, while the whole
-left half of the footer line sat empty the entire time. On the same baseline
-at the other end, the bottom edge is one strip of chrome with something at
-each end of it: what you have shot, and how to reach me. The footer stays
-`flex-start` with the address on `margin-left: auto` rather than going
-`space-between`, because the tally is hidden at zero and a two-ended line
-whose left end is missing would slide the address into the middle of the
-screen on first load. Narrow, the two stack and centre instead — two things at
-opposite ends of a 390-point line are two things nowhere near each other.
+It is docked at the **top of the frame** now, above the warning pair, with no
+"downed" label beside the number any more — the count is the whole reading,
+next to `SHOOT` / `STOP` rather than filed away with the contact address at
+the bottom of the page. It used to sit at the left end of the footer, on the
+same baseline as the contact address, which put "what you have shot" a whole
+screen away from the reticle that does the shooting, and before that it was
+its own absolutely positioned box pinned to the bottom right, an inch above
+that same address. `Tally` is still mounted in the footer's markup — on every
+screen, not just home — but `.mech-tally` takes it out of that flex line with
+`position: fixed`, centred, so it reads next to the thing it is counting
+regardless of where the footer itself sits at any width.
 
 ### Nothing stutters on a swap
 

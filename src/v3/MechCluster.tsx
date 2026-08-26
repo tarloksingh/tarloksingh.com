@@ -137,12 +137,6 @@ const PROFILE =
  *  text box. */
 const CELLS = 21
 
-/** The three dark cell groups between the two displays. They read nothing and
- *  they are not decoration either — they are what makes the strip one run of
- *  lamps with two words lit on it rather than two boxes with a hole between
- *  them, which is the difference between a panel and a pair of widgets. */
-const GAPS = [3, 3, 3]
-
 /** What the right-hand display says with nothing picked. A dark box on
  *  arrival reads as broken; this labels what the box is for, and it goes out
  *  the moment there is something real to put there. */
@@ -676,6 +670,47 @@ export default function MechCluster({ onProject, covered, tuning }: Props) {
   const [picked, setPicked] = useState<number | null>(null)
   const [step, setStep] = useState(0)
   const release = useRef(0)
+  const railList = useRef<HTMLDivElement>(null)
+
+  /* The bank's canvas is `position: fixed` and scissors each subject to its
+     slot's own rect — see `MechSlots.tsx`. `getBoundingClientRect` does not
+     know the rail scrolls: a slot half scrolled out of `.mech-work-rail-list`
+     is clipped by the browser as a *button*, but its picture is drawn by a
+     scissor test against a rect that never shrank, so it painted straight
+     through the clip and out the top or bottom of the rail.
+
+     `--rail-clip-top` / `--rail-clip-bottom` are the fix: the rail-list's own
+     distance from the top and bottom of the viewport, written onto itself so
+     `.mech-bank-gl` — a descendant in the tree even though it is fixed —
+     inherits them and clips its own paint to exactly the band the list
+     occupies. Recomputed on scroll and resize, not every frame: the rail's
+     position on screen only changes on those two events. */
+  useEffect(() => {
+    const node = railList.current
+    if (!node) return
+    let raf = 0
+    const measure = () => {
+      raf = 0
+      const rect = node.getBoundingClientRect()
+      node.style.setProperty('--rail-clip-top', `${Math.max(0, rect.top)}px`)
+      node.style.setProperty('--rail-clip-bottom', `${Math.max(0, window.innerHeight - rect.bottom)}px`)
+    }
+    const request = () => {
+      if (raf) return
+      raf = requestAnimationFrame(measure)
+    }
+    request()
+    node.addEventListener('scroll', request, { passive: true })
+    window.addEventListener('resize', request)
+    const ro = new ResizeObserver(request)
+    ro.observe(node)
+    return () => {
+      node.removeEventListener('scroll', request)
+      window.removeEventListener('resize', request)
+      ro.disconnect()
+      cancelAnimationFrame(raf)
+    }
+  }, [])
 
   const slot = picked === null ? null : SLOTS[picked]
 
@@ -743,43 +778,66 @@ export default function MechCluster({ onProject, covered, tuning }: Props) {
     >
       <Alarm />
 
+      {/* The identity, on its own now — between the warning pair and the
+          instrument rather than laid over the quiet end of it. Red-orange,
+          the panel's one warm colour, because this is the one line on the
+          screen that is not a reading: it is who built it. */}
+      <section className="mech-ident">
+        <h1 className="mech-ident-name" style={{ ['--name-len' as string]: NAME.length }}>
+          <Typed text={NAME} run="cluster-name" delay={0.4} speed={44} caret={false} />
+        </h1>
+      </section>
+
       <div className="mech-body">
-        <Counts />
+        {/* ---- the left flank ---- */}
+        <div className="mech-flank">
+          <Counts />
+
+          {/* What I do — cycling the titles with nothing picked, or what I
+              did on the selected project. Sat under the counts rather than
+              in a run across the top: it is a reading off the same block of
+              facts, not a caption for the whole panel. */}
+          <div className="mech-display mech-display-role" data-on={slot !== null}>
+            <Segment text={reading} cells={CELLS} label={reading} />
+          </div>
+        </div>
 
         {/* ---- the middle ---- */}
         <div className="mech-main">
-          {/* ---- the strip ----
+          {/* Where the name used to sit, over the quiet end of the graph —
+              the label is drawn in the same segment glyphs as every other
+              reading on the panel, and the paragraph under it is the one
+              thing on this screen that is prose rather than a number. */}
+          <section className="mech-intro">
+            <span className="mech-intro-cap">
+              <Segment text="INTRO" cells={5} settle={false} label="intro" />
+            </span>
 
-              One run of lamp cells across the top of the panel with two words
-              lit on it: what I do on the left, what is selected on the right.
-              The dark groups between them are the same display with nothing to
-              say — see `GAPS`. */}
-          <div className="mech-run" style={{ ['--strikes' as string]: GAPS.length + 1 }}>
-            {/* `--strike` is where each box falls in the run, and it is what
-                both the entrance and the exit are staggered on — left to right
-                coming up, right to left going down. See *coming up, and going
-                down* in MechCluster.css. */}
-            <div className="mech-display" data-on={slot !== null} style={{ ['--strike' as string]: 0 }}>
-              <Segment text={reading} cells={CELLS} label={reading} />
-            </div>
+            {/* The profile, as a readout rather than as a paragraph on a
+                page. It used to be set in the site's Helvetica at body size
+                and colour, which made it the one humanist, low-contrast,
+                ragged thing on a panel of hard tracked caps. Same words, in
+                the panel's own monospace. */}
+            <p className="mech-profile">{PROFILE}</p>
+          </section>
 
-            {GAPS.map((cells, n) => (
-              <div
-                className="mech-display mech-display-gap"
-                key={n}
-                style={{ ['--strike' as string]: n + 1 }}
-                aria-hidden
-              >
-                <Segment text="" cells={cells} settle={false} label="" />
-              </div>
-            ))}
+          <Tach />
+        </div>
 
+        {/* ---- the rail ----
+
+            Work, on the right, the full height of the panel — see *the bank is
+            the navigation* for why it is pressable slots rather than a graph. */}
+        <aside className="mech-work-rail">
+          {/* The project's own title, above the bank rather than in a run
+              across the top of the panel — pressing a slot still changes
+              what this reads. */}
+          <div className="mech-work-rail-head">
             <div
               className="mech-display"
               data-on={slot !== null}
               data-idle={slot === null}
               data-warn={slot?.restricted ?? false}
-              style={{ ['--strike' as string]: GAPS.length + 1 }}
             >
               <Segment
                 text={slot ? slot.title : IDLE}
@@ -790,56 +848,12 @@ export default function MechCluster({ onProject, covered, tuning }: Props) {
             </div>
           </div>
 
-          {/* The instrument, and the identity laid over the quiet end of it.
-              They are one block on purpose: the name sits *on* the panel's
-              biggest gauge rather than beside it, which is the only
-              arrangement where the largest thing on the screen and the most
-              important thing on it are the same object. */}
-          <div className="mech-console">
-            <section className="mech-ident">
-              <h1 className="mech-ident-name" style={{ ['--name-len' as string]: NAME.length }}>
-                <Typed text={NAME} run="cluster-name" delay={0.4} speed={44} caret={false} />
-              </h1>
-
-              {/* The profile, as a readout rather than as a paragraph on a
-                  page. It used to be set in the site's Helvetica at body size
-                  and colour, which made it the one humanist, low-contrast,
-                  ragged thing on a panel of hard tracked caps. Same words, in
-                  the panel's own monospace. */}
-              <p className="mech-profile">{PROFILE}</p>
-            </section>
-
-            <Tach />
-          </div>
-
-          {/* Under the instrument rather than inside the plate above it: the
-              plate is laid over the graph, and five meters hanging off the
-              bottom of it landed in the middle of the columns. Here it reads
-              as the scale the instrument is calibrated against, which is what
-              it is. */}
-          <div className="mech-scale-row">
-            {FIELDS.map((name) => (
-              <FieldGauge key={name} name={name} on={marked.includes(name)} />
-            ))}
-          </div>
-        </div>
-
-        {/* ---- the rail ----
-
-            Work, on the right, the full height of the panel — see *the bank is
-            the navigation* for why it is pressable slots rather than a graph. */}
-        <aside className="mech-work-rail">
-          <div className="mech-work-rail-head">
-            <span className="mech-cap">selected work</span>
-            <span className="mech-work-rail-do" data-on={slot !== null}>
-              {slot ? `press to open ${slot.title.toLowerCase()}` : `${SLOTS.length} entries · pick one`}
-            </span>
-          </div>
-
           {/* Scrolls on its own — twelve rows at a size worth pressing do not
               all fit a real window's height, and a rail is allowed to scroll
-              where a row of preset buttons across the bottom was not. */}
-          <div className="mech-work-rail-list">
+              where a row of preset buttons across the bottom was not.
+              `railList` is what keeps the bank's canvas clipped to exactly
+              this band as it scrolls — see the effect above. */}
+          <div className="mech-work-rail-list" ref={railList}>
             <div className="mech-bank" onPointerEnter={hold} onPointerLeave={letGo}>
               {SLOTS.map((item, n) => (
                 <SlotBox
@@ -871,6 +885,15 @@ export default function MechCluster({ onProject, covered, tuning }: Props) {
                 ))}
               </span>
             </div>
+          </div>
+
+          {/* The scale, moved down under the bank — see `FieldGauge` above.
+              Was under the instrument in the middle column; the rail is
+              where the rest of what a selection *says* lives now. */}
+          <div className="mech-scale-row">
+            {FIELDS.map((name) => (
+              <FieldGauge key={name} name={name} on={marked.includes(name)} />
+            ))}
           </div>
 
           {/* The selected project's own line. Fixed height whether or not

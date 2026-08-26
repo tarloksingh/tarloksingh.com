@@ -37,6 +37,7 @@ const THEME = {
 }
 
 const REMEMBER = 'v3.panel.tab'
+const REMEMBER_HIDDEN = 'v3.panel.hidden'
 
 export default function MechPanel({ tabs }: { tabs: PanelTab[] }) {
   /* Remembered across reloads, and across moving between screens where the
@@ -50,6 +51,41 @@ export default function MechPanel({ tabs }: { tabs: PanelTab[] }) {
       return ''
     }
   })
+
+  /* Minimised, also remembered. The panel sits over the top right of every
+     screen, which is exactly where a slot's own name and number land on a
+     narrower window — collapsing it out of the way should not have to be
+     redone on every reload. */
+  const [hidden, setHidden] = useState<boolean>(() => {
+    try {
+      return window.localStorage.getItem(REMEMBER_HIDDEN) === '1'
+    } catch {
+      return false
+    }
+  })
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(REMEMBER_HIDDEN, hidden ? '1' : '0')
+    } catch {
+      /* private mode; the state just will not be remembered */
+    }
+  }, [hidden])
+
+  // H toggles the panel — the same guard every single-key shortcut on this
+  // screen uses (see the pin editor's 'P' in Mech.tsx): not while something
+  // is being typed into, and not with a modifier held.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'h' && event.key !== 'H') return
+      if (event.metaKey || event.ctrlKey || event.altKey) return
+      const on = event.target as HTMLElement | null
+      if (on && (on.tagName === 'INPUT' || on.tagName === 'TEXTAREA' || on.isContentEditable)) return
+      setHidden((was) => !was)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   // The remembered tab may not exist on this screen — that is the whole point
   // of the tabs being per-screen — so fall back to the first one that does.
@@ -66,21 +102,33 @@ export default function MechPanel({ tabs }: { tabs: PanelTab[] }) {
 
   if (tabs.length === 0 || !current) return null
 
+  /* Leva's *default* store, hidden.
+
+     Nothing here writes into it — every tuning hook makes its own with
+     `useCreateStore`, which is the whole reason this panel can be tabbed.
+     But home mounts the pieces built for eight of the projects
+     (`MechSlots.tsx` → `MechProduct`'s `Piece`), and several of those
+     components register controls of their own on the default store the
+     gallery they came from was written against. The moment one does, Leva
+     injects its own floating root and drops an "Objects" panel over the top
+     right of the screen, on top of this one.
+
+     Rendering it once, hidden, is how Leva is told not to. It is not a
+     second panel — it is the absence of one. Kept mounted in both branches
+     below, minimised or not, for exactly that reason. */
+  if (hidden) {
+    return (
+      <>
+        <Leva hidden />
+        <button className="mech-panel-restore" onClick={() => setHidden(false)} title="Show the tool panel (H)">
+          tools
+        </button>
+      </>
+    )
+  }
+
   return (
     <div className="mech-panel">
-      {/* Leva's *default* store, hidden.
-
-          Nothing here writes into it — every tuning hook makes its own with
-          `useCreateStore`, which is the whole reason this panel can be tabbed.
-          But home mounts the pieces built for eight of the projects
-          (`MechSlots.tsx` → `MechProduct`'s `Piece`), and several of those
-          components register controls of their own on the default store the
-          gallery they came from was written against. The moment one does,
-          Leva injects its own floating root and drops an "Objects" panel over
-          the top right of the screen, on top of this one.
-
-          Rendering it once, hidden, is how Leva is told not to. It is not a
-          second panel — it is the absence of one. */}
       <Leva hidden />
       <div className="mech-panel-tabs" role="tablist">
         {tabs.map((tab) => (
@@ -93,6 +141,9 @@ export default function MechPanel({ tabs }: { tabs: PanelTab[] }) {
             {tab.label}
           </button>
         ))}
+        <button className="mech-panel-hide" onClick={() => setHidden(true)} title="Hide the tool panel (H)">
+          ×
+        </button>
       </div>
 
       {/* Every store stays mounted; only the current one is shown.

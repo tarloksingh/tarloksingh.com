@@ -32,7 +32,7 @@ export const CLUSTER_DEFAULTS: ClusterTuning = {
   y: 0,
   name: 0.88,
   glow: 1.2,
-  slot: 150
+  slot: 104
 }
 
 const STORE_KEY = 'v3.cluster.tuning.v1'

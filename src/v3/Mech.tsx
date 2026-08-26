@@ -764,25 +764,29 @@ interface Props {
 /** What has been shot, everywhere, ever. Its own component so the number
  *  changing does not re-render the readout under it — see `kills.ts`.
  *
- *  It sits in the footer, on the opposite end of the same line as the contact
- *  address. It used to be its own absolute box pinned to the bottom right, an
- *  inch above that address and sharing its column, which read as two unrelated
- *  things stacked in a corner rather than as one strip of chrome across the
- *  bottom of the panel.
+ *  Docked at the top of the frame, above the warning pair, rather than down
+ *  in the footer beside the contact address: it is the number of things the
+ *  reticle above it has hit, and it reads that way sitting next to `SHOOT` /
+ *  `STOP` rather than filed with the contact details at the bottom of the
+ *  page. No "downed" label any more either — the count is the whole reading,
+ *  and `aria-label` still says what it is for anyone not reading the glyphs.
  *
- *  And the number is in segments now, the same display the counts on home are
- *  drawn with — a count of something is a count of something, and it should
- *  look the same wherever the panel prints one. That is also why this is the
- *  one part of `Segment` a project screen mounts: the tally is on every
- *  screen, so the display is too. `settle` is off — this is not a readout
- *  changing channel, it is a number going up by one, and four frames of noise
- *  every time you shoot a bird would be the loudest thing on the page. */
+ *  Mounted in the footer's markup still (rendered on every screen, not just
+ *  home), but taken out of that flow with `position: fixed` — see
+ *  `.mech-tally` in Mech.css.
+ *
+ *  The number is in segments, the same display the counts on home are drawn
+ *  with — a count of something is a count of something, and it should look
+ *  the same wherever the panel prints one. That is also why this is the one
+ *  part of `Segment` a project screen mounts: the tally is on every screen, so
+ *  the display is too. `settle` is off — this is not a readout changing
+ *  channel, it is a number going up by one, and four frames of noise every
+ *  time you shoot a bird would be the loudest thing on the page. */
 function Tally() {
   const count = useSyncExternalStore(kills.subscribe, kills.snapshot, kills.snapshot)
   if (count === 0) return null
   return (
     <div className="mech-tally" aria-label={`${count} downed`} data-arrive>
-      <span>downed</span>
       <span className="mech-tally-n">
         <Segment text={String(count).padStart(3, '0')} cells={3} settle={false} label={`${count}`} />
       </span>

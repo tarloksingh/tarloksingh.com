@@ -1718,22 +1718,24 @@
 }
 
 /* The marker is the one red thing on a green panel, which is the whole
-   reason it reads as a target and not as another gauge: a plain box with a
-   filled block sitting in the ticks above it. */
+   reason it reads as a target and not as another gauge — filled solid,
+   the way `STOP` on the cluster's warning pair is, rather than an outline
+   with a wash inside it: a shift light is a block of colour, not a box
+   with a hint of one. */
 .mech-marker-box {
-  fill: rgba(var(--warn-rgb), 0.1);
+  fill: var(--warn);
   stroke: var(--warn);
   stroke-width: 1.4;
   filter: drop-shadow(0 0 7px rgba(var(--warn-rgb), 0.8));
 }
 
 .mech-heading {
-  fill: #f28a63;
+  fill: #180500;
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-weight: 700;
   font-size: calc(13px * var(--type-k, 1));
   letter-spacing: calc(1.5px * var(--type-k, 1));
   font-variant-numeric: tabular-nums;
-  filter: drop-shadow(0 0 6px rgba(var(--warn-rgb), 0.85));
 }
 
 .mech-coords {
@@ -2799,22 +2801,25 @@
 /* ---- the tally ----
 
    What you have shot, across every screen and across a reload. On the
-   instrument panel rather than in a corner as a score: it is one more digit
-   readout beside the compass's, which is where a number like this belongs on
-   a page that already has three of them. Hidden at zero — a counter saying
-   nothing has happened is a counter advertising a feature. See `kills.ts`.
+   instrument panel rather than in a corner as a score, and docked at the top
+   of the frame, above the warning pair — the reticle's own count sits next to
+   the readout naming what the reticle is for. Hidden at zero — a counter
+   saying nothing has happened is a counter advertising a feature. See
+   `kills.ts`.
 
-   In the footer, at the far left of it, rather than pinned to the bottom
-   right on its own. It used to sit eighteen units directly above the contact
-   address and share that column, so the corner of the screen read as two
-   unrelated readouts stacked on each other — and the whole left half of the
-   footer line was empty the entire time. On the same baseline, at the other
-   end, the bottom edge is one strip of chrome with something at each end of
-   it: what you have shot, and how to get hold of me. */
+   `position: fixed` and centred, off the footer's own flex line — it used to
+   sit at the far left of the footer, on the same baseline as the contact
+   address, which put "what you have shot" a whole screen away from the
+   reticle that does the shooting. No "downed" label either: the number is
+   the entire reading, once it is up here next to the thing it counts. */
 
 .mech-tally {
+  position: fixed;
+  left: 50%;
+  top: calc(18 * var(--px));
+  transform: translateX(-50%);
+  z-index: 3;
   display: flex;
-  gap: calc(11 * var(--px));
   align-items: center;
   font-size: calc(12.5 * var(--type));
   letter-spacing: calc(1.5 * var(--type));
@@ -2824,15 +2829,13 @@
 
 /* The number is the segment display, the same one the counts on home are
    drawn with — a count of something should look the same wherever this panel
-   prints one, and tabular figures in Helvetica were not that. Boxed for the
-   same reason the readouts on home are: a lit thing needs an edge to be lit
-   inside of. See `Segment.tsx`, and `Tally` in Mech.tsx. */
+   prints one, and tabular figures in Helvetica were not that. No border any
+   more — see `.mech-display` in MechCluster.css for the same change made to
+   every other reading on the panel. */
 .mech-tally-n {
   display: block;
   width: calc(44 * var(--px));
   padding: calc(4 * var(--px)) calc(6 * var(--px));
-  border: 1px solid rgba(var(--accent-rgb), 0.28);
-  background: rgba(var(--accent-rgb), 0.04);
 }
 
 /* ---- narrow viewports ----
@@ -3791,6 +3794,48 @@
 
 .mech-panel-body[hidden] {
   display: none;
+}
+
+/* The close key, in the tab strip rather than floated over the panel — one
+   more tab-sized button, so it does not need a stacking context of its own.
+   H does the same thing, and the title on both buttons says so. */
+.mech-panel-hide {
+  flex: none !important;
+  width: 28px;
+  color: #7a7a7a;
+  font-size: 14px !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+.mech-panel-hide:hover {
+  color: #d0d0d0;
+}
+
+/* What is left once the panel is minimised — a small pill in the same
+   corner, so pressing H (or this) always brings back the same panel in the
+   same place rather than a full re-mount finding its own spot. */
+.mech-panel-restore {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: #141414;
+  color: #7a7a7a;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+  transition: color 120ms linear;
+}
+
+.mech-panel-restore:hover {
+  color: #d0d0d0;
 }
 
 /* ---- the tag on a subject ----
