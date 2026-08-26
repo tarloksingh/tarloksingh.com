@@ -137,11 +137,16 @@ const PROFILE =
  *  text box. */
 const CELLS = 21
 
-/** Cells in the role reel under the counts. Wide enough for the longest title
- *  or role — "Product Designer" is sixteen — and deliberately narrower than
- *  `CELLS`: it never has to hold a project name, and a box sized for one read
- *  as a word adrift in too much housing. */
-const ROLE_CELLS = 17
+/** Cells in the role reel under the counts. Exactly the longest title or role
+ *  — "Product Designer" is sixteen — and deliberately narrower than `CELLS`: it
+ *  never has to hold a project name, and a box sized for one read as a word
+ *  adrift in too much housing.
+ *
+ *  Sixteen rather than seventeen because the display is boxed to the width of
+ *  the counts above it (`--count-w`), and a seventeenth cell put the tail of
+ *  "DESIGN ENGINEER" out past the right edge of the `ORGS` gauge — a readout
+ *  hanging off the block it belongs to. */
+const ROLE_CELLS = 16
 
 /** What the right-hand display says with nothing picked. A dark box on
  *  arrival reads as broken; this labels what the box is for, and it goes out
@@ -278,30 +283,101 @@ const reduced = () =>
    scale is painted on the face — a mark, not a reading, exactly like a real
    one. Nothing on this screen selects anything here. The work is picked in
    the rail. */
-const TACH_COLS = 34
+/** Twenty-two, down from thirty-four. A column is a lit cell wide, and at
+ *  thirty-four across the face each one came out wider than the cells stacked
+ *  in it — a row of blocks rather than a row of bars. Fewer columns, further
+ *  apart, and each one narrower than it is tall is what the reference actually
+ *  looks like. */
+const TACH_COLS = 22
 
 /** Where the red zone starts, as a fraction of the scale. The throttle is
  *  wound up to just short of it and only occasionally clips in — a needle that
  *  lives in the red is a needle nobody looks at. */
 const TACH_RED = 0.82
 
-/** How many cells tall a column can be. The face is drawn in whole cells and
- *  every column's height is snapped to one, so the rows line up across the
- *  graph rather than each column ending wherever its own curve happened to
- *  fall. */
-const TACH_ROWS = 20
+/** How many cells tall a column can be — and, through `TACH_FACE` below, how
+ *  tall the face itself is and therefore how tall the rail opposite stands. */
+const TACH_ROWS = 33
+
+/** The gap between two cells in a column, and how tall the cell at a given
+ *  height up it stands.
+ *
+ *  **Graded, not uniform.** A column of identical cells is a progress bar in a
+ *  dashboard's clothes; what the reference does is stand tall segments at the
+ *  foot of a column and shorten them as they climb, so the bottom of the graph
+ *  is solid and the top of it dissolves into ticks. The curve that grading
+ *  draws across the face — the boundary where the tall cells give out — is a
+ *  second reading of the same power curve, for free. */
+const CELL_GAP = 4
+const cellH = (n: number) => Math.max(8, 18 - n * 1.5)
+
+/** How tall a column standing `k` cells is, gaps included. Every column height
+ *  on the face is one of these, so the cells never end mid-way through one and
+ *  the face is exactly `TACH_ROWS` cells tall. */
+const ladder = (k: number) => {
+  let h = 0
+  for (let n = 0; n < k; n += 1) h += (n ? CELL_GAP : 0) + cellH(n)
+  return h
+}
+
+/** The face's own height, in frame units — the ladder, not a round number
+ *  picked in the stylesheet. `.mech-tach-face` reads it back as `--face`. */
+const TACH_FACE = ladder(TACH_ROWS)
+
+const clampInt = (n: number, low: number, high: number) => Math.max(low, Math.min(high, n))
 
 /** The power curve, one entry per column: up off idle, a long plateau, and
  *  falling away past the red mark. A hair of wobble on top, because a curve
  *  that is perfectly smooth is a function plotted rather than an engine
- *  measured — deterministic, so it is the same shape on every load. */
+ *  measured — deterministic, so it is the same shape on every load.
+ *
+ *  It comes off idle later than it used to (0.44 rather than 0.34). That is a
+ *  layout constraint as much as a taste one: the intro sits over the top-left
+ *  corner of this face now — see `.mech-intro` in MechCluster.css — and a curve
+ *  already half way up by the time it reached the middle of the graph ran
+ *  straight through the paragraph. Pushed further than this and the left half
+ *  of the face empties out, which is a graph with a hole in it rather than an
+ *  engine off the throttle. */
 const CURVE = Array.from({ length: TACH_COLS }, (_, i) => {
   const t = i / (TACH_COLS - 1)
-  const rise = 1 / (1 + Math.exp(-(t - 0.34) * 9))
-  const fall = 1 - 0.16 * Math.pow(Math.max(0, t - 0.68) / 0.32, 2)
-  const raw = 0.12 + 0.88 * rise * fall + 0.018 * Math.sin(i * 2.7)
-  return Math.round(clamp(raw, 0.06, 1) * TACH_ROWS) / TACH_ROWS
+  const rise = 1 / (1 + Math.exp(-(t - 0.44) * 9))
+  const fall = 1 - 0.16 * Math.pow(Math.max(0, t - 0.78) / 0.22, 2)
+  const raw = clamp(0.08 + 0.92 * rise * fall + 0.015 * Math.sin(i * 2.7), 0.04, 1)
+  let cells = 1
+  while (cells < TACH_ROWS && ladder(cells + 1) <= raw * TACH_FACE) cells += 1
+  return ladder(clampInt(cells, 1, TACH_ROWS)) / TACH_FACE
 })
+
+/** A column's cells, as one gradient rather than twenty-six elements.
+ *
+ *  Two of these exist, one per colour, built once on the module and handed to
+ *  every column as an inline `background-image`. The colour is left as a live
+ *  `calc()` over `--on` — the column's own "has the sweep reached me" — so the
+ *  string is the same for all twenty-two of them and only the custom property
+ *  the rAF writes decides how bright any of it burns.
+ *
+ *  Anchored to the foot of the column and never repeated: the stops are the
+ *  ladder above, so cell three is the same height on a column of four as on a
+ *  column of twenty-six. */
+const cellStack = (colour: string) => {
+  const stops: string[] = []
+  let at = 0
+  for (let n = 0; n < TACH_ROWS; n += 1) {
+    if (n) at += CELL_GAP
+    const top = at + cellH(n)
+    stops.push(
+      `transparent calc(${at} * var(--px))`,
+      `${colour} calc(${at} * var(--px))`,
+      `${colour} calc(${top} * var(--px))`,
+      `transparent calc(${top} * var(--px))`
+    )
+    at = top
+  }
+  return `linear-gradient(to top, ${stops.join(', ')})`
+}
+
+const CELLS_LIT = cellStack('rgba(var(--accent-rgb), calc(0.07 + 0.93 * var(--on)))')
+const CELLS_RED = cellStack('rgba(var(--warn-rgb), calc(0.09 + 0.91 * var(--on)))')
 
 /** Where the needle idles, and the range it is blipped to. It spends longer
  *  wound up than resting on purpose: an instrument sitting at its stop is an
@@ -408,7 +484,11 @@ function Tach() {
               key={i}
               className="mech-tach-col"
               data-red={i >= REDLINE_AT}
-              style={{ ['--h' as string]: h, ['--i' as string]: i }}
+              style={{
+                ['--h' as string]: h,
+                ['--i' as string]: i,
+                backgroundImage: i >= REDLINE_AT ? CELLS_RED : CELLS_LIT
+              }}
             />
           ))}
         </div>
@@ -492,29 +572,36 @@ function Alarm() {
   )
 }
 
-/** How many cells a field's bar stands in — the same bar-and-label grammar as
- *  the counts opposite it, not a word with a tick over it. A field is on or it
- *  isn't, so its bar is either full or a ghost outline; there is no partial
- *  reading to plot, unlike a count. */
-const FIELD_CELLS = 6
+/** The ring a field is drawn as, in the SVG's own units, and how many cells it
+ *  is broken into. Twelve, dashed, so it reads as the same run of lamp cells
+ *  every other gauge on this panel is made of — bent round rather than swapped
+ *  for a solid annulus, which would be the one filled shape on the screen. */
+const RING = { box: 34, r: 13, cells: 12, duty: 0.56 }
+const RING_STEP = (2 * Math.PI * RING.r) / RING.cells
+const RING_DASH = `${(RING_STEP * RING.duty).toFixed(2)} ${(RING_STEP * (1 - RING.duty)).toFixed(2)}`
 
-/** One mark on the scale under the profile, drawn as a small vertical meter —
- *  the same shape the temperature and oil pressure take on the reference,
- *  rather than a word that changes colour.
+/** One mark on the scale under the bank.
  *
- *  It sits under the profile rather than under the display now. The row of
- *  indicator lamps that used to report the same thing along the top of the
- *  frame is gone — see `Alarm`, which took that position — so this is the only
- *  place left that says what a project is made of, and it belongs next to the
- *  paragraph that says what I make. */
+ *  A dial rather than a meter. Every other reading on this panel is a stack of
+ *  cells climbing — the counts, the tach, the displays — and five more of them
+ *  in a row along the bottom made the fifth block on the screen say nothing the
+ *  other four had not already said in the same shape. A ring is the one
+ *  instrument grammar a dashboard has that this panel was not using.
+ *
+ *  A field is on or it isn't, so the ring is either lit all the way round or a
+ *  ghost of itself; there is no partial arc to sweep, unlike a count. */
 function FieldGauge({ name, on }: { name: Field; on: boolean }) {
   return (
     <div className="mech-field-gauge" data-on={on}>
-      <span className="mech-field-bar">
-        {Array.from({ length: FIELD_CELLS }, (_, n) => (
-          <i key={n} data-on={on} />
-        ))}
-      </span>
+      <svg
+        className="mech-field-ring"
+        viewBox={`0 0 ${RING.box} ${RING.box}`}
+        focusable="false"
+        aria-hidden
+      >
+        <circle className="mech-field-track" cx={RING.box / 2} cy={RING.box / 2} r={RING.r} strokeDasharray={RING_DASH} />
+        <circle className="mech-field-lit" cx={RING.box / 2} cy={RING.box / 2} r={RING.r} strokeDasharray={RING_DASH} />
+      </svg>
       <span className="mech-field-label">{name}</span>
     </div>
   )
@@ -808,6 +895,13 @@ export default function MechCluster({ onProject, covered, tuning }: Props) {
       className="mech-cluster"
       data-covered={covered}
       style={{
+        /* The graph's own height, in frame units, handed to the whole panel
+           rather than to the face alone. It is the sum of the cell ladder (see
+           `TACH_FACE`), so it is not a number anyone can pick — and the rail
+           opposite is sized off it, because *the rail is as tall as the
+           instrument* is the rule and this is where the instrument's height
+           actually comes from. */
+        ['--face' as string]: TACH_FACE,
         ['--cluster-y' as string]: tuning.y,
         ['--cluster-name' as string]: tuning.name,
         ['--cluster-glow' as string]: tuning.glow,

@@ -166,13 +166,19 @@ five parts:
 - **The tachometer** (`Tach`), the largest instrument, filling the middle. It
   reports on nothing: revs sweeping up a fixed power curve and falling back,
   with the red zone painted on the x axis. One property (`--rev`) on the face
-  drives all thirty-four columns.
-- **The name and the profile** on a plate laid *over* the quiet left end of
-  it, plus the five field meters under the graph.
+  drives all twenty-two columns, and the cells in them are graded — tall at the
+  foot, tapering to ticks at the top (`cellH` / `ladder`). The face's height
+  *is* that ladder's sum, handed to the panel as `--face`, and `--panel-h` (the
+  middle column's height, and the rail's) is derived from it.
+- **`INTRO` and the profile** laid *over* the quiet top-left corner of the
+  face, in a box of a fixed height so typing them in moves nothing under them.
+  The curve comes off idle late (0.44) so the columns stay clear of it.
 - **The counts** bled off the left edge of the frame (years active, roles
   worn, orgs shipped — the bars wander around the reading, the numbers do
-  not), and the **rail of twelve slots** down the right, each holding that
-  project's own 3D subject, live. Press one and it opens.
+  not), with the role reel under them boxed to the same `--count-w`; and the
+  **rail of twelve slots** down the right — as tall as the instrument and no
+  taller — each holding that project's own 3D subject, live. Press one and it
+  opens. Under the bank, the five fields as **rings**, not bars.
 
 Every block has its own entrance *and* its own exit, both hung off
 `data-covered` — see **Coming up, and going down** in `README.md`.

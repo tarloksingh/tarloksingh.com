@@ -200,12 +200,13 @@ the arrangement is the design:
 - the **left flank**: the counts bled off the edge of the frame, and under
   them the reel of what I do — what used to run in a strip across the top of
   the panel;
-- the **rail of work** down the right, the project's own name above the bank
-  now rather than in that same strip, and the five field meters under the
-  bank rather than under the graph.
+- the **rail of work** down the right — as tall as the instrument opposite and
+  no taller — the project's own name above the bank now rather than in that
+  same strip, and the five field dials under the bank rather than under the
+  graph.
 
 **Almost nothing on it is decoration.** The two displays and the five field
-meters under the bank all report on whatever is selected in the rail. The
+dials under the bank all report on whatever is selected in the rail. The
 counts are derived from the work itself — years active, roles worn,
 organisations shipped for — because a portfolio that states a number it does
 not derive is a number to keep up to date. The rail is a bank of twelve
@@ -233,6 +234,53 @@ center` centres each of the three columns on its own midpoint rather than
 their shared bottom edge, so `.mech-flank` carries a small negative
 `margin-bottom` pulling it down past where centring alone would put it, tuned
 by eye against the tach's own floor.
+
+**The two flanks are the same width, and that is what centres the middle.**
+`.mech-body` hands whatever is left over to `.mech-main`, so a left flank
+sizing itself to whatever the role reel happened to be left the instrument an
+inch to the left of the name centred in the frame above it — close enough to
+look like a mistake and not close enough to look like one on purpose.
+`--flank-w` is one number for both the counts column and the rail, and the
+tachometer lands under the middle of the name because of it. The counts still
+bleed off the left edge inside their flank; the bleed is a fact about the
+counts, not about the column they stand in.
+
+**The name is fitted to its box, so the box is how it grows.** `.mech-ident` is
+a container and the font size is a `cqw` sum over the character count — which
+means widening `.mech-ident` is what makes the name larger, and
+`--cluster-name` on the panel stays a nudge either side of that rather than
+being wound up to carry the whole change. It sits lower than it did as well:
+the padding above it is what drops it clear of the warning pair, and the panel
+below re-centres itself in what is left.
+
+**The rail is as tall as the instrument, and no taller.** It used to be
+`align-self: stretch`, which is the full height of the body — and the body runs
+the height of the frame, footer included. Twelve slots at a size worth pressing
+filled all of it, so the bank ran down behind the compass along the bottom of
+the window and the field scale under it landed on top of the contact address.
+A rail that scrolls does not need to be tall; it needs to *end* somewhere, and
+the obvious somewhere is level with the graph beside it. `--panel-h` is that
+height and both columns take it — and it is derived from `--face`, the
+tachometer's own cell ladder, so the two cannot drift apart. What that costs is
+four slots visible instead of eight; the rail scrolls, and a bank you scroll is
+still a bank, where a bank sitting on top of the footer is a bug.
+
+**`INTRO` and the profile are laid over the face, not stacked above it.**
+Stacked, they were a caption on top of a graph and the middle column read as
+two unrelated blocks; over the quiet top-left corner of the face they read the
+way a label silkscreened on a dial does, which is the arrangement every real
+cluster uses for the writing that is not a reading. `.mech-main` is the
+positioning parent and `.mech-intro` is absolute inside it, its left edge
+worked out from `--tach-w` so it starts exactly where the first column does.
+
+**Its height is fixed, and that is the point.** The paragraph types itself in a
+character at a time, and while it was in the flow every character it added
+pushed the graph, the axis and everything under it down — a page rearranging
+itself for a second and a half on every load. The box is the size of the
+finished paragraph from the first frame and the text arrives inside it. That
+rule is worth generalising on this screen: anything typed, scrambled or
+counted up wants its space reserved, because all three finish at a different
+size from where they start.
 
 **The counts lost `PROJ LISTED`.** It was counting the list that is on the
 same screen — the rail's own head says "12 entries · pick one" a few hundred
@@ -293,17 +341,24 @@ still changes what it reads. The field meters become every field that project
 touches — usually two or three of the five at once, which is why it is a
 scale and not a single needle.
 
-**Right is twenty-one cells and centred; left is seventeen and set to the
+**Right is twenty-one cells and centred; left is sixteen and set to the
 edge.** Twenty-one is "Red Dead Redemption 2" — the one display whose job is
 naming a project is not the place to abbreviate one, and a centred word inside
 that width reads as a title with room to breathe either side. The role reel
-never has to hold a project name; seventeen is "Product Designer" with a
-little to spare, and `align="left"` on that `Segment` keeps the word pinned to
-the same edge the counts above it start from rather than drifting toward the
-middle of a box that width was never fighting for. A box built for the longer
-word and left centred anyway is what "the block is really wide" was — the fix
-is both a narrower box and text that starts where the box does, not either
-alone.
+never has to hold a project name; sixteen is exactly "Product Designer", and
+`align="left"` on that `Segment` keeps the word pinned to the same edge the
+counts above it start from rather than drifting toward the middle of a box that
+width was never fighting for. A box built for the longer word and left centred
+anyway is what "the block is really wide" was — the fix is both a narrower box
+and text that starts where the box does, not either alone.
+
+**And the box is the counts' own width, not a number of its own.** At three
+hundred units against the gauges' two hundred and fifty-three the reel ran wider
+than the block it belongs to, and the tail of `DESIGN ENGINEER` hung out past
+the right edge of `ORGS` — a reading sliding off the thing it is a reading of.
+`--count-w` is now one token: `.mech-counts` is that plus what it is bled and
+padded by, `.mech-display-role` is that exactly, and the seventeenth cell went
+because sixteen is all the longest word ever needs.
 
 **Neither carries a border.** The first pass ran both in a strip with a
 hairline box around each cell group — the "thin rectangular outline" that
@@ -319,13 +374,24 @@ With nothing selected the right-hand display reads `SELECT`, held at label
 brightness rather than lit. A dark box on arrival reads as broken, and a
 display whose own name is in it is a display saying what it is for.
 
-The field scale itself is drawn as five small vertical meters, not five words
-with a tick above the lit ones — `FieldGauge` in `MechCluster.tsx`, the same
-bar-and-label shape the counts on the other side of the panel use. A word that
-changes colour reads as a caption; a bar that fills reads as an instrument. It
-sits under the bank now rather than under the instrument: it is what a
-selection is made of, next to the thing you selected, rather than a caption
-strung under the graph across the whole panel.
+The field scale itself is drawn as five small **dials** — `FieldGauge` in
+`MechCluster.tsx`. It was never five words with a tick above the lit ones: a
+word that changes colour reads as a caption and a gauge that fills reads as an
+instrument, and that part was right from the start. What was wrong was the
+*shape*. It was five vertical meters, which is the same bar-and-label grammar
+the counts, the tachometer and the displays are all already drawn in — by the
+fourth block on one screen the shape had stopped carrying any meaning of its
+own, and a reader had four rows of climbing cells to tell apart by position
+alone. A ring is the one instrument grammar a dashboard has that this panel was
+not using yet, and it is still made of lamp cells: twelve dashes bent round a
+circle (`stroke-dasharray` off `RING`) rather than six stacked up a column, so
+it is a new shape and not a new vocabulary. A field is on or it is not, so the
+ring is lit all the way round or a ghost of itself — there is no partial arc to
+sweep, unlike a count.
+
+It sits under the bank rather than under the instrument: it is what a selection
+is made of, next to the thing you selected, rather than a caption strung under
+the graph across the whole panel.
 
 A word does not cut to the next one. Each cell runs four frames of random
 segments and then lands on what it should say, left to right, the way a
@@ -637,8 +703,50 @@ moves is `--rev`, one custom property on the face, and each column works out
 whether the sweep has reached it from its own index:
 `clamp(0, calc(var(--rev) * var(--cols) - var(--i)), 1)`. So a frame where the
 reading has moved costs
-one property write, not thirty-four, and the alpha of the column's own gradient
+one property write, not twenty-two, and the alpha of the column's own gradient
 and the strength of its glow both come off that number.
+
+**Twenty-two columns, not thirty-four, and the cells in them are graded.** At
+thirty-four across the face each column came out *wider than the cells stacked
+inside it* — a row of blocks with lines ruled across them rather than a row of
+lit bars — and the graph read as a texture. Fewer columns, a wider gap between
+them, and each one narrower than the cells it holds is what the reference
+actually looks like.
+
+The grading is the other half of that. A column of identical cells is a
+progress bar in a dashboard's clothes; the reference stands *tall* segments at
+the foot of a column and shortens them as they climb, so the bottom of the
+graph is solid and the top dissolves into ticks. `cellH` is that taper (18
+units at the foot, down by 1.5 a cell, floored at 8) and `ladder(k)` is how
+tall a column standing `k` of them is. Every column height on the face is one
+of those sums, so cells never end part way through one — and the boundary
+where the tall cells give out draws a second reading of the power curve across
+the graph for free.
+
+**The cells are still one gradient, not twenty-six elements per column.**
+`cellStack` builds the whole ladder as a `linear-gradient` string on the
+module, twice — once in the phosphor and once in the warm channel — and hands
+it to every column as an inline `background-image`. The colour inside the
+string is left as a live `calc()` over that column's own `--on`, so twenty-two
+columns share two strings and only the custom property decides how brightly any
+of it burns. It is laid on `no-repeat`, anchored to the foot of the column, and
+sized to the face rather than to the column, which is what makes cell three the
+same height on a column of four as on a column of twenty-six.
+
+**`TACH_FACE` is the sum of the ladder, and the whole panel is measured off
+it.** The face's height is not a number anyone picked in the stylesheet — it is
+`ladder(TACH_ROWS)`, handed to `.mech-cluster` as `--face`, and `--panel-h`
+(the height of the middle column *and* of the rail opposite) is derived from
+it. Add a row to the ladder and the graph, the middle column and the rail all
+grow together. See *the rail is as tall as the instrument* below.
+
+**The curve comes off idle at 0.44 rather than 0.34**, and that is a layout
+constraint as much as a taste one: `INTRO` and the profile are laid over the
+top-left corner of this face, and a curve already half way up by the time it
+reached the middle of the graph ran straight through the paragraph. Pushed much
+further than 0.44 and the left half of the face empties out instead, which is a
+graph with a hole in it rather than an engine off the throttle — the two are
+one decision written in two files.
 
 **The value is snapped to whole columns before it is written.** A bar graph
 lights lamps, so a value between two of them has nowhere to go — and snapping
