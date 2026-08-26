@@ -223,17 +223,22 @@ the job title under the counts it is a share of, the project's name above the
 bank of slots it names. Neither carries a border any more either — see `####
 The display` below for why nothing on this panel is boxed now.
 
-**The body centres now rather than sitting on the floor of its own box.**
-`.mech-body` was bottom-aligned, and with the name and the warning pair off the
-top of it into their own line, a body still pinned to the bottom of what was
-left read as sunk into the lower half of the frame — the graph, the intro and
-the counts all crowded low with a slab of empty panel above them. Centred
-instead, with the top and bottom padding brought closer to even. The counts'
-bars still land on the same floor the tach's columns do — `align-items:
-center` centres each of the three columns on its own midpoint rather than
-their shared bottom edge, so `.mech-flank` carries a small negative
-`margin-bottom` pulling it down past where centring alone would put it, tuned
-by eye against the tach's own floor.
+**The body is pinned to the top of its own box, and the padding above it is the
+gap.** It was bottom-aligned once, then centred, and centring is what put a
+hand's width of empty frame between the name and the instrument: the body box
+runs from the name to the bottom of the frame, and half of whatever the panel
+does not use ends up *above* it. That is fine while the panel nearly fills the
+box and absurd once it does not — and this panel got shorter twice over, once
+for a shallower graph and once for a readout box replacing a stacked paragraph.
+Pinned to the top, the gap is a number in `MechCluster.css` rather than a
+consequence of one.
+
+The counts' bars land on the same floor the tach's columns do, and now they are
+also the same *height*: `--face` sizes both, so the two blocks climb from one
+line to another. `.mech-flank` carries a small `margin-top` for the difference
+in what sits above each of them — the readout box and the head row over the
+graph, a two-cell number over a gauge. Measured off the built page, because it
+is all type and type does not answer to `--px`.
 
 **The two flanks are the same width, and that is what centres the middle.**
 `.mech-body` hands whatever is left over to `.mech-main`, so a left flank
@@ -265,13 +270,23 @@ tachometer's own cell ladder, so the two cannot drift apart. What that costs is
 four slots visible instead of eight; the rail scrolls, and a bank you scroll is
 still a bank, where a bank sitting on top of the footer is a bug.
 
-**`INTRO` and the profile are laid over the face, not stacked above it.**
-Stacked, they were a caption on top of a graph and the middle column read as
-two unrelated blocks; over the quiet top-left corner of the face they read the
-way a label silkscreened on a dial does, which is the arrangement every real
-cluster uses for the writing that is not a reading. `.mech-main` is the
-positioning parent and `.mech-intro` is absolute inside it, its left edge
-worked out from `--tach-w` so it starts exactly where the first column does.
+**`INTRO` and the profile are the tachometer's readout box.** The reference has
+a black box hard against the top-left of its bank with the current reading in
+it and the scale's unit set small and dim beside it; that box is the model. It
+took three passes to get there. Stacked above the graph, the two were a caption
+on top of a chart and the middle column read as two unrelated blocks. Laid
+*over* the top-left of the face, they were furniture on the instrument — right
+idea — but they cost the power curve its shape, because the only way to keep
+the columns off a paragraph is to hold the graph at idle across half its own
+face. In the head row it is furniture *and* the curve is free, and the box gets
+to be short and wide (three lines across four hundred and forty units, not five
+down three hundred and thirty) which is what a readout on a dash looks like.
+
+`Tach` takes the box as `children` and renders it in `.mech-tach-head`,
+because the box is the instrument's furniture and the words inside it are not.
+It is the one properly black fill on the panel — everything else here is a
+hairline or a lit cell over the page's own dark — and it earns the exception by
+being a hole cut in the housing rather than a shape drawn on it.
 
 **Its height is fixed, and that is the point.** The paragraph types itself in a
 character at a time, and while it was in the flow every character it added
@@ -345,12 +360,12 @@ scale and not a single needle.
 edge.** Twenty-one is "Red Dead Redemption 2" — the one display whose job is
 naming a project is not the place to abbreviate one, and a centred word inside
 that width reads as a title with room to breathe either side. The role reel
-never has to hold a project name; sixteen is exactly "Product Designer", and
-`align="left"` on that `Segment` keeps the word pinned to the same edge the
-counts above it start from rather than drifting toward the middle of a box that
-width was never fighting for. A box built for the longer word and left centred
-anyway is what "the block is really wide" was — the fix is both a narrower box
-and text that starts where the box does, not either alone.
+never has to hold a project name; sixteen is exactly "Product Designer". A box
+built for the longer word and left centred anyway is what "the block is really
+wide" was — and the fix was the narrower box, not the alignment. The reel was
+left-set for a pass while the box was still wider than the gauges above it and
+drifting looked like the problem; once the box *is* the gauges' width, centring
+is what puts the word under the middle of the three.
 
 **And the box is the counts' own width, not a number of its own.** At three
 hundred units against the gauges' two hundred and fifty-three the reel ran wider
@@ -382,12 +397,26 @@ instrument, and that part was right from the start. What was wrong was the
 the counts, the tachometer and the displays are all already drawn in — by the
 fourth block on one screen the shape had stopped carrying any meaning of its
 own, and a reader had four rows of climbing cells to tell apart by position
-alone. A ring is the one instrument grammar a dashboard has that this panel was
-not using yet, and it is still made of lamp cells: twelve dashes bent round a
-circle (`stroke-dasharray` off `RING`) rather than six stacked up a column, so
-it is a new shape and not a new vocabulary. A field is on or it is not, so the
-ring is lit all the way round or a ghost of itself — there is no partial arc to
-sweep, unlike a count.
+alone. A dial is the one instrument grammar a dashboard has that this panel was not
+using yet.
+
+**The blocks ramp, and the arc sweeps.** An even ring of ticks was the first
+try at it and it read as a loading spinner — nothing about it said which end
+was the start. What a digital speedometer actually draws is a C open at the
+bottom with each block reaching further out from the middle than the one
+before, so the lit run is a wedge whose length is legible without counting it.
+`ARC_SEGS` is thirteen straight spokes rather than thirteen arc segments: at a
+gauge thirty units across on a 1920 frame the curvature over one block is under
+a pixel, and a spoke is a `<line>` with four numbers where an arc is a path with
+a sweep flag per cell.
+
+A field is on or it is not, so there is no partial reading to plot — but the
+arc does not simply *appear*. Each block carries its own index as `--n` and the
+stylesheet turns that into a transition delay, so switching a field on runs the
+arc round from the bottom-left in about half a second. Switching it off drops
+the lot at once, and that asymmetry is the point: a gauge sweeping up is a gauge
+taking a reading, and a gauge sweeping down is a gauge pretending the reading
+faded away.
 
 It sits under the bank rather than under the instrument: it is what a selection
 is made of, next to the thing you selected, rather than a caption strung under
@@ -706,12 +735,13 @@ reading has moved costs
 one property write, not twenty-two, and the alpha of the column's own gradient
 and the strength of its glow both come off that number.
 
-**Twenty-two columns, not thirty-four, and the cells in them are graded.** At
-thirty-four across the face each column came out *wider than the cells stacked
-inside it* — a row of blocks with lines ruled across them rather than a row of
-lit bars — and the graph read as a texture. Fewer columns, a wider gap between
-them, and each one narrower than the cells it holds is what the reference
-actually looks like.
+**Thirty-four slim columns with a gap about their own width, and the cells in
+them are graded.** There was a pass at twenty-two columns with a gap of
+eighteen, and it over-corrected: fat bars with air around them read as a row of
+blocks, not a graph. The reference is a *wide, shallow* bank of hairlines —
+about ten units of bar with ten between — and the face is two and a half times
+wider than it is tall. A graph standing nearly as tall as it is wide stops
+being a strip along the top of a dash and starts being the page.
 
 The grading is the other half of that. A column of identical cells is a
 progress bar in a dashboard's clothes; the reference stands *tall* segments at
@@ -740,13 +770,14 @@ it.** The face's height is not a number anyone picked in the stylesheet — it i
 it. Add a row to the ladder and the graph, the middle column and the rail all
 grow together. See *the rail is as tall as the instrument* below.
 
-**The curve comes off idle at 0.44 rather than 0.34**, and that is a layout
-constraint as much as a taste one: `INTRO` and the profile are laid over the
-top-left corner of this face, and a curve already half way up by the time it
-reached the middle of the graph ran straight through the paragraph. Pushed much
-further than 0.44 and the left half of the face empties out instead, which is a
-graph with a hole in it rather than an engine off the throttle — the two are
-one decision written in two files.
+**The curve idles high** — a third of the scale, not a twentieth — because the
+left end of the reference's bank is a run of columns already well off the
+floor, not a flat line waiting to start. There was a pass where the rise was
+pushed out to 0.52 to keep the columns from running up through the intro
+paragraph laid over the face, and it cost the graph its shape: the only way to
+hold a paragraph clear of a curve is to hold the curve at idle across half its
+own face. Moving the intro into the head row as a readout box (below) gave the
+curve back.
 
 **The value is snapped to whole columns before it is written.** A bar graph
 lights lamps, so a value between two of them has nowhere to go — and snapping

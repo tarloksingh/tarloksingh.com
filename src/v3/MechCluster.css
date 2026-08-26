@@ -92,12 +92,13 @@
      address in the footer.
 
      Derived, not chosen. `--face` is the tachometer's own height (its cell
-     ladder, handed in from `TACH_FACE` in MechCluster.tsx) and the 82 is what
-     the head above it and the axis below it cost — measured off the built page,
-     not guessed, because both are type and type does not answer to `--px`. So
-     the rail is exactly as tall as the graph beside it, and adding a row to the
-     ladder moves both. */
-  --panel-h: calc((var(--face, 430) + 82) * var(--px));
+     ladder, handed in from `TACH_FACE` in MechCluster.tsx) and the rest is what
+     the head above it and the axis below it cost — the readout box is 96 plus
+     its border and the row's padding, the axis is type. Measured off the built
+     page, not guessed, because type does not answer to `--px`. So the rail is
+     exactly as tall as the graph beside it, and adding a row to the ladder
+     moves both. */
+  --panel-h: calc((var(--face, 240) + 172) * var(--px));
 
   /* How wide the tachometer stands. Narrower than the column it sits in — a
      graph run to the full width of the middle put twenty-two columns so far
@@ -130,10 +131,21 @@
 .mech-body {
   display: flex;
   flex-direction: row;
-  /* Centred rather than bottom-aligned — with the name and the warning pair
-     off the top of it now (see `.mech-ident`), a body still pinned to the
-     bottom of its own box read as sunk into the lower half of the frame. */
-  align-items: center;
+  /* Top-aligned, with the padding above deciding how far under the name the
+     panel sits.
+
+     It was centred, and centring is what put a hand's width of empty frame
+     between the name and the instrument: the body box runs from the name to
+     the bottom of the frame, and half of whatever the panel does not use ends
+     up above it. That is fine when the panel nearly fills the box and absurd
+     when it does not — and this panel got shorter twice over (a shallower
+     graph, a readout box instead of a stacked paragraph). Pinned to the top
+     the gap is a number in this file rather than a consequence of one.
+
+     The three columns top-align to each other as well, which is what the
+     counts wanted anyway: their bars are the graph's own height now, so both
+     start their climb from the same line. */
+  align-items: flex-start;
   flex: 1;
   min-height: 0;
   gap: calc(32 * var(--px));
@@ -143,7 +155,7 @@
      the bottom still keeps some clearance for it — a stretched rail does not
      get that for free the way a centred column does, or the line under the
      bank sits on top of the address. */
-  padding: calc(24 * var(--px)) 0 calc(72 * var(--px));
+  padding: calc(46 * var(--px)) 0 calc(48 * var(--px));
 }
 
 /* The middle column is the instrument and nothing else — the intro is laid
@@ -343,12 +355,12 @@
   display: flex;
   flex-direction: column;
   gap: calc(14 * var(--px));
-  /* Nudges the flank so the counts' bars land on the same floor the tach's
-     columns do — `.mech-body` centres its three columns on their own
-     midpoints, and the role display below the bars would otherwise be the
-     extra weight that pulls the bars themselves above that line. Tuned by
-     eye against the tach's column floor. */
-  margin-bottom: calc(-24 * var(--px));
+  /* Drops the flank until the counts' bars stand on the same floor the tach's
+     columns do. The bars and the face are the same height (`--face`), so this
+     is purely the difference in what sits *above* each of them: the readout box
+     and the head row on the instrument, a two-cell number on a gauge. Measured
+     off the built page — it is all type, and type does not answer to `--px`. */
+  margin-top: calc(45 * var(--px));
 }
 
 /* Boxed to the counts' own drawing width, not to a number of its own. At three
@@ -374,11 +386,11 @@
    what drops it clear of the warning pair. */
 .mech-ident {
   flex: none;
-  width: calc(830 * var(--px));
+  width: calc(1060 * var(--px));
   max-width: 100%;
   margin: 0 auto;
   text-align: center;
-  padding: calc(104 * var(--px)) 0 calc(24 * var(--px));
+  padding: calc(46 * var(--px)) 0 calc(22 * var(--px));
   container-type: inline-size;
 }
 
@@ -419,42 +431,41 @@
    name used to sit before it went up to the top of the frame. Two things about
    this are load-bearing.
 
-   **It is laid over the instrument, not stacked above it.** Stacked, it was a
-   caption on top of a graph and the whole middle column read as two unrelated
-   blocks; over the face it reads the way a label silkscreened on a dial does —
-   which is the arrangement every real cluster uses for the writing that is not
-   a reading. `.mech-main` is the positioning parent, and the offsets below put
-   it inside the face rather than inside the head row above it.
+   **It is the readout box in the instrument's head.** The reference's
+   tachometer has a black box hard against the top-left of its bank with the
+   current reading in it, and the scale's unit set small and dim beside it —
+   that box is the model for this. Not a caption stacked above a graph (which
+   made the middle column read as two unrelated blocks) and not laid over the
+   columns either: that was a pass in between, and it cost the power curve its
+   shape, because the only way to keep the columns off the paragraph was to
+   hold the graph at idle across the left half of its own face.
 
-   **The graph is kept out of it.** The power curve comes off idle at 0.52 now
-   rather than 0.34 (see `CURVE` in MechCluster.tsx) precisely so that the left
-   forty-odd per cent of the face is short enough for the paragraph to sit
-   clear of the columns under it. Widen this box or flatten that curve and the
-   two start to overlap; they are one decision written in two files.
+   In the head row it is furniture on the instrument, the curve is free to be
+   the curve, and the box gets to be *short and wide* — three lines across
+   four hundred and forty units rather than five down three hundred and thirty.
 
    **Its height is fixed.** The paragraph types itself in a character at a
    time, and a block that grows as it types pushes everything under it down for
    a second and a half on every load. The box is the size of the finished
    paragraph from the first frame and the text arrives inside it. */
 .mech-intro {
-  position: absolute;
-  /* The instrument is narrower than the column it is centred in, so the left
-     edge of the face is half the slack across — the intro shares that edge
-     rather than sitting out in the margin beside it. Plus the face's own
-     padding, so the label starts where the first column does. */
-  left: calc((100% - var(--tach-w)) / 2 + 8 * var(--px));
-  /* Clear of the head row (its type, plus its own padding, plus the face's
-     margin) and then a little way down into the face itself. */
-  top: calc(48 * var(--px));
-  z-index: 2;
-  width: calc(330 * var(--px));
-  height: calc(140 * var(--px));
+  flex: none;
+  width: calc(440 * var(--px));
+  height: calc(96 * var(--px));
   max-width: 100%;
+  padding: calc(10 * var(--px)) calc(14 * var(--px));
+  /* The one properly black thing on the panel. Everything else here is a
+     hairline or a lit cell over the page's own dark; this is a hole cut in the
+     housing with a display behind it, which is why it is allowed a fill at
+     all — see *nothing is a solid* at the top of this file. */
+  background: #040705;
+  border: 1px solid rgba(var(--accent-rgb), 0.16);
+  overflow: hidden;
 }
 
 .mech-intro-cap {
   display: block;
-  width: calc(96 * var(--px));
+  width: calc(80 * var(--px));
 }
 
 /* Plain system text, not a paragraph in a box. The first pass bracketed it
@@ -464,7 +475,7 @@
    Runner overlay both do with a block of prose is set it in the same monospace
    their system text already is, at no more weight than a label. */
 .mech-profile {
-  margin: calc(12 * var(--px)) 0 0;
+  margin: calc(7 * var(--px)) 0 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   /* Pulled toward the phosphor rather than neutral white. Plain white on this
      panel is the one colour nothing else is, and it made the block read as a
@@ -485,10 +496,18 @@
    over the lit ones. A word that changes colour reads as a caption, so that was
    never in it — but five more climbing bars in a row was the fourth block on
    this panel drawn in the same grammar as the other three, and by then the
-   shape had stopped carrying any meaning of its own. A ring is the one
-   instrument a dashboard has that nothing else here was using, and it is still
-   made of lamp cells: twelve dashes round a circle rather than six up a
-   column. See `FieldGauge` in MechCluster.tsx for the numbers. */
+   shape had stopped carrying any meaning of its own. A dial is the one
+   instrument a dashboard has that nothing else here was using.
+
+   **The blocks ramp, and the arc sweeps.** An even ring of ticks was the first
+   pass and it read as a loading spinner: nothing about it said which end was
+   the start. The reference is a speedometer arc — a C open at the bottom, each
+   block reaching further out from the middle than the one before, so the lit
+   run is a wedge whose length is legible without counting it. And it arrives
+   by running round from the bottom-left rather than appearing whole, which is
+   a transition delay per block off its own `--n`. Off is instant: a gauge
+   sweeping up is taking a reading, a gauge sweeping down is pretending the
+   reading faded away. See `ARC` and `FieldGauge` in MechCluster.tsx. */
 .mech-scale-row {
   flex: none;
   display: flex;
@@ -507,33 +526,36 @@
 
 .mech-field-ring {
   display: block;
-  width: calc(34 * var(--px));
-  height: calc(34 * var(--px));
-  /* The lit ring's glow is a filter on this element and would be cut off at
-     the viewBox otherwise. */
+  width: calc(46 * var(--px));
+  height: calc(46 * var(--px));
+  /* The lit arc's glow is a filter on this element and would be cut off at the
+     viewBox otherwise. */
   overflow: visible;
 }
 
-.mech-field-ring circle {
-  fill: none;
-  stroke-width: 3.6;
+.mech-field-ring line {
+  stroke-width: 3.4;
   stroke-linecap: butt;
 }
 
-/* The unlit ring — every cell, at the brightness an unlit cell has everywhere
+/* The unlit arc — every block, at the brightness an unlit cell has everywhere
    else on this panel. It stays under the lit one so a field that is off is
-   still a ring and not a hole. */
+   still a dial and not a hole. */
 .mech-field-track {
   stroke: rgba(var(--accent-rgb), 0.09);
 }
 
+/* Instant out, staggered in — the delay is only applied by the lit rule below,
+   so switching off drops the whole arc at once while switching on runs it
+   round. */
 .mech-field-lit {
   stroke: transparent;
-  transition: stroke 220ms linear;
+  transition: stroke 160ms linear;
 }
 
 .mech-field-gauge[data-on='true'] .mech-field-lit {
   stroke: var(--accent);
+  transition-delay: calc(var(--n, 0) * 34ms);
 }
 
 .mech-field-gauge[data-on='true'] .mech-field-ring {
@@ -579,19 +601,26 @@
   flex-direction: column;
 }
 
-/* Right-aligned, and with no rule under it. The intro is laid over the
-   left end of this instrument, so a head that spanned the width would
-   have its label and half its divider behind the paragraph — which reads as a
-   line that has been cut rather than as one that stops. */
+/* The reference's own top line: the readout box hard against the left end of
+   the bank, the unit set small and dim beside it, and nothing else. The box is
+   handed in as children (`.mech-intro`); this row is only the arrangement.
+   `flex-end` so the unit sits on the box's floor rather than floating half way
+   up a box eight times its height. */
 .mech-tach-head {
   display: flex;
-  align-items: baseline;
-  justify-content: flex-end;
-  gap: calc(12 * var(--px));
+  align-items: flex-end;
+  gap: calc(18 * var(--px));
   padding-bottom: calc(6 * var(--px));
 }
 
 .mech-tach-unit {
+  display: flex;
+  align-items: baseline;
+  gap: calc(8 * var(--px));
+  padding-bottom: calc(4 * var(--px));
+}
+
+.mech-tach-scale {
   font-size: calc(9.5 * var(--type));
   letter-spacing: calc(1.6 * var(--type));
   text-transform: uppercase;
@@ -640,16 +669,17 @@
   pointer-events: none;
 }
 
-/* Wide gaps and narrow columns, which is the way round the reference has it —
-   at a gap of eleven across thirty-four columns each bar came out wider than
-   the cells stacked inside it, and a bar wider than its own cells reads as a
-   block rather than as a lit strip. */
+/* Slim columns with a gap about their own width — thirty-four of them across
+   `--tach-w` puts each bar at around ten units with ten between, which is what
+   the reference's bank actually measures. Twenty-two columns at a gap of
+   eighteen was the over-correction in between: fat bars with air around them,
+   which reads as a row of blocks rather than as a graph. */
 .mech-tach-bank {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: flex-end;
-  gap: calc(18 * var(--px));
+  gap: calc(10 * var(--px));
   padding: 0 calc(8 * var(--px));
 }
 
@@ -783,7 +813,12 @@
   flex-direction: column-reverse;
   gap: calc(2.5 * var(--px));
   width: calc(26 * var(--px));
-  height: calc(150 * var(--px));
+  /* Exactly the tachometer's face — `--face` again, the same cell ladder that
+     sizes the graph and the rail. Three gauges standing to their own height
+     next to an instrument standing to another was the panel's parts each
+     picking a number; one token means the counts' floor and the graph's floor
+     are the same line across the frame. */
+  height: calc(var(--face, 240) * var(--px));
 }
 
 .mech-gauge-bar i {
@@ -826,7 +861,6 @@
    beside. `--panel-h` is that height, and `.mech-main` is given the same. */
 .mech-work-rail {
   flex: none;
-  align-self: center;
   width: var(--flank-w);
   height: var(--panel-h);
   display: flex;
@@ -1376,9 +1410,9 @@
 /* Everything the wide layout boxes to a fixed height or a fixed width goes back
    to filling the column down here — there is only one column, so `--panel-h`,
    `--flank-w` and `--tach-w` have nothing left to balance against each other.
-   The intro comes off the face and back into the flow above it: the face is
-   short at this width and the paragraph is wide, so there is no quiet corner
-   for it to sit in. */
+   The readout box takes the full width and the scale's unit drops under it:
+   four hundred and forty units is most of a phone, and a head row trying to
+   fit both on one line squeezes the label to nothing. */
 .mech[data-narrow='true'] .mech-main {
   order: 0;
   height: auto;
@@ -1386,8 +1420,12 @@
   gap: calc(16 * var(--px));
 }
 
+.mech[data-narrow='true'] .mech-tach-head {
+  flex-wrap: wrap;
+  gap: calc(8 * var(--px));
+}
+
 .mech[data-narrow='true'] .mech-intro {
-  position: static;
   width: 100%;
   height: auto;
 }
@@ -1399,7 +1437,7 @@
 .mech[data-narrow='true'] .mech-flank {
   order: 1;
   width: 100%;
-  margin-bottom: 0;
+  margin-top: 0;
 }
 
 .mech[data-narrow='true'] .mech-display-role {
@@ -1441,13 +1479,19 @@
    topmost cell on the tallest columns is simply cut short by the box. A phone
    is not where anyone counts them. */
 .mech[data-narrow='true'] .mech-tach-face {
-  height: calc(260 * var(--px));
+  height: calc(200 * var(--px));
 }
 
-/* Twenty-two columns at the wide layout's gap is wider than the whole frame
+/* Thirty-four columns at the wide layout's gap is wider than the whole frame
    down here. */
 .mech[data-narrow='true'] .mech-tach-bank {
-  gap: calc(8 * var(--px));
+  gap: calc(3 * var(--px));
+}
+
+/* The counts' bars follow the face rather than the ladder down here, for the
+   same reason — see the note on the face above. */
+.mech[data-narrow='true'] .mech-gauge-bar {
+  height: calc(200 * var(--px));
 }
 
 .mech[data-narrow='true'] .mech-scale-row {

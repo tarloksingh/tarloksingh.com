@@ -283,12 +283,11 @@ const reduced = () =>
    scale is painted on the face — a mark, not a reading, exactly like a real
    one. Nothing on this screen selects anything here. The work is picked in
    the rail. */
-/** Twenty-two, down from thirty-four. A column is a lit cell wide, and at
- *  thirty-four across the face each one came out wider than the cells stacked
- *  in it — a row of blocks rather than a row of bars. Fewer columns, further
- *  apart, and each one narrower than it is tall is what the reference actually
- *  looks like. */
-const TACH_COLS = 22
+/** Thirty-four slim columns with a gap about their own width, which is what the
+ *  reference has: a wide, shallow bank of hairlines. Twenty-two was an
+ *  over-correction — the columns came out fat and far apart, which is a row of
+ *  blocks with air between them rather than a graph. */
+const TACH_COLS = 34
 
 /** Where the red zone starts, as a fraction of the scale. The throttle is
  *  wound up to just short of it and only occasionally clips in — a needle that
@@ -296,8 +295,13 @@ const TACH_COLS = 22
 const TACH_RED = 0.82
 
 /** How many cells tall a column can be — and, through `TACH_FACE` below, how
- *  tall the face itself is and therefore how tall the rail opposite stands. */
-const TACH_ROWS = 33
+ *  tall the face itself is and therefore how tall the rail opposite stands.
+ *
+ *  Twenty-six, down from thirty-three. The reference is a *shallow* bank —
+ *  a face about two and a half times wider than it is tall — and a graph
+ *  standing nearly as tall as it is wide stops being a strip along the top of a
+ *  dash and starts being the page. */
+const TACH_ROWS = 26
 
 /** The gap between two cells in a column, and how tall the cell at a given
  *  height up it stands.
@@ -308,8 +312,8 @@ const TACH_ROWS = 33
  *  is solid and the top of it dissolves into ticks. The curve that grading
  *  draws across the face — the boundary where the tall cells give out — is a
  *  second reading of the same power curve, for free. */
-const CELL_GAP = 4
-const cellH = (n: number) => Math.max(8, 18 - n * 1.5)
+const CELL_GAP = 3
+const cellH = (n: number) => Math.max(7, 14 - n * 1.2)
 
 /** How tall a column standing `k` cells is, gaps included. Every column height
  *  on the face is one of these, so the cells never end mid-way through one and
@@ -331,18 +335,20 @@ const clampInt = (n: number, low: number, high: number) => Math.max(low, Math.mi
  *  that is perfectly smooth is a function plotted rather than an engine
  *  measured — deterministic, so it is the same shape on every load.
  *
- *  It comes off idle later than it used to (0.44 rather than 0.34). That is a
- *  layout constraint as much as a taste one: the intro sits over the top-left
- *  corner of this face now — see `.mech-intro` in MechCluster.css — and a curve
- *  already half way up by the time it reached the middle of the graph ran
- *  straight through the paragraph. Pushed further than this and the left half
- *  of the face empties out, which is a graph with a hole in it rather than an
- *  engine off the throttle. */
+ *  **It idles high** — a third of the scale rather than a twentieth — because
+ *  that is what the reference does: the left end of its bank is a run of
+ *  columns already well off the floor, not a flat line waiting to start.
+ *
+ *  There was a pass where the rise was pushed out to 0.52 to keep the columns
+ *  from running up through the intro paragraph laid over the face. The intro is
+ *  a readout box in the head row now, above the columns rather than among them
+ *  — see `.mech-intro` in MechCluster.css — so the curve is free to be the
+ *  shape it should have been all along. */
 const CURVE = Array.from({ length: TACH_COLS }, (_, i) => {
   const t = i / (TACH_COLS - 1)
-  const rise = 1 / (1 + Math.exp(-(t - 0.44) * 9))
-  const fall = 1 - 0.16 * Math.pow(Math.max(0, t - 0.78) / 0.22, 2)
-  const raw = clamp(0.08 + 0.92 * rise * fall + 0.015 * Math.sin(i * 2.7), 0.04, 1)
+  const rise = 1 / (1 + Math.exp(-(t - 0.4) * 6))
+  const fall = 1 - 0.16 * Math.pow(Math.max(0, t - 0.8) / 0.2, 2)
+  const raw = clamp(0.3 + 0.7 * rise * fall + 0.012 * Math.sin(i * 2.7), 0.2, 1)
   let cells = 1
   while (cells < TACH_ROWS && ladder(cells + 1) <= raw * TACH_FACE) cells += 1
   return ladder(clampInt(cells, 1, TACH_ROWS)) / TACH_FACE
@@ -406,7 +412,7 @@ const tracePoints = (from: number, to: number) =>
 
 const REDLINE_AT = Math.round(TACH_RED * TACH_COLS)
 
-function Tach() {
+function Tach({ children }: { children?: React.ReactNode }) {
   const face = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -462,9 +468,17 @@ function Tach() {
 
   return (
     <div className="mech-tach">
+      {/* The head is the reference's own top line: a black readout box hard
+          against the left edge of the face, and the scale's unit set small and
+          dim beside it. What goes in the box is handed in from outside — on
+          this panel it is the intro — because the box is the tachometer's
+          furniture and the words in it are not. */}
       <div className="mech-tach-head">
-        <span className="mech-cap">output</span>
-        <span className="mech-tach-unit">× 1000</span>
+        {children}
+        <div className="mech-tach-unit">
+          <span className="mech-cap">output</span>
+          <span className="mech-tach-scale">× 1000</span>
+        </div>
       </div>
 
       {/* `--cols` is handed to the stylesheet rather than written into it: each
@@ -572,35 +586,72 @@ function Alarm() {
   )
 }
 
-/** The ring a field is drawn as, in the SVG's own units, and how many cells it
- *  is broken into. Twelve, dashed, so it reads as the same run of lamp cells
- *  every other gauge on this panel is made of — bent round rather than swapped
- *  for a solid annulus, which would be the one filled shape on the screen. */
-const RING = { box: 34, r: 13, cells: 12, duty: 0.56 }
-const RING_STEP = (2 * Math.PI * RING.r) / RING.cells
-const RING_DASH = `${(RING_STEP * RING.duty).toFixed(2)} ${(RING_STEP * (1 - RING.duty)).toFixed(2)}`
+/* ---- the field dials ----
+
+   The arc off a digital speedometer: a C of separate blocks around the face,
+   open at the bottom, each one reaching further out from the middle than the
+   one before it. The ramp is the whole read — a plain ring of even ticks is a
+   loading spinner, and what makes the reference's arc look like a *reading* is
+   that the blocks grow as they go, so the lit run is a wedge and you can see
+   how far round it has got without counting anything.
+
+   Straight spokes rather than arc segments. At this size (a gauge about thirty
+   units across on a 1920 frame) the curvature across one block is under a
+   pixel, and a spoke is a `<line>` with two numbers where an arc is a path
+   with a sweep flag and an `A` command per cell. */
+const ARC = {
+  box: 40,
+  mid: 20,
+  /** Where every block starts. The hole in the middle is what makes it a dial
+   *  face rather than a pie. */
+  r0: 9,
+  /** Bottom-left round to bottom-right, the way every speedometer since the
+   *  first one has run. */
+  from: 138,
+  sweep: 264,
+  cells: 13,
+  /** How far the first and last blocks reach past `r0`. */
+  near: 2.6,
+  far: 8.4
+}
+
+const ARC_SEGS = Array.from({ length: ARC.cells }, (_, n) => {
+  const t = n / (ARC.cells - 1)
+  const a = ((ARC.from + (n + 0.5) * (ARC.sweep / ARC.cells)) * Math.PI) / 180
+  const out = ARC.r0 + ARC.near + (ARC.far - ARC.near) * t
+  return {
+    x1: ARC.mid + Math.cos(a) * ARC.r0,
+    y1: ARC.mid + Math.sin(a) * ARC.r0,
+    x2: ARC.mid + Math.cos(a) * out,
+    y2: ARC.mid + Math.sin(a) * out
+  }
+})
 
 /** One mark on the scale under the bank.
  *
  *  A dial rather than a meter. Every other reading on this panel is a stack of
  *  cells climbing — the counts, the tach, the displays — and five more of them
  *  in a row along the bottom made the fifth block on the screen say nothing the
- *  other four had not already said in the same shape. A ring is the one
+ *  other four had not already said in the same shape. A dial is the one
  *  instrument grammar a dashboard has that this panel was not using.
  *
- *  A field is on or it isn't, so the ring is either lit all the way round or a
- *  ghost of itself; there is no partial arc to sweep, unlike a count. */
+ *  A field is on or it isn't, so the arc lights all the way round or not at
+ *  all — but it does not simply *appear*. Each block carries its own index as
+ *  `--n` and the stylesheet turns that into a transition delay, so switching a
+ *  field on runs the arc round from the bottom-left in about half a second and
+ *  switching it off drops the lot at once. Which is the right way round: a
+ *  gauge sweeping up is a gauge taking a reading, and a gauge sweeping *down*
+ *  is a gauge pretending the reading went away gradually. */
 function FieldGauge({ name, on }: { name: Field; on: boolean }) {
   return (
     <div className="mech-field-gauge" data-on={on}>
-      <svg
-        className="mech-field-ring"
-        viewBox={`0 0 ${RING.box} ${RING.box}`}
-        focusable="false"
-        aria-hidden
-      >
-        <circle className="mech-field-track" cx={RING.box / 2} cy={RING.box / 2} r={RING.r} strokeDasharray={RING_DASH} />
-        <circle className="mech-field-lit" cx={RING.box / 2} cy={RING.box / 2} r={RING.r} strokeDasharray={RING_DASH} />
+      <svg className="mech-field-ring" viewBox={`0 0 ${ARC.box} ${ARC.box}`} focusable="false" aria-hidden>
+        {ARC_SEGS.map((seg, n) => (
+          <line key={`t${n}`} className="mech-field-track" {...seg} />
+        ))}
+        {ARC_SEGS.map((seg, n) => (
+          <line key={`l${n}`} className="mech-field-lit" style={{ ['--n' as string]: n }} {...seg} />
+        ))}
       </svg>
       <span className="mech-field-label">{name}</span>
     </div>
@@ -928,21 +979,26 @@ export default function MechCluster({ onProject, covered, tuning }: Props) {
           {/* What I do — cycling the titles with nothing picked, or what I
               did on the selected project. Sat under the counts rather than
               in a run across the top: it is a reading off the same block of
-              facts, not a caption for the whole panel. Left-aligned and in a
-              narrower box than the other two displays — it never needs
-              "Red Dead Redemption 2"'s width, and centred in a box that wide
-              read as adrift in it. */}
+              facts, not a caption for the whole panel. In a narrower box than
+              the other two displays — it never needs "Red Dead Redemption 2"'s
+              width — and centred in it, over the middle of the three gauges
+              above rather than pinned to the left edge of the first one. It
+              was left-set while the box was wider than the gauges and drifting
+              looked like the problem; the box is the gauges' own width now
+              (`--count-w`), so centring is what puts it under them. */}
           <div className="mech-display mech-display-role" data-on={slot !== null}>
-            <Segment text={reading} cells={ROLE_CELLS} align="left" label={reading} />
+            <Segment text={reading} cells={ROLE_CELLS} label={reading} />
           </div>
         </div>
 
         {/* ---- the middle ---- */}
         <div className="mech-main">
-          {/* Where the name used to sit, over the quiet end of the graph —
-              the label is drawn in the same segment glyphs as every other
-              reading on the panel, and the paragraph under it is the one
-              thing on this screen that is prose rather than a number. */}
+          <Tach>
+          {/* The black readout box at the top-left of the instrument — the
+              position the reference gives its own digits. The label is drawn
+              in the same segment glyphs as every other reading on the panel,
+              and the paragraph under it is the one thing on this screen that
+              is prose rather than a number. */}
           <section className="mech-intro">
             <span className="mech-intro-cap">
               <Segment text="INTRO" cells={5} settle={false} label="intro" />
@@ -968,8 +1024,7 @@ export default function MechCluster({ onProject, covered, tuning }: Props) {
               <Typed text={PROFILE} run="cluster-intro" delay={0.6} speed={9} caret={false} back={covered} backSpeed={4} />
             </p>
           </section>
-
-          <Tach />
+          </Tach>
         </div>
 
         {/* ---- the rail ----

@@ -22,7 +22,10 @@ export interface ClusterTuning {
   y: number
   /** Scales the width-fitted name. 1 is the full width of its column. */
   name: number
-  /** How far the lit things bleed. 0 is a wireframe, 2 is a panel behind fog. */
+  /** How far the lit things bleed. 0 is a wireframe, 2 is a panel behind fog,
+   *  and past that it is a lens with the aperture open — every glow radius on
+   *  the screen is a multiple of this and so is every glow alpha, so the top of
+   *  the range blows the highlights out on purpose. */
   glow: number
   /** How tall a slot in the bank stands, in frame units. */
   slot: number
@@ -63,8 +66,8 @@ export function useClusterTuning() {
   const values = useControls(
     {
       y: { value: start.y, min: -220, max: 220, step: 1, label: 'Vertical' },
-      name: { value: start.name, min: 0.4, max: 1.4, step: 0.01, label: 'Name size' },
-      glow: { value: start.glow, min: 0, max: 2, step: 0.01, label: 'Bloom' },
+      name: { value: start.name, min: 0.4, max: 2.2, step: 0.01, label: 'Name size' },
+      glow: { value: start.glow, min: 0, max: 5, step: 0.01, label: 'Bloom' },
       slot: { value: start.slot, min: 64, max: 260, step: 1, label: 'Slot height' },
       'Copy for source': button(() => {
         const text = asSource(live)
