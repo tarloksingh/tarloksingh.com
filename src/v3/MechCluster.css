@@ -201,146 +201,6 @@
   color: var(--dim);
 }
 
-/* ---- the warning pair ----
-
-   Top of the frame, and the one instrument on this panel that is about the
-   page rather than about the work: whether there is a bird or a moth in the
-   air to shoot at. Two keys, one lit at a time — see `Alarm` in
-   MechCluster.tsx for why it is a pair rather than a single lamp.
-
-   `position: fixed`, like `.mech-tally` above it — deliberately pulled out of
-   `.mech-cluster`'s own box. That box's `top`/`bottom` answer to
-   `--cluster-y`, the panel's Vertical knob, and this pair is meant to stay
-   welded to the tally above it — the reticle's count and the reticle's own
-   instruction — rather than drifting with whatever the rest of the panel is
-   doing underneath.
-
-   `top` matches `.mech-deck-slot` in Mech.css (the audio widget, docked at
-   the same 90 units) rather than sitting on its own higher up the frame —
-   the two are meant to read as one row, the reticle's own instrument next to
-   the deck's, not as one thing floating above the other. */
-.mech-alarm {
-  position: fixed;
-  left: 50%;
-  top: calc(90 * var(--px));
-  transform: translateX(-50%);
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  /* Room for `.mech-tally` between the two keys — see `Alarm` in
-     MechCluster.tsx. It hides itself at zero kills, and an empty gap here
-     until the first one lands is the honest reading: this is where that
-     count goes, not a decoration standing in for it. */
-  gap: calc(16 * var(--px));
-}
-
-/* The word is drawn in the panel's own segment glyphs now, not typed — see
-   `Segment.tsx`. Lit is a filled block with the word in black, the way a real
-   shift light is — a lamp behind coloured glass, not glowing green or red
-   text.
-
-   Both keys are the panel's own green/warm split again — `SHOOT` in
-   `--accent`, `STOP` in `--warn` — the same channel every other reading on
-   this panel already uses; a bespoke amber for `SHOOT` was one colour this
-   panel does not otherwise have.
-
-   Fixed **height**, not width: `STOP` at its own length (`cells={4}`) has a
-   narrower viewBox than `SHOOT` (`cells={5}`), and scaling both to the same
-   *width* made `STOP`'s glyphs render smaller — a shorter word spread over
-   the same box is a smaller word. Scaling both to the same height instead
-   means a cell is the same size on both keys and only the box's width
-   differs, which is what `.mech-alarm-key .mech-seg` below is for. */
-.mech-alarm-key {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: calc(30 * var(--px));
-  padding: 0 calc(9 * var(--px));
-  border: 1px solid rgba(var(--accent-rgb), 0.14);
-  background: rgba(var(--accent-rgb), 0.03);
-  transition: border-color 200ms linear, background-color 200ms linear, box-shadow 200ms linear;
-}
-
-/* Scaled by height, not width — see the note above. `Segment.css` sets
-   `width: 100%; height: auto` for every other mount of this component; this
-   is the one place that inverts it. */
-.mech-alarm-key .mech-seg {
-  display: block;
-  height: 100%;
-  width: auto;
-}
-
-.mech-alarm-key .mech-seg svg {
-  width: auto;
-  height: 100%;
-}
-
-/* Unlit: dim. */
-.mech-alarm-key .mech-seg-on line,
-.mech-alarm-key .mech-seg-glow line {
-  stroke: var(--accent);
-}
-
-.mech-alarm-key[data-warn] .mech-seg-on line,
-.mech-alarm-key[data-warn] .mech-seg-glow line {
-  stroke: var(--warn);
-}
-
-.mech-alarm-key .mech-seg-on,
-.mech-alarm-key .mech-seg-glow {
-  opacity: 0.32;
-  transition: opacity 200ms linear;
-}
-
-/* Lit: the block fills with the key's own colour and the glyphs themselves
-   turn black, on top of it — a lamp behind glass, not glowing type. */
-.mech-alarm-key[data-on='true'] {
-  border-color: var(--accent);
-  background: var(--accent);
-  box-shadow:
-    0 0 calc(14 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.55 * var(--g))),
-    0 0 calc(52 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.3 * var(--g)));
-}
-
-.mech-alarm-key[data-warn][data-on='true'] {
-  border-color: var(--warn);
-  background: var(--warn);
-  box-shadow:
-    0 0 calc(16 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.6 * var(--g))),
-    0 0 calc(60 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.32 * var(--g)));
-}
-
-.mech-alarm-key[data-on='true'] .mech-seg-on line {
-  stroke: #0a0500;
-}
-
-.mech-alarm-key[data-on='true'] .mech-seg-glow {
-  /* No bloom off black ink — the glow was the light coming off green or red
-     glass, and there is no light coming off the word once it is the dark
-     shape printed on a lit lamp instead. */
-  display: none;
-}
-
-.mech-alarm-key[data-on='true'] .mech-seg-on {
-  opacity: 1;
-  filter: none;
-}
-
-.mech-alarm-key[data-on='true'] .mech-seg-off line {
-  stroke: rgba(0, 0, 0, 0.18);
-}
-
-/* No separate pool of light any more. There was a `::after` here throwing a
-   300-unit radial wash behind a lit key — sized for the reference's own
-   dashboard, several times the key's own box, and it read as a stray glow
-   with no source rather than light off the lamp. The `box-shadow` above is
-   the actual light this key throws, and it already answers to `--g` (the
-   Bloom knob) the same as everything else on the panel — this pool did not,
-   which was the other half of "looks unnatural": every other glow on the
-   screen breathes with Bloom, and this one did not. */
-
 /* ---- the readouts ----
 
    Two of these now: what I do (under the counts, on the left) and what is
@@ -1338,10 +1198,6 @@
   }
 }
 
-.mech-cluster[data-covered='false'] .mech-alarm {
-  animation: mech-cluster-in 540ms 540ms var(--ease) both;
-}
-
 .mech-cluster[data-covered='false'] .mech-display {
   animation: mech-cluster-strike 420ms 90ms var(--ease) both;
 }
@@ -1403,10 +1259,6 @@
   animation: mech-cluster-unstrike 180ms 160ms var(--ease) both;
 }
 
-.mech-cluster[data-covered='true'] .mech-alarm {
-  animation: mech-cluster-out 190ms 250ms var(--ease) both;
-}
-
 /* Held off entirely while the machine boots, the same as the header and the
    footer — see `boot` in Mech.css. The blocks above are all sitting on the
    first frame of their exits underneath this, which is where they should be:
@@ -1449,20 +1301,6 @@
   align-items: stretch;
   gap: calc(34 * var(--px));
   padding: calc(28 * var(--px)) 0 0;
-}
-
-/* Back in flow down here — the wide layout pins this to the viewport so it
-   stays welded to the tally above it regardless of the Vertical knob (a
-   wide-only control; narrow has no `.mech-cluster` box for it to answer to).
-   Narrow scrolls the whole page, and a `position: fixed` pair would sit
-   stuck over the top of whatever scrolled underneath it instead of taking
-   its place in the column like everything else here. */
-.mech[data-narrow='true'] .mech-alarm {
-  position: static;
-  left: auto;
-  top: auto;
-  transform: none;
-  margin-top: 0;
 }
 
 /* The rail was a full-height column beside the middle one on a wide window;

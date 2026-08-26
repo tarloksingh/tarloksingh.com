@@ -1142,6 +1142,53 @@ does not answer to the Bloom knob the way every other glow on the site does.
 `rgba(var(--accent-rgb), calc(0.12 * var(--g)))` now, matching the fix
 already made to the warning pair.
 
+**A fifth pass moved the warning pair off home entirely.** It used to live
+inside `MechCluster.tsx` and vanish the instant a project opened, which read
+as the one instrument on the panel that did not survive the swap — the gun,
+the reticle and the creatures it reports on are all mounted plainly in
+`Mech.tsx`, not gated on home, so the lamp reporting on them had no business
+being gated either. `Alarm.tsx` is its own component now, mounted
+unconditionally in `Mech.tsx` next to `MechCursor` / `MechBird` / `MechMoth`
+/ `MechLaser`, and `.mech-alarm` moved with it into `Mech.css`. `top` changed
+from `calc(90 * var(--px))` (level with the audio widget) to `calc(24 *
+var(--px))` — the same as `.mech-head` — so the pair reads as part of the
+header row rather than a second thing floating under it; being global chrome
+now rather than a child of `.mech-cluster` means it never answered to
+`--cluster-y` in the first place, which made the narrow-layout `position:
+static` override dead weight, also removed. Both keys came down in scale —
+`.mech-alarm-key`'s height from `30` units to `19` — and the lit fill went
+from a solid `background: var(--accent)` / `var(--warn)` to `rgba(…, 0.55)`
+with the box-shadow alphas cut by roughly half: full saturation read as
+louder than a header instrument should, next to the audio deck and the menu
+key it now sits beside. The inline tally between the two keys lost its
+enlarged variant at the same time — same width as every other reading on the
+panel, not a bigger one, once the row around it had come down in volume too.
+
+**`ROLE_CELLS` now equals `CELLS`.** The role reel under the counts and the
+project title over the bank are boxed to the same width (`--count-w` and
+`--flank-w` are the same variable), and `Segment` scales by *width* — two
+displays the same width but a different cell count render their glyphs at
+two different sizes, fewer cells over the same box being a bigger glyph.
+Sixteen cells (the role reel's own longest word) against the title's
+twenty-one was the same class of bug the warning pair had in its third pass,
+just along a different axis: a readout's size should come from the panel it
+shares, not from how long its own longest word happens to be.
+
+**The footer is two plain lines now, not one boxed one.** `hello@` used to
+be the only permanent thing down there — bordered, tagged "comms", pinned to
+the right edge by `margin-left: auto` because the tally (when a project had
+one) was the only thing that ever stood at the other end. The tally moved
+into the warning pair for good in the pass above, so the footer's own copy
+of it is gone, and with a first thing always at the left there was no reason
+left to fake `space-between` with a margin. `hello@tarloksingh.com` lost its
+border and its "comms" tag; `developed by tarlok singh` is new, at the right
+edge, in the same voice. Each carries a small dot — `.mech-dot`, phosphor not
+warm, since it answers to nothing the pointer does — on a slow, offset
+flicker loop (`mech-dot-flicker`, gaps in the keyframes rather than a smooth
+pulse, so it reads as a bulb catching rather than breathing) with the second
+dot's `animation-delay` staggered off the first so the two never dim
+together.
+
 ### The cast
 
 > **Not mounted.** The line-up came off home — see *Home is a cluster*

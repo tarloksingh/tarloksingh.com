@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Segment from './Segment'
 import Typed from './Typed'
-import Tally from './Tally'
 import { MENU } from './model'
-import { quarry } from './subject'
 import { sound } from './sound'
 import MechSlots, { hasSubject, SlotView } from './MechSlots'
 import type { Tag } from '../data/projects'
@@ -26,11 +24,12 @@ import './MechCluster.css'
    it. Home was the one page not doing that.
 
    So home is a panel now, laid out the way a car's instrument cluster is.
-   Five things, and the arrangement is the whole design:
+   Four things drawn here, and a fifth — the warning pair, `SHOOT` / `STOP` —
+   that lives one level up now, in `Alarm.tsx`, because it is the one lamp on
+   the page about the page rather than about the work, and reports whether
+   there is anything in the air to shoot at *regardless* of which screen is
+   showing. See the note at the top of `Alarm.tsx` for why it moved:
 
-   - a **warning pair** at the top of the frame, `SHOOT` / `STOP`, which is
-     the one lamp on the page about the page rather than about the work: it
-     reports whether there is anything in the air to shoot at.
    - a **strip of displays** across the top of the panel — what I do on the
      left, what is selected on the right, one continuous run of lamp cells.
    - the **tachometer**, the single largest instrument, filling the middle.
@@ -153,16 +152,16 @@ const PROFILE =
  *  text box. */
 const CELLS = 21
 
-/** Cells in the role reel under the counts. Exactly the longest title or role
- *  — "Product Designer" is sixteen — and deliberately narrower than `CELLS`: it
- *  never has to hold a project name, and a box sized for one read as a word
- *  adrift in too much housing.
- *
- *  Sixteen rather than seventeen because the display is boxed to the width of
- *  the counts above it (`--count-w`), and a seventeenth cell put the tail of
- *  "DESIGN ENGINEER" out past the right edge of the `ORGS` gauge — a readout
- *  hanging off the block it belongs to. */
-const ROLE_CELLS = 16
+/** Cells in the role reel under the counts. Matches `CELLS` exactly now,
+ *  not the role's own longest word — `.mech-display-role` and
+ *  `.mech-work-rail-head` are boxed to the same width (`--count-w` and
+ *  `--flank-w` are the same variable), and `Segment` scales by *width*, so
+ *  two displays the same width but a different cell count render their
+ *  glyphs at two different sizes: fewer cells over the same box is a bigger
+ *  glyph. Sixteen used to read as deliberately louder than the project
+ *  title opposite it; on one panel reporting two kinds of fact, both
+ *  readouts should print at the same size. */
+const ROLE_CELLS = CELLS
 
 /** What the right-hand display says with nothing picked. A dark box on
  *  arrival reads as broken; this labels what the box is for, and it goes out
@@ -538,64 +537,6 @@ function Tach({ children }: { children?: React.ReactNode }) {
           </span>
         ))}
       </div>
-    </div>
-  )
-}
-
-/* ---- the warning pair ----
-
-   The top of the frame, and the one lamp on this page that is about the page
-   rather than about the work. There is a bird crossing the readout and a moth
-   on it, both of them shootable, and until now the only thing that said so was
-   a tally in the footer counting what you had already brought down — which
-   only ever appeared *after* you had worked out on your own that the reticle
-   was a gun.
-
-   So it is a pair rather than a single lamp, and only one of them is ever lit:
-   `STOP` while there is nothing in the air, `SHOOT` the moment there is. Two
-   states of one instruction, which is what a shift light is, and what makes
-   the row read as an instruction rather than as a label.
-
-   It asks `quarry` rather than being told. The gun already walks that set
-   several times a frame to find out what a bolt has hit; this is the same
-   question one frame at a time, and it means a third creature mounted
-   tomorrow lights the lamp with nothing wired up. */
-function Alarm() {
-  const [up, setUp] = useState(false)
-
-  useEffect(() => {
-    let raf = 0
-    const tick = () => {
-      raf = requestAnimationFrame(tick)
-      let any = false
-      for (const creature of quarry.creatures) {
-        if (creature.at()) {
-          any = true
-          break
-        }
-      }
-      // Returning the same value is a bail-out, not a render — which is what
-      // makes asking this every frame affordable.
-      setUp((was) => (was === any ? was : any))
-    }
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [])
-
-  return (
-    <div className="mech-alarm" aria-hidden>
-      {/* `cells` matches each word exactly now — `STOP` at `cells={5}` left a
-          trailing blank cell (Segment centres by padding blanks on both
-          sides, and one spare cell over an even split rounds down to zero
-          leading blanks), which is what was reading as the word sitting in
-          the upper-left of its box instead of centred in it. */}
-      <i className="mech-alarm-key" data-on={up}>
-        <Segment text="SHOOT" cells={5} settle={false} label="shoot" />
-      </i>
-      <Tally inline />
-      <i className="mech-alarm-key" data-warn data-on={!up}>
-        <Segment text="STOP" cells={4} warn settle={false} label="stop" />
-      </i>
     </div>
   )
 }
@@ -980,13 +921,14 @@ export default function MechCluster({ onProject, covered, tuning }: Props) {
         ['--cluster-tach' as string]: tuning.tach
       }}
     >
-      <Alarm />
-
       {/* The name and the panel below it, as one group that centres in
-          whatever room is left under the warning pair — rather than the
-          panel's own `flex: 1` pinning everything to the top the moment a
-          window is taller than the content needs. `SHOOT` / `STOP` and the
-          tally above them stay where they are; only this group moves. */}
+          whatever room the frame has under the warning pair — rather than
+          the panel's own `flex: 1` pinning everything to the top the moment
+          a window is taller than the content needs. `SHOOT` / `STOP` and the
+          tally between them are global chrome now, not part of this
+          component at all — see `Alarm.tsx`, mounted in `Mech.tsx` next to
+          `MechCursor` / `MechBird` / `MechLaser`, so they survive the swap
+          to a project instead of unmounting with the rest of the cluster. */}
       <div className="mech-panel-mid">
         {/* The identity, on its own now — between the warning pair and the
             instrument rather than laid over the quiet end of it. Red-orange,

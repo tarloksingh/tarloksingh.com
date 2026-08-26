@@ -6,9 +6,9 @@ import MechBird from './MechBird'
 import MechMoth from './MechMoth'
 import MechCursor from './MechCursor'
 import MechLaser from './MechLaser'
+import Alarm from './Alarm'
 import MechHud from './MechHud'
 import MechTiles from './MechTiles'
-import Tally from './Tally'
 import { useModelTuning } from './modelTuning'
 import { useProductTuning } from './productTuning'
 import { useClusterTuning } from './clusterTuning'
@@ -1144,6 +1144,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
       <MechBird />
       <MechMoth />
       <MechLaser />
+      <Alarm />
 
       {menu && (
         <MechMenu shownId={shownId} onProject={onProject} onHome={onHome} onClose={() => setMenu(false)} />
@@ -1453,14 +1454,14 @@ export default function Mech({ id, onProject, onHome }: Props) {
         )}
 
         <footer className="mech-foot" data-arrive>
-          {/* Home shows its own copy, wedged between SHOOT and STOP —
-              see `Alarm` in MechCluster.tsx — so this one steps aside there
-              rather than the two disagreeing about where the count is. */}
-          {!home && <Tally />}
           <a className="mech-comms" href="mailto:hello@tarloksingh.com">
-            <span className="mech-comms-tag">comms</span>
             <span className="mech-comms-to">hello@tarloksingh.com</span>
+            <i className="mech-dot" aria-hidden />
           </a>
+          <p className="mech-credit">
+            <i className="mech-dot" aria-hidden />
+            <span>developed by tarlok singh</span>
+          </p>
         </footer>
       </div>
     </div>
