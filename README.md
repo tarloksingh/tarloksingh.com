@@ -1109,6 +1109,39 @@ the tool asked for, rather than another guess at a constant. Default moved
 up to `900` at the same time, so the panel reads closer at rest and the knob
 is there for taste from that point rather than to fix a gap by itself.
 
+**A fourth pass: same size, right colour, a real default, and one more stray
+glow found.** `STOP`'s glyphs were rendering smaller than `SHOOT`'s — both
+keys were scaled to the same fixed *width*, and a shorter word (`STOP`,
+`cells={4}`) stretched over the same width as a longer one (`SHOOT`,
+`cells={5}`) is a smaller word. `.mech-alarm-key` is scaled by a fixed
+**height** now instead (`.mech-alarm-key .mech-seg` / `.mech-seg svg`
+override `Segment.css`'s usual width-driven sizing), so a cell is the same
+size on both keys regardless of how many of them there are, and only the
+box's width — which was never the thing that needed to match — differs.
+`SHOOT` gave up its bespoke amber for `var(--accent)`, the panel's own green:
+a colour this panel does not otherwise have was one colour too many, and the
+two keys already read as a pair by shape and position.
+
+`CLUSTER_DEFAULTS` took a client-supplied set outright — `name: 1.56`,
+`glow: 1.75`, `slot: 80`, `tach: 1030` — rather than another round of
+by-eye guessing at this end.
+
+**The tally moved into the warning pair**, and bigger. `Tally` is its own
+file now (`Tally.tsx`), read by both `Mech.tsx` (its usual fixed spot, for
+every screen that is not home) and `Alarm` in MechCluster.tsx (`inline`,
+sitting in the gap `.mech-alarm` reserves between `SHOOT` and `STOP`) — the
+same store, never both mounted at once, so home shows the reticle's count
+where the reticle's own instruction is instead of above it.
+
+**And a second `::before` was throwing the same unscoped glow the warning
+pair's old one did.** `.mech-stage::before` — the pool of light behind the
+subject on a project screen, `.mech-cluster::before`'s own counterpart — was
+a flat `0.12` alpha with no tie to `--g` at all, which is what "opening a
+project gets slightly brighter in the centre" was: a stray hot spot that
+does not answer to the Bloom knob the way every other glow on the site does.
+`rgba(var(--accent-rgb), calc(0.12 * var(--g)))` now, matching the fix
+already made to the warning pair.
+
 ### The cast
 
 > **Not mounted.** The line-up came off home — see *Home is a cluster*

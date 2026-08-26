@@ -44,10 +44,10 @@ export interface ClusterTuning {
 
 export const CLUSTER_DEFAULTS: ClusterTuning = {
   y: 0,
-  name: 0.88,
-  glow: 1.2,
-  slot: 82,
-  tach: 900
+  name: 1.56,
+  glow: 1.75,
+  slot: 80,
+  tach: 1030
 }
 
 const STORE_KEY = 'v3.cluster.tuning.v1'

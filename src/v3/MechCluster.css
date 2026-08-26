@@ -226,46 +226,61 @@
   transform: translateX(-50%);
   z-index: 3;
   display: flex;
+  align-items: center;
   justify-content: center;
-  gap: calc(7 * var(--px));
+  /* Room for `.mech-tally` between the two keys — see `Alarm` in
+     MechCluster.tsx. It hides itself at zero kills, and an empty gap here
+     until the first one lands is the honest reading: this is where that
+     count goes, not a decoration standing in for it. */
+  gap: calc(16 * var(--px));
 }
 
 /* The word is drawn in the panel's own segment glyphs now, not typed — see
    `Segment.tsx`. Lit is a filled block with the word in black, the way a real
    shift light is — a lamp behind coloured glass, not glowing green or red
-   text — so the segment strokes are overridden to black below rather than
-   left at their usual `--accent` / `--warn`. `SHOOT` gets its own colour,
-   `--shoot`, because "two keys, one warm and one cool" stopped being true the
-   moment neither of them was ever green: they read as a pair by shape and
-   position now, not by which one is the panel's usual channel. */
+   text.
+
+   Both keys are the panel's own green/warm split again — `SHOOT` in
+   `--accent`, `STOP` in `--warn` — the same channel every other reading on
+   this panel already uses; a bespoke amber for `SHOOT` was one colour this
+   panel does not otherwise have.
+
+   Fixed **height**, not width: `STOP` at its own length (`cells={4}`) has a
+   narrower viewBox than `SHOOT` (`cells={5}`), and scaling both to the same
+   *width* made `STOP`'s glyphs render smaller — a shorter word spread over
+   the same box is a smaller word. Scaling both to the same height instead
+   means a cell is the same size on both keys and only the box's width
+   differs, which is what `.mech-alarm-key .mech-seg` below is for. */
 .mech-alarm-key {
-  --shoot: #f2c230;
-  --shoot-rgb: 242, 194, 48;
   position: relative;
-  /* Flex, not block — a block container only ever aligns its content along
-     the inline axis (Segment's own centre-padding), and gave the box no way
-     to centre a word shorter than its own height's worth of padding on the
-     cross axis. This centres both. */
   display: flex;
   align-items: center;
   justify-content: center;
-  width: calc(78 * var(--px));
-  padding: calc(6 * var(--px)) calc(9 * var(--px));
+  height: calc(30 * var(--px));
+  padding: 0 calc(9 * var(--px));
   border: 1px solid rgba(var(--accent-rgb), 0.14);
   background: rgba(var(--accent-rgb), 0.03);
   transition: border-color 200ms linear, background-color 200ms linear, box-shadow 200ms linear;
 }
 
+/* Scaled by height, not width — see the note above. `Segment.css` sets
+   `width: 100%; height: auto` for every other mount of this component; this
+   is the one place that inverts it. */
 .mech-alarm-key .mech-seg {
-  width: 100%;
+  display: block;
+  height: 100%;
+  width: auto;
 }
 
-/* Unlit: dim, and in the key's own colour rather than the panel's green —
-   `SHOOT` reads as a dim yellow outline at rest, not a dim green one that
-   jumps hue the instant it lights. */
+.mech-alarm-key .mech-seg svg {
+  width: auto;
+  height: 100%;
+}
+
+/* Unlit: dim. */
 .mech-alarm-key .mech-seg-on line,
 .mech-alarm-key .mech-seg-glow line {
-  stroke: var(--shoot);
+  stroke: var(--accent);
 }
 
 .mech-alarm-key[data-warn] .mech-seg-on line,
@@ -282,11 +297,11 @@
 /* Lit: the block fills with the key's own colour and the glyphs themselves
    turn black, on top of it — a lamp behind glass, not glowing type. */
 .mech-alarm-key[data-on='true'] {
-  border-color: var(--shoot);
-  background: var(--shoot);
+  border-color: var(--accent);
+  background: var(--accent);
   box-shadow:
-    0 0 calc(14 * var(--px) * var(--g)) rgba(var(--shoot-rgb), calc(0.55 * var(--g))),
-    0 0 calc(52 * var(--px) * var(--g)) rgba(var(--shoot-rgb), calc(0.3 * var(--g)));
+    0 0 calc(14 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.55 * var(--g))),
+    0 0 calc(52 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.3 * var(--g)));
 }
 
 .mech-alarm-key[data-warn][data-on='true'] {

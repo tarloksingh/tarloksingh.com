@@ -447,12 +447,20 @@
    as this is concerned: it is drawn once, behind all three, rather than
    being a property of any one media kind. Root `--accent-rgb`, not the
    cluster's paler one — this is a project screen, and every other lit thing
-   on it already reads off the root pair. */
+   on it already reads off the root pair.
+
+   `* var(--g)` — this alpha was a flat 0.12 with no tie to Bloom at all,
+   which is the same bug the warning pair's old `::after` had: every other
+   glow on the site answers to that knob, so a fixed one reads as a stray
+   hot spot rather than as this screen's own light. It is what "opening a
+   project gets slightly brighter in the centre" was — subtle at the
+   default `--g`, but there and unscaleable regardless of where Bloom is
+   left. */
 .mech-stage::before {
   content: '';
   position: absolute;
   inset: calc(-200 * var(--px));
-  background: radial-gradient(ellipse 50% 46% at 50% 48%, rgba(var(--accent-rgb), 0.12), transparent 72%);
+  background: radial-gradient(ellipse 50% 46% at 50% 48%, rgba(var(--accent-rgb), calc(0.12 * var(--g))), transparent 72%);
   pointer-events: none;
   z-index: -1;
 }
@@ -2855,18 +2863,19 @@
 
 /* ---- the tally ----
 
-   What you have shot, across every screen and across a reload. On the
-   instrument panel rather than in a corner as a score, and docked at the top
-   of the frame, above the warning pair — the reticle's own count sits next to
-   the readout naming what the reticle is for. Hidden at zero — a counter
-   saying nothing has happened is a counter advertising a feature. See
-   `kills.ts`.
+   What you have shot, across every screen and across a reload. Hidden at
+   zero — a counter saying nothing has happened is a counter advertising a
+   feature. See `kills.ts`.
 
-   `position: fixed` and centred, off the footer's own flex line — it used to
-   sit at the far left of the footer, on the same baseline as the contact
-   address, which put "what you have shot" a whole screen away from the
-   reticle that does the shooting. No "downed" label either: the number is
-   the entire reading, once it is up here next to the thing it counts. */
+   Two readings of the same store, never both mounted at once — see `Tally`
+   in Tally.tsx. `[data-inline='false']`, the default, is `Mech.tsx`'s own
+   copy: `position: fixed` and centred, off the footer's own flex line — it
+   used to sit at the far left of the footer, on the same baseline as the
+   contact address, which put "what you have shot" a whole screen away from
+   the reticle that does the shooting. `[data-inline='true']` is `Alarm`'s
+   copy in MechCluster.tsx: a plain flex child sitting in the gap `.mech-alarm`
+   reserves between `SHOOT` and `STOP`, sized up because it is the one thing
+   in that row that is not a fixed instrument label. */
 
 .mech-tally {
   position: fixed;
@@ -2882,6 +2891,14 @@
   text-shadow: 0 0 calc(9 * var(--px)) rgba(var(--accent-rgb), 0.5);
 }
 
+.mech-tally[data-inline='true'] {
+  position: static;
+  left: auto;
+  top: auto;
+  transform: none;
+  z-index: auto;
+}
+
 /* The number is the segment display, the same one the counts on home are
    drawn with — a count of something should look the same wherever this panel
    prints one, and tabular figures in Helvetica were not that. No border any
@@ -2891,6 +2908,14 @@
   display: block;
   width: calc(44 * var(--px));
   padding: calc(4 * var(--px)) calc(6 * var(--px));
+}
+
+/* Larger — this is the one reading in the warning pair's row that answers a
+   question ("how many"), not a fixed label, and it read as an afterthought
+   wedged between two much louder instruments at the small size. */
+.mech-tally[data-inline='true'] .mech-tally-n {
+  width: calc(64 * var(--px));
+  padding: calc(5 * var(--px)) calc(8 * var(--px));
 }
 
 /* ---- narrow viewports ----

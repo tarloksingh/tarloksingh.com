@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Segment from './Segment'
 import Typed from './Typed'
+import Tally from './Tally'
 import { MENU } from './model'
 import { quarry } from './subject'
 import { sound } from './sound'
@@ -591,6 +592,7 @@ function Alarm() {
       <i className="mech-alarm-key" data-on={up}>
         <Segment text="SHOOT" cells={5} settle={false} label="shoot" />
       </i>
+      <Tally inline />
       <i className="mech-alarm-key" data-warn data-on={!up}>
         <Segment text="STOP" cells={4} warn settle={false} label="stop" />
       </i>

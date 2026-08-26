@@ -8,7 +8,7 @@ import MechCursor from './MechCursor'
 import MechLaser from './MechLaser'
 import MechHud from './MechHud'
 import MechTiles from './MechTiles'
-import Segment from './Segment'
+import Tally from './Tally'
 import { useModelTuning } from './modelTuning'
 import { useProductTuning } from './productTuning'
 import { useClusterTuning } from './clusterTuning'
@@ -19,7 +19,6 @@ import { sound } from './sound'
 import { useNarrow } from './narrow'
 import { useReveal } from './reveal'
 import { drift, flinch, quarry } from './subject'
-import { kills } from './kills'
 import { findProject, thumbOf, type Entry, type Frame } from './model'
 import { focus, notesFor, pins, type Note } from './notes'
 import { useLabelTuning, type Handed } from './labelTuning'
@@ -761,39 +760,6 @@ interface Props {
 
 
 
-/** What has been shot, everywhere, ever. Its own component so the number
- *  changing does not re-render the readout under it — see `kills.ts`.
- *
- *  Docked at the top of the frame, above the warning pair, rather than down
- *  in the footer beside the contact address: it is the number of things the
- *  reticle above it has hit, and it reads that way sitting next to `SHOOT` /
- *  `STOP` rather than filed with the contact details at the bottom of the
- *  page. No "downed" label any more either — the count is the whole reading,
- *  and `aria-label` still says what it is for anyone not reading the glyphs.
- *
- *  Mounted in the footer's markup still (rendered on every screen, not just
- *  home), but taken out of that flow with `position: fixed` — see
- *  `.mech-tally` in Mech.css.
- *
- *  The number is in segments, the same display the counts on home are drawn
- *  with — a count of something is a count of something, and it should look
- *  the same wherever the panel prints one. That is also why this is the one
- *  part of `Segment` a project screen mounts: the tally is on every screen, so
- *  the display is too. `settle` is off — this is not a readout changing
- *  channel, it is a number going up by one, and four frames of noise every
- *  time you shoot a bird would be the loudest thing on the page. */
-function Tally() {
-  const count = useSyncExternalStore(kills.subscribe, kills.snapshot, kills.snapshot)
-  if (count === 0) return null
-  return (
-    <div className="mech-tally" aria-label={`${count} downed`} data-arrive>
-      <span className="mech-tally-n">
-        <Segment text={String(count).padStart(3, '0')} cells={3} settle={false} label={`${count}`} />
-      </span>
-    </div>
-  )
-}
-
 export default function Mech({ id, onProject, onHome }: Props) {
   /* Keyed on whichever model is on screen. The two GLB models used to share
      one rig, so Capsule C1 — an injection-moulded enclosure — was lit by a
@@ -1487,7 +1453,10 @@ export default function Mech({ id, onProject, onHome }: Props) {
         )}
 
         <footer className="mech-foot" data-arrive>
-          <Tally />
+          {/* Home shows its own copy, wedged between SHOOT and STOP —
+              see `Alarm` in MechCluster.tsx — so this one steps aside there
+              rather than the two disagreeing about where the count is. */}
+          {!home && <Tally />}
           <a className="mech-comms" href="mailto:hello@tarloksingh.com">
             <span className="mech-comms-tag">comms</span>
             <span className="mech-comms-to">hello@tarloksingh.com</span>
