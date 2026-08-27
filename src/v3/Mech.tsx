@@ -368,14 +368,9 @@ function Leaders({ notes, box, space, floats, lit, onLit }: LeadersProps) {
     >
       <g ref={group}>
       {list.map((leader, i) => {
-        /* Aimed a little inside the card's corner rather than at it. A rounded
-           corner has no stroke *at* the corner — the border has curved away by
-           then — so a line drawn to the point the card is anchored on ends in
-           mid-air a few units short of the box it is supposed to be touching.
-           Just past where the arc runs closest to the corner, so it meets the
-           stroke and carries on under it by a hair. */
-        const touch = CARD.round * 0.45
-        const meets = [leader.anchor[0] + leader.sx * touch, leader.anchor[1] + leader.sy * touch]
+        /* Not the corner the card hangs off — the point on its rounded corner
+           where the border actually is. See `meetsCard` in leaders.ts. */
+        const meets = leader.meets
         const length = Math.hypot(leader.tip[0] - meets[0], leader.tip[1] - meets[1])
         /* This leader's place in each cascade, handed to the stylesheet as
            variables rather than spent here as `animation-delay`. An inline

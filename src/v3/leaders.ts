@@ -180,6 +180,39 @@ const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(ma
 
 type Gutter = { left: number; right: number }
 
+/* Where the leader actually meets the card.
+
+   The corner it is anchored on is a rounded one, so there is no stroke at that
+   point — the border has curved away to an arc of radius `CARD.round`, centred
+   that far inside the corner in both directions. Cutting the line at the arc
+   is the one answer that holds at every angle. Pulling it back by a fixed
+   amount along the diagonal instead — which is what this was first — lands it
+   short of the border on a steep approach and pushes it *through* the border
+   and out the other side on a shallow one, and a leader has both.
+
+   Standard ray-circle: the first crossing coming from the tip. No crossing
+   means the line is running alongside an edge rather than into the corner, and
+   the corner is then as good a place to stop as any. */
+const meetsCard = (tip: number[], anchor: number[], sx: number, sy: number) => {
+  const r = CARD.round
+  // The arc's centre sits that far inside the corner in both directions, which
+  // is the one place `sx` and `sy` are needed after the card has been placed.
+  const centre = [anchor[0] + sx * r, anchor[1] + sy * r]
+  const to = [anchor[0] - tip[0], anchor[1] - tip[1]]
+  const len = Math.hypot(to[0], to[1])
+  if (len < 1) return anchor
+  const unit = [to[0] / len, to[1] / len]
+  const from = [tip[0] - centre[0], tip[1] - centre[1]]
+  const half = from[0] * unit[0] + from[1] * unit[1]
+  const gap = half * half - (from[0] * from[0] + from[1] * from[1] - r * r)
+  if (gap < 0) return anchor
+  // Past the anchor by up to a radius and a half: on a diagonal approach the
+  // arc is *inside* the corner, so the crossing is always a little further
+  // along the ray than the point the card hangs off.
+  const at = -half - Math.sqrt(gap)
+  return at > 0 && at < len + r * 1.5 ? [tip[0] + unit[0] * at, tip[1] + unit[1] * at] : anchor
+}
+
 /* Two points in, a card out. `seat` is where the line meets the box; `sx` and
    `sy` are which way the box grows from there, which is always *away* from the
    tip — a card laid over its own leader is a card pointing at itself.
@@ -239,7 +272,7 @@ const seated = (note: Note, tip: number[], want: number[], gutter: Gutter, space
   if (head < edge.top) anchor[1] += edge.top - head
   else if (foot > floor) anchor[1] -= foot - floor
 
-  return { ...note, tip, anchor, sx, sy, w }
+  return { ...note, tip, anchor, sx, sy, w, meets: meetsCard(tip, anchor, sx, sy) }
 }
 
 const pinned = (note: Note, box: Box, gutter: Gutter, space: Space) =>
