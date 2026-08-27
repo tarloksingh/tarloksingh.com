@@ -556,29 +556,11 @@
   z-index: 1;
 }
 
-/* The same pool of light home's cluster sits in — `.mech-cluster::before` in
-   MechCluster.css — behind the subject here instead of behind the readout.
-   A still, a clip and a model are all just "whatever is on the stage" as far
-   as this is concerned: it is drawn once, behind all three, rather than
-   being a property of any one media kind. Root `--accent-rgb`, not the
-   cluster's paler one — this is a project screen, and every other lit thing
-   on it already reads off the root pair.
-
-   `* var(--g)` — this alpha was a flat 0.12 with no tie to Bloom at all,
-   which is the same bug the warning pair's old `::after` had: every other
-   glow on the site answers to that knob, so a fixed one reads as a stray
-   hot spot rather than as this screen's own light. It is what "opening a
-   project gets slightly brighter in the centre" was — subtle at the
-   default `--g`, but there and unscaleable regardless of where Bloom is
-   left. */
-.mech-stage::before {
-  content: '';
-  position: absolute;
-  inset: calc(-200 * var(--px));
-  background: radial-gradient(ellipse 50% 46% at 50% 48%, rgba(var(--accent-rgb), calc(0.12 * var(--g))), transparent 72%);
-  pointer-events: none;
-  z-index: -1;
-}
+/* The pool of light behind the subject is `.mech-bloom` in MechHud — one
+   wash for the whole site, drawn on every screen. The stage used to carry
+   its own `::before` central glow on top of that, which is what read as the
+   centre of a project screen being doubly lit; it is gone. See *one room,
+   both screens* below. */
 
 .mech-stage canvas {
   display: block;
@@ -1782,7 +1764,7 @@
 
    The reference is not a lit display on a black page — it is a lit display in a
    dark *room*, and what sells that is the light not stopping at the edge of
-   anything. The first three washes here are the room; the last three are the
+   anything. The first four washes here are the room; the last two are the
    pool the instruments sit in, and they used to live on `.mech-cluster::before`
    instead.
 
@@ -1795,7 +1777,20 @@
    `.mech`, so the bloom is now one setting for the whole site.
 
    Bled well past the frame on every side: a wash that stops at an edge is a
-   rectangle, and the whole point of it is that the light does not stop. */
+   rectangle, and the whole point of it is that the light does not stop.
+
+   **One green in the middle, not two.** There used to be a second central
+   accent wash here — `ellipse 44% 36% at 50% 48%` at `0.1 * --g`, concentric
+   with the room's own `55% 50% at 50% 52%` and, at the Bloom knob's shipped
+   2.8, nearly four times its strength. On home you never saw it: the cluster
+   sits over the middle of the frame and covers it, so what shows is the wide
+   soft wash around the panel. A project screen has nothing over the middle,
+   so both ellipses were on view at once, and two concentric blurs of the same
+   colour at different radii read as exactly what they are — a glow with a
+   second, harder glow stacked on it, centred on the subject.
+
+   Only the wide one is left. It is the wash that is the same on both screens,
+   which is the one the site was already being lit by. */
 .mech-bloom {
   position: absolute;
   inset: calc(-200 * var(--px));
@@ -1804,7 +1799,6 @@
     radial-gradient(ellipse 46% 60% at 6% 88%, rgba(var(--wash-blue), 0.11), transparent 70%),
     radial-gradient(ellipse 42% 55% at 96% 12%, rgba(var(--wash-lime), 0.07), transparent 70%),
     radial-gradient(ellipse 38% 44% at 88% 92%, rgba(var(--wash-blue), 0.06), transparent 70%),
-    radial-gradient(ellipse 44% 36% at 50% 48%, rgba(var(--accent-rgb), calc(0.1 * var(--g))), transparent 72%),
     radial-gradient(ellipse 36% 28% at 50% 82%, rgba(var(--accent-rgb), calc(0.06 * var(--g))), transparent 74%),
     /* The warm pool the reference's brake light throws — a single wash the size
        of half the panel, most of it faded out before it reaches anything else
@@ -3194,8 +3188,9 @@
 
 /* Sticky rather than static: the way to every other project is behind this
    one control now, and a control you have to scroll back up to is a control
-   you stop using. It sits on its own scrim so the copy passes under it
-   rather than through it. */
+   you stop using. No scrim of its own: `.mech-alarm` sits fixed at the same
+   top row, and an opaque header behind it read as the warning pair going
+   dark under a second vignette. */
 .mech[data-narrow='true'] .mech-head {
   position: sticky;
   top: 0;
@@ -3208,7 +3203,6 @@
      itself over with `margin-right: auto` when there is one. */
   justify-content: flex-end;
   padding: calc(16 * var(--px)) var(--gutter) calc(14 * var(--px));
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.92) 55%, rgba(0, 0, 0, 0));
 }
 
 .mech[data-narrow='true'] .mech-wordmark {

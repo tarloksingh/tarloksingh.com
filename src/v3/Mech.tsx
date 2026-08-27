@@ -861,6 +861,32 @@ export default function Mech({ id, onProject, onHome }: Props) {
     return () => window.clearTimeout(timer)
   }, [])
 
+  /* The subject's canvas learns its size from a ResizeObserver, and a tab that
+     is still in the background when the page loads throttles that observer's
+     first callback away entirely — so a project opened in a tab you have not
+     looked at yet mounts a canvas stuck at its 300×150 default and stays that
+     way even once you switch to it. A resize event makes r3f's `useMeasure`
+     re-read the box. Fired straight rather than off a `requestAnimationFrame`
+     (which a background tab pauses), and again the moment the tab is shown,
+     which is the frame that actually needs it. The canvas is lazy and mounts a
+     beat after this effect, so the opening kicks are spread across the first
+     second; every one past the mount is a harmless re-measure to the same
+     size. Home's cluster canvas is `position: fixed` over the viewport and
+     never has this problem. */
+  useEffect(() => {
+    if (home) return
+    const kick = () => window.dispatchEvent(new Event('resize'))
+    const timers = [0, 200, 600, 1200].map((ms) => window.setTimeout(kick, ms))
+    const onShow = () => {
+      if (!document.hidden) kick()
+    }
+    document.addEventListener('visibilitychange', onShow)
+    return () => {
+      timers.forEach(window.clearTimeout)
+      document.removeEventListener('visibilitychange', onShow)
+    }
+  }, [home])
+
   /* Retargeting. The subject comes apart, the project underneath changes, and
      the rail goes back to the model — reusing the same cover the frame swap
      uses, because it is the same gesture at a larger scale.
@@ -1193,11 +1219,13 @@ export default function Mech({ id, onProject, onHome }: Props) {
 
         {/* Docked between the header and the rail rather than down in the
             footer — the same right edge as the tile strip below it. Narrow,
-            it comes off the frame entirely and floats at the bottom of the
-            window: see `.mech-deck-slot` under `narrow viewports`. */}
-        <div className="mech-deck-slot">
-          <MechDeck narrow={narrow} />
-        </div>
+            there is no room for a transport nobody asked for, so it drops
+            off the frame entirely rather than floating over the page. */}
+        {!narrow && (
+          <div className="mech-deck-slot">
+            <MechDeck />
+          </div>
+        )}
 
         {/* Home: the whole screen, as one instrument cluster. The lamps, the
             name, the display that reads out either a title or whatever project

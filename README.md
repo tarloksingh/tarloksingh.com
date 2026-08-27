@@ -170,6 +170,23 @@ The wash bleeds two hundred units past the frame on every side: a wash that
 stops at an edge is a rectangle, and the whole point of it is that the light
 does not stop.
 
+**One green in the middle, not two.** Wiring both pools into the same element
+left two concentric accent ellipses there: the room's own wide
+`55% 50% at 50% 52%` at a flat `0.075`, and the cluster's tighter
+`44% 36% at 50% 48%` at `0.1 * --g` — which at the shipped Bloom of 2.8 is
+`0.28`, nearly four times the wash it sat on. Home hid the problem, because the
+cluster covers the middle of the frame and all you ever saw was the wide one
+haloing the panel. A project screen has nothing over the middle, so both were
+on view at once, concentric and centred on the subject, and that reads as a
+glow with a second harder glow stacked on it rather than as one light. Only the
+wide one is left, and it is the wash both screens already shared. The bottom
+accent pool and the warm one are off-centre and stay.
+
+A related one was on the stage itself: `.mech-stage::before` carried *another*
+central `--accent` radial, drawn over `.mech-bloom` on a project screen and
+nowhere else. Also gone. If the middle of a project screen ever looks doubly
+lit again, count the centred `radial-gradient`s before reaching for opacity.
+
 ### Home is a cluster
 
 The character select survived one more pass and then lost the argument.
@@ -2120,6 +2137,40 @@ Four projects (`a-game`, `mr-grocery`, `visa`, `3d-printing`) never reach any
 of this: `entries` in `model.ts` drops a project with no media, and those four
 have none. They are write-ups waiting for assets, and adding a piece for them
 would put a subject on a screen with nothing else on it.
+
+### The subject that never arrives
+
+Two separate faults both present as *the 3D just isn't there* on a project
+screen — no error, no network request, an empty stage. Neither looks like what
+it is.
+
+**A canvas that was never measured.** `@react-three/fiber`'s `<Canvas>` will
+not call `configure()` or `render()` until the box it is in reports a non-zero
+width and height, and it learns that box from `react-use-measure`'s
+`ResizeObserver`. A tab that is still in the background when the page loads has
+that observer's *first* callback throttled away entirely, so the measurement
+stays `0 × 0`, the scene never mounts, `useGLTF` is never called, the GLB is
+never fetched, and the element sits at the HTML canvas default of 300×150 —
+and it stays that way after you switch to the tab, because the observer has
+nothing new to report. Open a project in a background tab and you get a screen
+with a title, leaders and a hole. `Mech.tsx` fires a handful of `resize` events
+over the first second and one more on `visibilitychange`, which is all r3f
+needs to re-read the box. Fired straight, not off a `requestAnimationFrame` —
+a background tab pauses those too. Home's cluster canvas is `position: fixed`
+over the viewport and never has the problem.
+
+**A scratchpad older than the schema.** Every tuning hook merges what is in
+`localStorage` *over* the `_DEFAULTS` constants, and both `modelTuning.ts` and
+`productTuning.ts` used to do it one level deep — `{ ...MODEL_RIGS,
+...savedRigs }`. A saved rig written before a field existed is a *partial*
+object, and a shallow spread lets it replace a complete rig outright. The
+missing `turn`/`tilt`/`liftY` reach the subject as `undefined`,
+`degToRad(undefined)` is `NaN`, and a group at a `NaN` rotation is somewhere
+off screen: a model that mounted, loaded and rendered, into nothing you can
+see. Both files now fill each entry key by key — fallback, then the shipped
+rig, then whatever was saved — so an old scratchpad can only override fields it
+actually has. The tell in the console is Leva's *input at path `Place.turn` is
+not recognized*.
 
 ### Motion, where the page scrolls
 

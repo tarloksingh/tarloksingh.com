@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import Segment from './Segment'
 import Typed from './Typed'
 import { MENU } from './model'
 import { sound } from './sound'
+import { useNarrow } from './narrow'
 import MechSlots, { hasSubject, SlotView } from './MechSlots'
 import type { Tag } from '../data/projects'
 import type { ClusterTuning } from './clusterTuning'
@@ -789,6 +790,51 @@ function SlotBox({
   )
 }
 
+/* The narrow name's font-size is a `cqw` formula the same as the wide one —
+   see `.mech-ident-name` — but that formula is only an *estimate* of how
+   wide the rendered text comes out, off an average per-character advance
+   that is not this font's real one. On the wide layout the gutter around it
+   hides the error; bled to the edges down here, it either fell short of
+   them or ran past — and worse, ran past by a different amount on Mobile
+   Safari than in a desktop browser, because font metrics for a self-hosted
+   display face are not identical across engines. A guessed constant cannot
+   chase that.
+
+   So this measures instead: `probe` is an off-screen copy of the same text
+   at the same font-size (same class, same custom properties, so it always
+   matches), and `--name-fit` is `min(1, available / probe's real width)`,
+   written onto `ident` and read by `.mech-ident-name`'s `transform: scale()`
+   on the narrow layout only. Shrink-only — the formula above already starts
+   deliberately a little large, so this only ever pulls it in to fit
+   whatever actually rendered, on whatever actually rendered it.
+
+   Both boxes are watched, not just `ident`. Audiowide is a self-hosted face
+   and loads after first paint — the probe measures in a fallback font for
+   that first frame, narrower than the real one, and a ratio taken against
+   that stale width is too generous. Watching `probe` too means the swap-in
+   itself re-triggers a measure. */
+const useNameFit = (narrow: boolean, ident: RefObject<HTMLElement | null>, probe: RefObject<HTMLElement | null>) => {
+  useEffect(() => {
+    if (!narrow) return
+    const identEl = ident.current
+    const probeEl = probe.current
+    if (!identEl || !probeEl) return
+
+    const measure = () => {
+      const available = identEl.getBoundingClientRect().width
+      const natural = probeEl.scrollWidth
+      identEl.style.setProperty('--name-fit', String(natural > 0 ? Math.min(1, available / natural) : 1))
+    }
+
+    measure()
+    void document.fonts?.ready?.then(measure)
+    const watch = new ResizeObserver(measure)
+    watch.observe(identEl)
+    watch.observe(probeEl)
+    return () => watch.disconnect()
+  }, [narrow, ident, probe])
+}
+
 interface Props {
   onProject: (id: string) => void
   /** Held back while the machine is still booting, and again while the screen
@@ -808,6 +854,10 @@ export default function MechCluster({ onProject, covered, tuning }: Props) {
   const [step, setStep] = useState(0)
   const release = useRef(0)
   const railList = useRef<HTMLDivElement>(null)
+  const narrow = useNarrow()
+  const identRef = useRef<HTMLElement>(null)
+  const nameProbe = useRef<HTMLHeadingElement>(null)
+  useNameFit(narrow, identRef, nameProbe)
 
   /* The bank's canvas is `position: fixed` and scissors each subject to its
      slot's own rect — see `MechSlots.tsx`. `getBoundingClientRect` does not
@@ -902,6 +952,50 @@ export default function MechCluster({ onProject, covered, tuning }: Props) {
     release.current = window.setTimeout(() => setPicked(null), RELEASE_MS)
   }
 
+  const identity = (
+    <section className="mech-ident" ref={identRef}>
+      <h1 className="mech-ident-name" style={{ ['--name-len' as string]: NAME.length }}>
+        <Typed text={NAME} run="cluster-name" delay={0.4} speed={44} caret={false} />
+      </h1>
+      {/* Off-screen, always the full text regardless of where `Typed` has
+          got to — see `useNameFit`. */}
+      <h1
+        className="mech-ident-name mech-ident-probe"
+        aria-hidden
+        ref={nameProbe}
+        style={{ ['--name-len' as string]: NAME.length }}
+      >
+        {NAME}
+      </h1>
+    </section>
+  )
+
+  /* The profile, as a readout rather than as a paragraph on a page. It used
+     to be set in the site's Helvetica at body size and colour, which made it
+     the one humanist, low-contrast, ragged thing on a panel of hard tracked
+     caps. Same words, in the panel's own monospace.
+
+     Typed rather than dropped in — every other line on this panel arrives a
+     character at a time, and a paragraph that simply appeared read as the
+     one line the machine had not actually switched on. `back` follows
+     `covered`: opening a project backspaces it out rather than leaving it
+     frozen on screen behind the cover, which is what a paragraph with no
+     exit of its own did. Fast both ways — `speed`/`backSpeed` are a fraction
+     of the name's, or a hundred and fifty-odd characters either takes
+     several seconds to arrive or is still typing itself out after
+     `EXIT_MS` has already unmounted it. */
+  const introSection = (
+    <section className="mech-intro">
+      <span className="mech-intro-cap">
+        <Segment text="INTRO" cells={5} settle={false} label="intro" />
+      </span>
+
+      <p className="mech-profile">
+        <Typed text={PROFILE} run="cluster-intro" delay={0.6} speed={9} caret={false} back={covered} backSpeed={4} />
+      </p>
+    </section>
+  )
+
   return (
     <div
       className="mech-cluster"
@@ -933,12 +1027,13 @@ export default function MechCluster({ onProject, covered, tuning }: Props) {
         {/* The identity, on its own now — between the warning pair and the
             instrument rather than laid over the quiet end of it. Red-orange,
             the panel's one warm colour, because this is the one line on the
-            screen that is not a reading: it is who built it. */}
-        <section className="mech-ident">
-          <h1 className="mech-ident-name" style={{ ['--name-len' as string]: NAME.length }}>
-            <Typed text={NAME} run="cluster-name" delay={0.4} speed={44} caret={false} />
-          </h1>
-        </section>
+            screen that is not a reading: it is who built it.
+
+            On the narrow layout it drops to below the instrument instead —
+            `narrow` picks which of the two spots below actually renders it,
+            so there is one `.mech-ident` in the tree rather than two Typed
+            runs racing each other. */}
+        {!narrow && identity}
 
         <div className="mech-body">
         {/* ---- the left flank ---- */}
@@ -963,6 +1058,11 @@ export default function MechCluster({ onProject, covered, tuning }: Props) {
           <Counts fields={marked} />
         </div>
 
+        {/* Narrow only — the wide layout's copy renders inside `Tach`,
+            over the graph's face. Down here it reads better after the
+            counts than above a graph nobody has scrolled to yet. */}
+        {narrow && introSection}
+
         {/* ---- the middle ---- */}
         <div className="mech-main">
           <Tach>
@@ -970,33 +1070,15 @@ export default function MechCluster({ onProject, covered, tuning }: Props) {
               position the reference gives its own digits. The label is drawn
               in the same segment glyphs as every other reading on the panel,
               and the paragraph under it is the one thing on this screen that
-              is prose rather than a number. */}
-          <section className="mech-intro">
-            <span className="mech-intro-cap">
-              <Segment text="INTRO" cells={5} settle={false} label="intro" />
-            </span>
+              is prose rather than a number.
 
-            {/* The profile, as a readout rather than as a paragraph on a
-                page. It used to be set in the site's Helvetica at body size
-                and colour, which made it the one humanist, low-contrast,
-                ragged thing on a panel of hard tracked caps. Same words, in
-                the panel's own monospace.
-
-                Typed rather than dropped in — every other line on this panel
-                arrives a character at a time, and a paragraph that simply
-                appeared read as the one line the machine had not actually
-                switched on. `back` follows `covered`: opening a project
-                backspaces it out rather than leaving it frozen on screen
-                behind the cover, which is what a paragraph with no exit of
-                its own did. Fast both ways — `speed`/`backSpeed` are a
-                fraction of the name's, or a hundred and fifty-odd characters
-                either takes several seconds to arrive or is still typing
-                itself out after `EXIT_MS` has already unmounted it. */}
-            <p className="mech-profile">
-              <Typed text={PROFILE} run="cluster-intro" delay={0.6} speed={9} caret={false} back={covered} backSpeed={4} />
-            </p>
-          </section>
+              Narrow moves it out from here entirely — below the counts
+              rather than above the graph, so `!narrow` gates it and the
+              other copy of the same markup renders after `.mech-flank`
+              instead. */}
+          {!narrow && introSection}
           </Tach>
+          {narrow && identity}
         </div>
 
         {/* ---- the rail ----

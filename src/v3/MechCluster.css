@@ -297,6 +297,7 @@
    it rather than being wound up to carry the whole change. The padding above is
    what drops it clear of the warning pair. */
 .mech-ident {
+  position: relative;
   flex: none;
   width: calc(1060 * var(--px));
   max-width: 100%;
@@ -1325,13 +1326,61 @@
   gap: calc(8 * var(--px));
 }
 
+/* Still a fixed box down here, not `height: auto` — the paragraph types
+   itself in the same as it does on the wide layout, and an `auto` height
+   grows with every character, pushing the graph underneath it down for the
+   length of the type-in. Measured off the built page at the narrow font
+   size below, with a few units of slack rather than trimmed exact. */
 .mech[data-narrow='true'] .mech-intro {
+  order: 2;
   width: 100%;
-  height: auto;
+  height: calc(96 * var(--px));
+  margin-bottom: calc(20 * var(--px));
+}
+
+/* Inset with the cluster's own gutter, like everything else down here —
+   `--name-len` and its own cqw-fitted font-size (see `.mech-ident-name`
+   above) fill whatever width the container hands them, so this is just a
+   size knob, not a layout one. It used to bleed past the gutter to buy the
+   name a little extra width; that read as the one thing on the page running
+   edge to edge, so it gave the width back. */
+.mech[data-narrow='true'] .mech-ident {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: calc(26 * var(--px)) calc(10 * var(--px)) calc(14 * var(--px));
+}
+
+/* The wide formula's `1.15` is an average advance for Audiowide, not this
+   name's real one — off by an amount that moved with the browser doing the
+   measuring (Mobile Safari's own metrics for a self-hosted display face are
+   not Chrome's), so a second guessed constant here just traded one mismatch
+   for another. `--name-fit` is the real fix: a measured shrink-only ratio,
+   set by `useNameFit` in MechCluster.tsx, off an off-screen copy of the same
+   text at the same font-size. This constant only has to run deliberately a
+   little large — the ratio is what makes it exact, on whatever the device
+   in front of it actually renders. */
+.mech[data-narrow='true'] .mech-ident-name {
+  font-size: calc(var(--cluster-name, 1) * 100cqw / (var(--name-len, 12) * 0.85));
+  transform: scale(var(--name-fit, 1));
+  transform-origin: center;
+}
+
+.mech-ident-probe {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+  top: 0;
+  left: 0;
 }
 
 .mech[data-narrow='true'] .mech-tach {
   width: 100%;
+}
+
+.mech[data-narrow='true'] .mech-profile {
+  font-size: calc(13 * var(--type));
+  line-height: 1.5;
 }
 
 .mech[data-narrow='true'] .mech-flank {
@@ -1345,7 +1394,7 @@
 }
 
 .mech[data-narrow='true'] .mech-work-rail {
-  order: 2;
+  order: 3;
   width: 100%;
   height: auto;
   align-self: auto;

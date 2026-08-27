@@ -178,7 +178,17 @@ const start: ProductTuning = { ...PRODUCT_DEFAULTS, ...saved.studio }
 /** Current values, kept fresh by the hook — the copy button reads these
  *  rather than closing over state that would be a render behind. Same
  *  arrangement as `modelTuning.ts`'s `live`. */
-const live = { studio: { ...start }, pieces: { ...PIECE_DEFAULTS, ...saved.pieces }, id: '' }
+/* Each piece filled from `PIECE_FALLBACK` first so a scratchpad saved before a
+   field existed cannot hand `MechProduct` an `undefined` size or turn — see
+   the matching note in `modelTuning.ts`. */
+const savedPieces: Record<string, Partial<PieceTuning>> = saved.pieces ?? {}
+const mergedPieces = Object.fromEntries(
+  [...new Set([...Object.keys(PIECE_DEFAULTS), ...Object.keys(savedPieces)])].map((id) => [
+    id,
+    { ...PIECE_FALLBACK, ...PIECE_DEFAULTS[id], ...savedPieces[id] }
+  ])
+)
+const live = { studio: { ...start }, pieces: mergedPieces, id: '' }
 
 const keys = Object.keys(PRODUCT_DEFAULTS) as Array<keyof ProductTuning>
 const PIECE_KEYS = Object.keys(PIECE_FALLBACK) as Array<keyof PieceTuning>

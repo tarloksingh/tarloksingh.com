@@ -183,7 +183,20 @@ const savedRigs = ((): Record<string, ModelTuning> => {
  *  the copy button reads these rather than closing over state a render
  *  behind. */
 const live: ModelTuning = { ...start }
-const rigs: Record<string, ModelTuning> = { ...MODEL_RIGS, ...savedRigs }
+/* Every key filled from `MODEL_DEFAULTS` first, then the shipped rig, then
+   whatever was last saved. A saved rig from before a field existed — `Place`
+   was added to the schema after these scratchpads were first written — is a
+   partial object, and a shallow `{ ...MODEL_RIGS, ...savedRigs }` let it
+   replace a complete rig with one missing `turn`/`tilt`/`liftY`. Those reach
+   `MechModel` as `undefined`, `degToRad(undefined)` is `NaN`, and a group at
+   a NaN rotation takes the whole subject off screen — an invisible model that
+   reads as the canvas being broken. */
+const rigs: Record<string, ModelTuning> = Object.fromEntries(
+  [...new Set([...Object.keys(MODEL_RIGS), ...Object.keys(savedRigs)])].map((id) => [
+    id,
+    { ...MODEL_DEFAULTS, ...MODEL_RIGS[id], ...savedRigs[id] }
+  ])
+)
 /** Whose rig `live` currently holds. */
 let owner = 'mr-takahashi'
 
