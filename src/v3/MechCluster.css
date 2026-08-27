@@ -796,6 +796,20 @@
 .mech-work-rail-head {
   flex: none;
   margin-bottom: calc(8 * var(--px));
+  /* Its own layer, above the scrolled band. The bank's canvas is
+     `position: fixed` and feathered to the list's rect (see `.mech-bank-gl`),
+     but a subject scrolled right to the top of the list still arrives at the
+     head's baseline — so the head sits over it, on a short wash of the panel
+     colour that a picture passes under and out of rather than butting into. */
+  position: relative;
+  z-index: 2;
+  background: linear-gradient(
+    to bottom,
+    #050806 0,
+    #050806 60%,
+    rgba(5, 8, 6, 0) 100%
+  );
+  padding-bottom: calc(6 * var(--px));
 }
 
 /* Scrolls on its own — twelve rows at a size worth pressing do not all fit a
@@ -811,6 +825,26 @@
   overflow-x: hidden;
   scrollbar-width: thin;
   scrollbar-color: rgba(var(--accent-rgb), 0.3) transparent;
+  /* Feather the scroll edges: a slot half past the top or bottom of the rail
+     fades out — border, veil and label with it — rather than being sliced on
+     a hard line. `--bay-fade` is the same Cluster-tab knob the bays' own
+     edges use, so the two treatments stay in step. The bank's canvas carries
+     a matching mask of its own (in viewport units) for the subjects — see
+     `.mech-bank-gl`. */
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 calc(var(--bay-fade, 30) * var(--px)),
+    #000 calc(100% - var(--bay-fade, 30) * var(--px)),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 calc(var(--bay-fade, 30) * var(--px)),
+    #000 calc(100% - var(--bay-fade, 30) * var(--px)),
+    transparent 100%
+  );
 }
 
 /* ---- the bank ----
@@ -883,6 +917,24 @@
      properties from its DOM ancestors, inheritance being a tree concept and
      not a layout one. */
   clip-path: inset(var(--rail-clip-top, 0px) 0 var(--rail-clip-bottom, 0px) 0);
+  /* And a soft edge on that band, top and bottom, in the same viewport
+     coordinates: a subject scrolled half past the top or bottom of the rail
+     fades out over `--bay-fade` units rather than ending on the clip line.
+     The `clip-path` above stays as a hard backstop outside the feather. */
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent var(--rail-clip-top, 0px),
+    #000 calc(var(--rail-clip-top, 0px) + var(--bay-fade, 30) * var(--px)),
+    #000 calc(100% - var(--rail-clip-bottom, 0px) - var(--bay-fade, 30) * var(--px)),
+    transparent calc(100% - var(--rail-clip-bottom, 0px))
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent var(--rail-clip-top, 0px),
+    #000 calc(var(--rail-clip-top, 0px) + var(--bay-fade, 30) * var(--px)),
+    #000 calc(100% - var(--rail-clip-bottom, 0px) - var(--bay-fade, 30) * var(--px)),
+    transparent calc(100% - var(--rail-clip-bottom, 0px))
+  );
 }
 
 /* The scan lines and the accent, over the bays and nothing else.
