@@ -1152,6 +1152,14 @@
     opacity: 0;
     transform: translateY(calc(14 * var(--px)));
   }
+  /* An explicit rest state. With only a `from`, `animation-fill-mode: both`
+     holds the *entrance* offset forever in Chrome rather than settling to the
+     base style — which left everything on `mech-cluster-in` (the name, the
+     tachometer, the intro) sitting ~14 units low. */
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes mech-cluster-out {
@@ -1221,7 +1229,10 @@
   animation: mech-cluster-in 620ms 300ms var(--ease) both;
 }
 
-.mech-cluster[data-covered='false'] .mech-intro,
+/* Not `.mech-intro` — on the wide layout it rides inside `.mech-tach`'s own
+   entrance, and animating it a second time stacked its offset on the tach's
+   for a doubled drop. It keeps its own `transform` (the `--intro-y` nudge)
+   free this way too. */
 .mech-cluster[data-covered='false'] .mech-tach {
   animation: mech-cluster-in 620ms 420ms var(--ease) both;
 }
@@ -1261,7 +1272,6 @@
   animation: mech-cluster-unfade 200ms 30ms linear both;
 }
 
-.mech-cluster[data-covered='true'] .mech-intro,
 .mech-cluster[data-covered='true'] .mech-tach {
   animation: mech-cluster-out 200ms 70ms var(--ease) both;
 }
@@ -1357,6 +1367,16 @@
 
 .mech[data-narrow='true'] .mech-intro-cap {
   width: 100%;
+}
+
+/* Narrow drops the intro out of `.mech-tach` into its own place after the
+   counts, so it has to carry the boot entrance itself down here. */
+.mech[data-narrow='true'] .mech-cluster[data-covered='false'] .mech-intro {
+  animation: mech-cluster-in 620ms 420ms var(--ease) both;
+}
+
+.mech[data-narrow='true'] .mech-cluster[data-covered='true'] .mech-intro {
+  animation: mech-cluster-out 200ms 70ms var(--ease) both;
 }
 
 /* Inset with the cluster's own gutter, like everything else down here —
