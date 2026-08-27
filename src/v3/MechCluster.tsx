@@ -1014,6 +1014,9 @@ export default function MechCluster({ onProject, covered, tuning }: Props) {
         ['--cluster-slot' as string]: tuning.slot,
         ['--cluster-tach' as string]: tuning.tach,
         ['--intro-y' as string]: tuning.introY,
+        ['--bay-fade' as string]: tuning.bayFade,
+        ['--bay-blur' as string]: tuning.bayBlur,
+        ['--head-gap' as string]: tuning.headGap,
         ['--profile-size' as string]: tuning.profileSize,
         ['--profile-ink' as string]: tuning.profileInk
       }}

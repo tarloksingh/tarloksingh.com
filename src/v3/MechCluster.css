@@ -927,8 +927,8 @@
       to bottom,
       #050806 0,
       #050806 calc(3 * var(--px)),
-      rgba(5, 8, 6, 0) calc(34 * var(--px)),
-      rgba(5, 8, 6, 0) calc(100% - 34 * var(--px)),
+      rgba(5, 8, 6, 0) calc((var(--bay-fade, 30) + 4) * var(--px)),
+      rgba(5, 8, 6, 0) calc(100% - (var(--bay-fade, 30) + 4) * var(--px)),
       #050806 calc(100% - 3 * var(--px)),
       #050806 100%
     ),
@@ -951,20 +951,20 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  backdrop-filter: blur(calc(3 * var(--px)));
-  -webkit-backdrop-filter: blur(calc(3 * var(--px)));
+  backdrop-filter: blur(calc(var(--bay-blur, 3) * var(--px)));
+  -webkit-backdrop-filter: blur(calc(var(--bay-blur, 3) * var(--px)));
   -webkit-mask-image: linear-gradient(
     to bottom,
     #000 0,
-    transparent calc(30 * var(--px)),
-    transparent calc(100% - 30 * var(--px)),
+    transparent calc(var(--bay-fade, 30) * var(--px)),
+    transparent calc(100% - var(--bay-fade, 30) * var(--px)),
     #000 100%
   );
   mask-image: linear-gradient(
     to bottom,
     #000 0,
-    transparent calc(30 * var(--px)),
-    transparent calc(100% - 30 * var(--px)),
+    transparent calc(var(--bay-fade, 30) * var(--px)),
+    transparent calc(100% - var(--bay-fade, 30) * var(--px)),
     #000 100%
   );
 }
@@ -1493,7 +1493,7 @@
    the bank, and the bay's top edge (and the reticle brackets that acquire it)
    was riding up into the name. */
 .mech[data-narrow='true'] .mech-work-rail-head {
-  margin-bottom: calc(18 * var(--px));
+  margin-bottom: calc(var(--head-gap, 18) * var(--px));
 }
 
 /* No inner scroll on a phone — the page itself scrolls, and a scroll region

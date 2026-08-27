@@ -51,6 +51,18 @@ export interface ClusterTuning {
    *  its colour that is a matter of taste — 0.62 sits it behind the readings,
    *  1 brings it level with them. */
   profileInk: number
+  /** How deep the soft edge on each bay runs, in frame units — the strip at
+   *  the top and bottom of a slot where the subject fades and blurs into the
+   *  panel instead of ending on the border. 0 is a hard cut. */
+  bayFade: number
+  /** The blur radius on that same edge strip, in frame units. Pairs with
+   *  `bayFade`: the fade is the colour ramp, this is the softening of the
+   *  picture under it. */
+  bayBlur: number
+  /** Frame units of clear air under the rail's selection name on the narrow
+   *  layout, so the bay's top edge and the reticle's lock brackets do not
+   *  ride up into it. Wide keeps its own fixed gap. */
+  headGap: number
 }
 
 export const CLUSTER_DEFAULTS: ClusterTuning = {
@@ -61,7 +73,10 @@ export const CLUSTER_DEFAULTS: ClusterTuning = {
   tach: 1020,
   introY: 0,
   profileSize: 11,
-  profileInk: 0.58
+  profileInk: 0.58,
+  bayFade: 30,
+  bayBlur: 3,
+  headGap: 18
 }
 
 const STORE_KEY = 'v3.cluster.tuning.v1'
@@ -99,6 +114,9 @@ export function useClusterTuning() {
       introY: { value: start.introY, min: -40, max: 120, step: 1, label: 'Intro drop' },
       profileSize: { value: start.profileSize, min: 8, max: 18, step: 0.5, label: 'Intro size' },
       profileInk: { value: start.profileInk, min: 0.2, max: 1, step: 0.01, label: 'Intro ink' },
+      bayFade: { value: start.bayFade, min: 0, max: 80, step: 1, label: 'Bay edge fade' },
+      bayBlur: { value: start.bayBlur, min: 0, max: 12, step: 0.5, label: 'Bay edge blur' },
+      headGap: { value: start.headGap, min: 0, max: 60, step: 1, label: 'Rail head gap' },
       'Copy for source': button(() => {
         const text = asSource(live)
         void copyText(text)
