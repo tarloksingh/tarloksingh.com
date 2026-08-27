@@ -2231,20 +2231,65 @@ nothing about where it goes falls into a fan of three slots — upper right, mid
 left, lower left — traced off the Figma as *fractions of the subject's box*, so
 they reshape to whatever is on screen; a note that names its own two points is
 drawn to them instead, which is what **Pinning the leaders** below is about. A
-gutter either side keeps the text clear of the project copy and the rail when a
-wide still pushes the elbows outward.
+gutter either side keeps the card clear of the project copy and the rail when a
+wide still pushes the seats outward.
 
-Text is a table keyed by media id (`mr-takahashi/hero.mp4`), two words a line;
-anything unwritten gets a derived placeholder that reads like one. A note names
+**A note is a card, and the card holds a sentence.** It used to be SVG text —
+a key in accent set over a value in white, on a horizontal rule the leader
+elbowed into. Two words was the ceiling and it was a hard one: SVG text does
+not wrap, and there was nothing for it to wrap *inside*. So the label is a
+rounded box with an accent border and a translucent accent fill, the leader is
+one straight run into the corner of it, and the elbow is gone with the rule it
+was carrying.
+
+Which corner is the whole trick. The line lands on the corner *facing* the
+subject and the card grows away from there — up and left of a tip on its lower
+right, and round. That corner is one we placed, so the geometry stays a pure
+function of two points: nothing has to wait for a layout pass to find out where
+the line ends. The card's own size is left to its text inside a `max-width`.
+
+The box itself is HTML in a `foreignObject`, and two things about that element
+are worth knowing before touching it. It **clips to its own rectangle**, so it
+is drawn `CARD.glow` larger than the card on every side and `.mech-leader-seat`
+pads the slack back — without that the halo is sliced off square, and a card
+taller than the reserve is cut off mid-sentence with its border still drawn
+round what is left, which reads as a wrapping bug and is not one. `CARD.h` is
+that reserve, and it is deliberately more than double what any card needs: type
+sits on a rem floor, so on a *small* window a card is half again as tall in
+frame units as it is at the cap. Reserving it costs nothing — the seat takes no
+pointer and the card is pinned to a corner of it. And everything authored
+inside is in plain `px`, which in the leaders' `viewBox` are **user units**:
+one unit is one `--px`, so the border, the corner radius and the padding all
+scale with the frame with nothing overridden. Type is the exception and takes
+`--type-k`, like the SVG text did.
+
+Three guards keep a card somewhere sensible, and all three exist because a card
+takes up room a line of type did not. It is never laid **over its own tip** —
+on a phone stage there is no room beside the subject, the horizontal flip
+pushes the card back across the middle, and it lands on the thing it is
+pointing at; it is dropped clear vertically instead, which is the move that
+always has somewhere to go on a stage taller than it is wide. Its assumed
+extent is kept inside a **top and bottom edge** that on the wide layout clear
+the header and the music deck above and the compass and footer below — a
+two-word label cleared those by being small. And its **width is whatever is
+left** between its corner and the gutter it is growing towards, capped at
+`CARD.w` and, narrow, at a share of the stage.
+
+Text is a table keyed by media id (`mr-takahashi/hero.mp4`); anything unwritten
+gets a derived placeholder that reads like one. `Note.label` is the handle and
+never appears on screen — it is what the fold link, the React key and the pin
+editor's list are keyed on. `Note.value` is what the card says. A note names
 the fold it is evidence for, and hovering either lights the pair — additively,
 because dimming the rest of the readout made hovering anything read as the
-labels going out.
+labels going out. Lit is the border coming up and the halo widening, never the
+sentence changing colour: turning the one white thing on the card accent makes
+it read as disabled the rest of the time.
 
 Every leader ends in a **mark on the spot**: a ring, a dot inside it, and a
 slow ping that opens out of it and goes. A line arriving at a picture says
 there is something there; the ring says *which* thing, which is the entire job
-of a leader and the one part a bare polyline could never do. Hovering the
-label or its fold lights the mark along with everything else in the pair.
+of a leader and the one part a bare line could never do. Hovering the card or
+its fold lights the mark along with everything else in the pair.
 
 Over the model they ride its float, read from what the float actually did this
 frame rather than an animation timed to look like it. Two clocks that agree at
@@ -2277,6 +2322,13 @@ picture is the same contain-fit the browser is doing. And the gutter that
 keeps a label clear of the left column and the rail is pointless when there is
 neither — narrow it opens to nearly the full width.
 
+The cards made it tighter again, because a sentence needs width and a phone
+stage is a third of the frame's. Two things give: `leaders.ts` caps a card at
+a share of the stage rather than at `CARD.w`, and the stylesheet sets it a size
+down. What is left is the reason the *never over its own tip* guard exists at
+all — there is no room beside the subject there, so a card that cannot go
+sideways is dropped clear vertically instead.
+
 One more: `drift` is published in the frame's own 1920×1080 coordinates,
 because that is the space the wide layout draws in. A narrow canvas is a
 different number of units tall for the same amount of world, so the bob the
@@ -2288,9 +2340,14 @@ the head does.
 Three arms off a fixed fan is a composition, not a readout: the line that says
 "3D model" has to touch the model, and on the next picture the thing worth
 naming is somewhere else entirely. So a note can carry its own two points —
-`at`, where the line touches, and `to`, where the text sits — both as
-**fractions of the subject's box**, which is what makes them hold on a 4K
+`at`, where the line touches, and `to`, **the corner the line runs into**, both
+as fractions of the subject's box, which is what makes them hold on a 4K
 display and on a portrait still that lands somewhere the model never does.
+
+`to` used to be where the text was set from, out at the far end of the run.
+Now that the label is a card growing away from its own corner, that is the
+corner, and the pin editor's grip moved onto the same spot — drag it and you
+are dragging where the leader lands, not where the sentence starts.
 
 Neither is required. A note with no geometry falls into the next free slot of
 the fan, and a fourth starts the fan again a line lower, so a picture with one
@@ -2305,8 +2362,10 @@ Placing is not typing. Press **P** on a project screen in development:
 - **drag the dot** to move where it points, **drag the label** to move where it
   reads — the first drag of either pins both, since a half-pinned note would
   leave its other end in a slot it no longer shares
-- the three fields are the label, the value, and the fold in the left column
-  the line is evidence for (hovering either lights the other)
+- the three fields are the handle, the sentence the card says, and the fold in
+  the left column the line is evidence for (hovering either lights the other).
+  Three sizes, not three equal boxes: the sentence is what the card is built
+  around and it gets the room
 - **copying and reverting are on the Labels panel**, not on the overlay — see
   below
 

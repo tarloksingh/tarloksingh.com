@@ -61,7 +61,7 @@ export default function MechPins({ frame, notes, onClose }: Props) {
     const laidOut = laid[index]
     const seat: Pick<Note, 'at' | 'to'> = {
       at: notes[index].at ?? [(laidOut.tip[0] - box.x) / box.w, (laidOut.tip[1] - box.y) / box.h],
-      to: notes[index].to ?? [(laidOut.end - box.x) / box.w, (laidOut.elbow[1] - box.y) / box.h]
+      to: notes[index].to ?? [(laidOut.anchor[0] - box.x) / box.w, (laidOut.anchor[1] - box.y) / box.h]
     }
 
     dragging.current = true
@@ -131,7 +131,10 @@ export default function MechPins({ frame, notes, onClose }: Props) {
 
       {laid.map((leader, i) => {
         const tip = notes[i].at ? pointIn(box, notes[i].at) : leader.tip
-        const text = notes[i].to ? pointIn(box, notes[i].to) : [leader.end, leader.elbow[1]]
+        // `to` is the corner the leader runs into, which is the corner the
+        // card grows away from — so the grip belongs on the same spot rather
+        // than out at the far end the text used to be set from.
+        const text = notes[i].to ? pointIn(box, notes[i].to) : leader.anchor
         return (
           <div key={i} className="mech-pin-note" data-live={live === i} data-loose={!notes[i].at}>
             <button
@@ -143,17 +146,23 @@ export default function MechPins({ frame, notes, onClose }: Props) {
             />
             <div className="mech-pin-chip" style={place(text[0], text[1])} onPointerDown={(e) => e.stopPropagation()}>
               <span className="mech-pin-grip" onPointerDown={grab(i, 'to')} title="Drag the label" />
+              {/* The handle, which never appears on the readout — see `Note`
+                  in notes.ts. Narrow on purpose: the room in this chip belongs
+                  to the sentence next to it. */}
               <input
+                className="mech-pin-name"
                 value={notes[i].label}
                 spellCheck={false}
                 onChange={(event) => edit(i, { label: event.target.value })}
-                aria-label="Label"
+                aria-label="Name for this line"
               />
               <input
+                className="mech-pin-say"
                 value={notes[i].value}
                 spellCheck={false}
+                placeholder="what the card says"
                 onChange={(event) => edit(i, { value: event.target.value })}
-                aria-label="Value"
+                aria-label="What the card says"
               />
               <input
                 className="mech-pin-fold"

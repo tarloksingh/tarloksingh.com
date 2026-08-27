@@ -681,12 +681,21 @@
   animation: mech-out 320ms var(--ease) calc(170ms + var(--d-out, 0ms)) both;
 }
 
-.mech-stage[data-covered='true'] .mech-leader-value {
-  animation: mech-out 300ms var(--ease) calc(210ms + var(--d-out, 0ms)) both;
+/* The card shuts back into the corner it opened from — its own keyframes, not
+   `mech-card` reversed, for the reason written out at length below. */
+.mech-stage[data-covered='true'] .mech-leader-card {
+  animation: mech-uncard 280ms var(--ease) calc(200ms + var(--d-out, 0ms)) both;
 }
 
-.mech-stage[data-covered='true'] .mech-leader-label {
-  animation: mech-out 300ms var(--ease) calc(260ms + var(--d-out, 0ms)) both;
+@keyframes mech-uncard {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.82);
+  }
 }
 
 .mech-stage[data-covered='true'] .mech-leader {
@@ -990,10 +999,18 @@
   overflow: visible;
 }
 
-/* The labels are the only part that takes the pointer. The lines are a
-   hairline and nobody is going to hit one on purpose. */
-.mech-leaders text {
+/* The cards are the only part that takes the pointer. The lines are a
+   hairline and nobody is going to hit one on purpose — and the `foreignObject`
+   around a card is a rectangle a third larger than the card on every side, so
+   the slack it leaves for the halo must not be hoverable either. */
+.mech-leaders text,
+.mech-leader-card {
   pointer-events: auto;
+}
+
+.mech-leader-note,
+.mech-leader-seat {
+  pointer-events: none;
 }
 
 /* The link is additive only. Dimming the rest of the readout made hovering
@@ -1010,12 +1027,15 @@
   filter: drop-shadow(0 0 6px rgba(var(--accent-rgb), 0.9));
 }
 
-.mech-leaders g[data-on='true'] .mech-leader-value {
-  fill: var(--accent);
-}
-
-.mech-leaders g[data-on='true'] .mech-leader-label {
-  filter: drop-shadow(0 0 9px rgba(var(--accent-rgb), 0.95));
+/* Lit is the border coming up and the halo widening, never the words changing
+   colour: the sentence in there is the one white thing on the card and turning
+   it accent makes the card read as disabled the rest of the time. */
+.mech-leaders g[data-on='true'] .mech-leader-card {
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.12);
+  box-shadow:
+    0 0 calc(34px) rgba(var(--accent-rgb), 0.4),
+    inset 0 0 calc(30px) rgba(var(--accent-rgb), 0.14);
 }
 
 /* ---- the mark on the spot ----
@@ -1112,12 +1132,119 @@
   animation: mech-draw 850ms cubic-bezier(0.3, 0.8, 0.3, 1) var(--d) both;
 }
 
+/* ---- the card at the end of the line ----
+
+   A sentence, in a box, with the leader running into the corner of it. What
+   was here before was SVG text — a key in accent over a value in white, on a
+   rule — and SVG text does not wrap, so the label could hold two words and
+   never a clause. This is HTML inside a `foreignObject` for that one reason.
+
+   Everything in here is authored in plain `px`, which inside the leaders'
+   `viewBox` are *user units*: one unit is one `--px`, the same as every
+   coordinate in `leaders.ts` and every radius above. So the border, the
+   corner and the padding all scale with the frame with nothing overridden.
+   Type is the exception and takes `--type-k` like the SVG text did, because
+   type is on its own unit everywhere on this site — see `useTypeScale`.
+
+   `.mech-leader-seat` is the slack. `foreignObject` clips to its own
+   rectangle, and this card has a halo well outside its border, so the element
+   is drawn `CARD.glow` larger on every side and the seat pads that back and
+   pushes the card into whichever corner the line is arriving at. Which corner
+   is `data-x`/`data-y`, and it is also the corner the card opens from.
+
+   Nothing here is a `--px` calc: inside the viewBox that would be a unit
+   inside a unit. */
+.mech-leader-seat {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  padding: 34px;
+}
+
+.mech-leader-seat[data-x='left'] {
+  justify-content: flex-start;
+}
+
+/* The same corner twice: the one the card is pushed into, and the one it
+   opens from. */
+.mech-leader-seat[data-x='right'] {
+  justify-content: flex-end;
+  --card-x: right;
+}
+
+.mech-leader-seat[data-y='top'] {
+  align-items: flex-start;
+}
+
+.mech-leader-seat[data-y='bottom'] {
+  align-items: flex-end;
+  --card-y: bottom;
+}
+
+.mech-leader-card {
+  margin: 0;
+  width: max-content;
+  max-width: 100%;
+  padding: 13px 17px 15px;
+  border: 1.3px solid rgba(var(--accent-rgb), 0.9);
+  border-radius: 15px;
+  /* Barely a fill. The card sits over the subject as often as not, and a box
+     opaque enough to read against the grid is a box you cannot see the face
+     through. */
+  background: rgba(var(--accent-rgb), 0.07);
+  box-shadow:
+    0 0 26px rgba(var(--accent-rgb), 0.22),
+    inset 0 0 24px rgba(var(--accent-rgb), 0.08);
+  color: #fff;
+  font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-weight: 400;
+  font-size: calc(15.5px * var(--type-k, 1));
+  line-height: 1.32;
+  /* Ragged right, and never a hyphen: this is a caption pointing at a thing,
+     and justified type in a box that narrow opens rivers in two lines. */
+  text-wrap: pretty;
+  transition: border-color 200ms linear, background 200ms linear, box-shadow 200ms linear;
+}
+
+/* A phone stage is about a third of the frame's width and holds the same
+   sentences. At the size above, three of them are the screen. `leaders.ts`
+   already caps how wide a card may be set there; this is the other half of
+   it. */
+.mech-leaders[data-narrow='true'] .mech-leader-card {
+  padding: 10px 13px 12px;
+  border-radius: 12px;
+  font-size: calc(13.5px * var(--type-k, 1));
+}
+
+/* Opened from the corner the line arrives at, so it reads as the leader
+   pushing it out rather than as a box fading up beside one. `--d` is this
+   leader's place in the cascade; the line is drawn on first and the card is
+   let out over the last of it. */
+.mech-leader-card {
+  opacity: 0;
+  transform-origin: var(--card-x, left) var(--card-y, top);
+  animation: mech-card 380ms var(--ease) calc(var(--d) + 430ms) both;
+}
+
+@keyframes mech-card {
+  from {
+    opacity: 0;
+    transform: scale(0.82);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 .mech-leader-label,
 .mech-leader-value {
   opacity: 0;
   animation: mech-fade 520ms ease both;
 }
 
+/* Still drawn by the cast's own pin editor, which is unmounted but intact —
+   see `MechCastPins.tsx`. A project screen's leaders are cards now. */
 .mech-leader-label {
   animation-delay: calc(var(--d) + 420ms);
 }
@@ -2202,6 +2329,18 @@
   border-color: var(--accent);
 }
 
+/* Three fields of three sizes, because they hold three different amounts. The
+   sentence is the one the card is built around and it gets the room; the
+   handle and the fold are a word each. A chip with three equal boxes in it
+   made the sentence the hardest of the three to write, which is backwards. */
+.mech-pin-chip .mech-pin-name {
+  width: 72px;
+}
+
+.mech-pin-chip .mech-pin-say {
+  width: 300px;
+}
+
 .mech-pin-chip .mech-pin-fold {
   width: 58px;
   color: var(--mid);
@@ -2856,6 +2995,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .mech-leader,
+  .mech-leader-card,
   .mech-leader-label,
   .mech-leader-value,
   .mech-side,

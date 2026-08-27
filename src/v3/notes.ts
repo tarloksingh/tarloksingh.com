@@ -17,7 +17,16 @@ import type { Entry, Frame } from './model'
    Nothing here is written by hand if it can be helped — press **P** on a
    project screen and pin them by clicking the picture. See `MechPins.tsx`. */
 
-/** One line of a readout: what is being pointed at, and what it is. */
+/** One line of a readout: what is being pointed at, and what it is.
+ *
+ *  `label` names the note and never appears on screen. It is what the fold
+ *  link and the React key are keyed on, and what the pin editor lists a line
+ *  by — a handle, in other words, and short is the whole point of it.
+ *
+ *  `value` is what the card actually says, and since the card is a box that
+ *  wraps it can be a sentence. It used to be one word set under the label on a
+ *  rule, which is why the pairs below read as a table and the new ones do
+ *  not. */
 export interface Note {
   label: string
   value: string
@@ -36,23 +45,29 @@ export interface Note {
 
 export const NOTES: Record<string, Note[]> = {
   'mr-takahashi/model': [
-    { label: 'Name', value: 'mr.takahashi', at: [0.94, 0.08], to: [1.3442, -0.0118] },
-    { label: 'Tool', value: 'blender', fold: 'design', at: [-0.0816, 0.3], to: [-0.3536, 0.2258] },
-    { label: 'Animation', value: 'blender', fold: 'design', at: [0.0495, 0.8777], to: [-0.3603, 0.9205] }
+    { label: 'Name', value: 'Mr. Takahashi, who teaches Japanese and never runs out of patience.', at: [0.94, 0.08], to: [1.2242, 0.0482] },
+    { label: 'Tool', value: 'Sculpted and shaded in Blender.', fold: 'design', at: [-0.0816, 0.3], to: [-0.1, 0.2458] },
+    { label: 'Animation', value: 'Designed and animated in Blender.', fold: 'design', at: [0.0495, 0.8777], to: [-0.03, 0.9605] }
   ],
   'mr-takahashi/hero.mp4': [
-    { label: 'made in', value: 'blender', fold: 'tools' }
+    { label: 'made in', value: 'Made in Blender.', fold: 'tools' }
   ]
 }
 
 /** What a frame with nothing written for it says: the one thing that is true
- *  of every frame, and the tool it was made in if the project names one. */
+ *  of every frame, and the tool it was made in if the project names one. A
+ *  placeholder, and it should read like one — the card is built for a sentence
+ *  and nothing derived is going to be much of one. */
 export const derive = (entry: Entry, frame: Frame): Note[] => {
   const tools = entry.project.sections.find((section) => section.id === 'tools')?.tags ?? []
   const kind = frame.kind === 'flat' ? (frame.type === 'video' ? 'clip' : 'still') : frame.kind
+  const of = frame.label ?? entry.project.title
   return [
-    { label: kind, value: (frame.label ?? entry.project.title).toLowerCase() },
-    ...(tools.length > 0 ? [{ label: 'made in', value: tools[0].toLowerCase(), fold: 'tools' }] : [])
+    // A colon rather than a dash: half the frames on this site are named with
+    // a dash already, and "Piece — StitchFam — the loop" is not a sentence in
+    // any language.
+    { label: kind, value: `${kind[0].toUpperCase()}${kind.slice(1)}: ${of}.` },
+    ...(tools.length > 0 ? [{ label: 'made in', value: `Made in ${tools[0]}.`, fold: 'tools' }] : [])
   ]
 }
 
@@ -104,10 +119,15 @@ const changed = () => {
 
 const round = (n: number) => Number(n.toFixed(4))
 
+/** A card holds a sentence now, and sentences have apostrophes in them —
+ *  which, pasted straight into a single-quoted literal, is a syntax error in
+ *  the file this hands back. */
+const quoted = (text: string) => `'${text.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`
+
 const asSource = (id: string, notes: Note[]) => {
   const line = (note: Note) => {
-    const parts = [`label: '${note.label}'`, `value: '${note.value}'`]
-    if (note.fold) parts.push(`fold: '${note.fold}'`)
+    const parts = [`label: ${quoted(note.label)}`, `value: ${quoted(note.value)}`]
+    if (note.fold) parts.push(`fold: ${quoted(note.fold)}`)
     if (note.at) parts.push(`at: [${round(note.at[0])}, ${round(note.at[1])}]`)
     if (note.to) parts.push(`to: [${round(note.to[0])}, ${round(note.to[1])}]`)
     return `    { ${parts.join(', ')} }`
@@ -169,5 +189,8 @@ export const notesFor = (entry: Entry, frame: Frame, drafts: Draft = draft): Not
  *  picture to click on. */
 export const addNote = (id: string, at: [number, number], from: Note[]) => {
   const side = at[0] > 0.5 ? 1 : -1
-  pins.set(id, [...from, { label: 'label', value: 'value', at, to: [at[0] + side * 0.42, at[1] - 0.1] }])
+  pins.set(id, [
+    ...from,
+    { label: 'label', value: 'Say what this is, in a sentence.', at, to: [at[0] + side * 0.3, at[1] - 0.1] }
+  ])
 }

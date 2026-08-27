@@ -22,7 +22,7 @@ import { drift, flinch, quarry } from './subject'
 import { findProject, thumbOf, type Entry, type Frame } from './model'
 import { focus, notesFor, pins, type Note } from './notes'
 import { useLabelTuning, type Handed } from './labelTuning'
-import { boxOf, FRAME_SPACE, leadersFor, mediaBox, type Space } from './leaders'
+import { boxOf, CARD, FRAME_SPACE, leadersFor, mediaBox, type Space } from './leaders'
 import './Mech.css'
 
 const MechModel = lazy(() => import('./MechModel'))
@@ -361,14 +361,14 @@ function Leaders({ notes, box, space, floats, lit, onLit }: LeadersProps) {
       viewBox={`0 0 ${space.w} ${space.h}`}
       preserveAspectRatio="none"
       data-lit={lit !== null}
+      /* The cards are set a size down on a phone stage, which is a third the
+         width and carries the same sentences. See `.mech-leader-card`. */
+      data-narrow={space.narrow}
       aria-hidden
     >
       <g ref={group}>
       {list.map((leader, i) => {
-        const y = leader.elbow[1]
-        const length =
-          Math.abs(leader.end - leader.elbow[0]) +
-          Math.hypot(leader.tip[0] - leader.elbow[0], leader.tip[1] - y)
+        const length = Math.hypot(leader.tip[0] - leader.anchor[0], leader.tip[1] - leader.anchor[1])
         /* This leader's place in each cascade, handed to the stylesheet as
            variables rather than spent here as `animation-delay`. An inline
            delay is a delay no rule can override, which is what kept the way
@@ -410,27 +410,40 @@ function Leaders({ notes, box, space, floats, lit, onLit }: LeadersProps) {
               cy={leader.tip[1]}
               r={1.9}
             />
-            <polyline
+            {/* One straight run now, from the tip to the corner of the card.
+                The elbow was there to carry a horizontal rule with two words
+                sitting on it; there is no rule left for it to be. */}
+            <line
               className="mech-leader"
-              points={`${leader.end},${y} ${leader.elbow[0]},${y} ${leader.tip[0]},${leader.tip[1]}`}
+              x1={leader.anchor[0]}
+              y1={leader.anchor[1]}
+              x2={leader.tip[0]}
+              y2={leader.tip[1]}
               style={{ ['--l' as string]: length }}
             />
-            <text
-              className="mech-leader-label"
-              x={leader.end}
-              y={y - 9}
-              textAnchor={leader.anchor}
+            {/* The card is HTML, because a sentence has to wrap and SVG text
+                does not. `foreignObject` clips to its own box, so it is drawn
+                `CARD.glow` larger than the card on every side and the seat
+                inside pads that slack back — otherwise the halo is sliced off
+                square, which reads as a rendering bug rather than a border.
+                The seat pushes the card into the corner the line arrives at,
+                so the card grows away from the subject without anything having
+                to measure how large it turned out. */}
+            <foreignObject
+              className="mech-leader-note"
+              x={(leader.sx === 1 ? leader.anchor[0] : leader.anchor[0] - leader.w) - CARD.glow}
+              y={(leader.sy === 1 ? leader.anchor[1] : leader.anchor[1] - CARD.h) - CARD.glow}
+              width={leader.w + CARD.glow * 2}
+              height={CARD.h + CARD.glow * 2}
             >
-              {leader.label}
-            </text>
-            <text
-              className="mech-leader-value"
-              x={leader.end}
-              y={y + 21}
-              textAnchor={leader.anchor}
-            >
-              {leader.value}
-            </text>
+              <div
+                className="mech-leader-seat"
+                data-x={leader.sx === 1 ? 'left' : 'right'}
+                data-y={leader.sy === 1 ? 'top' : 'bottom'}
+              >
+                <p className="mech-leader-card">{leader.value}</p>
+              </div>
+            </foreignObject>
           </g>
         )
       })}
