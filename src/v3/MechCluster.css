@@ -918,16 +918,18 @@
   align-self: center;
   /* Border-box on the slot means the bay starts one pixel in. */
   margin-left: 1px;
-  /* Two layers: a soft fade to the bay colour along the top and bottom edges
-     so the subject is not cut off by a hard line, then the scan lines over
-     the whole cell. The veil paints above the canvas, so this is what reaches
-     the picture. */
+  /* Two layers: a fade to the bay colour along the top and bottom edges so a
+     subject is not sliced off by a hard line — it dissolves into the panel
+     over the last strip instead — then the scan lines over the whole cell.
+     The veil paints above the canvas, so the fade reaches the picture. */
   background:
     linear-gradient(
       to bottom,
       #050806 0,
-      transparent calc(16 * var(--px)),
-      transparent calc(100% - 16 * var(--px)),
+      #050806 calc(3 * var(--px)),
+      rgba(5, 8, 6, 0) calc(34 * var(--px)),
+      rgba(5, 8, 6, 0) calc(100% - 34 * var(--px)),
+      #050806 calc(100% - 3 * var(--px)),
       #050806 100%
     ),
     repeating-linear-gradient(
@@ -937,6 +939,34 @@
       transparent 1px,
       transparent 3px
     );
+}
+
+/* The same two edges blurred over the canvas, feathered by a mask so it eases
+   in rather than starting on a line. `backdrop-filter` reaches the canvas
+   because the bank is an isolated stacking context — see `.mech-bank`. One
+   pseudo (`::after` is already the duotone): its mask is opaque at the top and
+   bottom strips and clear through the middle, so only the edges are touched. */
+.mech-bank-veil i::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  backdrop-filter: blur(calc(3 * var(--px)));
+  -webkit-backdrop-filter: blur(calc(3 * var(--px)));
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 0,
+    transparent calc(30 * var(--px)),
+    transparent calc(100% - 30 * var(--px)),
+    #000 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    #000 0,
+    transparent calc(30 * var(--px)),
+    transparent calc(100% - 30 * var(--px)),
+    #000 100%
+  );
 }
 
 /* The duotone. `color` takes the hue and saturation of this layer and the
@@ -1457,6 +1487,13 @@
      room and were spilling past the right edge without it. It also gives the
      head, the bank and the dial row one shared centre line. */
   padding: 0 calc(14 * var(--px));
+}
+
+/* Clear air under the selection name — narrow stacks the head straight onto
+   the bank, and the bay's top edge (and the reticle brackets that acquire it)
+   was riding up into the name. */
+.mech[data-narrow='true'] .mech-work-rail-head {
+  margin-bottom: calc(18 * var(--px));
 }
 
 /* No inner scroll on a phone — the page itself scrolls, and a scroll region
