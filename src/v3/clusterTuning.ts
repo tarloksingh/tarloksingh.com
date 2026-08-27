@@ -51,12 +51,12 @@ export interface ClusterTuning {
 
 export const CLUSTER_DEFAULTS: ClusterTuning = {
   y: 0,
-  name: 1.56,
-  glow: 1.75,
-  slot: 80,
-  tach: 1030,
+  name: 1.63,
+  glow: 2.57,
+  slot: 64,
+  tach: 1020,
   profileSize: 11,
-  profileInk: 0.62
+  profileInk: 0.73
 }
 
 const STORE_KEY = 'v3.cluster.tuning.v1'

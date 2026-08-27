@@ -385,7 +385,11 @@
 
 .mech-intro-cap {
   display: block;
-  width: calc(80 * var(--px));
+  /* Five cells at the role reel's own pitch — `.mech-display-role` is
+     `--count-w` wide over 21 cells (`ROLE_CELLS`), and `Segment` scales by
+     width, so matching cells-per-width is what makes INTRO print at exactly
+     the size of the titles it caps. */
+  width: calc(5 * var(--count-w) / 21);
 }
 
 /* Plain system text, not a paragraph in a box. The first pass bracketed it

@@ -987,7 +987,7 @@ export default function MechCluster({ onProject, covered, tuning }: Props) {
   const introSection = (
     <section className="mech-intro">
       <span className="mech-intro-cap">
-        <Segment text="INTRO" cells={5} settle={false} label="intro" />
+        <Segment text="INTRO" cells={5} settle={false} label="intro" warn />
       </span>
 
       <p className="mech-profile">
@@ -1053,8 +1053,8 @@ export default function MechCluster({ onProject, covered, tuning }: Props) {
               it lands over the middle of the three. It was left-set for a pass
               while the box was still wider than they were and drifting looked
               like the problem. */}
-          <div className="mech-display mech-display-role" data-on={slot !== null}>
-            <Segment text={reading} cells={ROLE_CELLS} label={reading} />
+          <div className="mech-display mech-display-role" data-on={slot !== null} data-warn>
+            <Segment text={reading} cells={ROLE_CELLS} label={reading} warn />
           </div>
 
           <Counts fields={marked} />
