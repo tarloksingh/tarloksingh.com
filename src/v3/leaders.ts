@@ -40,8 +40,15 @@ import type { Note } from './notes'
  *
  *  `room` is the smaller number the vertical flip is decided against — what a
  *  card usually wants rather than what it may take. `glow` is the slack left
- *  around the card on every side, for the same clipping reason. */
-export const CARD = { w: 340, min: 168, h: 340, room: 130, glow: 34 }
+ *  around the card on every side, for the same clipping reason.
+ *
+ *  `round` is the corner radius, and it is here rather than only in the
+ *  stylesheet because the leader has to know it. A rounded corner is *not* at
+ *  the corner: the border curves away from that point, so a line drawn to the
+ *  card's mathematical corner stops short of the stroke with a gap you can see.
+ *  The line is aimed a little way inside instead — see `touch` in Mech.tsx.
+ *  Keep this and `border-radius` on `.mech-leader-card` the same number. */
+export const CARD = { w: 340, min: 168, h: 340, room: 130, glow: 34, round: 8 }
 
 /** Where a leader leaves its subject and where its card is seated, for a note
  *  that does not say.

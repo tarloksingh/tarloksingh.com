@@ -368,7 +368,15 @@ function Leaders({ notes, box, space, floats, lit, onLit }: LeadersProps) {
     >
       <g ref={group}>
       {list.map((leader, i) => {
-        const length = Math.hypot(leader.tip[0] - leader.anchor[0], leader.tip[1] - leader.anchor[1])
+        /* Aimed a little inside the card's corner rather than at it. A rounded
+           corner has no stroke *at* the corner — the border has curved away by
+           then — so a line drawn to the point the card is anchored on ends in
+           mid-air a few units short of the box it is supposed to be touching.
+           Just past where the arc runs closest to the corner, so it meets the
+           stroke and carries on under it by a hair. */
+        const touch = CARD.round * 0.45
+        const meets = [leader.anchor[0] + leader.sx * touch, leader.anchor[1] + leader.sy * touch]
+        const length = Math.hypot(leader.tip[0] - meets[0], leader.tip[1] - meets[1])
         /* This leader's place in each cascade, handed to the stylesheet as
            variables rather than spent here as `animation-delay`. An inline
            delay is a delay no rule can override, which is what kept the way
@@ -415,8 +423,8 @@ function Leaders({ notes, box, space, floats, lit, onLit }: LeadersProps) {
                 sitting on it; there is no rule left for it to be. */}
             <line
               className="mech-leader"
-              x1={leader.anchor[0]}
-              y1={leader.anchor[1]}
+              x1={meets[0]}
+              y1={meets[1]}
               x2={leader.tip[0]}
               y2={leader.tip[1]}
               style={{ ['--l' as string]: length }}
