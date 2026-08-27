@@ -379,17 +379,27 @@
 .mech-intro {
   flex: none;
   width: calc(440 * var(--px));
-  height: calc(86 * var(--px));
+  /* `INTRO` is a `.mech-display` now and pads itself 6 units top and bottom
+     like the reel it matches; the box grew to keep the paragraph under it
+     off the graph's face. */
+  height: calc(100 * var(--px));
   max-width: 100%;
+  /* A visual-only nudge to sit INTRO's row level with the role reel across
+     the panel — the head row it lives in cannot take real height without
+     pushing the graph's face off the bottom of the rail, so this is a
+     `translateY`, not a margin. `--intro-y` is the **Intro drop** knob on
+     the Cluster tab, in frame units. */
+  transform: translateY(calc(var(--intro-y, 0) * var(--px)));
 }
 
+/* The cap is a `.mech-display` in its own right now: same 21-cell box as the
+   role reel opposite (`--count-w` / `ROLE_CELLS`), so INTRO prints at the
+   titles' size and over the titles' faint unlit-cell field, and the warm
+   `::before` wash the reel and the selection name both carry sits behind it
+   too. Left-set to share the paragraph's left edge. */
 .mech-intro-cap {
-  display: block;
-  /* Five cells at the role reel's own pitch — `.mech-display-role` is
-     `--count-w` wide over 21 cells (`ROLE_CELLS`), and `Segment` scales by
-     width, so matching cells-per-width is what makes INTRO print at exactly
-     the size of the titles it caps. */
-  width: calc(5 * var(--count-w) / 21);
+  width: var(--count-w);
+  max-width: 100%;
 }
 
 /* Plain system text, not a paragraph in a box. The first pass bracketed it
@@ -1338,8 +1348,15 @@
 .mech[data-narrow='true'] .mech-intro {
   order: 2;
   width: 100%;
-  height: calc(96 * var(--px));
+  height: calc(110 * var(--px));
   margin-bottom: calc(20 * var(--px));
+  /* Nothing to line up against down here — it follows the counts in a
+     single column — so the wide layout's drop is undone. */
+  transform: none;
+}
+
+.mech[data-narrow='true'] .mech-intro-cap {
+  width: 100%;
 }
 
 /* Inset with the cluster's own gutter, like everything else down here —

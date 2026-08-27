@@ -986,8 +986,8 @@ export default function MechCluster({ onProject, covered, tuning }: Props) {
      `EXIT_MS` has already unmounted it. */
   const introSection = (
     <section className="mech-intro">
-      <span className="mech-intro-cap">
-        <Segment text="INTRO" cells={5} settle={false} label="intro" warn />
+      <span className="mech-intro-cap mech-display" data-on data-warn>
+        <Segment text="INTRO" cells={ROLE_CELLS} align="left" settle={false} label="intro" warn />
       </span>
 
       <p className="mech-profile">
@@ -1013,6 +1013,7 @@ export default function MechCluster({ onProject, covered, tuning }: Props) {
         ['--cluster-glow' as string]: tuning.glow,
         ['--cluster-slot' as string]: tuning.slot,
         ['--cluster-tach' as string]: tuning.tach,
+        ['--intro-y' as string]: tuning.introY,
         ['--profile-size' as string]: tuning.profileSize,
         ['--profile-ink' as string]: tuning.profileInk
       }}

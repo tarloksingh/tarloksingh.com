@@ -40,6 +40,10 @@ export interface ClusterTuning {
    *  dead air `flex: 1` leaves either side of a fixed-width instrument, and
    *  turning that gap down further does nothing about the second one. */
   tach: number
+  /** Frame units the whole intro block (`INTRO` and the paragraph) is dropped
+   *  by, to sit its row level with the role reel across the panel. A
+   *  `translateY`, so it does not lengthen the tachometer's head row. */
+  introY: number
   /** The intro paragraph's (`.mech-profile`) size, in `--type` units. */
   profileSize: number
   /** The intro paragraph's ink: alpha on the phosphor accent. Its hue rides
@@ -55,6 +59,7 @@ export const CLUSTER_DEFAULTS: ClusterTuning = {
   glow: 2.57,
   slot: 64,
   tach: 1020,
+  introY: 0,
   profileSize: 11,
   profileInk: 0.73
 }
@@ -91,6 +96,7 @@ export function useClusterTuning() {
       glow: { value: start.glow, min: 0, max: 5, step: 0.01, label: 'Bloom' },
       slot: { value: start.slot, min: 64, max: 260, step: 1, label: 'Slot height' },
       tach: { value: start.tach, min: 500, max: 1190, step: 5, label: 'Instrument width' },
+      introY: { value: start.introY, min: -40, max: 120, step: 1, label: 'Intro drop' },
       profileSize: { value: start.profileSize, min: 8, max: 18, step: 0.5, label: 'Intro size' },
       profileInk: { value: start.profileInk, min: 0.2, max: 1, step: 0.01, label: 'Intro ink' },
       'Copy for source': button(() => {
