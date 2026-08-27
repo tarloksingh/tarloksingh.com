@@ -918,13 +918,25 @@
   align-self: center;
   /* Border-box on the slot means the bay starts one pixel in. */
   margin-left: 1px;
-  background: repeating-linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 0.34) 0,
-    rgba(0, 0, 0, 0.34) 1px,
-    transparent 1px,
-    transparent 3px
-  );
+  /* Two layers: a soft fade to the bay colour along the top and bottom edges
+     so the subject is not cut off by a hard line, then the scan lines over
+     the whole cell. The veil paints above the canvas, so this is what reaches
+     the picture. */
+  background:
+    linear-gradient(
+      to bottom,
+      #050806 0,
+      transparent calc(16 * var(--px)),
+      transparent calc(100% - 16 * var(--px)),
+      #050806 100%
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.34) 0,
+      rgba(0, 0, 0, 0.34) 1px,
+      transparent 1px,
+      transparent 3px
+    );
 }
 
 /* The duotone. `color` takes the hue and saturation of this layer and the
@@ -990,9 +1002,10 @@
 .mech-slot[data-on='true'] {
   border-color: var(--accent);
   background: rgba(var(--accent-rgb), 0.09);
-  box-shadow:
-    0 0 0 1px rgba(var(--accent-rgb), 0.5),
-    0 0 calc(26 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.35 * var(--g)));
+  /* Just the crisp ring. The soft halo that used to sit behind the picture
+     read as a green blur bleeding out around the slot rather than as the
+     slot being lit. */
+  box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.5);
 }
 
 .mech-slot:focus-visible {
@@ -1439,6 +1452,11 @@
   width: 100%;
   height: auto;
   align-self: auto;
+  /* A gutter so a full-width slot is not flush to the viewport edge — the
+     reticle's lock brackets acquire the slot's box with a little breathing
+     room and were spilling past the right edge without it. It also gives the
+     head, the bank and the dial row one shared centre line. */
+  padding: 0 calc(14 * var(--px));
 }
 
 /* No inner scroll on a phone — the page itself scrolls, and a scroll region
@@ -1487,6 +1505,8 @@
 .mech[data-narrow='true'] .mech-scale-row {
   flex-wrap: wrap;
   gap: calc(14 * var(--px));
+  width: 100%;
+  justify-content: center;
 }
 
 /* Twelve slots across a phone is twelve thirty-point boxes, which is a row of
