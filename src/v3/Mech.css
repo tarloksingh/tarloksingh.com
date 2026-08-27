@@ -2909,7 +2909,7 @@
   /* Same size as the intro paragraph (`.mech-profile`), not the site's own
      footer scale — one more reading in the panel's system-text voice should
      print at the size that voice already reads at elsewhere on the page. */
-  font-size: calc(10.5 * var(--type));
+  font-size: calc(var(--profile-size, 11) * var(--type));
   color: var(--mid);
 }
 

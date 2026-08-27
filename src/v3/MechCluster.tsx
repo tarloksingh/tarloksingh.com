@@ -1012,7 +1012,9 @@ export default function MechCluster({ onProject, covered, tuning }: Props) {
         ['--cluster-name' as string]: tuning.name,
         ['--cluster-glow' as string]: tuning.glow,
         ['--cluster-slot' as string]: tuning.slot,
-        ['--cluster-tach' as string]: tuning.tach
+        ['--cluster-tach' as string]: tuning.tach,
+        ['--profile-size' as string]: tuning.profileSize,
+        ['--profile-ink' as string]: tuning.profileInk
       }}
     >
       {/* The name and the panel below it, as one group that centres in

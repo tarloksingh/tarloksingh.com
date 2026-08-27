@@ -400,8 +400,8 @@
   /* Pulled toward the phosphor rather than neutral white. Plain white on this
      panel is the one colour nothing else is, and it made the block read as a
      different document sitting on the screen. */
-  color: rgba(var(--accent-rgb), 0.62);
-  font-size: calc(10.5 * var(--type));
+  color: rgba(var(--accent-rgb), var(--profile-ink, 0.62));
+  font-size: calc(var(--profile-size, 11) * var(--type));
   line-height: 1.6;
 }
 

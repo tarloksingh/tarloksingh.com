@@ -40,6 +40,13 @@ export interface ClusterTuning {
    *  dead air `flex: 1` leaves either side of a fixed-width instrument, and
    *  turning that gap down further does nothing about the second one. */
   tach: number
+  /** The intro paragraph's (`.mech-profile`) size, in `--type` units. */
+  profileSize: number
+  /** The intro paragraph's ink: alpha on the phosphor accent. Its hue rides
+   *  `--accent` with everything else on the panel, so this is the only part of
+   *  its colour that is a matter of taste — 0.62 sits it behind the readings,
+   *  1 brings it level with them. */
+  profileInk: number
 }
 
 export const CLUSTER_DEFAULTS: ClusterTuning = {
@@ -47,7 +54,9 @@ export const CLUSTER_DEFAULTS: ClusterTuning = {
   name: 1.56,
   glow: 1.75,
   slot: 80,
-  tach: 1030
+  tach: 1030,
+  profileSize: 11,
+  profileInk: 0.62
 }
 
 const STORE_KEY = 'v3.cluster.tuning.v1'
@@ -82,6 +91,8 @@ export function useClusterTuning() {
       glow: { value: start.glow, min: 0, max: 5, step: 0.01, label: 'Bloom' },
       slot: { value: start.slot, min: 64, max: 260, step: 1, label: 'Slot height' },
       tach: { value: start.tach, min: 500, max: 1190, step: 5, label: 'Instrument width' },
+      profileSize: { value: start.profileSize, min: 8, max: 18, step: 0.5, label: 'Intro size' },
+      profileInk: { value: start.profileInk, min: 0.2, max: 1, step: 0.01, label: 'Intro ink' },
       'Copy for source': button(() => {
         const text = asSource(live)
         void copyText(text)
