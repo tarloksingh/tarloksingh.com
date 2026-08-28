@@ -525,6 +525,17 @@
   transition-delay: calc(var(--n, 0) * 34ms);
 }
 
+/* Except when the whole screen is leaving, where it unwinds instead: last
+   block first, back round to twelve o'clock. Dropping at once is right for a
+   *reading* going away — the gauge is not pretending the field faded out — but
+   the panel switching off is the one case where the sweep should run
+   backwards, the same as everything else on this exit. Quicker than the way
+   up, because the exit is about two hundred milliseconds and the entrance had
+   the whole screen. */
+.mech-cluster[data-leaving='true'] .mech-field-lit {
+  transition-delay: calc((11 - var(--n, 0)) * 14ms);
+}
+
 .mech-field-gauge[data-on='true'] .mech-field-ring {
   filter: drop-shadow(0 0 calc(5 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.6 * var(--g))));
 }

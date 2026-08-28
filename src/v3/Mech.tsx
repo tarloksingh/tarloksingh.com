@@ -1636,11 +1636,17 @@ export default function Mech({ id, onProject, onHome }: Props) {
             `run` is keyed on what is on screen, so coming back to home spells
             them out afresh alongside the cluster's own arrival rather than
             leaving the one pair of lines on the page that were simply already
-            there. `start` holds them until the cover is off: the footer is
-            visible on both screens and a line that typed itself during the
-            swap would be doing it under the transition. The address is short
-            enough to be quick; the credit follows it, so the corners fill left
-            then right rather than racing. */}
+            there. They go out the way they came in, backspacing, so the two
+            corners of the footer empty and fill rather than cutting between
+            two addresses. The address is short enough to be quick; the credit
+            follows it, so the corners fill left then right rather than racing.
+
+            **`transiting`, not `covered`.** The two are the same thing for a
+            screen change and very different for a step along the tile strip,
+            which is also `phase === 'out'` — hang these off the cover and
+            picking a picture on a project screen backspaces the footer and
+            types it again, which is the exact bug the flag was added for. See
+            the retarget effect above, the one place it is ever set. */}
         <footer className="mech-foot" data-arrive>
           <a className="mech-comms" href="mailto:hello@tarloksingh.com">
             <span className="mech-comms-to">
@@ -1650,7 +1656,8 @@ export default function Mech({ id, onProject, onHome }: Props) {
                 delay={0.34}
                 speed={26}
                 caret={false}
-                start={!covered}
+                start={!booting && !transiting}
+                back={transiting}
               />
             </span>
             <i className="mech-foot-dot" aria-hidden />
@@ -1664,7 +1671,8 @@ export default function Mech({ id, onProject, onHome }: Props) {
                 delay={0.72}
                 speed={26}
                 caret={false}
-                start={!covered}
+                start={!booting && !transiting}
+                back={transiting}
               />
             </span>
           </p>

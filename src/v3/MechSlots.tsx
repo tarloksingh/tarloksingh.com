@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo, useRef } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Center, Resize, useGLTF, View } from '@react-three/drei'
 import { ACESFilmicToneMapping, PMREMGenerator, type Group, type Texture } from 'three'
@@ -139,10 +139,17 @@ const SPIN_RATE = 0.45
 function Drift({
   fit,
   live,
+  show,
   children
 }: {
   fit: (typeof FIT)[string]
   live: boolean
+  /** Whether the deal has reached this slot, going either way. It is a target
+   *  rather than a mount, so the subject grows into the bay on the way in and
+   *  shrinks back out of it on the way out — the scene stays mounted for the
+   *  length of the exit, because a thing that vanishes when its flag flips has
+   *  no exit, it has a cut. */
+  show: boolean
   children: React.ReactNode
 }) {
   const group = useRef<Group>(null)
@@ -172,7 +179,7 @@ function Drift({
     // The turn accumulates at a fixed rate, always — selection only grows
     // the subject and brings it forward a little.
     at.current.spin += SPIN_RATE * STEP
-    at.current.scale += ((live ? fit.scale * 1.12 : fit.scale) - at.current.scale) * k
+    at.current.scale += ((show ? (live ? fit.scale * 1.12 : fit.scale) : 0) - at.current.scale) * k
 
     node.rotation.y = fit.turn + at.current.spin + Math.sin(t * 0.42 + fit.turn * 4) * 0.06
     node.rotation.x = fit.tilt + Math.sin(t * 0.31 + fit.turn * 7) * 0.02
@@ -223,7 +230,7 @@ function Room() {
  *  units wide, and twelve rigs to tune would be twelve panels nobody would
  *  open. A key, a fill and the room, and the subjects that were authored dark
  *  come up on `env`. */
-function Slot({ id, live }: { id: string; live: boolean }) {
+function Slot({ id, live, show }: { id: string; live: boolean; show: boolean }) {
   const fit = FIT[id] ?? FALLBACK
   const glb = GLBS[id]
 
@@ -235,7 +242,7 @@ function Slot({ id, live }: { id: string; live: boolean }) {
       <directionalLight position={[-3, -0.6, 1.6]} intensity={live ? 1.1 : 0.75} color="#9fd8ff" />
 
       <Suspense fallback={null}>
-        <Drift fit={fit} live={live}>
+        <Drift fit={fit} live={live} show={show}>
           {glb ? <Gltf src={glb} /> : <Piece project={id} />}
         </Drift>
       </Suspense>
@@ -271,17 +278,30 @@ function Environment() {
  *  r3f skips its own automatic render as soon as anything subscribes to the
  *  frame at a priority, and an automatic render here would clear the canvas
  *  after the views had drawn into it. */
-/** `arrive` is this slot's turn in the deal. The bay itself is drawn either
- *  way — it is the `<View>`'s own element and the slot's CSS entrance owns it
- *  — but nothing is *in* it until the rail gets down to this one, and then the
- *  subject grows into it (see `Drift`). The scene is not mounted before that:
- *  a `<View>` with no children scissors to its rect and draws nothing, so
- *  twelve GLBs and twelve pieces are not all being cloned, lit and rendered on
- *  the frame home arrives. */
+/** `arrive` is this slot's turn in the deal, and it goes both ways — the bank
+ *  fills from the top of the rail down and empties from the bottom up.
+ *
+ *  The bay itself is drawn either way: it is the `<View>`'s own element and the
+ *  slot's CSS entrance owns it. What waits is the scene inside. Before this
+ *  slot's turn there is nothing in the view at all — a `<View>` with no
+ *  children scissors to its rect and draws nothing — so twelve GLBs and twelve
+ *  pieces are not all being cloned, lit and rendered on the frame home arrives.
+ *
+ *  **Once mounted it stays mounted.** Unmounting on the way out would be a cut,
+ *  and the rail's own fade cannot cover it: the bank's canvas is a fixed
+ *  element scissored to the bays, so CSS opacity on the rail reaches the boxes
+ *  and never the pictures in them. The exit has to be something the *scene*
+ *  does, which is `show` — the subject shrinks back out of its bay the way it
+ *  grew into it. */
 export function SlotView({ id, live, arrive }: { id: string; live: boolean; arrive: boolean }) {
+  const [mounted, setMounted] = useState(arrive)
+  useEffect(() => {
+    if (arrive) setMounted(true)
+  }, [arrive])
+
   return (
     <View className="mech-slot-shot" index={1}>
-      {arrive && <Slot id={id} live={live} />}
+      {mounted && <Slot id={id} live={live} show={arrive} />}
     </View>
   )
 }

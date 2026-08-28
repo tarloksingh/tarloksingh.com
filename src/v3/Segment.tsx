@@ -166,6 +166,15 @@ const SCRAMBLE = { hold: 45, frames: 4, stagger: 30 }
 /** Milliseconds a cell, for the other arrival — see `type` below. */
 const TYPE_MS = 64
 
+/** The way back out, for both arrivals — see `back` below.
+ *
+ *  A fixed number of frames rather than one per cell, because the exit has a
+ *  budget the entrance does not: the cover is only down for a couple of
+ *  hundred milliseconds and a twenty-one cell display walking itself off one
+ *  lamp at a time would still be doing it after the screen had gone. Six
+ *  steps, so the word comes off in bites. */
+const BACK = { frames: 6, hold: 28 }
+
 const NOISE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 
 /** Noise, but reproducible for a given cell on a given frame — a plain
@@ -212,6 +221,13 @@ export interface SegmentProps {
    *  the cluster waits out the boot: home mounts behind the cover, so a
    *  timer started on mount is a timer nobody sees. */
   start?: boolean
+  /** The way back out: the display takes its word off the way it put it on,
+   *  from the right, and goes dark. Which arrival it mirrors is whichever one
+   *  it used — a typed display untypes, everything else dissolves back into
+   *  noise. `Typed`'s `back` is the same idea on a line of text, and for the
+   *  same reason: a readout that is still lit while the screen it belongs to
+   *  is leaving is one the machine has not switched off. */
+  back?: boolean
   align?: 'center' | 'left'
   label?: string
 }
@@ -219,8 +235,8 @@ export interface SegmentProps {
 /** What the display is doing. `set` is the resting state — every cell showing
  *  what it is meant to. `off` is every cell dark, which is a real state now
  *  rather than the absence of one: it is what a display looks like before it
- *  has been switched on. */
-type Run = { mode: 'off' | 'set' | 'scramble' | 'type'; frame: number }
+ *  has been switched on. The two `un-` modes are the way out. */
+type Run = { mode: 'off' | 'set' | 'scramble' | 'type' | 'unscramble' | 'untype'; frame: number }
 
 export default function Segment({
   text,
@@ -231,6 +247,7 @@ export default function Segment({
   type = false,
   wait = 0,
   start = true,
+  back = false,
   align = 'center',
   label
 }: SegmentProps) {
@@ -250,6 +267,11 @@ export default function Segment({
   const first = useRef(true)
 
   useEffect(() => {
+    /* On its way out, and the exit below owns the display until it is back.
+       Checked before `start`, because leaving takes `start` away at the same
+       moment — without this the two race and the word is snapped dark instead
+       of taken off. */
+    if (back) return
     /* Held dark, and the arrival is *not* spent: `first` is left standing, so
        whenever `start` does come true the word arrives from the beginning
        rather than being found already sitting there. */
@@ -291,13 +313,43 @@ export default function Segment({
       window.clearTimeout(open)
       window.clearInterval(timer)
     }
-  }, [target, cells, settle, arrive, type, wait, start])
+  }, [target, cells, settle, arrive, type, wait, start, back])
+
+  /* Out. It does not read the word off the node the way `Typed` does, because
+     it does not have to: `settled` is a count and running it back down to
+     nought takes the cells off from the right in whatever they are currently
+     showing. */
+  useEffect(() => {
+    if (!back) return
+    const mode: Run['mode'] = type ? 'untype' : 'unscramble'
+    let n = 0
+    setRun({ mode, frame: 0 })
+    const timer = window.setInterval(() => {
+      n += 1
+      if (n < BACK.frames) {
+        setRun({ mode, frame: n })
+        return
+      }
+      /* Dark, and *arriving* again next time. A display that has been switched
+         off and switched on is not a display being told something else, so the
+         next word comes up on `arrive` / `type` rather than on the settle —
+         which is the difference between the warning pair spelling itself out
+         again and it simply being found lit. */
+      first.current = true
+      setRun({ mode: 'off', frame: 0 })
+      window.clearInterval(timer)
+    }, BACK.hold)
+    return () => window.clearInterval(timer)
+  }, [back, type])
 
   /** How many cells have landed. Nought while the display is still dark, and
    *  below zero for the scramble's opening frames, where the whole thing is
-   *  still churning. */
-  const settled =
-    run.mode === 'set'
+   *  still churning. Going out it is the same count walking back down, so the
+   *  word comes off from the right — the end it was put on from. */
+  const leaving = run.mode === 'unscramble' || run.mode === 'untype'
+  const settled = leaving
+    ? Math.max(0, Math.round(target.length * (1 - run.frame / BACK.frames)))
+    : run.mode === 'set'
       ? cells
       : run.mode === 'off'
         ? 0
@@ -310,9 +362,10 @@ export default function Segment({
     if (n < settled) return want
     // A cell with no character to show never scrambles: lighting lamps where
     // the word has already ended is noise for its own sake. Neither does one
-    // waiting its turn in a type-in — that arrival is a word being spelled
-    // out, and noise ahead of the caret is a different gesture entirely.
-    if (want === ' ' || run.mode === 'off' || run.mode === 'type') return ' '
+    // waiting its turn in a type-in, or one that has already been taken back
+    // off a typed display — that gesture is a word being spelled out and then
+    // deleted, and noise at either end of it is a different one entirely.
+    if (want === ' ' || run.mode === 'off' || run.mode === 'type' || run.mode === 'untype') return ' '
     return noisy(run.frame * cells + n)
   })
 

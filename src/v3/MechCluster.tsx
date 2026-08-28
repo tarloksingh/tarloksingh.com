@@ -276,6 +276,11 @@ const TICKS = 16
 const RISE = 1.1
 const SWAY = { rate: 0.55, depth: 0.055 }
 
+/** And how long they take to run back down when the screen leaves. Far quicker
+ *  than the climb, because the whole exit is about two hundred milliseconds —
+ *  a bar easing down over a second is a bar the cover lands on top of. */
+const FALL = 0.16
+
 const clamp = (n: number, low: number, high: number) => Math.max(low, Math.min(high, n))
 
 /* ---- the arrival, in order ----
@@ -307,6 +312,8 @@ const IN = {
   /** The first subject lands in the bank, and how far behind it the next. */
   slot: 620,
   slotStep: 55,
+  /** And how fast the bank empties again, from the bottom up. */
+  slotBack: 18,
   /** The field dials: all the way round, back to nothing, then live. A dial
    *  that has swept its own scale once is a dial you have been shown the range
    *  of — which is what every cluster does on ignition and the only reason
@@ -500,34 +507,47 @@ const tracePoints = (from: number, to: number) =>
 
 const REDLINE_AT = Math.round(TACH_RED * TACH_COLS)
 
-/** `start` is the cover lifting. Held off, the face reads nought — every
- *  column dark, the graph an empty grid of unlit cells — and the first thing
- *  it does when it is let go is the sweep it has always done: up the scale and
- *  back down. That sweep is the arrival. It used to run behind the boot's
- *  cover, so the instrument was found already idling, which is the difference
- *  between a machine coming up and a picture of one. */
+/** How fast the needle falls off the scale when the screen leaves — much
+ *  quicker than its own down-blip, because the whole exit is a couple of
+ *  hundred milliseconds and a needle still coasting down when the cover
+ *  arrives is a needle that never came off. */
+const REV_DROP = 7
+
+/** `start` is the cover lifting, and it is the ignition key both ways.
+ *
+ *  Held off, the face reads nought — every column dark, the graph an empty
+ *  grid of unlit cells — and the first thing it does when it is let go is the
+ *  sweep it has always done: up the scale and back down. That sweep is the
+ *  arrival. It used to run behind the boot's cover, so the instrument was
+ *  found already idling, which is the difference between a machine coming up
+ *  and a picture of one. Taken away again, the needle falls to nought and the
+ *  columns go out under it.
+ *
+ *  One loop for both, and it never restarts. That is the reason `start` is
+ *  read off a ref rather than being a dependency: re-running the effect would
+ *  put `rev` back to zero, and the drop the exit is asking for is the *same*
+ *  needle running down from wherever it actually was. */
 function Tach({ start, children }: { start: boolean; children?: React.ReactNode }) {
   const face = useRef<HTMLDivElement>(null)
+  const on = useRef(start)
+  on.current = start
 
   useEffect(() => {
     const node = face.current
-    if (!node) return
-    if (!start) {
-      node.style.setProperty('--rev', '0')
-      return
-    }
-    if (reduced()) {
-      node.style.setProperty('--rev', String(Math.round(0.62 * TACH_COLS) / TACH_COLS))
-      return
-    }
+    if (!node || !reduced()) return
+    node.style.setProperty('--rev', start ? String(Math.round(0.62 * TACH_COLS) / TACH_COLS) : '0')
+  }, [start])
+
+  useEffect(() => {
+    const node = face.current
+    if (!node || reduced()) return
+    node.style.setProperty('--rev', '0')
 
     let raf = 0
     let rev = 0
-    /* The machine coming up: the first thing the needle does is sweep the
-       scale and drop back, which is what a cluster does when the ignition is
-       turned and is the reason a real one is worth watching at all. */
-    let target = REV_PEAK[1]
-    let hold = 0.95
+    let live = false
+    let target = 0
+    let hold = 0
     let previous = performance.now()
     let shown = -1
 
@@ -536,18 +556,32 @@ function Tach({ start, children }: { start: boolean; children?: React.ReactNode 
       const dt = Math.min(0.05, (now - previous) / 1000)
       previous = now
 
-      hold -= dt
-      if (hold <= 0) {
-        const wound = target > REV_IDLE + 0.01
-        target = wound ? REV_IDLE : rand(REV_PEAK[0], REV_PEAK[1])
-        const next = wound ? REV_HOLD.idle : REV_HOLD.wound
-        hold = rand(next[0], next[1])
+      if (on.current !== live) {
+        live = on.current
+        /* The machine coming up: the first thing the needle does is sweep the
+           scale and drop back, which is what a cluster does when the ignition
+           is turned and is the reason a real one is worth watching at all. And
+           going down, it simply falls off the bottom. */
+        target = live ? REV_PEAK[1] : 0
+        hold = 0.95
+      }
+
+      if (live) {
+        hold -= dt
+        if (hold <= 0) {
+          const wound = target > REV_IDLE + 0.01
+          target = wound ? REV_IDLE : rand(REV_PEAK[0], REV_PEAK[1])
+          const next = wound ? REV_HOLD.idle : REV_HOLD.wound
+          hold = rand(next[0], next[1])
+        }
       }
 
       // Up fast and down slow, which is the whole character of a throttle
       // being blipped — the same rise and fall at the same rate is a slider.
-      rev += (target - rev) * Math.min(1, (target > rev ? 3.6 : 1.9) * dt)
-      const shake = Math.sin(now / 61) * 0.006 + Math.sin(now / 23) * 0.003
+      // The exit is neither: it is the key being turned off.
+      const rate = target > rev ? 3.6 : live ? 1.9 : REV_DROP
+      rev += (target - rev) * Math.min(1, rate * dt)
+      const shake = live ? Math.sin(now / 61) * 0.006 + Math.sin(now / 23) * 0.003 : 0
 
       /* Snapped to whole columns before it is written. A bar graph lights
          lamps, so a value between two of them is a value with nowhere to go —
@@ -562,7 +596,7 @@ function Tach({ start, children }: { start: boolean; children?: React.ReactNode 
 
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [start])
+  }, [])
 
   return (
     <div className="mech-tach">
@@ -719,27 +753,22 @@ function Counts({ fields, start }: { fields: Field[]; start: boolean }) {
   const rowsRef = useRef(rows)
   rowsRef.current = rows
   const shownFrac = useRef(rows.map(() => 0))
+  /* `start` is read off a ref, and the loop below never restarts, for the same
+     reason the tachometer's does not: the exit is these bars running *down*
+     from wherever they had got to, and re-running the effect would put them at
+     zero first — which is the drop, not the run down to it. */
+  const on = useRef(start)
+  on.current = start
 
   useEffect(() => {
-    const settle = () =>
-      rowsRef.current.forEach((count, n) =>
-        bars.current[n]?.style.setProperty('--lit', String(Math.round((count.value / count.of) * TICKS)))
-      )
+    if (!reduced()) return
+    rowsRef.current.forEach((count, n) =>
+      bars.current[n]?.style.setProperty('--lit', start ? String(Math.round((count.value / count.of) * TICKS)) : '0')
+    )
+  }, [start])
 
-    /* Empty until the block is on screen. The climb from nothing to the
-       reading *is* the arrival — three bars found already sitting at
-       two-thirds are three bars nobody watched fill — and the loop below has
-       always started from zero, it was simply doing it behind the cover. */
-    if (!start) {
-      shownFrac.current = rowsRef.current.map(() => 0)
-      bars.current.forEach((bar) => bar?.style.setProperty('--lit', '0'))
-      return
-    }
-
-    if (reduced()) {
-      settle()
-      return
-    }
+  useEffect(() => {
+    if (reduced()) return
 
     let raf = 0
     let previous = performance.now()
@@ -750,14 +779,21 @@ function Counts({ fields, start }: { fields: Field[]; start: boolean }) {
       const dt = Math.min(0.05, (now - previous) / 1000)
       previous = now
       const since = now / 1000
+      const live = on.current
       // Framerate-independent: the same time-to-settle at any frame rate,
       // the way `Drift`'s `k` and the tach's own easing both work.
-      const k = 1 - Math.pow(0.001, dt / RISE)
+      const k = 1 - Math.pow(0.001, dt / (live ? RISE : FALL))
 
       rowsRef.current.forEach((count, n) => {
-        const target = count.value / count.of
+        /* Nought until the block is on screen, and nought again the moment it
+           starts leaving. The climb from nothing to the reading *is* the
+           arrival — three bars found already sitting at two-thirds are three
+           bars nobody watched fill — and the run back down is the same
+           gesture backwards, which is the only honest way for a gauge to
+           stop reading. */
+        const target = live ? count.value / count.of : 0
         const frac = (shownFrac.current[n] += (target - shownFrac.current[n]) * k)
-        const settled = Math.abs(target - frac) < 0.01
+        const settled = live && Math.abs(target - frac) < 0.01
         const sway = settled
           ? (Math.sin(since * SWAY.rate + n * 2.1) + Math.sin(since * SWAY.rate * 2.7 + n) * 0.4) * SWAY.depth
           : 0
@@ -771,7 +807,7 @@ function Counts({ fields, start }: { fields: Field[]; start: boolean }) {
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [start])
+  }, [])
 
   return (
     /* Bars and their labels, and nothing else on top of them.
@@ -989,14 +1025,25 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
   const [dealt, setDealt] = useState(0)
 
   useEffect(() => {
-    if (!up) {
-      setDealt(0)
-      return
-    }
     if (reduced()) {
-      setDealt(SLOTS.length)
+      setDealt(up ? SLOTS.length : 0)
       return
     }
+
+    /* Out, and the deal runs backwards: last in, first out, so the bank
+       empties from the bottom of the rail up. Quicker than it filled, because
+       the exit has a couple of hundred milliseconds and the entrance had the
+       whole screen. */
+    if (!up) {
+      const back = window.setInterval(() => {
+        setDealt((n) => {
+          if (n <= 1) window.clearInterval(back)
+          return Math.max(0, n - 1)
+        })
+      }, IN.slotBack)
+      return () => window.clearInterval(back)
+    }
+
     let timer = 0
     const open = window.setTimeout(() => {
       setDealt(1)
@@ -1151,7 +1198,7 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
         <span className="mech-ident-typed">
           {/* Last on the panel, and it types from the moment the cover
               lifts rather than from mount — see `start` on `Typed`. */}
-          <Typed text={NAME} run="cluster-name" delay={1.25} speed={96} caret={false} start={up} />
+          <Typed text={NAME} run="cluster-name" delay={1.25} speed={96} caret={false} start={up} back={covered} />
         </span>
       </h1>
       {/* Off-screen, always the full text regardless of where `Typed` has
@@ -1195,6 +1242,7 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
           arrive
           wait={IN.intro}
           start={up}
+          back={covered}
           label="intro"
           warn
         />
@@ -1269,7 +1317,7 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
               while the box was still wider than they were and drifting looked
               like the problem. */}
           <div className="mech-display mech-display-role" data-on={slot !== null} data-warn>
-            <Segment text={reading} cells={ROLE_CELLS} arrive wait={IN.role} start={up} label={reading} warn />
+            <Segment text={reading} cells={ROLE_CELLS} arrive wait={IN.role} start={up} back={covered} label={reading} warn />
           </div>
 
           <Counts fields={marked} start={countsUp} />
@@ -1322,6 +1370,7 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
                 arrive
                 wait={IN.head}
                 start={up}
+                back={covered}
                 warn
                 label={slot ? slot.title : 'nothing selected'}
               />

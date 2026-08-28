@@ -1089,6 +1089,53 @@ a 1200ms boot.
 reading — it is who the machine belongs to — and a machine says that once its
 instruments are lit, not before.
 
+#### And it empties again on the way out
+
+Every one of those has a way back out, and it is the same gesture backwards.
+The blocks already left on their own beats (above); what was missing is that
+their *contents* left by being unmounted, which is not an exit — it is the
+screen being taken away with the lamps still lit.
+
+- The **displays** take their word off from the right and go dark. `back` on
+  `Segment`, and which reverse it plays is whichever arrival it used: a typed
+  display untypes, everything else dissolves back into noise. Six steps rather
+  than one per cell, because the exit has a budget the entrance does not — a
+  twenty-one cell display walking off one lamp at a time would still be doing
+  it after the screen had gone. When it reaches dark it also resets `first`, so
+  coming back is an *arrival* again rather than a change.
+- The **counts** and the **tachometer** run down instead of blanking. Both
+  loops were restructured for it: `start` is read off a ref and the rAF never
+  restarts, because re-running the effect would put the reading at zero
+  first — which is the drop, not the run down to it. Both fall much faster than
+  they climb (`FALL`, `REV_DROP`), for the same reason the CSS exit is half the
+  length of the entrance.
+- The **field dials** unwind, last block back round to twelve o'clock. That is
+  the one case the "drop all at once" rule bends for: a *reading* going away
+  should not pretend it faded, but the panel switching off should run its sweep
+  backwards like everything else. Scoped to `[data-leaving='true']` so it
+  cannot touch the ordinary case.
+- The **bank** empties from the bottom of the rail up — the deal, backwards.
+  This is the one that needed a structural change: the subject cannot be
+  unmounted on the flag, because that is a cut and the rail's fade cannot cover
+  it (the canvas is fixed and scissored to the bays, so CSS opacity reaches the
+  boxes and never the pictures in them). So `SlotView` keeps the scene mounted
+  once it has ever arrived and `show` shrinks the subject back out of its bay.
+- The **name** and both **footer lines** backspace, the same as the intro
+  paragraph already did.
+
+**The footer takes `transiting`, not `covered`.** The two are the same thing
+for a screen change and very different for a step along the tile strip, which
+is also `phase === 'out'`. Hang the footer off the cover and picking a picture
+on a project screen backspaces the address and types it again — the exact bug
+`transiting` was added for. The cluster's own readouts can use `covered`
+safely, because home has no tile strip to step.
+
+**The warning pair is not part of this.** `SHOOT` / `STOP` types itself in
+once, on the boot, and stays. It is global chrome that deliberately survives
+the swap — that is why it moved out of `MechCluster` in the first place — so
+giving it an exit on every navigation would put back the thing moving it
+fixed.
+
 #### Twelve renders, on one panel's supply
 
 The subjects come out of the renderer in their own colours, and twelve
@@ -2157,6 +2204,11 @@ is the other arrival: the word spelled into the housing a cell at a time from
 the left, no noise ahead of the caret. `SHOOT` / `STOP` are what wanted it —
 two words that never change, so the scramble had nothing to scramble from.
 `Typed` grew a `start` of the same shape and for the same reason.
+
+And **`back`**, which is the way out: the word comes off from the right and the
+display goes dark, mirroring whichever arrival it used. It is checked *before*
+`start` in the effect, because leaving takes `start` away on the same beat —
+without that the two race and the word is snapped dark rather than taken off.
 
 **Brightness carries what three colours used to.** The typed version was `--dim`
 closed, `--mid` on hover, `--accent` open. A lamp has no third state but its
