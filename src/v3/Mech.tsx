@@ -409,9 +409,11 @@ function Leaders({ notes, box, space, floats, lit, onLit }: LeadersProps) {
      it — two clocks that agree at the start and not a minute later is exactly
      the sort of thing nobody can name and everybody notices.
 
-     Damped a little, so the lines lag the head by a hair. Chasing it exactly
-     makes the whole assembly feel welded together; trailing it makes the
-     labels feel pinned *to* something. */
+     Written straight through, no easing. A low-pass here trails the subject by
+     its own time constant, and at the float's slow rate that lag reads as the
+     labels and the model running at different speeds — see the note in
+     `README.md`. `drift` is already the damped-enough output of the frame
+     loop. */
   /* `drift` is published in the frame's own coordinates — a 1920×1080 box —
      because that is the space the wide layout draws in. A narrow canvas is a
      different number of units tall for the same amount of world, so the bob
@@ -421,13 +423,12 @@ function Leaders({ notes, box, space, floats, lit, onLit }: LeadersProps) {
   useEffect(() => {
     if (!floats) return
     let raf = 0
-    let x = 0
-    let y = 0
     const tick = () => {
       raf = requestAnimationFrame(tick)
-      x += (drift.x * perFrame - x) * 0.18
-      y += (drift.y * perFrame - y) * 0.18
-      group.current?.setAttribute('transform', `translate(${x} ${y})`)
+      group.current?.setAttribute(
+        'transform',
+        `translate(${drift.x * perFrame} ${drift.y * perFrame})`
+      )
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)

@@ -2562,6 +2562,15 @@ were dropped against, not part of the motion; leaving it in stood Capsule C1's
 labels a fixed 16px below their marks. Mr. Takahashi's `liftY` is 0, so it went
 unseen until a subject that needed lifting turned up.
 
+The rAF that rides the labels writes `drift` straight onto the group, no
+easing. It used to low-pass it — the idea was to trail the head by a hair so
+the labels read as pinned to it rather than welded on. But the float is slow,
+and a low-pass lags by its own time constant regardless of the input's speed,
+so the lag was a fixed fraction of a second at every point in the cycle — which
+does not read as "trailing", it reads as the labels and the model bobbing at
+different speeds. The frame loop's own output is smooth enough; the ride just
+copies it.
+
 ### Pinning the leaders
 
 Three arms off a fixed fan is a composition, not a readout: the line that says
