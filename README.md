@@ -2402,6 +2402,38 @@ two-word label cleared those by being small. And its **width is whatever is
 left** between its corner and the gutter it is growing towards, capped at
 `CARD.w` and, narrow, at a share of the stage.
 
+**That width is the room, not the fit, and the two are different.** The card is
+`width: max-content` capped at the room above, so a sentence that fits stays
+hugged to its own text — but one that does not wraps, and the box then keeps
+the full width it was *allowed* while the last line ends wherever it ends. A
+label pointing at something should be the size of what it says, not the size of
+the space it was offered, and the gap on the right was the most visible thing
+about a two-line card.
+
+No CSS keyword closes it: `fit-content` and `max-content` shrink-wrap to the
+unwrapped width or fall back to the available width, and neither one is "the
+widest line the wrapping actually produced". So `fitCards` in `Mech.tsx`
+measures the line boxes with a `Range` and writes the width back. Three things
+in it are load-bearing:
+
+- **`Range.getClientRects()` is in screen pixels**, and a card lives inside a
+  `foreignObject` in a `viewBox`-scaled svg, so those are not the units its
+  `width` is set in. The card's own `getBoundingClientRect().width /
+  offsetWidth` is exactly that scale.
+- **The entrance animation cancels out of that ratio.** `getBoundingClientRect`
+  includes the `transform: scale(0.82)` a card opens from; `offsetWidth` does
+  not. Dividing one by the other removes it, which is what makes the fit safe
+  to take while the cards are still opening.
+- **It is taken again on `fonts.ready` and on resize.** Clash Display is
+  `font-display: swap`, so a card measured before it arrives is fitted to
+  Helvetica's metrics and clips its own last word a moment later; and a card's
+  type is `14px * --type-k`, a ratio that moves with the window, so the
+  sentence re-wraps under a width measured for a different size. `space` only
+  changes on the narrow layout and cannot stand in for the second one.
+
+The width is reset to `''` before each pass — measuring without that measures
+the last pass's answer, and the card walks itself narrower every time.
+
 Text is a table keyed by media id (`mr-takahashi/hero.mp4`); anything unwritten
 gets a derived placeholder that reads like one. `Note.label` is the handle and
 never appears on screen — it is what the fold link, the React key and the pin

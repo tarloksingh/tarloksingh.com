@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore, type RefObject } from 'react'
+import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import MechPanel, { type PanelTab } from './MechPanel'
 import Typed from './Typed'
@@ -341,6 +341,65 @@ interface LeadersProps {
 const IN_STEP = { from: 240, by: 170 }
 const OUT_STEP = { by: 90, most: 260 }
 
+/* ---- fitting a card to its own lines ----
+
+   A card is `width: max-content` capped at whatever room its seat has, so a
+   sentence longer than that room wraps — and the box then stays the full width
+   it was *allowed* while the last line ends wherever it ends. The gap left on
+   the right is the thing: a label pointing at something should be the size of
+   what it says, not the size of the space it was offered.
+
+   No CSS keyword does this. `fit-content` and `max-content` shrink-wrap to the
+   unwrapped width or fall back to the available width; neither one is "the
+   widest line the wrapping actually produced". So the lines are measured and
+   the width is written back.
+
+   Two things have to be right.
+
+   **The units.** `Range.getClientRects()` hands back one rect per line box in
+   *screen* pixels, and a card lives inside a `foreignObject` in a
+   `viewBox`-scaled svg, so screen pixels are not the units its `width` is set
+   in. The card's own `getBoundingClientRect().width / offsetWidth` is exactly
+   that scale — and because `getBoundingClientRect` includes the entrance
+   animation's `transform` while `offsetWidth` does not, the animation's own
+   scale cancels out of the division. Which is what makes this safe to run
+   while the cards are still opening.
+
+   **The face.** Clash Display is `font-display: swap`, so a card measured
+   before it arrives is a card fitted to Helvetica's metrics — and then clipping
+   its own last word a moment later. Hence the second pass off `fonts.ready`. */
+const fitCards = (root: SVGGElement | null) => {
+  if (!root) return
+  const range = document.createRange()
+  root.querySelectorAll<HTMLElement>('.mech-leader-card').forEach((card) => {
+    // Back to the seat's full width before measuring, or each pass measures
+    // the last pass's answer and the card walks itself narrower.
+    card.style.width = ''
+    const drawn = card.getBoundingClientRect().width
+    if (!drawn || !card.offsetWidth) return
+    const scale = drawn / card.offsetWidth
+
+    range.selectNodeContents(card)
+    const lines = Array.from(range.getClientRects())
+    // One line is already hugging its text — that is what `max-content` is
+    // for, and there is nothing to take off it.
+    if (lines.length < 2) return
+
+    const style = getComputedStyle(card)
+    const chrome =
+      style.boxSizing === 'border-box'
+        ? parseFloat(style.paddingLeft) +
+          parseFloat(style.paddingRight) +
+          parseFloat(style.borderLeftWidth) +
+          parseFloat(style.borderRightWidth)
+        : 0
+    // A pixel of slack: the widest line measured back to exactly its own width
+    // is a line one sub-pixel rounding away from wrapping again.
+    const widest = Math.max(...lines.map((line) => line.width)) / scale
+    card.style.width = `${Math.ceil(widest) + 1 + chrome}px`
+  })
+}
+
 function Leaders({ notes, box, space, floats, lit, onLit }: LeadersProps) {
   const group = useRef<SVGGElement>(null)
   const list = leadersFor(notes, box, space)
@@ -373,6 +432,30 @@ function Leaders({ notes, box, space, floats, lit, onLit }: LeadersProps) {
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
   }, [floats, perFrame])
+
+  /* Laid out, then fitted — see `fitCards`. `list` is rebuilt on every render
+     so it cannot be a dependency; what actually moves a card is the notes it
+     is drawn from and the box they are placed in, which is what is watched
+     here. */
+  useLayoutEffect(() => {
+    const fit = () => fitCards(group.current)
+    fit()
+    let live = true
+    document.fonts?.ready.then(() => {
+      if (live) fit()
+    })
+    /* And again on a resize, which is also what browser zoom fires. A card's
+       type is `14px * --type-k` — the ratio between the frame unit and the
+       type unit, which moves with the window — so the sentence re-wraps under
+       a width that was measured for a different size, and the fit has to be
+       taken again. `space` only changes on the narrow layout, so it cannot
+       stand in for this. */
+    window.addEventListener('resize', fit)
+    return () => {
+      live = false
+      window.removeEventListener('resize', fit)
+    }
+  }, [notes, box.x, box.y, box.w, box.h, space.w, space.h])
 
   return (
     <svg
