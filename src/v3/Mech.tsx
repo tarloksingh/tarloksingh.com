@@ -1479,7 +1479,12 @@ export default function Mech({ id, onProject, onHome }: Props) {
               lets it sit centred in whatever room is left, biased a little
               above true middle. */}
           <div className="mech-folds-wrap">
-            <div className="mech-folds">
+            {/* `--fold-cells` is what sizes a heading's display — see
+                `.mech-fold > button .mech-seg` in Mech.css, which multiplies it
+                by home's own cell to print at the same size `INTRO` does.
+                Handed down rather than written in the stylesheet so the width
+                cannot drift from the count. */}
+            <div className="mech-folds" style={{ ['--fold-cells' as string]: FOLD_CELLS }}>
               {folds.map((fold) => {
                 const isOpen = open === fold.id
                 return (

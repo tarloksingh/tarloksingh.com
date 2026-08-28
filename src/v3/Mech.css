@@ -1552,11 +1552,22 @@
 }
 
 .mech-fold > button .mech-seg {
-  /* Whatever is left of the column beside the pip. `.mech-seg` is a block
-     with a `width: 100%` svg in it, which in a flex row means "as wide as my
-     content", not "as wide as the room". */
-  flex: 1;
-  min-width: 0;
+  /* Sized to a *cell*, not to the room.
+
+     `Segment` scales by width, so a display handed the whole column prints
+     bigger glyphs the wider the column is — and filling the 380 here put the
+     cell at nineteen frame units against home's twelve, which made these
+     headings half again the size of the readout they are modelled on. Home's
+     `INTRO` is `--count-w` (253) over twenty-one cells; twelve units a cell is
+     that same measure, so the two instruments print at one size.
+
+     `--fold-cells` is `FOLD_CELLS`, handed in from Mech.tsx rather than
+     written here twice — the width has to track the cell count or the next
+     project with a longer section title silently resizes every heading on the
+     site. */
+  flex: none;
+  width: calc(var(--fold-cells, 19) * 12 * var(--px));
+  max-width: 100%;
   opacity: 0.5;
   transition: opacity 200ms linear;
 }
@@ -3792,6 +3803,15 @@
 
 .mech[data-narrow='true'] .mech-fold h2 .mech-pip {
   transform: rotate(45deg) scale(1.3);
+}
+
+/* The column is the window here, and a display printing at home's cell across
+   a phone is a caption. Back to filling the room, which on this layout is the
+   same order of size the wide layout's fixed cell gives. */
+.mech[data-narrow='true'] .mech-fold > button .mech-seg {
+  flex: 1;
+  width: auto;
+  min-width: 0;
 }
 
 .mech[data-narrow='true'] .mech-fold-body > div {

@@ -1983,12 +1983,23 @@ level, so `.mech-seg` sits at 0.5 / 0.75 / 1. Fading the whole `.mech-seg` takes
 the unlit field down with the word, which is right — the display dims, it does
 not go monochrome.
 
-**The row height had to be said out loud.** It came off `line-height` when the
-heading was type; the display sets its own height from its aspect, so the space
-between headings is `padding` on the button now. And `.mech-seg` needs
-`flex: 1; min-width: 0` inside that button — it is a block with a `width: 100%`
-svg in it, which in a flex row means "as wide as my content", not "as wide as
-the room".
+**A heading is sized to a *cell*, not to the room.** `Segment` scales by width,
+so a display handed the whole column prints bigger glyphs the wider the column
+is. Filling the 380 put the cell at nineteen frame units against home's twelve,
+and the headings came out half again the size of the readout they are modelled
+on. Home's `INTRO` is `--count-w` (253) over twenty-one cells, so twelve units
+a cell is that same measure and the two instruments print at one size.
+
+The count comes down as `--fold-cells` from `Mech.tsx` rather than being
+written into the stylesheet a second time: the width has to track the cell
+count, or the next project with a section title longer than "branding &
+insights" silently resizes every heading on the site. Narrow is the exception
+and goes back to filling its room — the column is the window there, and a
+display printing at home's cell across a phone is a caption.
+
+**The row height had to be said out loud** too. It came off `line-height` when
+the heading was type; the display sets its own height from its aspect, so the
+space between headings is `padding` on the button now.
 
 **`.mech-fold-rule` follows the heading to `--warn`.** A green rule under a red
 readout reads as two different instruments.
