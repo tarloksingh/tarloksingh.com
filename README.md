@@ -1579,6 +1579,20 @@ smaller.
 > thing about the tuning panels and it is worth re-reading *A panel's
 > scratchpad beats source* before concluding a number here does nothing.
 
+**The models follow that rule now too.** `modelTuning`'s metalness was a
+*multiplier* long after the pieces' had become an offset, and it is the reason
+Capsule C1's logo stayed white through several rounds of correcting its
+lighting. The logo is authored black at `metalness: 0` and `roughness: 0.046`
+— a black mirror — and metalness is the one surface property where zero is a
+different *material model* rather than a low setting: a dielectric reflects
+white, a metal tints its reflection with its own base colour. So as a
+dielectric it reflected the room and came out white, and no scaling of a zero
+was ever going to change that. v2 adds 0.24 and the reflection picks up the
+black. The face's default is `-1` rather than `0`, because an additive
+identity would have quietly *un*-flattened six materials on a head that
+already looked right — six of `adam-face.glb`'s thirteen are authored metallic
+and the old multiply-by-zero was forcing all of them to dielectric.
+
 Surface is Gloss, Metal and Reflects, and they are **offsets, not absolutes**.
 A piece is several materials on purpose — a disc case is a clear sleeve over a
 printed insert — and writing one roughness across all of them flattens it into

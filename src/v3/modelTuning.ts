@@ -51,7 +51,18 @@ export interface ModelTuning {
 
   envMapIntensity: number
   roughnessBoost: number
-  metalnessScale: number
+  /** Added to whatever the export was authored with, never multiplied — the
+   *  same rule the pieces follow, and for the same reason plus one more.
+   *
+   *  No multiplier lifts a zero, and metalness is the one surface property
+   *  where zero is a *different material model* rather than a low setting: a
+   *  dielectric reflects white, a metal tints its reflection with its own base
+   *  colour. Capsule C1's logo is authored black at `metalness: 0` and
+   *  `roughness: 0.046` — a black mirror — so as a dielectric it reflects the
+   *  room and comes out white, and no amount of scaling a zero changes that.
+   *  v2 lifts it to 0.24, the reflection picks up the black, and the logo
+   *  reads black. That is the whole difference between the two screens. */
+  metalnessBoost: number
 
   /** How eagerly the eyes react, and how far they are ever allowed to go —
    *  a twitchy cursor at the edge of the screen should not be able to roll
@@ -113,7 +124,12 @@ export const MODEL_DEFAULTS: ModelTuning = {
 
   envMapIntensity: 0,
   roughnessBoost: -0.93,
-  metalnessScale: 0,
+  /* -1, not 0. The face's rig used to multiply by zero, which forced all
+     thirteen of its materials to dielectric — and six of them are authored
+     metallic (the eyes at 0.28, one at a full 1.0). Under an additive boost
+     the identity is 0, so plain 0 here would have quietly changed a face that
+     already looked right; -1 clamps them all to zero exactly as before. */
+  metalnessBoost: -1,
 
   lookH: 0.8,
   lookV: 0.5,
@@ -188,11 +204,6 @@ export const MODEL_RIGS: Record<string, ModelTuning> = {
        response, so the export's two metallic materials had *nothing* left to
        render with. For an injection-moulded enclosure the environment is the
        look. v2 sets 1.3.
-     - **`metalnessScale` is a multiplier and `metalnessBoost` in v2 is
-       additive.** At 0 it forced those two metals to dielectric. 1 is the
-       identity, which leaves the export saying what it was authored to say;
-       v2's +0.24 cannot be expressed here, and does not need to be — the two
-       materials it was lifting are already at 1.
      - **`roughnessBoost` is added too**, and his -0.93 clamps all six to
        roughness 0. The black logo was not a washed-out black, it was a black
        mirror. v2 boosts the case by -0.24.
@@ -227,7 +238,7 @@ export const MODEL_RIGS: Record<string, ModelTuning> = {
     fillZ: -1,
     envMapIntensity: 1.3,
     roughnessBoost: -0.24,
-    metalnessScale: 1,
+    metalnessBoost: 0.24,
     watchBird: false
   }
 }
@@ -398,7 +409,7 @@ export function useModelTuning(
       {
         envMapIntensity: { value: seed.envMapIntensity, min: 0, max: 4, step: 0.05, label: 'Env ×' },
         roughnessBoost: { value: seed.roughnessBoost, min: -1, max: 1, step: 0.01, label: 'Rough +' },
-        metalnessScale: { value: seed.metalnessScale, min: 0, max: 2, step: 0.05, label: 'Metal ×' }
+        metalnessBoost: { value: seed.metalnessBoost, min: -1, max: 1, step: 0.01, label: 'Metal +' }
       },
       { collapsed: true }
     )
@@ -440,7 +451,7 @@ export function useModelTuning(
      saved his rig as hers, and going back saved hers as his, and both went
      straight to `localStorage`, so it survived the reload and looked like the
      source constants were being ignored. It is why his eyes came up blank
-     (her `envMapIntensity: 1.3` and `metalnessScale: 1` on a face lit for
+     (her `envMapIntensity: 1.3` and her metalness on a face lit for
      neither) and why the case's black logo stayed white however many times
      this file was corrected. */
   const wroteFor = useRef(projectId)

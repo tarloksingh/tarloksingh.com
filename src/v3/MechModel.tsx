@@ -294,7 +294,7 @@ function Model({ src, tuning, look }: { src: string; tuning: ModelTuning; look: 
     for (const surface of fit.surfaces) {
       surface.material.envMapIntensity = tuning.envMapIntensity
       surface.material.roughness = MathUtils.clamp(surface.roughness + tuning.roughnessBoost, 0, 1)
-      surface.material.metalness = MathUtils.clamp(surface.metalness * tuning.metalnessScale, 0, 1)
+      surface.material.metalness = MathUtils.clamp(surface.metalness + tuning.metalnessBoost, 0, 1)
     }
 
     // Blink, on a loose timer — down and back up across the window, a
