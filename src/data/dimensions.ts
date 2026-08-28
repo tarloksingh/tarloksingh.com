@@ -17,7 +17,6 @@ export const dimensions: Record<string, [number, number]> = {
   'capsule-c1/DT_Mobile_Call.mp4': [1280, 720],
   'capsule-c1/DT_Signup.mp4': [1280, 720],
   'capsule-c1/Demo_Video.mp4': [1280, 720],
-  'capsule-c1/Design_3.mp4': [1280, 960],
   'capsule-c1/Design_5.mp4': [1280, 720],
   'capsule-c1/Header2.mp4': [1280, 720],
   'capsule-c1/Phone_Insert.png': [1920, 941],

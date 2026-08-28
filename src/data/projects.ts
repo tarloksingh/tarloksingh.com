@@ -359,7 +359,6 @@ const drafts: Draft[] = [
           { v: 'DT_Mobile_Call.mp4', label: 'Home page & calling' },
           { v: 'DT_Signup.mp4', label: 'Mobile sign-up screen' },
           { v: 'Design_5.mp4', label: 'TV app design' },
-          { v: 'Design_3.mp4', label: 'Interface motion study' },
           { i: 'Top_View.png', label: 'Top view of the C1' },
           { i: 'Phone_Insert.png', label: 'Final product design & assembly' },
           { i: 'Side_View.jpg', label: 'Side view of the C1' }
