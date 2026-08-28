@@ -30,7 +30,8 @@ export default function Typed({
   speed = 55,
   caret = true,
   back = false,
-  backSpeed = 26
+  backSpeed = 26,
+  start = true
 }: {
   text: string
   run: string
@@ -45,6 +46,13 @@ export default function Typed({
   /** Milliseconds a character on the way out. Quicker than typing, the way a
    *  held backspace is quicker than a person. */
   backSpeed?: number
+  /** False holds the line empty and does not start the clock. `delay` counts
+   *  from the moment this comes true, not from mount — which is the whole
+   *  point of it: home mounts behind the boot's cover, so a line typed on a
+   *  timer started at mount has spelled itself out before anyone can see it.
+   *  The intro paragraph got this for free because its `back` follows the
+   *  cover; every other typed line needs to be told. */
+  start?: boolean
 }) {
   const out = useRef<HTMLSpanElement>(null)
   /* How far along it is, shared by both directions. Not state: setting it per
@@ -63,7 +71,8 @@ export default function Typed({
     at.current = 0
     let timer = 0
     if (out.current) out.current.textContent = ''
-    const start = window.setTimeout(() => {
+    if (!start) return
+    const open = window.setTimeout(() => {
       timer = window.setInterval(() => {
         at.current += 1
         if (out.current) out.current.textContent = text.slice(0, at.current)
@@ -74,10 +83,10 @@ export default function Typed({
       }, speed)
     }, delay * 1000)
     return () => {
-      window.clearTimeout(start)
+      window.clearTimeout(open)
       window.clearInterval(timer)
     }
-  }, [text, run, delay, speed, back])
+  }, [text, run, delay, speed, back, start])
 
   useEffect(() => {
     if (!back) return

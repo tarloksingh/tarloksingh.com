@@ -146,7 +146,13 @@ function Drift({
   children: React.ReactNode
 }) {
   const group = useRef<Group>(null)
-  const at = useRef({ spin: 0, scale: fit.scale })
+  /* Scale starts at nothing, not at `fit.scale`. The bank deals its subjects
+     in one after another down the rail (see `dealt` in MechCluster.tsx) and a
+     subject that is simply *there* the frame its slot is mounted arrives with
+     a hard cut, because a WebGL view has no opacity for the slot's own CSS
+     entrance to carry it on. It grows into the bay instead, on the same eased
+     chase the selection uses — one mechanism, two jobs. */
+  const at = useRef({ spin: 0, scale: 0 })
   const nextTick = useRef(0)
 
   useFrame((state) => {
@@ -265,10 +271,17 @@ function Environment() {
  *  r3f skips its own automatic render as soon as anything subscribes to the
  *  frame at a priority, and an automatic render here would clear the canvas
  *  after the views had drawn into it. */
-export function SlotView({ id, live }: { id: string; live: boolean }) {
+/** `arrive` is this slot's turn in the deal. The bay itself is drawn either
+ *  way — it is the `<View>`'s own element and the slot's CSS entrance owns it
+ *  — but nothing is *in* it until the rail gets down to this one, and then the
+ *  subject grows into it (see `Drift`). The scene is not mounted before that:
+ *  a `<View>` with no children scissors to its rect and draws nothing, so
+ *  twelve GLBs and twelve pieces are not all being cloned, lit and rendered on
+ *  the frame home arrives. */
+export function SlotView({ id, live, arrive }: { id: string; live: boolean; arrive: boolean }) {
   return (
     <View className="mech-slot-shot" index={1}>
-      <Slot id={id} live={live} />
+      {arrive && <Slot id={id} live={live} />}
     </View>
   )
 }

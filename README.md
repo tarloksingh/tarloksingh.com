@@ -882,6 +882,16 @@ there, exactly like a real one being red at six thousand with the engine off.
 along with `--cols`, so changing either in `MechCluster.tsx` cannot leave a
 graph lighting the wrong half of itself.
 
+**And it starts *on* a mark, not near one.** `TACH_RED` was 0.82 — set by eye,
+which put the line three quarters of the way from the 5 on the axis to the 6,
+reading as a mark nobody had bothered to line up. A real redline begins at a
+number on the dial. So it is written as the number instead: `TACH_MARKS` is the
+axis, `TACH_RED_AT` is which of them the zone starts on, and `TACH_RED` falls
+out of the two (the axis is `space-between`, so mark `n` is at `n / (marks -
+1)`). It begins at 5 now, and `REV_PEAK` came in with it — the old peaks were
+tuned against a zone starting at 0.82 and would have parked the needle in the
+red permanently against one starting at 0.71.
+
 **Up fast and down slow.** `REV_HOLD` keeps it wound up longer than it rests
 and the rise is nearly twice the fall, which is the whole character of a
 throttle being blipped; the same rate both ways is a slider. The peaks stop
@@ -1021,6 +1031,63 @@ subjects are scissored into, and a transform on it — including the identity
 matrix an unfinished one leaves behind — makes it the containing block for that
 canvas. Same rule as `.mech-cluster` and `.mech-body`, which is why none of the
 three carries one either.
+
+#### The housing arrives empty
+
+The rules above are about the *blocks*. What is in them is a second pass, and
+it is the one that makes the arrival read as a machine coming up rather than as
+a panel fading in: **every housing arrives dark and empty, and whatever it is
+going to read is put into it afterwards.**
+
+A readout that fades up with its word already lit was already on. That is the
+whole argument, and everything below is one application of it:
+
+- The **flank** — the reel of what I do, over the three count gauges — used to
+  slide in from the left edge it is welded to. Good gesture, wrong block: what
+  is in it is a display and three instruments, so the movement moved off the
+  housing and into them. It fades now (`mech-cluster-fade`, where it had
+  `mech-cluster-left-in`), the reel flickers its word up, and the three bars
+  climb from empty.
+- The **counts** and the **tachometer** both already started from nothing —
+  `shownFrac` at zero, `rev` at zero and a first sweep to the peak — and both
+  were doing it *behind the cover*, so what anyone actually saw was three bars
+  already at two-thirds and a needle already idling. Both take a `start` now
+  and hold at nought until they are asked.
+- **`SHOOT` / `STOP`** type themselves in a cell at a time. They are the one
+  pair on the page the scramble is wrong for: a scramble is a display being
+  told something *else*, and these two words never change, so there was
+  nothing to scramble from. That is `type` on `Segment`.
+- The **address and the credit** in the footer are typed, and typed again on
+  every arrival — `run` is keyed on what is on screen. They were the last two
+  lines on the page that were simply already there. Both are boxed to their
+  finished width in `ch` (the footer is set in the panel's monospace), because
+  the credit is held against the right edge by `space-between` and a line that
+  grows from nothing drags that corner along with it, one character at a time.
+- The **field dials** sweep all the way round on arrival, drop back to nothing,
+  and only then start reading — `arc` in `MechCluster.tsx`, four states through
+  three timers. Every cluster does this on ignition, and it is the only reason
+  anyone knows what the top of a scale is.
+- The **subjects in the bank** are dealt in one at a time down the rail. This
+  one needs telling twice: the slot is a DOM box with a CSS entrance, but the
+  subject inside it is WebGL and CSS cannot fade it, so the stagger is `dealt`
+  (an index that walks) gating the `<View>`'s children, and `Drift` starts its
+  scale at nought and grows into the bay on the same eased chase selection
+  already used. The two staggers have to agree: `IN.slot` / `IN.slotStep` in
+  `MechCluster.tsx` and the `.mech-slot` animation delay in the stylesheet.
+
+**Two lists that have to be read together.** `IN` in `MechCluster.tsx` holds the
+beats the *contents* run on; the delays in *Coming up, and going down* hold the
+beats their *blocks* run on. Every number in `IN` is deliberately a little later
+than the block it is inside — a display cannot switch on before its housing is
+there. And both count from the cover lifting rather than from mount, which is
+what `start` on `Typed` and on `Segment` exists for: home mounts behind the
+boot's cover, so a timer started at mount has finished before anyone can see it.
+That was true of the name, which used to be spelled out at `delay: 0.4` against
+a 1200ms boot.
+
+**The name is last on purpose.** It is the one line on the screen that is not a
+reading — it is who the machine belongs to — and a machine says that once its
+instruments are lit, not before.
 
 #### Twelve renders, on one panel's supply
 
@@ -2079,6 +2146,17 @@ that scrambles the instant it mounts is claiming it was already on and showing
 something else, which is a lie about a panel that has just booted. A project's
 fold headings are the honest exception: they really are a row of lamps being
 switched on when a project opens.
+
+Home's arrival added three more, and they are all about *when* rather than
+*what*. **`wait`** holds the display dark for a while before the arrival runs,
+because a readout inside a block that is still fading in has to wait for its
+housing. **`start`** holds it dark indefinitely and does not spend the arrival —
+flip it and the word comes up from the beginning, which is how a readout inside
+home waits out the boot's cover instead of settling behind it. And **`type`**
+is the other arrival: the word spelled into the housing a cell at a time from
+the left, no noise ahead of the caret. `SHOOT` / `STOP` are what wanted it —
+two words that never change, so the scramble had nothing to scramble from.
+`Typed` grew a `start` of the same shape and for the same reason.
 
 **Brightness carries what three colours used to.** The typed version was `--dim`
 closed, `--mid` on hover, `--accent` open. A lamp has no third state but its

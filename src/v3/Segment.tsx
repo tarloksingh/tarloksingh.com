@@ -163,6 +163,9 @@ const maskOf = (glyph: string) => MASKS.get(glyph.toUpperCase()) ?? MASKS.get(' 
  *  allowed to settle, and how far behind its neighbour each cell lands. */
 const SCRAMBLE = { hold: 45, frames: 4, stagger: 30 }
 
+/** Milliseconds a cell, for the other arrival — see `type` below. */
+const TYPE_MS = 64
+
 const NOISE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 
 /** Noise, but reproducible for a given cell on a given frame — a plain
@@ -190,9 +193,34 @@ export interface SegmentProps {
    *  lamps being switched on when a project opens, which is what the typed
    *  titles they replaced were saying. */
   arrive?: boolean
+  /** The arrival is a **type-in** rather than a scramble: the housing comes up
+   *  with every lamp dark and the word is spelled into it a cell at a time from
+   *  the left. Implies `arrive`, and only ever applies to the first word — a
+   *  display that has already said something and is being told something else
+   *  scrambles, because that is a readout changing rather than switching on.
+   *  The warning pair is what wanted this: `SHOOT` and `STOP` are two words
+   *  that never change, so the scramble had nothing to scramble *from*. */
+  type?: boolean
+  /** Milliseconds the display holds dark before its arrival runs. Every block
+   *  on home has its own beat and a readout inside one of them has to wait for
+   *  the block to be there — the alternative is a display that has finished
+   *  settling before anyone could see it, which is the same bug the cluster's
+   *  entrances were hung off `data-covered` to fix. */
+  wait?: number
+  /** False holds the display dark and does not spend the arrival. Flip it and
+   *  the arrival runs then, from the beginning. This is how a readout inside
+   *  the cluster waits out the boot: home mounts behind the cover, so a
+   *  timer started on mount is a timer nobody sees. */
+  start?: boolean
   align?: 'center' | 'left'
   label?: string
 }
+
+/** What the display is doing. `set` is the resting state — every cell showing
+ *  what it is meant to. `off` is every cell dark, which is a real state now
+ *  rather than the absence of one: it is what a display looks like before it
+ *  has been switched on. */
+type Run = { mode: 'off' | 'set' | 'scramble' | 'type'; frame: number }
 
 export default function Segment({
   text,
@@ -200,6 +228,9 @@ export default function Segment({
   warn = false,
   settle = true,
   arrive = false,
+  type = false,
+  wait = 0,
+  start = true,
   align = 'center',
   label
 }: SegmentProps) {
@@ -208,46 +239,81 @@ export default function Segment({
   const pad = align === 'center' ? Math.max(0, Math.floor((cells - want.length) / 2)) : 0
   const target = ' '.repeat(pad) + want
 
-  /** Which frame of the settle this is. `-1` is settled: every cell shows what
-   *  it is meant to, and nothing is running. */
-  const [frame, setFrame] = useState(-1)
+  /* Whether this display has ever been switched on. The first word is not a
+     change — a display that scrambles the moment it is mounted is one that was
+     already on and showing something else, which is a lie about a page that
+     has just booted — so `arrive` / `type` are the only things that animate
+     it, and `settle` takes over from the second word on. */
+  const [run, setRun] = useState<Run>(() =>
+    arrive || type || !start ? { mode: 'off', frame: 0 } : { mode: 'set', frame: 0 }
+  )
   const first = useRef(true)
 
   useEffect(() => {
-    // The first word is not a change. A display that scrambles the moment it
-    // is mounted is one that was already on and showing something else, which
-    // is a lie about a page that has just booted.
-    if (!settle || (first.current && !arrive)) {
-      first.current = false
-      setFrame(-1)
+    /* Held dark, and the arrival is *not* spent: `first` is left standing, so
+       whenever `start` does come true the word arrives from the beginning
+       rather than being found already sitting there. */
+    if (!start) {
+      setRun({ mode: 'off', frame: 0 })
       return
     }
-    first.current = false
-    let n = 0
-    setFrame(0)
-    // The last cell settles `frames` of noise plus its own place in the
-    // cascade after the start; one more frame past that ends the run.
-    const last = SCRAMBLE.frames + Math.ceil(((cells - 1) * SCRAMBLE.stagger) / SCRAMBLE.hold)
-    const timer = window.setInterval(() => {
-      n += 1
-      setFrame(n > last ? -1 : n)
-      if (n > last) window.clearInterval(timer)
-    }, SCRAMBLE.hold)
-    return () => window.clearInterval(timer)
-  }, [target, cells, settle, arrive])
 
-  /** How many cells have landed. Below zero for the opening frames, where the
-   *  whole display is still churning. */
+    const opening = first.current
+    first.current = false
+    const shows = opening ? arrive || type : settle
+    if (!shows) {
+      setRun({ mode: 'set', frame: 0 })
+      return
+    }
+
+    const mode: Run['mode'] = opening && type ? 'type' : 'scramble'
+    // Typing walks one cell per tick to the end of the word; the scramble runs
+    // `frames` of noise plus each cell's own place in the cascade, and one
+    // frame past that ends the run.
+    const step = mode === 'type' ? TYPE_MS : SCRAMBLE.hold
+    const last =
+      mode === 'type'
+        ? target.length
+        : SCRAMBLE.frames + Math.ceil(((cells - 1) * SCRAMBLE.stagger) / SCRAMBLE.hold)
+
+    let timer = 0
+    setRun({ mode: 'off', frame: 0 })
+    const open = window.setTimeout(() => {
+      let n = 0
+      setRun({ mode, frame: 0 })
+      timer = window.setInterval(() => {
+        n += 1
+        setRun(n > last ? { mode: 'set', frame: 0 } : { mode, frame: n })
+        if (n > last) window.clearInterval(timer)
+      }, step)
+    }, wait)
+    return () => {
+      window.clearTimeout(open)
+      window.clearInterval(timer)
+    }
+  }, [target, cells, settle, arrive, type, wait, start])
+
+  /** How many cells have landed. Nought while the display is still dark, and
+   *  below zero for the scramble's opening frames, where the whole thing is
+   *  still churning. */
   const settled =
-    frame < 0 ? cells : Math.floor((frame * SCRAMBLE.hold - SCRAMBLE.frames * SCRAMBLE.hold) / SCRAMBLE.stagger) + 1
+    run.mode === 'set'
+      ? cells
+      : run.mode === 'off'
+        ? 0
+        : run.mode === 'type'
+          ? run.frame
+          : Math.floor((run.frame * SCRAMBLE.hold - SCRAMBLE.frames * SCRAMBLE.hold) / SCRAMBLE.stagger) + 1
 
   const glyphs = Array.from({ length: cells }, (_, n) => {
     const want = target[n] ?? ' '
     if (n < settled) return want
     // A cell with no character to show never scrambles: lighting lamps where
-    // the word has already ended is noise for its own sake.
-    if (want === ' ') return ' '
-    return noisy(frame * cells + n)
+    // the word has already ended is noise for its own sake. Neither does one
+    // waiting its turn in a type-in — that arrival is a word being spelled
+    // out, and noise ahead of the caret is a different gesture entirely.
+    if (want === ' ' || run.mode === 'off' || run.mode === 'type') return ' '
+    return noisy(run.frame * cells + n)
   })
 
   const width = cells * CELL.advance

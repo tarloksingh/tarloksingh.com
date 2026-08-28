@@ -1343,8 +1343,13 @@
   animation: mech-cluster-strike 420ms 90ms var(--ease) both;
 }
 
+/* Last. The name is the one line on this screen that is not a reading — it is
+   who the machine belongs to — and a machine says that once it has finished
+   coming up rather than before the instruments are lit. The typing inside it
+   is held to the same beat by `start` on `Typed`; see `IN` in
+   MechCluster.tsx, which is the list these delays have to be read beside. */
 .mech-cluster[data-covered='false'] .mech-ident {
-  animation: mech-cluster-in 620ms 300ms var(--ease) both;
+  animation: mech-cluster-in 620ms 1000ms var(--ease) both;
 }
 
 /* Not `.mech-intro` — on the wide layout it rides inside `.mech-tach`'s own
@@ -1355,8 +1360,15 @@
   animation: mech-cluster-in 620ms 420ms var(--ease) both;
 }
 
+/* It came in from the left edge it is welded to, which was the panel
+   assembling inward — a good gesture for a *block*, and the wrong one for this
+   block, because what is in it is a display and three gauges. A readout that
+   slides into place has already been switched on somewhere off-screen; these
+   fade up dark and then fill: the reel flickers its word up (`arrive` on its
+   `Segment`) and the three bars climb from empty (`start` on `Counts`). The
+   movement moved from the housing into the instruments. */
 .mech-cluster[data-covered='false'] .mech-flank {
-  animation: mech-cluster-left-in 580ms 420ms var(--ease) both;
+  animation: mech-cluster-fade 620ms 240ms var(--ease) both;
 }
 
 .mech-cluster[data-covered='false'] .mech-work-rail {
@@ -1369,7 +1381,7 @@
    already sitting there. */
 .mech-cluster[data-covered='false'] .mech-slot {
   animation: mech-cluster-in 420ms var(--ease) both;
-  animation-delay: calc(460ms + var(--i, 0) * 28ms);
+  animation-delay: calc(620ms + var(--i, 0) * 55ms);
 }
 
 /* Out, from the outside in.
@@ -1394,8 +1406,12 @@
    it back to nothing and bring it in. That is the flash. `leaving` is only
    ever true while the screen is actually on its way out. Same trap as
    `leaving` on the project screen's housing — see Mech.tsx. */
+/* Fades, now that it arrives by fading. A block that comes up in place and
+   leaves sideways is two different objects. `mech-cluster-left-in` /
+   `-left-out` are still here and still work — the flank is the only thing that
+   ever used them, and putting the slide back is one word. */
 .mech-cluster[data-leaving='true'] .mech-flank {
-  animation: mech-cluster-left-out 200ms linear both;
+  animation: mech-cluster-unfade 200ms linear both;
 }
 
 .mech-cluster[data-leaving='true'] .mech-work-rail {

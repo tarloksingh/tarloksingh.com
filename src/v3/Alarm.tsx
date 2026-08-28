@@ -25,7 +25,7 @@ import { quarry } from './subject'
    several times a frame to find out what a bolt has hit; this is the same
    question one frame at a time, and it means a third creature mounted
    tomorrow lights the lamp with nothing wired up. */
-export default function Alarm() {
+export default function Alarm({ start }: { start: boolean }) {
   const [up, setUp] = useState(false)
 
   useEffect(() => {
@@ -53,12 +53,20 @@ export default function Alarm() {
           `SHOOT`'s own length) left a trailing blank cell, which is what was
           reading as the word sitting in the upper-left of its box instead of
           centred in it. */}
+      {/* Both housings fade up with every lamp dark and the word is spelled
+          into them afterwards, a cell at a time — `type` on `Segment`, held
+          until the boot's cover lifts by `start`. The scramble every other
+          readout arrives on is wrong for these two: it is a display being told
+          something *else*, and these two words never change, so there was
+          nothing for them to scramble from. A pair of boxes that arrive with
+          their instruction already printed is signage; a pair that spell it
+          out is an instrument switching on. */}
       <i className="mech-alarm-key" data-on={up}>
-        <Segment text="SHOOT" cells={5} settle={false} label="shoot" />
+        <Segment text="SHOOT" cells={5} type wait={260} start={start} settle={false} label="shoot" />
       </i>
       <Tally inline />
       <i className="mech-alarm-key" data-warn data-on={!up}>
-        <Segment text="STOP" cells={4} warn settle={false} label="stop" />
+        <Segment text="STOP" cells={4} warn type wait={420} start={start} settle={false} label="stop" />
       </i>
     </div>
   )

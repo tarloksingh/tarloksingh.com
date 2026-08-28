@@ -1303,7 +1303,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
       <MechBird />
       <MechMoth />
       <MechLaser />
-      <Alarm />
+      <Alarm start={!booting} />
 
       {menu && (
         <MechMenu shownId={shownId} onProject={onProject} onHome={onHome} onClose={() => setMenu(false)} />
@@ -1632,14 +1632,41 @@ export default function Mech({ id, onProject, onHome }: Props) {
         </section>
         )}
 
+        {/* Both ends typed, and typed *again* every time the screen changes —
+            `run` is keyed on what is on screen, so coming back to home spells
+            them out afresh alongside the cluster's own arrival rather than
+            leaving the one pair of lines on the page that were simply already
+            there. `start` holds them until the cover is off: the footer is
+            visible on both screens and a line that typed itself during the
+            swap would be doing it under the transition. The address is short
+            enough to be quick; the credit follows it, so the corners fill left
+            then right rather than racing. */}
         <footer className="mech-foot" data-arrive>
           <a className="mech-comms" href="mailto:hello@tarloksingh.com">
-            <span className="mech-comms-to">hello@tarloksingh.com</span>
+            <span className="mech-comms-to">
+              <Typed
+                text="hello@tarloksingh.com"
+                run={`comms-${shownId ?? 'home'}`}
+                delay={0.34}
+                speed={26}
+                caret={false}
+                start={!covered}
+              />
+            </span>
             <i className="mech-foot-dot" aria-hidden />
           </a>
           <p className="mech-credit">
             <i className="mech-foot-dot" aria-hidden />
-            <span>developed by tarlok singh</span>
+            <span>
+              <Typed
+                text="developed by tarlok singh"
+                run={`credit-${shownId ?? 'home'}`}
+                delay={0.72}
+                speed={26}
+                caret={false}
+                start={!covered}
+              />
+            </span>
           </p>
         </footer>
       </div>

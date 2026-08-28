@@ -3031,6 +3031,27 @@
   color: var(--mid);
 }
 
+/* Both lines are typed a character at a time (see the footer in Mech.tsx), and
+   a box that grows from nothing drags whatever it is pinned to along with it:
+   the credit is held against the right edge by `space-between`, so its dot
+   walked leftward one character per keystroke and the address pushed nothing
+   but still snapped its own width about. Boxed to the finished line from the
+   first frame instead. This line is set in the panel's monospace, so `ch` is
+   literally the character count — the two numbers are the two strings' own
+   lengths and have to be changed with them. */
+.mech-comms-to,
+.mech-credit span {
+  display: inline-block;
+}
+
+.mech-comms-to {
+  width: 21ch;
+}
+
+.mech-credit span {
+  width: 25ch;
+}
+
 /* The one warm reading down here — the address is the way to reach the
    person the name at the top of the page belongs to, so it takes the name's
    own colour and its own glow (`.mech-ident-name` in MechCluster.css),

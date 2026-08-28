@@ -278,8 +278,68 @@ const SWAY = { rate: 0.55, depth: 0.055 }
 
 const clamp = (n: number, low: number, high: number) => Math.max(low, Math.min(high, n))
 
+/* ---- the arrival, in order ----
+
+   The cluster does not fade up as a picture. Every block comes on when a
+   panel's block comes on: the housing arrives empty and dark, and whatever it
+   is going to read is put into it afterwards — flickered up on a segment
+   display, typed on a line of text, climbed on a gauge. A readout that arrives
+   with its word already in it is a screenshot of an instrument.
+
+   These are the beats the *contents* run on, in milliseconds from the moment
+   the cover lifts. The blocks they sit in come up on the matching delays in
+   `coming up, and going down` in MechCluster.css; the two lists have to be
+   read together, and every number here is a little later than the block it is
+   inside, because a display cannot switch on before its housing is there.
+
+   The name is deliberately last. It is the one line on the screen that is not
+   a reading, and a machine says who it belongs to once it has finished
+   coming up rather than first. */
+const IN = {
+  /** The reel over the counts, and the rail's own display. */
+  role: 440,
+  head: 540,
+  intro: 460,
+  /** The three bars start climbing from empty. */
+  counts: 520,
+  /** The needle's first sweep of the scale. */
+  tach: 680,
+  /** The first subject lands in the bank, and how far behind it the next. */
+  slot: 620,
+  slotStep: 55,
+  /** The field dials: all the way round, back to nothing, then live. A dial
+   *  that has swept its own scale once is a dial you have been shown the range
+   *  of — which is what every cluster does on ignition and the only reason
+   *  anyone knows a tachometer goes to eight. */
+  arcFull: 1040,
+  arcZero: 1700,
+  arcLive: 1960
+}
+
 const reduced = () =>
   typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+/** `on`, but `ms` later — and back to false the instant `on` goes, with no
+ *  delay on the way down. The panel's beats (see `IN`) are all "this block is
+ *  there by now, so its reading may start"; leaving is not staged the same way
+ *  and a gauge that waited half a second to notice the screen was going would
+ *  be climbing behind the cover. */
+const useBeat = (on: boolean, ms: number) => {
+  const [at, setAt] = useState(false)
+  useEffect(() => {
+    if (!on) {
+      setAt(false)
+      return
+    }
+    if (reduced()) {
+      setAt(true)
+      return
+    }
+    const timer = window.setTimeout(() => setAt(true), ms)
+    return () => window.clearTimeout(timer)
+  }, [on, ms])
+  return at
+}
 
 /* ---- the tachometer ----
 
@@ -305,10 +365,18 @@ const reduced = () =>
  *  blocks with air between them rather than a graph. */
 const TACH_COLS = 34
 
-/** Where the red zone starts, as a fraction of the scale. The throttle is
- *  wound up to just short of it and only occasionally clips in — a needle that
- *  lives in the red is a needle nobody looks at. */
-const TACH_RED = 0.82
+/** Where the red zone starts, as a fraction of the scale — and it is written
+ *  as the mark it lands on rather than as a number that happens to look right.
+ *
+ *  The axis under the face prints eight marks, `space-between`, so mark `n`
+ *  sits at `n / 7` of the width. Set this by eye and the line lands *between*
+ *  two of them, which is what it did at 0.82: a redline three quarters of the
+ *  way from the 5 to the 6, reading as a mark nobody had bothered to line up.
+ *  A real one starts *at* a number on the dial. */
+const TACH_MARKS = ['0.5', '1', '2', '3', '4', '5', '6', '7']
+/** Which of those marks the red zone begins on. */
+const TACH_RED_AT = 5
+const TACH_RED = TACH_RED_AT / (TACH_MARKS.length - 1)
 
 /** How many cells tall a column can be — and, through `TACH_FACE` below, how
  *  tall the face itself is and therefore how tall the rail opposite stands.
@@ -406,7 +474,11 @@ const CELLS_RED = cellStack('rgba(var(--warn-rgb), calc(0.09 + 0.91 * var(--on))
  *  instrument that reads as switched off, and the columns near idle are the
  *  short ones at the quiet end of the curve. */
 const REV_IDLE = 0.2
-const REV_PEAK = [0.64, 0.92]
+/** Pulled in with the redline. These were 0.64–0.92 against a red zone that
+ *  started at 0.82; against one that starts at 0.71 the same numbers would
+ *  park the needle in the red almost permanently, which is the one place a
+ *  needle is not supposed to live. */
+const REV_PEAK = [0.55, 0.79]
 const REV_HOLD = { idle: [0.45, 1.1], wound: [1, 2.2] }
 
 const rand = (a: number, b: number) => a + Math.random() * (b - a)
@@ -428,12 +500,22 @@ const tracePoints = (from: number, to: number) =>
 
 const REDLINE_AT = Math.round(TACH_RED * TACH_COLS)
 
-function Tach({ children }: { children?: React.ReactNode }) {
+/** `start` is the cover lifting. Held off, the face reads nought — every
+ *  column dark, the graph an empty grid of unlit cells — and the first thing
+ *  it does when it is let go is the sweep it has always done: up the scale and
+ *  back down. That sweep is the arrival. It used to run behind the boot's
+ *  cover, so the instrument was found already idling, which is the difference
+ *  between a machine coming up and a picture of one. */
+function Tach({ start, children }: { start: boolean; children?: React.ReactNode }) {
   const face = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const node = face.current
     if (!node) return
+    if (!start) {
+      node.style.setProperty('--rev', '0')
+      return
+    }
     if (reduced()) {
       node.style.setProperty('--rev', String(Math.round(0.62 * TACH_COLS) / TACH_COLS))
       return
@@ -480,7 +562,7 @@ function Tach({ children }: { children?: React.ReactNode }) {
 
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [])
+  }, [start])
 
   return (
     <div className="mech-tach">
@@ -532,8 +614,8 @@ function Tach({ children }: { children?: React.ReactNode }) {
       </div>
 
       <div className="mech-tach-axis" aria-hidden>
-        {['0.5', '1', '2', '3', '4', '5', '6', '7'].map((mark, n) => (
-          <span key={mark} data-red={n >= 6}>
+        {TACH_MARKS.map((mark, n) => (
+          <span key={mark} data-red={n >= TACH_RED_AT}>
             {mark}
           </span>
         ))}
@@ -631,7 +713,7 @@ function FieldGauge({ name, on }: { name: Field; on: boolean }) {
  *  "filmmaker" mid-cycle slides the bars to that reading rather than dropping
  *  them back to empty and climbing again, which is what happens if the
  *  arrival animation is simply re-run. */
-function Counts({ fields }: { fields: Field[] }) {
+function Counts({ fields, start }: { fields: Field[]; start: boolean }) {
   const bars = useRef<Array<HTMLSpanElement | null>>([])
   const rows = useMemo(() => countsFor(fields), [fields.join(',')])
   const rowsRef = useRef(rows)
@@ -643,6 +725,16 @@ function Counts({ fields }: { fields: Field[] }) {
       rowsRef.current.forEach((count, n) =>
         bars.current[n]?.style.setProperty('--lit', String(Math.round((count.value / count.of) * TICKS)))
       )
+
+    /* Empty until the block is on screen. The climb from nothing to the
+       reading *is* the arrival — three bars found already sitting at
+       two-thirds are three bars nobody watched fill — and the loop below has
+       always started from zero, it was simply doing it behind the cover. */
+    if (!start) {
+      shownFrac.current = rowsRef.current.map(() => 0)
+      bars.current.forEach((bar) => bar?.style.setProperty('--lit', '0'))
+      return
+    }
 
     if (reduced()) {
       settle()
@@ -679,7 +771,7 @@ function Counts({ fields }: { fields: Field[] }) {
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [start])
 
   return (
     /* Bars and their labels, and nothing else on top of them.
@@ -729,12 +821,15 @@ function SlotBox({
   slot,
   n,
   on,
+  arrived,
   onPick,
   onOpen
 }: {
   slot: Slot
   n: number
   on: boolean
+  /** Whether the deal has reached this slot — see `dealt` below. */
+  arrived: boolean
   onPick: () => void
   onOpen: () => void
 }) {
@@ -767,7 +862,7 @@ function SlotBox({
           written down. Its children are three.js and never reach the DOM, so
           the empty state is a sibling laid over it rather than a child. */}
       {slot.solid ? (
-        <SlotView id={slot.id} live={on} />
+        <SlotView id={slot.id} live={on} arrive={arrived} />
       ) : (
         <span className="mech-slot-shot">
           <span className="mech-slot-bare">no signal</span>
@@ -868,6 +963,81 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
   const identRef = useRef<HTMLElement>(null)
   const nameProbe = useRef<HTMLHeadingElement>(null)
   useNameFit(narrow, identRef, nameProbe)
+
+  /* ---- the arrival ----
+
+     `covered` is the boot's cover, and it is also true for the beat this
+     component mounts on when you come back to home from a project. So `up` is
+     the one signal every readout on the panel waits for: nothing types, no
+     gauge climbs and no subject is dealt until it is true, and everything
+     below counts its own delay from that moment rather than from mount. See
+     `IN` at the top of this file for the order.
+
+     A plain boolean, not a phase count, because the panel's own blocks are
+     already staggered in CSS and these only have to be *later than* the block
+     they sit in. */
+  const up = !covered
+  /* Two readings that climb rather than switch on, so they wait for the block
+     around them to have finished arriving before they start. */
+  const revUp = useBeat(up, IN.tach)
+  const countsUp = useBeat(up, IN.counts)
+
+  /** How far down the rail the deal has got. The bank fills one slot at a
+   *  time from the top — the subjects are WebGL and the slot's CSS entrance
+   *  cannot carry them, so the stagger has to be told to the scene as well as
+   *  to the box. One timer, not twelve: an index that walks. */
+  const [dealt, setDealt] = useState(0)
+
+  useEffect(() => {
+    if (!up) {
+      setDealt(0)
+      return
+    }
+    if (reduced()) {
+      setDealt(SLOTS.length)
+      return
+    }
+    let timer = 0
+    const open = window.setTimeout(() => {
+      setDealt(1)
+      timer = window.setInterval(() => {
+        setDealt((n) => {
+          if (n + 1 >= SLOTS.length) window.clearInterval(timer)
+          return n + 1
+        })
+      }, IN.slotStep)
+    }, IN.slot)
+    return () => {
+      window.clearTimeout(open)
+      window.clearInterval(timer)
+    }
+  }, [up])
+
+  /* The field dials' ignition sweep: all the way round, back to nothing, then
+     live. Three timers rather than a keyframe because the dial has no
+     animation of its own — it is twelve blocks lit by a transition off
+     `data-on`, and the stagger that makes it read as a sweep is a
+     transition-delay per block. Driving it from here means the flourish and
+     the reading it settles into are the same mechanism, so there is nothing to
+     hand over between them. */
+  const [arc, setArc] = useState<'off' | 'full' | 'zero' | 'live'>('off')
+
+  useEffect(() => {
+    if (!up) {
+      setArc('off')
+      return
+    }
+    if (reduced()) {
+      setArc('live')
+      return
+    }
+    const timers = [
+      window.setTimeout(() => setArc('full'), IN.arcFull),
+      window.setTimeout(() => setArc('zero'), IN.arcZero),
+      window.setTimeout(() => setArc('live'), IN.arcLive)
+    ]
+    return () => timers.forEach(window.clearTimeout)
+  }, [up])
 
   /* The bank's canvas is `position: fixed` and scissors each subject to its
      slot's own rect — see `MechSlots.tsx`. `getBoundingClientRect` does not
@@ -979,7 +1149,9 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
           {NAME}
         </span>
         <span className="mech-ident-typed">
-          <Typed text={NAME} run="cluster-name" delay={0.4} speed={96} caret={false} />
+          {/* Last on the panel, and it types from the moment the cover
+              lifts rather than from mount — see `start` on `Typed`. */}
+          <Typed text={NAME} run="cluster-name" delay={1.25} speed={96} caret={false} start={up} />
         </span>
       </h1>
       {/* Off-screen, always the full text regardless of where `Typed` has
@@ -1012,7 +1184,20 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
   const introSection = (
     <section className="mech-intro">
       <span className="mech-intro-cap mech-display" data-on data-warn>
-        <Segment text="INTRO" cells={ROLE_CELLS} align="left" settle={false} label="intro" warn />
+        {/* Flickered up, the same as the reel opposite it. It was `settle:
+            false` — a cap that never changes has nothing to settle *from* —
+            but arriving is not a change, it is the lamps coming on, and
+            `arrive` is the switch for exactly that. */}
+        <Segment
+          text="INTRO"
+          cells={ROLE_CELLS}
+          align="left"
+          arrive
+          wait={IN.intro}
+          start={up}
+          label="intro"
+          warn
+        />
       </span>
 
       <p className="mech-profile">
@@ -1084,10 +1269,10 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
               while the box was still wider than they were and drifting looked
               like the problem. */}
           <div className="mech-display mech-display-role" data-on={slot !== null} data-warn>
-            <Segment text={reading} cells={ROLE_CELLS} label={reading} warn />
+            <Segment text={reading} cells={ROLE_CELLS} arrive wait={IN.role} start={up} label={reading} warn />
           </div>
 
-          <Counts fields={marked} />
+          <Counts fields={marked} start={countsUp} />
         </div>
 
         {/* Narrow only — the wide layout's copy renders inside `Tach`,
@@ -1097,7 +1282,7 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
 
         {/* ---- the middle ---- */}
         <div className="mech-main">
-          <Tach>
+          <Tach start={revUp}>
           {/* The black readout box at the top-left of the instrument — the
               position the reference gives its own digits. The label is drawn
               in the same segment glyphs as every other reading on the panel,
@@ -1134,6 +1319,9 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
               <Segment
                 text={slot ? slot.title : IDLE}
                 cells={CELLS}
+                arrive
+                wait={IN.head}
+                start={up}
                 warn
                 label={slot ? slot.title : 'nothing selected'}
               />
@@ -1153,6 +1341,7 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
                   slot={item}
                   n={n}
                   on={picked === n}
+                  arrived={n < dealt}
                   onPick={() => {
                     hold()
                     setPicked(n)
@@ -1183,8 +1372,11 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
               Was under the instrument in the middle column; the rail is
               where the rest of what a selection *says* lives now. */}
           <div className="mech-scale-row">
+            {/* `arc` is the ignition sweep — every dial round to full, then
+                back to nothing, then whatever is actually being read. See the
+                effect that drives it. */}
             {FIELDS.map((name) => (
-              <FieldGauge key={name} name={name} on={marked.includes(name)} />
+              <FieldGauge key={name} name={name} on={arc === 'full' || (arc === 'live' && marked.includes(name))} />
             ))}
           </div>
         </aside>
