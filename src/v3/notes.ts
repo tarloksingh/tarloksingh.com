@@ -45,9 +45,9 @@ export interface Note {
 
 export const NOTES: Record<string, Note[]> = {
   'mr-takahashi/model': [
-    { label: 'Name', value: 'Mr. Takahashi, who teaches Japanese and never runs out of patience.', at: [0.94, 0.08], to: [1.2242, 0.0482] },
-    { label: 'Tool', value: 'Sculpted and shaded in Blender.', fold: 'design', at: [-0.0816, 0.3], to: [-0.1, 0.2458] },
-    { label: 'Animation', value: 'Designed and animated in Blender.', fold: 'design', at: [0.0495, 0.8777], to: [-0.03, 0.9605] }
+    { label: 'Name', value: 'Spoke in English and Japanese. ', at: [-0.0519, 0.5049], to: [-0.2072, 0.458] },
+    { label: '', value: 'Sculpted and animated in Blender.', at: [0.9534, 0.1661], to: [1.0561, 0.0889] },
+    { label: '', value: 'We used whisper voice to text to get the input, and Llama 3 as the intellegence. ', at: [0.0132, 0.8611], to: [-0.0976, 0.9056] }
   ],
   'mr-takahashi/hero.mp4': [
     { label: 'made in', value: 'Made in Blender.', fold: 'tools' }

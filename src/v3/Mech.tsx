@@ -277,6 +277,16 @@ const NAME = 'Tarlok Singh'
  *  answering before it has been asked: the subject is already on the stage
  *  and the title already above it, and a drawer standing open is the one
  *  thing in the column that was not opened by the reader. */
+/** Cells in the title's display.
+ *
+ *  Twenty-one, which is "red dead redemption 2" — the longest title any
+ *  project has, and the same count home's two big readouts use for the same
+ *  reason (`CELLS` in MechCluster.tsx). This is what replaced the capped
+ *  `font-size` the title used to carry on each layout: a display cannot break
+ *  a name across two lines, so the promise the cap existed to keep is kept by
+ *  construction now. */
+const TITLE_CELLS = 21
+
 /** Cells in a fold's heading display.
  *
  *  Nineteen, which is "branding & insights" — the longest heading any project
@@ -1436,19 +1446,23 @@ export default function Mech({ id, onProject, onHome }: Props) {
               picture on a narrow layout while the write-up stays below the
               tile strip, and that reorder has to happen at this level. */}
           <div className="mech-lede">
-            {/* The title is set to one line, and on a phone that is a promise
-                the type size cannot keep on its own: "mr. takahashi" fits at
-                the size the frame asks for and "red dead redemption 2" is two
-                lines of it, which is what the split in the middle of a name
-                was. `--title-len` hands the stylesheet the character count so
-                it can cap the size against the width — measured off the count
-                rather than the rendered box because the title types itself in
-                a character at a time, and a box measured mid-type is a box
-                that is still growing. See `.mech-title` in Mech.css. */}
+            {/* The title is the largest readout on the screen — the same
+                fourteen-segment display the folds under it and home's `INTRO`
+                are, one size up. It used to be type: Clash Display, then
+                Audiowide, set on one line by a size capped against its own
+                character count. A display has no such problem, because the
+                box is a fixed number of lamps and a longer name simply fills
+                more of them; `TITLE_CELLS` is the whole of what `--title-len`
+                and two `min()` sums used to do on both layouts.
+
+                `settle` and not `arrive`: the title is the one line that is
+                genuinely re-set rather than switched on. Stepping from one
+                project to the next holds the same display and changes what is
+                on it, which is exactly the change the scramble is for. */}
             {lede && (
               <>
-                <h1 className="mech-title" style={{ ['--title-len' as string]: lede.title.length }}>
-                  <Typed text={lede.title} run={lede.id} />
+                <h1 className="mech-title">
+                  <Segment text={lede.title} cells={TITLE_CELLS} align="left" warn label={lede.title} />
                 </h1>
                 {lede.tagline && (
                   <p className="mech-tagline">

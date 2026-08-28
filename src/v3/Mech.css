@@ -1237,7 +1237,7 @@
   color: #fff;
   font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-weight: 400;
-  font-size: calc(15.5px * var(--type-k, 1));
+  font-size: calc(14px * var(--type-k, 1));
   line-height: 1.32;
   /* Ragged right, and never a hyphen: this is a caption pointing at a thing,
      and justified type in a box that narrow opens rivers in two lines. */
@@ -1251,7 +1251,7 @@
    it. */
 .mech-leaders[data-narrow='true'] .mech-leader-card {
   padding: 7px 11px 8px;
-  font-size: calc(13.5px * var(--type-k, 1));
+  font-size: calc(12.5px * var(--type-k, 1));
 }
 
 /* Opened from the corner the line arrives at, so it reads as the leader
@@ -1381,68 +1381,41 @@
   }
 }
 
-/* One line, on every layout, and the type size is what keeps that promise.
-   The column is 380 frame units wide and never more; at a flat 46 that holds
-   "openup" and breaks "grand theft auto v" across three lines, with the break
-   landing in the middle of a name. A title split in half is not a title.
+/* ---- the title ----
 
-   So the size is capped against the width the words actually have — the same
-   sum the narrow layout has had for a while, moved up here so both layouts
-   are the one rule. `--title-len` is the character count, handed in from
-   Mech.tsx; 0.66 is the average advance of an uppercase Clash Display
-   character as a fraction of its size, allowing for the negative tracking;
-   and 26 is the caret, which is set beside the last character and is part of
-   the line's width for as long as the title is still typing itself.
+   A readout, not a line of type. `.mech-title` holds a `Segment` — the same
+   fourteen-segment display the fold headings under it and home's `INTRO` are,
+   one size up, in the warm channel. See `TITLE_CELLS` in Mech.tsx.
 
-   460, not the column's own 380. The title is the top line of the screen and
-   there is nothing beside it — the subject's own box starts past 600 and the
-   folds under the title are set in a size that never needs the room. Capping
-   it at the column would have taken a third off every long name to protect
-   space that is empty.
+   What that deleted was a whole mechanism. The title was set to one line, and
+   at a flat size the column held "openup" and broke "grand theft auto v"
+   across three, with the break landing in the middle of a name — so the size
+   was capped against the character count (`--title-len`, handed in from
+   Mech.tsx, over an average advance for the face, plus 26 for the caret),
+   once here and once for narrow, with `white-space: nowrap` said out loud
+   underneath in case a name of unusually wide letters overran the average. A
+   display cannot break a name across two lines. All of it is gone.
 
-   Counted rather than measured, because the title *does* type itself in a
-   character at a time — a box measured while it is being written is a box
-   that is still growing, and a font-size keyed to it would shrink on every
-   keystroke. */
-/* Audiowide and the warm channel, the same as the name above it and the name
-   in the middle of home's cluster — a project's title is the one other thing
-   on this site set large enough to be signage, and it was the last block still
-   speaking in the site's magazine face and the machine's phosphor.
-
-   `0.66` was Clash Display's average uppercase advance and `1.15` is
-   Audiowide's, which is what `.mech-ident-name` fits against. The face is
-   almost twice as wide per character, so the constant is the whole difference
-   between a title that fits its column and one that runs off it — the ceiling
-   above it is barely reached now at any name longer than about nine
-   characters, and the width is what governs. */
+   `git show` the commit that added this note for the sums, if the reasoning
+   is ever wanted for something else — it was good arithmetic for the problem
+   it had. */
 .mech-title {
-  font-family: 'Audiowide', 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  font-weight: 400;
-  font-size: min(
-    calc(46 * var(--type)),
-    calc((460 * var(--px) - 26 * var(--px)) / (var(--title-len, 14) * 1.15))
-  );
-  /* Said out loud rather than left to the cap. The cap is arithmetic on an
-     average advance and a name of unusually wide letters could still overrun
-     it by a hair — which should show as a title reaching past its column,
-     where it is obvious, rather than as a silent second line. */
-  white-space: nowrap;
-  line-height: 1;
-  letter-spacing: calc(0.5 * var(--type));
-  text-transform: uppercase;
-  color: var(--warn);
-  /* Three, not two — the same stack `.mech-ident-name` carries, at this
-     title's smaller radii. The third term is the one that turns "warm type
-     with a glow" into "a lamp behind glass": a wash of light on the housing
-     well past the glyph. */
-  text-shadow:
-    0 0 calc(7 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.58 * var(--g))),
-    0 0 calc(30 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.34 * var(--g))),
-    0 0 calc(90 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.2 * var(--g)));
-  /* Phosphor is never quite steady. Small enough that you would not catch it
-     looking straight at it, which is the only way this reads as a lit panel
-     rather than as a blinking one. */
-  animation: mech-flicker 7s steps(1, end) infinite;
+  margin: 0;
+  /* Wider than the 380-unit column it sits in, and deliberately so — the
+     argument above about 460 still holds and holds further here. A fixed
+     twenty-one lamps is a much wider box than a name's worth of type was, and
+     the title has to out-read the fold headings under it (nineteen lamps
+     across 366 units); at the column's own width it printed *smaller* than
+     they do, which inverted the one hierarchy this column has. There is
+     nothing beside it until the subject's box starts past 600.
+
+     And no `max-width` — that was the bug: `100%` of a 380-unit column is
+     380 units, so the width above was never once used. Narrow gets the
+     window instead, below. */
+  width: calc(620 * var(--px));
+  /* An over-wide item in a flex column is stretched back to the column's
+     width unless it is told not to shrink. */
+  flex: none;
 }
 
 @keyframes mech-flicker {
@@ -1485,21 +1458,14 @@
   }
 }
 
-/* The title's own caret is warm, because the title is — but only the title's:
-   the same `Typed` draws the index sheet's heading, and that one is still the
-   machine reporting. Sized in `em` rather than frame units here too, since
-   what it has to match is a line whose size is capped against its own length
-   and so is not a fixed number of them. */
-.mech-title .mech-caret {
-  width: 0.34em;
-  height: 0.74em;
-  margin-left: 0.1em;
-  vertical-align: -0.06em;
-  background: var(--warn);
-  box-shadow: 0 0 calc(12 * var(--px)) rgba(var(--warn-rgb), 0.6);
-}
-
+/* The panel's system text, like the write-up under it and home's own intro
+   paragraph — see `.mech-fold-body p`. It was the last line on this screen set
+   in the site's sans, sitting directly under a readout, which made it read as
+   a caption printed on a different machine. White at the write-up's own size:
+   one voice for every sentence in this column. */
 .mech-tagline {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #fff;
   margin-top: calc(10 * var(--px));
   /* A short line, not the role list this replaced — so the reserve under it
      only has to cover a wrap to two lines on a narrow window, not the six a
@@ -1507,9 +1473,8 @@
      same reason: nothing should shift the folds' start between one project's
      tagline and the next. */
   min-height: calc(40 * var(--px));
-  font-size: calc(13.5 * var(--type));
-  line-height: calc(18 * var(--type));
-  color: #fff;
+  font-size: calc(11 * var(--type));
+  line-height: 1.6;
 }
 
 .mech-folds-wrap {
@@ -1675,14 +1640,17 @@
    sans, which made a project read as a document laid over the machine. */
 .mech-fold-body p {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: calc(12 * var(--type));
+  /* Home's intro paragraph exactly — 11 over 1.6, the `profileSize` default in
+     clusterTuning.ts. Not `--profile-size`: that variable is written onto
+     `.mech-cluster` by home's own Cluster tab, and a knob on the home panel
+     quietly resizing a project screen's body copy is a knob nobody would ever
+     find. */
+  font-size: calc(11 * var(--type));
   line-height: 1.6;
-  /* A little brighter than home's 0.58: that is a three-line caption you
-     glance at and this is the paragraph the project is actually read from.
-     Not `--profile-ink` — that variable is written onto `.mech-cluster` by
-     home's own panel, and a knob on the home tab quietly moving a project
-     screen's body copy is a knob nobody would find. */
-  color: rgba(var(--accent-rgb), 0.72);
+  /* White, not the phosphor tint home's profile carries. That paragraph is a
+     caption on a lit panel; this is the copy the project is actually read
+     from, and several hundred words of tinted monospace is a wall. */
+  color: #fff;
   white-space: pre-line;
   padding-bottom: calc(14 * var(--px));
   opacity: 0;
@@ -3770,18 +3738,19 @@
    has the window rather than a 380-unit column, and a lower ceiling to start
    from. Everything about why it is a count and not a measurement is written
    up there. */
+/* The window, not the wide layout's deliberate overhang: narrow has no column
+   for the title to reach out of, and 620 frame units on a phone is the display
+   running off the right edge. Nothing to *cap*, though — the size formula that
+   used to live here, and its twin above, are what `TITLE_CELLS` replaced. */
 .mech[data-narrow='true'] .mech-title {
-  font-size: min(
-    calc(44 * var(--type)),
-    calc((100vw - 2 * var(--gutter) - 26 * var(--px)) / (var(--title-len, 14) * 1.15))
-  );
+  width: 100%;
 }
 
 .mech[data-narrow='true'] .mech-tagline {
   margin-top: calc(12 * var(--px));
   min-height: 0;
-  font-size: calc(15 * var(--type));
-  line-height: calc(21 * var(--type));
+  font-size: calc(12 * var(--type));
+  line-height: 1.65;
 }
 
 /* The fold list is a scroll box on the desktop layout because it lives in a
@@ -3833,7 +3802,7 @@
   /* Monospace runs wider per character than the sans this used to be, and a
      phone column has no room to spare — so the step up from the wide layout
      is a point rather than the point and a half it was. */
-  font-size: calc(13 * var(--type));
+  font-size: calc(12 * var(--type));
   line-height: 1.65;
   padding-bottom: 0;
 }

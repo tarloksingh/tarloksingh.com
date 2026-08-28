@@ -1871,35 +1871,57 @@ leader lines share a 16:9 box, and they have to, because a label that misses
 what it names is not a readout. A wider window buys the leaders clearance,
 never less.
 
-### The title is one line
+### The title is a readout
 
-A title split across three lines with the break in the middle of a name is not
-a title. `.mech-title` is set `white-space: nowrap` and its **size** is what
-keeps that promise, capped against the width the words actually have:
+`.mech-title` is a `Segment` — the same fourteen-segment display the folds
+under it and home's `INTRO` are, one size up, in the warm channel. Twenty-one
+lamps (`TITLE_CELLS` in `Mech.tsx`), which is "red dead redemption 2", the
+longest title any project has, and the same count home's two big readouts use.
+
+**This deleted a whole mechanism.** The title used to be type set on one line,
+and keeping that promise took a size capped against the character count:
 
 ```
-font-size: min(46 * --type, (460 - 26) * --px / (--title-len * 1.15))
+font-size: min(46 * --type, (460 - 26) * --px / (--title-len * 0.66))
 ```
 
-`--title-len` is the character count, handed in from `Mech.tsx`; 1.15 is the
-average advance of an uppercase **Audiowide** character as a fraction of its
-size (it was 0.66 while this was Clash Display — see *The title and the name
-are the same instrument* below, and note that a face nearly twice as wide per
-character makes that constant the whole difference between a title that fits
-its column and one that runs off it); and 26 is the caret, which is set beside
-the last character and is part of the line's width for as long as the title is
-still typing itself.
+— once for the wide layout and once for narrow, with `--title-len` handed in
+from `Mech.tsx` as an inline custom property, `white-space: nowrap` said out
+loud underneath in case a name of unusually wide letters overran the average
+advance, and a note explaining that the count is *counted and not measured*
+because a box measured while it is being typed into is a box that is still
+growing. A display cannot break a name across two lines. All of it is gone:
+`--title-len`, both `min()` sums, and the caret rule that went with the typed
+title.
 
-**Counted, not measured**, and that is the whole reason this is arithmetic
-rather than a `ResizeObserver`: the title types itself in a character at a
-time, so a box measured while it is being written is a box that is still
-growing, and a font size keyed to it would shrink on every keystroke.
+**Its width is not its column's.** `.mech-side` is 380 frame units and the
+title box is 620, reaching out over the empty space before the subject's box
+starts past 600 — the same argument the old 460 cap made, and it holds further
+here, because a fixed twenty-one lamps is a much wider box than a name's worth
+of type was. Set it to the column's width and the title prints *smaller* than
+the nineteen-lamp fold headings under it, which inverts the one hierarchy this
+column has.
 
-**460, not the column's own 380.** The title is the top line of the screen and
-there is nothing beside it — the subject's box starts past 600 and the folds
-under the title are set in a size that never needs the room. Capping it at the
-column would have taken a third off every long name to protect space that is
-empty.
+Two traps in that, both of which produced exactly that inverted result:
+
+- **`max-width: 100%` silently threw the width away.** 100% of a 380-unit
+  column is 380 units, so the 620 was never once used. Narrow needs the window
+  and gets `width: 100%` in its own rule instead.
+- **A flex item is stretched back.** `.mech-side` is a flex column, so an
+  over-wide child needs `flex: none` or it is shrunk to fit.
+
+**`settle`, not `arrive`.** The fold headings under it switch on when a project
+opens (see below); the title is the one line that is genuinely *re-set* —
+stepping from one project to the next holds the same display and changes what
+is on it, which is exactly the change the scramble was written for.
+
+**The period comes up blank.** `Segment`'s alphabet has no glyph for `.`, so
+"Mr. Takahashi" prints as `MR  TAKAHASHI` — a dark cell where the dot is and
+another for the space. That is the component's documented behaviour for a
+character it cannot form, and it is the right trade: the alternative is a
+decimal-point lamp in `SEGMENTS`, which every cell of every display on the site
+would then draw in its unlit field, home's `INTRO` and counts included, for one
+project's punctuation.
 
 ### The title and the name are the same instrument
 
@@ -1923,30 +1945,17 @@ Its hover is `brightness(1.35)` rather than a switch to white, because there is
 one warm channel on this site and the hover state of a lamp is the lamp turned
 up.
 
-**The title, because it is the only other thing here set large enough to be
-signage.** Same face, same channel, the same three-shadow stack at this line's
-smaller radii — 7/30/90 against the ident's 9/42/130, since a glow is a
-proportion of the glyph and the cluster's radii around a title would be a smear
-across the column rather than a lit sign.
+The title went a step further and stopped being type at all — see **The title
+is a readout** above. Audiowide had it for one pass in between, and the two
+constants that pass needed (an average advance of 1.15 against Clash Display's
+0.66, in both layouts) went with the size formula.
 
-Two things moved with it:
-
-- **The advance constant, 0.66 → 1.15**, in both the wide rule and the narrow
-  one. This is not cosmetic: the cap *is* how the title stays on one line, and
-  leaving Clash Display's constant under a face 74% wider per character would
-  have put every long name straight through the right of its column.
-- **The caret is scoped.** `.mech-caret` is shared with the index sheet's
-  heading, which is still green — so the warm one is `.mech-title .mech-caret`,
-  and it is sized in `em` rather than frame units, because what it has to match
-  is a line whose size is capped against its own length and so is not a fixed
-  number of them.
-
-**Audiowide's `@font-face` moved to `Mech.css`.** It was declared in
+**Audiowide's `@font-face` still lives in `Mech.css`.** It was declared in
 `MechCluster.css`, which is imported by `MechCluster.tsx` — lazy, and mounted
 on home only. A visitor landing straight on `/v3/p/<id>` never loaded that
-chunk, so the title and the wordmark would have come up in the fallback sans
-and nothing in the DOM would have looked wrong. A face used on both screens
-belongs in the stylesheet both screens load.
+chunk, so the wordmark would have come up in the fallback sans and nothing in
+the DOM would have looked wrong. A face used on both screens belongs in the
+stylesheet both screens load.
 
 ### A fold's heading is a readout
 
@@ -1992,23 +2001,25 @@ either screen still setting body copy in the site's own sans, which made a
 project read as a document laid over the machine rather than something the
 machine had printed.
 
-It is `rgba(--accent-rgb, 0.72)` and not `--profile-ink`. Two reasons: it wants
-to be a little brighter than home's 0.58, because that is a three-line caption
-you glance at and this is the paragraph the project is actually read from; and
-`--profile-ink` is written onto `.mech-cluster` by home's own Cluster tab, so
-binding to it would put a knob on the home panel that quietly moves a project
-screen's body copy — a knob nobody would ever find.
+**White, at home's own intro size.** 11 over 1.6, the `profileSize` default in
+`clusterTuning.ts` — but `#fff` rather than the phosphor tint `.mech-profile`
+carries. Home's paragraph is a three-line caption on a lit panel; this is the
+copy the project is actually read from, and several hundred words of tinted
+monospace is a wall.
+
+Neither number is bound to `--profile-size` or `--profile-ink`. Those are
+written onto `.mech-cluster` by home's own Cluster tab, so binding to them
+would put a knob on the home panel that quietly resizes a project screen's body
+copy — a knob nobody would ever find.
+
+**And the tagline joins them.** `.mech-tagline` was the last line on this
+screen set in the site's sans, sitting directly under a readout, which made it
+read as a caption printed on a different machine. Same monospace, same white,
+same 11 — one voice for every sentence in this column.
 
 Nothing about the fold *mechanism* changed: it is still a grid row grown from
 0fr to 1fr, still the rule drawing across and the copy lifting in behind it,
 still both running backwards on close.
-
-It is the same sum on both layouts; narrow substitutes the window for the
-column and starts from a lower ceiling. It used to be the sum that sized the
-home screen's own name too, when home and a project shared `.mech-title` — the
-name moved out to its own layer since (see **The name behind the cast**,
-below), but the reasoning is identical: `--title-len`, an average advance and
-a cap said out loud rather than left silent.
 
 ### The name behind the cast
 
