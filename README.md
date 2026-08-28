@@ -2553,6 +2553,12 @@ Both editors are the same key and they are never up together: a project screen
 has a picture to pin notes on, home has a cast to tag, and neither has the
 other.
 
+**The mute control only draws on a clip that has sound.** `MediaItem.hasSound`
+comes off `sound: true` in the project data, and `Stage.tsx` has always asked
+it. This screen never did — it put a sound switch under all seventy-odd clips
+in the rails, and all but a handful of those are silent screen captures, so the
+control was a switch that reports nothing standing next to one that does.
+
 **The transport is drawn, not typed.** It was a row of single characters —
 `▶`, `⊘`, `⤢` — at eleven frame pixels, which is a row of specks: you could not
 tell the full screen control from the mute one, which is the only thing either

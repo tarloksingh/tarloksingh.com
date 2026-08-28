@@ -648,6 +648,11 @@ function Flat({ frame, index, count, narrow, onReady }: FrameProps) {
 
   const [playing, setPlaying] = useState(true)
   const [muted, setMuted] = useState(true)
+  /* Whether this clip has an audio track at all. `Stage.tsx` has always asked
+     — this screen never did, and offered a sound control on every clip in the
+     rail: a switch that reports nothing, on sixty-odd silent screen captures,
+     next to the handful of demos actually filmed with sound. */
+  const hasSound = frame.kind === 'flat' && frame.hasSound === true
   const [at, setAt] = useState(0)
   const [length, setLength] = useState(0)
   const [full, setFull] = useState(false)
@@ -702,7 +707,8 @@ function Flat({ frame, index, count, narrow, onReady }: FrameProps) {
            nothing left to do except be the thing that flashes if the clip is
            slower than the cap. Muted on arrival because a clip that starts
            talking on its own is a hostile thing for a page to do — the
-           transport is how you ask for the sound. */
+           transport is how you ask for the sound — and only on a clip that has
+           any, which is `hasSound` above. */
         <video
           className="mech-media"
           ref={video}
@@ -766,17 +772,19 @@ function Flat({ frame, index, count, narrow, onReady }: FrameProps) {
             <span className="mech-time">
               {clock(at)} / {clock(length)}
             </span>
-            <button
-              data-off={muted}
-              onClick={() => {
-                sound.select()
-                setMuted((was) => !was)
-              }}
-              aria-label={muted ? 'Unmute' : 'Mute'}
-              title={muted ? 'Sound on' : 'Mute'}
-            >
-              {muted ? MUTED : SOUND}
-            </button>
+            {hasSound && (
+              <button
+                data-off={muted}
+                onClick={() => {
+                  sound.select()
+                  setMuted((was) => !was)
+                }}
+                aria-label={muted ? 'Unmute' : 'Mute'}
+                title={muted ? 'Sound on' : 'Mute'}
+              >
+                {muted ? MUTED : SOUND}
+              </button>
+            )}
           </>
         ) : (
           <span className="mech-time">{frame.label ?? ''}</span>
