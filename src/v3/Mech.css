@@ -1410,11 +1410,13 @@
   animation: mech-in 620ms var(--ease) both;
 }
 
-/* Half the length of the entrance, like every other exit here: `EXIT_MS` is a
-   second but its first frames go on fetching and compiling the next screen's
-   subject, so an exit timed against the whole of it never draws. */
+/* And it waits for its own readouts first, the same two-beat exit home has —
+   see `--out` in MechCluster.css. The title and every fold heading are
+   `Segment`s taking `back`, so their lamps come off over about three hundred
+   milliseconds; the column leaving on the same frame took them out lit, which
+   is the cut this was fixed to stop being. Still well inside `LEAVE_MS`. */
 .mech-side[data-transiting='true'] {
-  animation: mech-side-out 220ms var(--ease) both;
+  animation: mech-side-out 240ms 360ms var(--ease) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -3816,7 +3818,7 @@
 
 .mech[data-narrow='true'] .mech-side[data-transiting='true'] .mech-lede,
 .mech[data-narrow='true'] .mech-side[data-transiting='true'] .mech-folds-wrap {
-  animation: mech-side-out 220ms var(--ease) both;
+  animation: mech-side-out 240ms 360ms var(--ease) both;
 }
 
 .mech[data-narrow='true'] .mech-folds-wrap {

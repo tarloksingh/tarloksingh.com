@@ -1116,9 +1116,30 @@ The blocks already left on their own beats (above); what was missing is that
 their *contents* left by being unmounted, which is not an exit — it is the
 screen being taken away with the lamps still lit.
 
+**The exit has two beats, and that is the whole of it.** First every readout
+takes its own reading off — words come off displays, gauges run down, the
+needle falls off the scale, the bank empties, the name backspaces. *Then* the
+blocks they sit in leave. `--out` on `.mech-cluster` is the moment the second
+beat starts and every exit delay in the stylesheet is written against it, so
+the handover moves by editing one number.
+
+Hung on one beat, all of the first was there and none of it could be seen: the
+blocks began fading on the same frame the readings started coming off, the
+whole panel was gone in a fifth of a second, and what read as an outro was a
+cut. The name has the better part of half a second of backspacing in it and
+never got past the first letter. `--out` is set against the slowest thing in
+the first beat, which is the name and the intro paragraph.
+
+**`LEAVE_MS` is not `EXIT_MS`.** Two beats need more budget than one, and a
+step along the tile strip is a *picture* being replaced — nothing on that path
+has a reading to take off, so it keeps the shorter number and stays quick. Only
+a screen change pays for the first beat. `LEAVE_MS` has to outlast the last
+delay in the stylesheet; the project column's own exit (`.mech-side`) waits out
+its title and fold headings the same way.
+
 - The **displays** take their word off from the right and go dark. `back` on
   `Segment`, and which reverse it plays is whichever arrival it used: a typed
-  display untypes, everything else dissolves back into noise. Six steps rather
+  display untypes, everything else dissolves back into noise. Eight steps rather
   than one per cell, because the exit has a budget the entrance does not — a
   twenty-one cell display walking off one lamp at a time would still be doing
   it after the screen had gone. When it reaches dark it also resets `first`, so

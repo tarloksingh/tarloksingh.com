@@ -169,11 +169,12 @@ const TYPE_MS = 64
 /** The way back out, for both arrivals — see `back` below.
  *
  *  A fixed number of frames rather than one per cell, because the exit has a
- *  budget the entrance does not: the cover is only down for a couple of
- *  hundred milliseconds and a twenty-one cell display walking itself off one
- *  lamp at a time would still be doing it after the screen had gone. Six
- *  steps, so the word comes off in bites. */
-const BACK = { frames: 6, hold: 28 }
+ *  budget the entrance does not: a twenty-one cell display walking itself off
+ *  one lamp at a time would still be doing it after the screen had gone. Eight
+ *  steps, so the word comes off in bites — about three hundred milliseconds,
+ *  which is what `--out` in MechCluster.css is waiting for before the housings
+ *  around these start leaving. */
+const BACK = { frames: 8, hold: 38 }
 
 const NOISE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 

@@ -72,6 +72,24 @@ const MechCluster = lazy(() => import('./MechCluster'))
  *  coming off. Timed in Mech.css, under `entries, and their inverses`. */
 const EXIT_MS = 1050
 
+/** And how long a whole *screen* takes to leave, which is a longer job than
+ *  one picture's.
+ *
+ *  A screen change has two beats where a frame swap has one: every readout on
+ *  it takes its reading off first — words come off displays, gauges run down,
+ *  a name backspaces — and only then do the blocks those readouts sit in leave.
+ *  Hung on `EXIT_MS`, the second beat started at the same moment as the first
+ *  and the whole panel was gone in a fifth of a second, so what anyone actually
+ *  saw was a cut: the outro *ran*, but it ran underneath a fade that had
+ *  already taken it. The name had four hundred milliseconds of backspacing in
+ *  it and never got past the "h".
+ *
+ *  It is a separate number from `EXIT_MS` on purpose. Stepping the tile strip
+ *  is a picture being replaced and should stay quick; nothing on that path has
+ *  a reading to take off. Timed against `--out` in MechCluster.css and the
+ *  `OUT` beats beside it — this has to outlast the last of them. */
+const LEAVE_MS = 1150
+
 /** How long the stage will wait, empty, for the incoming frame to be ready to
  *  paint before bringing it in anyway. Nothing covers the gap now, so this is
  *  a hole in the middle of the transition rather than time hidden behind a
@@ -1046,7 +1064,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
          of the two names is mounting on the other side of it mounts with
          something to type rather than something to delete. */
       setTransiting(false)
-    }, EXIT_MS)
+    }, LEAVE_MS)
     return () => window.clearTimeout(timer)
   }, [id, shownId])
 

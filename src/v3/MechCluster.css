@@ -533,7 +533,7 @@
    up, because the exit is about two hundred milliseconds and the entrance had
    the whole screen. */
 .mech-cluster[data-leaving='true'] .mech-field-lit {
-  transition-delay: calc((11 - var(--n, 0)) * 14ms);
+  transition-delay: calc((11 - var(--n, 0)) * 26ms);
 }
 
 .mech-field-gauge[data-on='true'] .mech-field-ring {
@@ -1395,16 +1395,29 @@
   animation-delay: calc(620ms + var(--i, 0) * 55ms);
 }
 
-/* Out, from the outside in.
+/* Out, from the outside in — and **after the readings have come off**.
 
-   Half the length of the entrance, and it has to be. `EXIT_MS` in Mech.tsx is
-   a little over a second, but the first frames of it are not free: pressing a
-   slot mounts the project's model, and fetching a chunk, cloning a scene graph
-   and compiling its shaders is a few hundred milliseconds of main thread with
-   nothing painting. An exit timed against the second is an exit whose first
-   half never draws — so the whole sequence lands inside the budget that is
-   actually left, and the last thing out is still gone well before the cover
-   lifts on the project.
+   The exit has two beats where it used to have one. First every readout takes
+   its own reading off: words come off displays, the gauges run down, the
+   needle falls off the scale, the bank empties, the name backspaces. Only then
+   do the blocks they sit in leave. `--out` is the moment that second beat
+   starts, and every delay below is written against it, so the whole handover
+   moves by editing one number.
+
+   That is what this was missing. All of the first beat existed, and none of it
+   could be seen: the blocks began fading on the same frame, the whole panel
+   was gone in a fifth of a second, and what read as an outro was a cut. The
+   name has the better part of half a second of backspacing in it and never got
+   past the first letter.
+
+   `--out` is set against the *slowest* thing in the first beat, which is the
+   name and the intro paragraph — see `backSpeed` on both, and the `BACK`
+   frames in Segment.tsx. `LEAVE_MS` in Mech.tsx is the whole budget and has to
+   outlast the last delay here.
+
+   **This is why `LEAVE_MS` is not `EXIT_MS`.** A frame swap — stepping the
+   tile strip — has no readings to take off and should stay quick; only a
+   screen change pays for the first beat.
 
    **`data-leaving`, not `data-covered`.** The two are the same thing on the
    way out and very different on the way in. `covered` is also true on the
@@ -1417,16 +1430,22 @@
    it back to nothing and bring it in. That is the flash. `leaving` is only
    ever true while the screen is actually on its way out. Same trap as
    `leaving` on the project screen's housing — see Mech.tsx. */
+/** When the blocks start leaving — the end of the first beat. Declared on the
+ *  cluster so every rule below inherits it and the handover is one number. */
+.mech-cluster {
+  --out: 560ms;
+}
+
 /* Fades, now that it arrives by fading. A block that comes up in place and
    leaves sideways is two different objects. `mech-cluster-left-in` /
    `-left-out` are still here and still work — the flank is the only thing that
    ever used them, and putting the slide back is one word. */
 .mech-cluster[data-leaving='true'] .mech-flank {
-  animation: mech-cluster-unfade 200ms linear both;
+  animation: mech-cluster-unfade 240ms var(--out) linear both;
 }
 
 .mech-cluster[data-leaving='true'] .mech-work-rail {
-  animation: mech-cluster-unfade 200ms 30ms linear both;
+  animation: mech-cluster-unfade 240ms calc(var(--out) + 30ms) linear both;
 }
 
 /* And the slots undeal inside it, from the bottom of the rail up — the deal
@@ -1436,20 +1455,25 @@
    goes over the top of this; the stagger is what stops the bank leaving as one
    block while everything else on the panel leaves in order. */
 .mech-cluster[data-leaving='true'] .mech-slot {
-  animation: mech-cluster-out 180ms var(--ease) both;
-  animation-delay: calc((11 - var(--i, 0)) * 14ms);
+  animation: mech-cluster-out 190ms var(--ease) both;
+  animation-delay: calc(var(--out) + (11 - var(--i, 0)) * 10ms);
 }
 
 .mech-cluster[data-leaving='true'] .mech-tach {
-  animation: mech-cluster-out 200ms 70ms var(--ease) both;
+  animation: mech-cluster-out 240ms calc(var(--out) + 60ms) var(--ease) both;
 }
 
+/* Last out, the same as it is last in. The name has already backspaced itself
+   away by the time this runs — that is the whole point of the beat — so what
+   leaves here is the empty heading. */
 .mech-cluster[data-leaving='true'] .mech-ident {
-  animation: mech-cluster-out 200ms 120ms var(--ease) both;
+  animation: mech-cluster-out 240ms calc(var(--out) + 140ms) var(--ease) both;
 }
 
+/* The housings collapse after their words have come off (`back` on `Segment`,
+   about three hundred milliseconds), never under them. */
 .mech-cluster[data-leaving='true'] .mech-display {
-  animation: mech-cluster-unstrike 180ms 160ms var(--ease) both;
+  animation: mech-cluster-unstrike 200ms calc(var(--out) + 80ms) var(--ease) both;
 }
 
 /* Covered, but not on its way out: the machine still booting, or the frame
@@ -1545,7 +1569,7 @@
 }
 
 .mech[data-narrow='true'] .mech-cluster[data-leaving='true'] .mech-intro {
-  animation: mech-cluster-out 200ms 70ms var(--ease) both;
+  animation: mech-cluster-out 240ms calc(var(--out) + 60ms) var(--ease) both;
 }
 
 /* Inset with the cluster's own gutter, like everything else down here —

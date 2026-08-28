@@ -279,7 +279,7 @@ const SWAY = { rate: 0.55, depth: 0.055 }
 /** And how long they take to run back down when the screen leaves. Far quicker
  *  than the climb, because the whole exit is about two hundred milliseconds —
  *  a bar easing down over a second is a bar the cover lands on top of. */
-const FALL = 0.16
+const FALL = 0.38
 
 const clamp = (n: number, low: number, high: number) => Math.max(low, Math.min(high, n))
 
@@ -313,7 +313,7 @@ const IN = {
   slot: 620,
   slotStep: 55,
   /** And how fast the bank empties again, from the bottom up. */
-  slotBack: 18,
+  slotBack: 30,
   /** The field dials: all the way round, back to nothing, then live. A dial
    *  that has swept its own scale once is a dial you have been shown the range
    *  of — which is what every cluster does on ignition and the only reason
@@ -544,7 +544,7 @@ const REV_RATE = {
    *  down-blip, because the whole exit is a couple of hundred milliseconds and
    *  a needle still coasting down when the cover arrives is a needle that
    *  never came off. */
-  off: 3
+  off: 1.3
 }
 
 /** How long the sweep holds at the top before falling back to idle. */
@@ -1256,7 +1256,16 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
         <span className="mech-ident-typed">
           {/* Last on the panel, and it types from the moment the cover
               lifts rather than from mount — see `start` on `Typed`. */}
-          <Typed text={NAME} run="cluster-name" delay={1.25} speed={96} caret={false} start={up} back={covered} />
+          <Typed
+            text={NAME}
+            run="cluster-name"
+            delay={1.25}
+            speed={96}
+            caret={false}
+            start={up}
+            back={covered}
+            backSpeed={40}
+          />
         </span>
       </h1>
       {/* Off-screen, always the full text regardless of where `Typed` has
@@ -1307,7 +1316,7 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
       </span>
 
       <p className="mech-profile">
-        <Typed text={PROFILE} run="cluster-intro" delay={0.6} speed={9} caret={false} back={covered} backSpeed={4} />
+        <Typed text={PROFILE} run="cluster-intro" delay={0.6} speed={9} caret={false} back={covered} backSpeed={3} />
       </p>
     </section>
   )
