@@ -892,13 +892,33 @@ out of the two (the axis is `space-between`, so mark `n` is at `n / (marks -
 tuned against a zone starting at 0.82 and would have parked the needle in the
 red permanently against one starting at 0.71.
 
-**Up fast and down slow.** `REV_HOLD` keeps it wound up longer than it rests
-and the rise is nearly twice the fall, which is the whole character of a
-throttle being blipped; the same rate both ways is a slider. The peaks stop
-just short of the red and occasionally clip into it — a needle that lives in
-the red is a needle nobody looks at — and the very first thing it does on
-arrival is sweep the whole scale and drop back, which is what a cluster does
+**Up fast and down slow.** `REV_RATE` keeps the rise at better than twice the
+fall, which is the whole character of a throttle being blipped; the same rate
+both ways is a slider. `REV_HOLD` keeps it wound up longer than it rests. The
+peaks stop just short of the red and occasionally clip into it — a needle that
+lives in the red is a needle nobody looks at — and the very first thing it does
+on arrival is sweep the whole scale and drop back, which is what a cluster does
 when the ignition is turned.
+
+**At a constant rate, and this is the one place on the panel where an eased
+chase is wrong.** Everything else here settles exponentially — the counts, the
+subjects' scale, the drift — because those are values being *arrived at*, and
+an exponential arrival is what settling looks like. The tachometer is not
+arriving anywhere: it is thirty-four lamps, and what you actually watch is the
+lit edge travelling along them, because `--rev` is snapped to whole columns
+before it is written. An exponential moves that edge fast and then slower and
+slower, so the lamps light in a rush and then visibly stall — several columns
+in a frame near the start, better than a tenth of a second between the last
+two. Which is what it looked like: the graph staggering its bars in rather than
+sweeping. Linear gives one column every few frames the whole way, and it reads
+as a wipe. Four rates rather than one easing, in `REV_RATE`: the ignition sweep
+(the slowest, because it is the one move anyone watches from the beginning), a
+blip up, a blip down, and off the scale entirely when the screen leaves.
+
+The tremor is only applied while the needle is **holding**. It is worth a lamp
+either way under the snap, which reads as an instrument that will not quite
+settle — and, laid over an edge that is already travelling, as the sweep
+stumbling.
 
 The dotted envelope riding just clear of the tops is the same `CURVE`, drawn in
 a 100 × 100 viewBox stretched to the face with `preserveAspectRatio="none"` —
@@ -1134,7 +1154,37 @@ safely, because home has no tile strip to step.
 once, on the boot, and stays. It is global chrome that deliberately survives
 the swap — that is why it moved out of `MechCluster` in the first place — so
 giving it an exit on every navigation would put back the thing moving it
-fixed.
+fixed. The same goes for the header, the deck, the compass strip and the
+coords: see *Chrome that survives a navigation*.
+
+#### The project's column had no exit at all
+
+Everything above is home. The other half of a screen change is a *project*
+leaving, and one whole block of it was not leaving: `.mech-side` — the title,
+the tagline and the entire fold column — carried a bare `animation: mech-in`
+declared on the element itself. A plain declaration runs once when the element
+mounts and never again, and there was no exit rule anywhere, so on the way out
+the column simply sat at full brightness for the length of the transit and then
+stopped existing when the component unmounted. Against a stage whose picture
+and leaders were carefully fading, the left third of the screen was cutting.
+
+Both directions hang off `data-transiting` now, the same as the wordmark above
+it, with `mech-side-out` as its own keyframes. The two `Segment`s in there —
+the title and every fold heading — take `back` as well, so the lamps come off
+rather than the words being carried out lit inside a fading box.
+
+**`transiting`, not `covered`, and this one is not the usual reason.** The
+cover is also down for a step along the tile strip, and this column belongs to
+the *project* rather than to the picture on the stage: a title and a write-up
+have no business leaving because you picked a different photograph of the same
+work. The stage's own contents take `covered` precisely because they *are* the
+thing that changed.
+
+On the narrow layout `.mech-side` is `display: contents` and generates no box,
+so neither animation can live on it — both move onto `.mech-lede` and
+`.mech-folds-wrap`, the two children that become the frame's own flex items.
+The attribute is still read off the wrapper, boxless or not, so the flag has
+one home on both layouts.
 
 #### Twelve renders, on one panel's supply
 

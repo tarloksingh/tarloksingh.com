@@ -1429,6 +1429,17 @@
   animation: mech-cluster-unfade 200ms 30ms linear both;
 }
 
+/* And the slots undeal inside it, from the bottom of the rail up — the deal
+   backwards, matching `dealt` in MechCluster.tsx, which is running the
+   subjects out of their bays in the same order on the same beat. `--i` counts
+   down from eleven, so the last slot in is the first out. The rail's own fade
+   goes over the top of this; the stagger is what stops the bank leaving as one
+   block while everything else on the panel leaves in order. */
+.mech-cluster[data-leaving='true'] .mech-slot {
+  animation: mech-cluster-out 180ms var(--ease) both;
+  animation-delay: calc((11 - var(--i, 0)) * 14ms);
+}
+
 .mech-cluster[data-leaving='true'] .mech-tach {
   animation: mech-cluster-out 200ms 70ms var(--ease) both;
 }

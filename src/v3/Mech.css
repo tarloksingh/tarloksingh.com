@@ -1371,13 +1371,56 @@
   display: flex;
   flex-direction: column;
   z-index: 3;
-  animation: mech-in 620ms var(--ease) both;
 }
 
 @keyframes mech-in {
   from {
     opacity: 0;
     transform: translateY(calc(10 * var(--px)));
+  }
+  /* An explicit rest state, for the same reason `mech-cluster-in` has one:
+     with only a `from`, `animation-fill-mode: both` holds the entrance offset
+     forever in Chrome rather than settling back to the base style. */
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes mech-side-out {
+  to {
+    opacity: 0;
+    transform: translateY(calc(-8 * var(--px)));
+  }
+}
+
+/* Both directions on the attribute rather than a plain declaration on the
+   block, exactly as the cluster's blocks are — see *coming up, and going down*
+   in MechCluster.css, and *the housing arrives empty* in the README.
+
+   The entrance used to be a bare `animation` on `.mech-side` above, which runs
+   once when the element mounts and never again; the column had no exit at all,
+   so a project's title, tagline and whole write-up sat at full brightness for
+   the length of the transit and then stopped existing when the component
+   unmounted. Hung off `data-transiting` they leave and come back on every
+   screen change — and *only* on a screen change. Stepping the tile strip is
+   also `phase === 'out'`, and a write-up has no business leaving because you
+   picked a different photograph of the same project. */
+.mech-side[data-transiting='false'] {
+  animation: mech-in 620ms var(--ease) both;
+}
+
+/* Half the length of the entrance, like every other exit here: `EXIT_MS` is a
+   second but its first frames go on fetching and compiling the next screen's
+   subject, so an exit timed against the whole of it never draws. */
+.mech-side[data-transiting='true'] {
+  animation: mech-side-out 220ms var(--ease) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mech-side[data-transiting='false'],
+  .mech-side[data-transiting='true'] {
+    animation: none;
   }
 }
 
@@ -3758,7 +3801,22 @@
 
 .mech[data-narrow='true'] .mech-lede {
   padding: calc(20 * var(--px)) var(--gutter) calc(14 * var(--px));
+}
+
+/* `display: contents` generates no box, so an animation on `.mech-side` itself
+   does nothing down here — both directions have to move onto the two children
+   that became the frame's own flex items. The attribute still matches on the
+   wrapper, boxless or not, so the flag is read in exactly one place either
+   way. The fold column leaves and the title leaves; only the title comes back
+   on its own, because the list under it is below the fold on this layout and
+   `useReveal` is already what draws it in. */
+.mech[data-narrow='true'] .mech-side[data-transiting='false'] .mech-lede {
   animation: mech-in 620ms var(--ease) both;
+}
+
+.mech[data-narrow='true'] .mech-side[data-transiting='true'] .mech-lede,
+.mech[data-narrow='true'] .mech-side[data-transiting='true'] .mech-folds-wrap {
+  animation: mech-side-out 220ms var(--ease) both;
 }
 
 .mech[data-narrow='true'] .mech-folds-wrap {

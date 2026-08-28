@@ -1537,7 +1537,20 @@ export default function Mech({ id, onProject, onHome }: Props) {
             An empty absolutely-positioned column over half the screen is a
             column that eats the pointer. */}
         {!home && (
-        <section className="mech-side">
+        /* `data-transiting`, the same flag the wordmark takes, and not
+           `covered`. This column is the one block on a project screen that
+           belongs to the *project* rather than to the picture on the stage:
+           stepping along the tile strip is also `phase === 'out'`, and a title
+           and a write-up have no business leaving because you picked a
+           different photograph. The stage's own contents take `covered`
+           precisely because they are the thing that changed.
+
+           It had no exit at all before — a plain `animation: mech-in` on mount
+           and nothing else — so the title, the tagline and the whole fold
+           column sat at full brightness until the component was unmounted a
+           second later and they simply stopped existing. See *coming up, and
+           going down* in MechCluster.css for the rule this is following. */
+        <section className="mech-side" data-transiting={transiting}>
           {/* See `display: contents` under `narrow viewports` in Mech.css for
               why the title gets its own wrapper rather than folding straight
               into `.mech-side`: a project's title needs to sit above the
@@ -1560,7 +1573,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
             {lede && (
               <>
                 <h1 className="mech-title">
-                  <Segment text={lede.title} cells={TITLE_CELLS} align="left" warn label={lede.title} />
+                  <Segment text={lede.title} cells={TITLE_CELLS} align="left" warn back={transiting} label={lede.title} />
                 </h1>
                 {lede.tagline && (
                   <p className="mech-tagline">
@@ -1610,6 +1623,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
                         cells={FOLD_CELLS}
                         align="left"
                         arrive
+                        back={transiting}
                         warn
                         label={fold.title}
                       />

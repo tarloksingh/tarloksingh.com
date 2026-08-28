@@ -507,11 +507,52 @@ const tracePoints = (from: number, to: number) =>
 
 const REDLINE_AT = Math.round(TACH_RED * TACH_COLS)
 
-/** How fast the needle falls off the scale when the screen leaves — much
- *  quicker than its own down-blip, because the whole exit is a couple of
- *  hundred milliseconds and a needle still coasting down when the cover
- *  arrives is a needle that never came off. */
-const REV_DROP = 7
+/* ---- how the needle moves ----
+
+   At a **constant rate**, not on an eased chase, and this is the one place on
+   the panel where that is the right answer.
+
+   Everything else here settles exponentially — the counts, the subjects'
+   scale, the drift — because those are things arriving at a value and an
+   exponential arrival is what "settling" looks like. The tachometer is not
+   arriving anywhere: it is a bar graph of thirty-four lamps and what you
+   actually watch is the *edge* travelling along it, because `--rev` is
+   snapped to whole columns before it is written (see the tick).
+
+   An exponential moves that edge fast at first and then slower and slower, so
+   the lamps light in a rush and then visibly stall — four columns in one
+   frame near the start, and better than a tenth of a second between the last
+   two. Which is exactly what it looked like: a stagger rather than a sweep.
+   Linear gives an even cadence, one column every few frames the whole way, and
+   the whole thing reads as a wipe.
+
+   The character survives the change. Up fast and down slow is what makes a
+   blip a blip, and it is still here — it is two rates now rather than two
+   easings. */
+const REV_RATE = {
+  /** The ignition sweep: 0 to the top of the range. The slowest of the four
+   *  on purpose — it is the one move on this instrument anybody actually
+   *  watches from the beginning, so it is a deliberate wipe up the scale
+   *  rather than a flick. About one column every fifty milliseconds. */
+  sweep: 0.62,
+  /** A blip, up. */
+  up: 0.9,
+  /** And down, which is slower — a throttle closing is not a throttle
+   *  opening. */
+  down: 0.42,
+  /** Off the scale entirely, when the screen leaves. Much quicker than the
+   *  down-blip, because the whole exit is a couple of hundred milliseconds and
+   *  a needle still coasting down when the cover arrives is a needle that
+   *  never came off. */
+  off: 3
+}
+
+/** How long the sweep holds at the top before falling back to idle. */
+const SWEEP_HOLD = 0.5
+
+/** Toward `to` at a fixed rate, never past it. */
+const toward = (from: number, to: number, rate: number, dt: number) =>
+  from < to ? Math.min(to, from + rate * dt) : Math.max(to, from - rate * dt)
 
 /** `start` is the cover lifting, and it is the ignition key both ways.
  *
@@ -545,6 +586,10 @@ function Tach({ start, children }: { start: boolean; children?: React.ReactNode 
 
     let raf = 0
     let rev = 0
+    /** `off` before the cover lifts and again once it comes back down;
+     *  `sweep` is the one wipe up the scale on arrival; `run` is the
+     *  instrument doing its own thing. */
+    let mode: 'off' | 'sweep' | 'run' = 'off'
     let live = false
     let target = 0
     let hold = 0
@@ -562,11 +607,12 @@ function Tach({ start, children }: { start: boolean; children?: React.ReactNode 
            scale and drop back, which is what a cluster does when the ignition
            is turned and is the reason a real one is worth watching at all. And
            going down, it simply falls off the bottom. */
+        mode = live ? 'sweep' : 'off'
         target = live ? REV_PEAK[1] : 0
-        hold = 0.95
+        hold = SWEEP_HOLD
       }
 
-      if (live) {
+      if (mode === 'run') {
         hold -= dt
         if (hold <= 0) {
           const wound = target > REV_IDLE + 0.01
@@ -576,12 +622,24 @@ function Tach({ start, children }: { start: boolean; children?: React.ReactNode 
         }
       }
 
-      // Up fast and down slow, which is the whole character of a throttle
-      // being blipped — the same rise and fall at the same rate is a slider.
-      // The exit is neither: it is the key being turned off.
-      const rate = target > rev ? 3.6 : live ? 1.9 : REV_DROP
-      rev += (target - rev) * Math.min(1, rate * dt)
-      const shake = live ? Math.sin(now / 61) * 0.006 + Math.sin(now / 23) * 0.003 : 0
+      const rate =
+        mode === 'off' ? REV_RATE.off : mode === 'sweep' ? REV_RATE.sweep : target > rev ? REV_RATE.up : REV_RATE.down
+      rev = toward(rev, target, rate, dt)
+
+      /* The sweep hands over to the running instrument the moment it tops
+         out, and holds there a beat first — a needle that touches its stop
+         and turns straight round has not been *swept*, it has been flicked. */
+      if (mode === 'sweep' && rev >= target - 1e-4) {
+        mode = 'run'
+        hold = SWEEP_HOLD
+      }
+
+      /* The hair of tremor only while it is sitting still. Under a snap to
+         whole columns it is worth a lamp either way, which reads as an
+         instrument that will not quite settle — and, laid over a column edge
+         that is already travelling, as the sweep stumbling. */
+      const holding = Math.abs(target - rev) < 1e-4
+      const shake = live && holding ? Math.sin(now / 61) * 0.006 + Math.sin(now / 23) * 0.003 : 0
 
       /* Snapped to whole columns before it is written. A bar graph lights
          lamps, so a value between two of them is a value with nowhere to go —
