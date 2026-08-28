@@ -728,7 +728,6 @@ export default function MechCast({
                     floatRange: studio.floatRange,
                     floatRotation: studio.floatRotation
                   }}
-                  driftFill={studio.fill}
                 />
               </group>
             ) : (

@@ -2554,13 +2554,20 @@ different number of units tall for the same amount of world, so the bob the
 labels ride has to be converted on the way in, or they swing twice as far as
 the head does.
 
-And `drift` is the bob *only*. `Drift` reads the node's world position, which
-is the nominal placement plus what the float added this frame, so it has to
-subtract the placement back off — specifically `liftY / fill`, the constant the
-outer group applies as `position.y`. That lift is part of the framing the pins
-were dropped against, not part of the motion; leaving it in stood Capsule C1's
-labels a fixed 16px below their marks. Mr. Takahashi's `liftY` is 0, so it went
-unseen until a subject that needed lifting turned up.
+And `drift` is the bob *only*, measured on screen. `Drift` holds two nodes at
+the same nominal spot — one inside `Float`, one just outside it — projects both
+through the camera to the leaders' 1920×1080 frame every frame, and publishes
+the difference. Everything the two share cancels: the lift the outer group
+applies as `position.y`, the turn and tilt, the lens, the lean toward the
+pointer. What is left is exactly how far the float has carried the subject
+across the screen, in the units the leaders are drawn in.
+
+It used to scale a world-space offset by hand — `at.y * 1080 * fill` — which
+needed the lift subtracted back off (it is framing, not motion; leaving it in
+stood Capsule C1's labels 16px low) and, worse, had the *wrong sign* on a
+turned subject: Capsule's outer rotation tips the bob onto the camera's other
+axes, and the hand-rolled conversion did not know that, so the labels rode
+backwards. Projecting the actual points is sign-correct by construction.
 
 The rAF that rides the labels writes `drift` straight onto the group, no
 easing. It used to low-pass it — the idea was to trail the head by a hair so

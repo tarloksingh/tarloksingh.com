@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo, useRef } from 'react'
+import { Suspense, useEffect, useMemo, useRef, type RefObject } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Float, useAnimations, useGLTF } from '@react-three/drei'
 import { ACESFilmicToneMapping, Box3, MathUtils, PMREMGenerator, SRGBColorSpace, Vector3 } from 'three'
@@ -386,29 +386,32 @@ function Model({ src, tuning, look }: { src: string; tuning: ModelTuning; look: 
  *  same bob the model is on rather than approximating it with an animation
  *  that would drift out of step within a minute.
  *
- *  Sits inside `Float` at the origin, so its world position is the nominal
- *  placement plus whatever the float has added this frame. Only the second
- *  part is drift: `lift` is the constant the outer group applies as
- *  `position.y = liftY / fill`, and it belongs to the framing the labels were
- *  laid out against, not to the bob — leaving it in put Capsule's labels a
- *  standing 16px below their marks. Takahashi's `liftY` is 0, which is why it
- *  never showed. The exchange rate falls out of the framing: the camera is
- *  placed so the subject's one world unit of height covers `fill` of 1080
- *  frame pixels. */
-function Drift({ fill, lift }: { fill: number; lift: number }) {
-  const ref = useRef<Group>(null)
-  const at = useMemo(() => new Vector3(), [])
+ *  Two nodes at the same nominal spot: `moved` (returned here, dropped inside
+ *  `Float`) rides the bob, `rest` (owned by `FaceScene`, just outside `Float`)
+ *  does not. Both are projected through the camera to frame coordinates every
+ *  frame and subtracted — so `drift` is exactly how far the float has carried
+ *  the subject across the screen, sign and scale included, with the framing
+ *  (the lift, the turn, the tilt, the lens) cancelling out because it is on
+ *  both. Projecting rather than scaling a world offset by hand is what stopped
+ *  the labels riding *backwards* on a turned subject: Capsule C1's outer
+ *  rotation put enough of the bob onto the camera's other axes that the
+ *  hand-rolled `1080 * fill` had the wrong sign. */
+function Drift({ rest }: { rest: RefObject<Group | null> }) {
+  const moved = useRef<Group>(null)
+  const camera = useThree((state) => state.camera)
+  const a = useMemo(() => new Vector3(), [])
+  const b = useMemo(() => new Vector3(), [])
 
   useFrame(() => {
-    if (!ref.current) return
-    ref.current.getWorldPosition(at)
-    const perUnit = 1080 * fill
-    drift.x = at.x * perUnit
-    // Frame coordinates count downward and world units count up.
-    drift.y = -(at.y - lift) * perUnit
+    if (!moved.current || !rest.current) return
+    moved.current.getWorldPosition(a).project(camera)
+    rest.current.getWorldPosition(b).project(camera)
+    // NDC (y up, -1..1) into the leaders' 1920×1080 frame (y down).
+    drift.x = (a.x - b.x) * 960
+    drift.y = -(a.y - b.y) * 540
   })
 
-  return <group ref={ref} />
+  return <group ref={moved} />
 }
 
 /** Leans the whole subject a few degrees toward the pointer. Damped against
@@ -564,30 +567,23 @@ export default function MechModel({
  *  layer with his own two lights. The reason he was ever separate — his rig —
  *  travels with him, because it is this.
  *
- *  `driftFill` is the framing the leaders are laid out against, which is the
- *  project screen's `fill` and not the cast's. On home nothing reads `drift`,
- *  so it only matters there. */
-export function FaceScene({
-  src,
-  tuning,
-  driftFill
-}: {
-  src: string
-  tuning: ModelTuning
-  driftFill?: number
-}) {
+ *  `drift` is projected off the camera now, so it needs no framing hint — the
+ *  bob is measured on screen where the leaders live. Nothing on home reads it. */
+export function FaceScene({ src, tuning }: { src: string; tuning: ModelTuning }) {
   const look = useGaze(tuning.watchBird, tuning.watchCatch)
+  const rest = useRef<Group>(null)
 
   return (
     <Suspense fallback={null}>
       <Lean degrees={tuning.lean} look={look}>
+        <group ref={rest} />
         <Float
           speed={tuning.floatSpeed}
           rotationIntensity={tuning.floatRotation}
           floatIntensity={0.5}
           floatingRange={[-tuning.floatRange, tuning.floatRange]}
         >
-          <Drift fill={driftFill ?? tuning.fill} lift={tuning.liftY / tuning.fill} />
+          <Drift rest={rest} />
           <Model src={src} tuning={tuning} look={look} />
         </Float>
       </Lean>
