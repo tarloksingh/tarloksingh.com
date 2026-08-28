@@ -320,6 +320,9 @@
   /* Never shrunk and never wrapped, so the flex centring above has a real
      over-wide item to centre rather than a squeezed one. */
   flex: none;
+  /* The typed layer is laid over the sizer inside this box — see
+     `.mech-ident-full`. */
+  position: relative;
   /* Audiowide rather than the site's Clash Display — a display face built
      for exactly this register (LED signage, dashboards, arcade marquees),
      wide and geometric where Clash Display is a magazine headline face.
@@ -347,6 +350,29 @@
     0 0 calc(42 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.34 * var(--g))),
     0 0 calc(130 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.2 * var(--g)));
   animation: mech-flicker 7s steps(1, end) infinite;
+}
+
+/* The whole name, at the whole size, painted in nothing — the box the typing
+   happens inside. See the note beside it in MechCluster.tsx for why the
+   heading cannot be allowed to size itself off however far `Typed` has got.
+
+   `visibility: hidden` and not `opacity: 0`: the glow above is a `text-shadow`,
+   and a transparent copy of the finished name still throws all three of its
+   halos onto the panel, so the whole line would be lit before a single
+   character had arrived. */
+.mech-ident-full {
+  visibility: hidden;
+}
+
+/* The characters as they land, on the box's own left edge rather than its
+   centre. Same font, same tracking, same line-height — an absolutely
+   positioned inline lays out its line box from the top of this box, which is
+   where the sizer's line starts too, so the two sit exactly on each other. */
+.mech-ident-typed {
+  position: absolute;
+  top: 0;
+  left: 0;
+  white-space: nowrap;
 }
 
 /* ---- the intro ----
@@ -1214,9 +1240,10 @@
 
 /* ---- coming up, and going down ----
 
-   Every block on the panel arrives on its own beat and leaves on its own beat,
-   and both are driven off the same `data-covered` the rest of this screen
-   takes its cover from. The panel comes up from the middle outward — the
+   Every block on the panel arrives on its own beat and leaves on its own beat.
+   The entrances hang off `data-covered`, the cover the rest of this screen
+   takes; the exits hang off `data-leaving`, which is narrower on purpose — see
+   the note above them. The panel comes up from the middle outward — the
    strip, then the name, then the instrument, then the flanks — and it goes
    down from the outside in, which is the same order backwards and reads as the
    machine being switched off rather than as a page fading.
@@ -1354,33 +1381,46 @@
    nothing painting. An exit timed against the second is an exit whose first
    half never draws — so the whole sequence lands inside the budget that is
    actually left, and the last thing out is still gone well before the cover
-   lifts on the project. */
-.mech-cluster[data-covered='true'] .mech-flank {
+   lifts on the project.
+
+   **`data-leaving`, not `data-covered`.** The two are the same thing on the
+   way out and very different on the way in. `covered` is also true on the
+   `hold` beat — and coming home from a project mounts this whole component on
+   exactly that beat, because home and a project are one screen and the cluster
+   simply was not in the tree a frame ago. An exit here is a `to`-only keyframe
+   under `animation-fill-mode: both`, so its held *first* frame is the block at
+   full opacity in its finished position: hang these off `covered` and arriving
+   home paints the entire panel once, settled, before the entrances below take
+   it back to nothing and bring it in. That is the flash. `leaving` is only
+   ever true while the screen is actually on its way out. Same trap as
+   `leaving` on the project screen's housing — see Mech.tsx. */
+.mech-cluster[data-leaving='true'] .mech-flank {
   animation: mech-cluster-left-out 200ms linear both;
 }
 
-.mech-cluster[data-covered='true'] .mech-work-rail {
+.mech-cluster[data-leaving='true'] .mech-work-rail {
   animation: mech-cluster-unfade 200ms 30ms linear both;
 }
 
-.mech-cluster[data-covered='true'] .mech-tach {
+.mech-cluster[data-leaving='true'] .mech-tach {
   animation: mech-cluster-out 200ms 70ms var(--ease) both;
 }
 
-.mech-cluster[data-covered='true'] .mech-ident {
+.mech-cluster[data-leaving='true'] .mech-ident {
   animation: mech-cluster-out 200ms 120ms var(--ease) both;
 }
 
-.mech-cluster[data-covered='true'] .mech-display {
+.mech-cluster[data-leaving='true'] .mech-display {
   animation: mech-cluster-unstrike 180ms 160ms var(--ease) both;
 }
 
-/* Held off entirely while the machine boots, the same as the header and the
-   footer — see `boot` in Mech.css. The blocks above are all sitting on the
-   first frame of their exits underneath this, which is where they should be:
-   `data-covered` is true for the whole boot and flips false on the same beat
-   this rule stops applying. */
-.mech[data-boot='true'] .mech-cluster {
+/* Covered, but not on its way out: the machine still booting, or the frame
+   the panel mounts on coming home. Nothing has an exit to play and the
+   entrances have not been asked for yet, so there is nothing to show —
+   holding it at nothing is what keeps that frame from being the whole panel
+   at rest. This replaces the `.mech[data-boot='true']` rule that used to do
+   the same job for the boot alone; `covered` spans the boot too. */
+.mech-cluster[data-covered='true'][data-leaving='false'] {
   opacity: 0;
 }
 
@@ -1466,7 +1506,7 @@
   animation: mech-cluster-in 620ms 420ms var(--ease) both;
 }
 
-.mech[data-narrow='true'] .mech-cluster[data-covered='true'] .mech-intro {
+.mech[data-narrow='true'] .mech-cluster[data-leaving='true'] .mech-intro {
   animation: mech-cluster-out 200ms 70ms var(--ease) both;
 }
 

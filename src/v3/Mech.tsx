@@ -1360,7 +1360,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
             work and the way into it. See `MechCluster.tsx`. */}
         {home && (
           <Suspense fallback={null}>
-            <MechCluster onProject={onProject} covered={covered} tuning={cluster.values} />
+            <MechCluster onProject={onProject} covered={covered} leaving={leaving} tuning={cluster.values} />
           </Suspense>
         )}
 

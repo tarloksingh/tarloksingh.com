@@ -838,14 +838,24 @@ const useNameFit = (narrow: boolean, ident: RefObject<HTMLElement | null>, probe
 interface Props {
   onProject: (id: string) => void
   /** Held back while the machine is still booting, and again while the screen
-   *  is leaving for a project. It is not a fade any more: every block on the
-   *  panel has its own entrance and its own exit, and this is what runs both —
-   *  see *coming up, and going down* in MechCluster.css. */
+   *  is leaving for a project. It is what holds the panel down and what runs
+   *  its entrances — see *coming up, and going down* in MechCluster.css. */
   covered: boolean
+  /** Covered *because it is on its way out*, as opposed to covered because it
+   *  has only just arrived. The exits hang off this and not off `covered`,
+   *  and that distinction is the whole fix for home flashing when you come
+   *  back to it: coming home mounts this component on the `hold` beat, with
+   *  `covered` still true, and an exit is a `to`-only keyframe under
+   *  `animation-fill-mode: both` — so its held first frame is the panel at
+   *  full opacity in its finished position. One painted frame of the whole
+   *  cluster, before the entrances take it back to nothing and bring it in.
+   *  Same trap, and the same fix, as `leaving` on the project screen's
+   *  housing; see the note beside it in Mech.tsx. */
+  leaving: boolean
   tuning: ClusterTuning
 }
 
-export default function MechCluster({ onProject, covered, tuning }: Props) {
+export default function MechCluster({ onProject, covered, leaving, tuning }: Props) {
   /* Which slot is selected. It persists rather than following the pointer:
      a preset bank holds the preset you pressed, and on a phone there is no
      "leaving" for it to be cleared by. What does release it is the pointer
@@ -955,7 +965,22 @@ export default function MechCluster({ onProject, covered, tuning }: Props) {
   const identity = (
     <section className="mech-ident" ref={identRef}>
       <h1 className="mech-ident-name" style={{ ['--name-len' as string]: NAME.length }}>
-        <Typed text={NAME} run="cluster-name" delay={0.4} speed={44} caret={false} />
+        {/* The finished line, drawn in nothing, and it does two jobs.
+            It gives the heading its **height** from the first frame: an `h1`
+            whose only content is `Typed`'s empty span has no line box at all,
+            which is zero pixels tall — so the panel underneath used to sit
+            about a hundred and forty pixels high and drop into place the
+            instant the first character landed. And it gives it its **width**,
+            which is what lets the typing run from a fixed left edge: the box
+            is the whole name wide and centred in the frame, so characters
+            fill it left to right instead of the line growing out from its own
+            middle and shunting every letter sideways on every keystroke. */}
+        <span className="mech-ident-full" aria-hidden>
+          {NAME}
+        </span>
+        <span className="mech-ident-typed">
+          <Typed text={NAME} run="cluster-name" delay={0.4} speed={96} caret={false} />
+        </span>
       </h1>
       {/* Off-screen, always the full text regardless of where `Typed` has
           got to — see `useNameFit`. */}
@@ -1000,6 +1025,7 @@ export default function MechCluster({ onProject, covered, tuning }: Props) {
     <div
       className="mech-cluster"
       data-covered={covered}
+      data-leaving={leaving}
       style={{
         /* The graph's own height, in frame units, handed to the whole panel
            rather than to the face alone. It is the sum of the cell ladder (see

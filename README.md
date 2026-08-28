@@ -602,6 +602,32 @@ characters of the actual name rather than carried over from the old face — so
 `--cluster-name`'s by-eye scale on top still means the same thing after the
 swap.
 
+**The name types itself in over a copy of itself drawn in nothing.** The `h1`
+holds two spans: `.mech-ident-full`, the finished line at `visibility: hidden`,
+and `.mech-ident-typed`, absolutely positioned on its top-left corner, which is
+what `Typed` writes into. That sizer does two jobs, and both of them were bugs
+before it existed.
+
+It gives the heading its **height** from the first frame. An `h1` whose only
+content is `Typed`'s empty `<span>` has no line box at all — CSS is explicit
+that a line box containing nothing but empty inline boxes is zero pixels tall —
+so for the four hundred milliseconds of `delay` the name occupied its padding
+and nothing else, and the tachometer, the counts and the rail all sat about a
+hundred and forty pixels high and dropped into place the instant the first
+character landed. The panel is meant to be in position before anything is typed
+into it, the same argument `.mech-intro`'s fixed height already makes for the
+paragraph.
+
+And it gives the heading its **width**, which is what lets the typing run from a
+fixed left edge. `.mech-ident` centres its one flex item; with the item sized to
+however far `Typed` had got, every keystroke widened it and shunted every letter
+already on screen half a character sideways — the line grew out of its own
+middle. Sized to the whole name, the box is centred once and stays there, and
+the characters fill it left to right. Note that `visibility: hidden` is doing
+real work over `opacity: 0`: the glow is a three-term `text-shadow`, and a
+transparent copy of the finished name still throws all three halos, which would
+light the whole line before a character had arrived.
+
 The quiet corner it left behind did not stay empty. `.mech-intro` sits there
 now — the label reads `INTRO` in the same fourteen-segment glyphs as the rest
 of the panel's readouts (`Segment`, not a heading font) and the profile
@@ -948,17 +974,34 @@ instead of stopping.
 #### Coming up, and going down
 
 Every block on the panel arrives on its own beat and leaves on its own beat, and
-both are hung off the same `data-covered` the rest of this screen takes its
-cover from. It comes up from the middle outward — the run of displays, then the
-name, then the instrument, then the flanks — and goes down from the outside in.
+both are hung off an attribute rather than declared on the blocks themselves. It
+comes up from the middle outward — the run of displays, then the name, then the
+instrument, then the flanks — and goes down from the outside in.
 
-**Both directions are on the attribute, not just the exit.** The entrances used
+**Both directions are on an attribute, not just the exit.** The entrances used
 to be plain `animation` declarations on the blocks themselves, which meant they
 ran during the boot, while `.mech[data-boot='true'] .mech-cluster` still had the
 whole thing at `opacity: 0`, and were finished by the time anybody could see
 them. Home arrived as one flat cross-fade and the stagger was never once
 visible. On the attribute, the entrance starts on the beat the cover lifts —
 and it plays again coming back from a project, which is the same beat.
+
+**But the two directions are on two different attributes, and that is what
+stopped home flashing.** The entrances take `data-covered`, the same cover the
+rest of the screen takes. The exits take `data-leaving`, which is only true
+while the screen is actually on its way out. `covered` is *also* true on the
+`hold` beat — and coming home from a project mounts the whole cluster on exactly
+that beat, because home and a project are one component and the cluster simply
+was not in the tree a frame earlier. An exit here is a `to`-only keyframe under
+`animation-fill-mode: both`, so its held *first* frame is the block at full
+opacity in its finished position: with the exits on `covered`, arriving home
+painted the entire settled panel for a frame before the entrances took it back
+to nothing and brought it in — which read as home flashing its contents and then
+loading them. What covers that frame instead is one rule,
+`[data-covered='true'][data-leaving='false'] { opacity: 0 }`, which also does
+the job `.mech[data-boot='true'] .mech-cluster` used to do for the boot alone,
+so that rule is gone. Exactly the same trap as `leaving` on the project screen's
+housing — see *The swap*.
 
 **Every exit has its own keyframes.** Never the entrance with
 `animation-direction: reverse`: an animation is only restarted when its
