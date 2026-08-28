@@ -19,6 +19,23 @@
   font-style: normal;
 }
 
+/* The display face: home's name, and now a project's title and the wordmark in
+   its corner. Self-hosted, the same way every other face on this site is — no
+   request to a third party for a name that is on screen the moment the panel
+   arrives.
+
+   Declared here rather than in `MechCluster.css`, where it used to live. That
+   stylesheet is imported by `MechCluster.tsx`, which is lazy and only mounts on
+   home, so a visitor landing straight on `/v3/p/<id>` would never fetch it and
+   the title would come up in the fallback sans. */
+@font-face {
+  font-family: 'Audiowide';
+  src: url('/fonts/audiowide/Audiowide-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+  font-style: normal;
+}
+
 .mech {
   position: fixed;
   inset: 0;
@@ -508,29 +525,48 @@
   z-index: 3;
 }
 
+/* The same name, in the same design, at a signature's size.
+
+   It used to be Clash Display in `--mid` — the project title's old voice,
+   scaled down. But the two are one gesture, not two labels that happen to say
+   the same words: opening a project backspaces the big name out of the middle
+   of the cluster and types this one into the corner, and a name that changes
+   typeface and colour while it is being handed over is two names. So this is
+   `.mech-ident-name` in MechCluster.css, verbatim apart from the size — the
+   same Audiowide, the same warm channel, the same three-term glow, the same
+   flicker. */
 .mech-wordmark {
-  /* Same voice as the title: Clash Display, the same tight negative tracking
-     — just smaller, since this is a signature in the corner and not the
-     thing the screen is about. */
-  font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-family: 'Audiowide', 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-weight: 400;
-  font-size: calc(16 * var(--type));
-  letter-spacing: calc(-0.4 * var(--type));
+  font-size: calc(15 * var(--type));
+  /* Audiowide is drawn wide already; a hair of room, not the negative
+     tracking Clash Display wanted. */
+  letter-spacing: calc(0.5 * var(--type));
   text-transform: uppercase;
-  color: var(--mid);
+  color: var(--warn);
+  /* Scaled down from the ident's 9/42/130 — the glow is a proportion of the
+     glyph, and the cluster's radii around a line this size would be a smear
+     across the header rather than a lit sign. */
+  text-shadow:
+    0 0 calc(4 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.58 * var(--g))),
+    0 0 calc(16 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.34 * var(--g))),
+    0 0 calc(48 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.2 * var(--g)));
+  animation: mech-flicker 7s steps(1, end) infinite;
   background: none;
   border: 0;
   padding: 0;
   flex: none;
   margin-right: auto;
-  transition: color 160ms linear;
+  transition: filter 160ms linear;
   /* No entrance of its own. It types itself in a character at a time — see
      the handover note in Mech.tsx — and a block fading up underneath a line
      being typed is two arrivals for one name. */
 }
 
+/* Brightened, not recoloured. There is one warm channel on this site and the
+   hover state of a lamp is the lamp turned up. */
 .mech-wordmark:hover {
-  color: #fff;
+  filter: brightness(1.35);
 }
 
 /* `.mech-nav` and `.mech-projects` — the tag row and the bottom-edge title
@@ -1368,12 +1404,23 @@
    character at a time — a box measured while it is being written is a box
    that is still growing, and a font-size keyed to it would shrink on every
    keystroke. */
+/* Audiowide and the warm channel, the same as the name above it and the name
+   in the middle of home's cluster — a project's title is the one other thing
+   on this site set large enough to be signage, and it was the last block still
+   speaking in the site's magazine face and the machine's phosphor.
+
+   `0.66` was Clash Display's average uppercase advance and `1.15` is
+   Audiowide's, which is what `.mech-ident-name` fits against. The face is
+   almost twice as wide per character, so the constant is the whole difference
+   between a title that fits its column and one that runs off it — the ceiling
+   above it is barely reached now at any name longer than about nine
+   characters, and the width is what governs. */
 .mech-title {
-  font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-family: 'Audiowide', 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-weight: 400;
   font-size: min(
     calc(46 * var(--type)),
-    calc((460 * var(--px) - 26 * var(--px)) / (var(--title-len, 14) * 0.66))
+    calc((460 * var(--px) - 26 * var(--px)) / (var(--title-len, 14) * 1.15))
   );
   /* Said out loud rather than left to the cap. The cap is arithmetic on an
      average advance and a name of unusually wide letters could still overrun
@@ -1381,14 +1428,17 @@
      where it is obvious, rather than as a silent second line. */
   white-space: nowrap;
   line-height: 1;
-  letter-spacing: calc(-0.4 * var(--type));
+  letter-spacing: calc(0.5 * var(--type));
   text-transform: uppercase;
-  color: var(--accent);
-  /* Everything set in the accent carries a little of it into the black
-     around it. Two shadows rather than one: a tight halo that reads as the
-     ink itself being bright, and a wide, faint one that reads as the black
-     picking it up. */
-  text-shadow: 0 0 calc(9 * var(--px)) rgba(var(--accent-rgb), 0.55), 0 0 calc(34 * var(--px)) rgba(var(--accent-rgb), 0.25);
+  color: var(--warn);
+  /* Three, not two — the same stack `.mech-ident-name` carries, at this
+     title's smaller radii. The third term is the one that turns "warm type
+     with a glow" into "a lamp behind glass": a wash of light on the housing
+     well past the glyph. */
+  text-shadow:
+    0 0 calc(7 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.58 * var(--g))),
+    0 0 calc(30 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.34 * var(--g))),
+    0 0 calc(90 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.2 * var(--g)));
   /* Phosphor is never quite steady. Small enough that you would not catch it
      looking straight at it, which is the only way this reads as a lit panel
      rather than as a blinking one. */
@@ -1433,6 +1483,20 @@
     opacity: 0;
     transform: scaleX(0);
   }
+}
+
+/* The title's own caret is warm, because the title is — but only the title's:
+   the same `Typed` draws the index sheet's heading, and that one is still the
+   machine reporting. Sized in `em` rather than frame units here too, since
+   what it has to match is a line whose size is capped against its own length
+   and so is not a fixed number of them. */
+.mech-title .mech-caret {
+  width: 0.34em;
+  height: 0.74em;
+  margin-left: 0.1em;
+  vertical-align: -0.06em;
+  background: var(--warn);
+  box-shadow: 0 0 calc(12 * var(--px)) rgba(var(--warn-rgb), 0.6);
 }
 
 .mech-tagline {
@@ -1493,30 +1557,59 @@
   display: none;
 }
 
+/* ---- a fold's heading ----
+
+   A readout, not a line of type. It used to be Clash Display in the panel's
+   phosphor, typed in a character at a time; it is home's `INTRO` cap now —
+   the same fourteen-segment display, the same warm channel, over the same
+   field of unlit cells. See `FOLD_CELLS` in Mech.tsx for why the box is a
+   fixed nineteen and not the length of the word in it.
+
+   The lit/unlit grammar the typed version carried in three colours is carried
+   by brightness here, which is the only thing a lamp actually has: a closed
+   fold is a display turned down, an open one is a display at full. Fading the
+   whole `.mech-seg` takes the unlit field down with the word, which is right —
+   the display dims, it does not go monochrome. */
 .mech-fold > button {
   display: flex;
   align-items: center;
-  gap: calc(8 * var(--px));
+  gap: calc(10 * var(--px));
   width: 100%;
   background: none;
   border: 0;
-  padding: 0;
+  /* The row height came off `line-height` when this was type; the display
+     sets its own height from its aspect, so the space between headings has
+     to be said out loud. */
+  padding: calc(5 * var(--px)) 0;
   text-align: left;
-  font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  font-weight: 400;
-  font-size: calc(16.5 * var(--type));
-  line-height: calc(26 * var(--type));
-  color: var(--dim);
+  color: rgba(var(--warn-rgb), 0.5);
   transition: color 200ms linear;
 }
 
+.mech-fold > button .mech-seg {
+  /* Whatever is left of the column beside the pip. `.mech-seg` is a block
+     with a `width: 100%` svg in it, which in a flex row means "as wide as my
+     content", not "as wide as the room". */
+  flex: 1;
+  min-width: 0;
+  opacity: 0.5;
+  transition: opacity 200ms linear;
+}
+
 .mech-fold > button:hover {
-  color: var(--mid);
+  color: rgba(var(--warn-rgb), 0.75);
+}
+
+.mech-fold > button:hover .mech-seg {
+  opacity: 0.75;
 }
 
 .mech-fold[data-open='true'] > button {
-  color: var(--accent);
-  text-shadow: 0 0 calc(8 * var(--px)) rgba(46, 230, 196, 0.45);
+  color: var(--warn);
+}
+
+.mech-fold[data-open='true'] .mech-seg {
+  opacity: 1;
 }
 
 /* A square, not a triangle — this is a readout, not a disclosure widget. */
@@ -1561,7 +1654,9 @@
   display: block;
   height: 1px;
   margin: calc(6 * var(--px)) 0 calc(9 * var(--px));
-  background: linear-gradient(to right, var(--accent), rgba(var(--accent-rgb), 0));
+  /* Warm, following the heading it hangs off — see `.mech-fold > button`. A
+     green rule under a red readout reads as two different instruments. */
+  background: linear-gradient(to right, var(--warn), rgba(var(--warn-rgb), 0));
   transform: scaleX(0);
   transform-origin: left;
   transition: transform 380ms var(--ease);
@@ -1572,10 +1667,22 @@
   transition-delay: 90ms;
 }
 
+/* The same voice as home's profile paragraph — `.mech-profile` in
+   MechCluster.css, and the note there is the argument: what a panel does with
+   a block of prose is set it in the monospace its system text already is,
+   pulled toward the phosphor rather than left at plain white. This column was
+   the last block on either screen still setting body copy in the site's own
+   sans, which made a project read as a document laid over the machine. */
 .mech-fold-body p {
-  font-size: calc(13.5 * var(--type));
-  line-height: calc(19.5 * var(--type));
-  color: #fff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: calc(12 * var(--type));
+  line-height: 1.6;
+  /* A little brighter than home's 0.58: that is a three-line caption you
+     glance at and this is the paragraph the project is actually read from.
+     Not `--profile-ink` — that variable is written onto `.mech-cluster` by
+     home's own panel, and a knob on the home tab quietly moving a project
+     screen's body copy is a knob nobody would find. */
+  color: rgba(var(--accent-rgb), 0.72);
   white-space: pre-line;
   padding-bottom: calc(14 * var(--px));
   opacity: 0;
@@ -3348,8 +3455,7 @@
 }
 
 .mech[data-narrow='true'] .mech-wordmark {
-  font-size: calc(19 * var(--type));
-  color: #fff;
+  font-size: calc(17 * var(--type));
 }
 
 /* Three rules of the same weight as everything else drawn on this panel. */
@@ -3667,7 +3773,7 @@
 .mech[data-narrow='true'] .mech-title {
   font-size: min(
     calc(44 * var(--type)),
-    calc((100vw - 2 * var(--gutter) - 26 * var(--px)) / (var(--title-len, 14) * 0.66))
+    calc((100vw - 2 * var(--gutter) - 26 * var(--px)) / (var(--title-len, 14) * 1.15))
   );
 }
 
@@ -3724,8 +3830,11 @@
 }
 
 .mech[data-narrow='true'] .mech-fold-body p {
-  font-size: calc(15 * var(--type));
-  line-height: calc(23 * var(--type));
+  /* Monospace runs wider per character than the sans this used to be, and a
+     phone column has no room to spare — so the step up from the wide layout
+     is a point rather than the point and a half it was. */
+  font-size: calc(13 * var(--type));
+  line-height: 1.65;
   padding-bottom: 0;
 }
 

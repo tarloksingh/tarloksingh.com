@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalSt
 import { createPortal } from 'react-dom'
 import MechPanel, { type PanelTab } from './MechPanel'
 import Typed from './Typed'
+import Segment from './Segment'
 import MechBird from './MechBird'
 import MechMoth from './MechMoth'
 import MechCursor from './MechCursor'
@@ -276,6 +277,14 @@ const NAME = 'Tarlok Singh'
  *  answering before it has been asked: the subject is already on the stage
  *  and the title already above it, and a drawer standing open is the one
  *  thing in the column that was not opened by the reader. */
+/** Cells in a fold's heading display.
+ *
+ *  Nineteen, which is "branding & insights" — the longest heading any project
+ *  has — and not a cell more. Fixed for the same reason every other readout on
+ *  this site is: a display is a fixed number of lamps, and the dark ones after
+ *  "roles" are what say so. Same argument as `CELLS` in MechCluster.tsx. */
+const FOLD_CELLS = 19
+
 const foldsFor = (project: Entry['project'] | undefined) => {
   if (!project) return []
   return [
@@ -1457,7 +1466,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
               above true middle. */}
           <div className="mech-folds-wrap">
             <div className="mech-folds">
-              {folds.map((fold, i) => {
+              {folds.map((fold) => {
                 const isOpen = open === fold.id
                 return (
                   <div className="mech-fold" key={fold.id} data-open={isOpen} data-arrive>
@@ -1471,12 +1480,21 @@ export default function Mech({ id, onProject, onHome }: Props) {
                       aria-expanded={isOpen}
                     >
                       <span className="mech-pip" />
-                      <Typed
+                      {/* The heading is a readout, not a line of type — the
+                          same fourteen-segment display home's `INTRO` cap is,
+                          in the same warm channel, over the same field of
+                          unlit cells. It replaced a `Typed` line, and the
+                          settle is what carries that arrival over: `arrive`
+                          runs the scramble on the first word too, so opening
+                          a project switches the column's lamps on rather than
+                          finding them already lit. */}
+                      <Segment
                         text={fold.title}
-                        run={shownId ?? 'home'}
-                        delay={0.5 + i * 0.08}
-                        speed={18}
-                        caret={false}
+                        cells={FOLD_CELLS}
+                        align="left"
+                        arrive
+                        warn
+                        label={fold.title}
                       />
                     </button>
 

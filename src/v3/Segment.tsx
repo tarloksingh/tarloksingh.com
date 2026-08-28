@@ -183,6 +183,13 @@ export interface SegmentProps {
   /** Off for a display that is only ever set once — a count in a box has
    *  nothing to settle from. */
   settle?: boolean
+  /** Settle on the first word too, not only on a change. Off by default for
+   *  the reason in the effect below — a readout that scrambles the instant it
+   *  mounts is claiming it was already on and showing something else. A
+   *  project's fold headings are the exception: they really are a row of
+   *  lamps being switched on when a project opens, which is what the typed
+   *  titles they replaced were saying. */
+  arrive?: boolean
   align?: 'center' | 'left'
   label?: string
 }
@@ -192,6 +199,7 @@ export default function Segment({
   cells,
   warn = false,
   settle = true,
+  arrive = false,
   align = 'center',
   label
 }: SegmentProps) {
@@ -209,11 +217,12 @@ export default function Segment({
     // The first word is not a change. A display that scrambles the moment it
     // is mounted is one that was already on and showing something else, which
     // is a lie about a page that has just booted.
-    if (!settle || first.current) {
+    if (!settle || (first.current && !arrive)) {
       first.current = false
       setFrame(-1)
       return
     }
+    first.current = false
     let n = 0
     setFrame(0)
     // The last cell settles `frames` of noise plus its own place in the
@@ -225,7 +234,7 @@ export default function Segment({
       if (n > last) window.clearInterval(timer)
     }, SCRAMBLE.hold)
     return () => window.clearInterval(timer)
-  }, [target, cells, settle])
+  }, [target, cells, settle, arrive])
 
   /** How many cells have landed. Below zero for the opening frames, where the
    *  whole display is still churning. */

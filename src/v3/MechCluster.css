@@ -26,16 +26,12 @@
    **Type is small and there is a lot of it.** Labels are lower-case, tracked
    out, and dim. The only large thing on the screen is the name. */
 
-/* Self-hosted, the same way every other face on this site is — no request to
-   a third party for a name that is on screen the moment the panel arrives.
-   Only the latin subset: this is one word, in caps, with no accents in it. */
-@font-face {
-  font-family: 'Audiowide';
-  src: url('/fonts/audiowide/Audiowide-Regular.woff2') format('woff2');
-  font-weight: 400;
-  font-display: swap;
-  font-style: normal;
-}
+/* Audiowide's `@font-face` used to be declared here. It moved to `Mech.css`
+   when the project screen's title and wordmark took the same face: this
+   stylesheet is imported by `MechCluster.tsx`, which is lazy and home-only, so
+   a visitor landing straight on `/v3/p/<id>` never fetched it and the title
+   came up in the fallback sans. A face used on both screens belongs in the
+   stylesheet both screens load. */
 
 /* Centred by flex rather than by `translateY(-50%)`, and that is not a style
    preference — it is load-bearing.
