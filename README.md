@@ -2576,6 +2576,16 @@ Now that the label is a card growing away from its own corner, that is the
 corner, and the pin editor's grip moved onto the same spot — drag it and you
 are dragging where the leader lands, not where the sentence starts.
 
+The corner the line runs into is the one *facing* the tip, and usually that is
+`to` itself: the box grows away from the tip, so `to` is the near corner. But
+`seated` can be forced to flip either grow direction when the gutter or the
+frame edge leaves no room that way — a card pinned near the top of the frame
+with its tip *below* it has to grow down, onto the tip's own side. `to` is then
+the *far* corner, and drawing the line to it runs it into the top of the card
+while the tip is under the bottom. `sx0`/`sy0` keep the un-overruled sense, and
+when a flip has happened `meets` is walked across the card — `w` wide,
+`CARD.room` tall — to the corner that actually faces the tip.
+
 Neither is required. A note with no geometry falls into the next free slot of
 the fan, and a fourth starts the fan again a line lower, so a picture with one
 thing worth naming and a picture with six both work before anyone has placed

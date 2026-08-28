@@ -231,11 +231,19 @@ const seated = (note: Note, tip: number[], want: number[], gutter: Gutter, space
 
   const side = { left: anchor[0] - gutter.left, right: gutter.right - anchor[0] }
   let sx = anchor[0] < tip[0] ? -1 : 1
+  /* Which corner the line runs into is the one *facing* the tip, and normally
+     that is `anchor` itself — the box grows away from the tip. But the two
+     flips below can be forced by the room actually available, and then the box
+     grows *towards* the tip on that axis: `anchor` becomes the far corner and
+     the line has to reach across the card to the near one. `sx0`/`sy0` remember
+     the un-overruled sense so `meets` can be walked to the right corner. */
+  const sx0 = sx
   if (sx === 1 && side.right < least && side.left > side.right) sx = -1
   else if (sx === -1 && side.left < least && side.right > side.left) sx = 1
 
   const room = { up: anchor[1] - edge.top, down: floor - anchor[1] }
   let sy = anchor[1] <= tip[1] ? -1 : 1
+  const sy0 = sy
   if (sy === 1 && room.down < CARD.room && room.up > room.down) sy = -1
   else if (sy === -1 && room.up < CARD.room && room.down > room.up) sy = 1
 
@@ -272,7 +280,17 @@ const seated = (note: Note, tip: number[], want: number[], gutter: Gutter, space
   if (head < edge.top) anchor[1] += edge.top - head
   else if (foot > floor) anchor[1] -= foot - floor
 
-  return { ...note, tip, anchor, sx, sy, w, meets: meetsCard(tip, anchor, sx, sy) }
+  /* When a flip put the card on the tip's own side of `anchor`, step across to
+     the far edge — `w` wide, `CARD.room` tall — to land on the corner that
+     actually faces the tip, and hand `meetsCard` the interior direction from
+     *there*, which is back the way we came. */
+  const meet = [
+    sx !== sx0 ? anchor[0] + sx * w : anchor[0],
+    sy !== sy0 ? anchor[1] + sy * CARD.room : anchor[1]
+  ]
+  const mx = sx !== sx0 ? -sx : sx
+  const my = sy !== sy0 ? -sy : sy
+  return { ...note, tip, anchor, sx, sy, w, meets: meetsCard(tip, meet, mx, my) }
 }
 
 const pinned = (note: Note, box: Box, gutter: Gutter, space: Space) =>
