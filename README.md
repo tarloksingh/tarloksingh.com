@@ -1533,6 +1533,52 @@ around a face, with an enclosure tuned to look acceptable under it. That is
 now `MODEL_RIGS`, one entry each, seeded identical so nothing changed the day
 it split.
 
+**Seeded identical is what then hid the problem for a while.** Capsule C1's
+entry stayed `{ ...MODEL_DEFAULTS, watchBird: false }`, which is the split
+undone — `MODEL_DEFAULTS` *is* Mr. Takahashi's rig — and the case came up the
+wrong colour on a screen where v2 renders the very same GLB correctly.
+Dumping the export is what explains it. Six materials: two grey, two pure
+black (the logo and the front panel), and **two carrying no
+`pbrMetallicRoughness` block at all**, which in glTF means the defaults apply
+— white, `metallicFactor: 1`, `roughnessFactor: 1`.
+
+- **`envMapIntensity: 0` was the big one.** It scales the environment's
+  contribution per material, and at zero the case sees no reflection at all,
+  only the two directional lights. A metal has no diffuse response, so the
+  export's two metallic materials had nothing left to render with. For a
+  moulded enclosure the environment *is* the look. v2 sets 1.3.
+- **`metalnessScale` multiplies where v2's `metalnessBoost` adds**, so 0
+  forced those two metals to dielectric. 1 is the identity here and leaves the
+  export saying what it was authored to say.
+- **`roughnessBoost` adds**, and -0.93 clamps all six materials to roughness
+  0. The black logo was not a washed-out black, it was a black mirror.
+- **The fill light was nearly six times too strong** — 71.3 against v2's 12.3.
+
+Every replacement number is v2's own, from `LIGHT_DEFAULTS` in `Gallery3D.tsx`
+and `CAPSULE_DEFAULTS` in `CapsuleC1.tsx`. `exposure` comes across as v2's 0.1
+rather than the face's 0.05 *with* the intensities, because the two are one
+setting and ACES is not linear — a key of 30 at 0.1 is not 60 at 0.05. It
+reaches nothing else: `MechModel` sets `toneMappingExposure` per canvas, a
+project screen has one subject on it, and home's bank (`MechSlots.tsx`) sets
+its own exposure and never reads `MODEL_RIGS`.
+
+**The framing is still the face's**, deliberately. `fit` normalises a model by
+its **height alone** (`TARGET_HEIGHT / size.y`), which is right for a head —
+about as tall as it is wide — and wrong for a wide, flat box, whose short axis
+gets scaled up to a head's height before the camera has moved at all. So the
+**Fills** control runs 0.05–2 now instead of 0.2–0.95: the old floor was set
+around a head and could not stand the camera far enough back to get the whole
+case on screen. `distanceFor` is `1 / fill`, so lower is further away and
+smaller.
+
+> **Calibrating this is panel work, and the panel beats source.** Editing
+> these numbers in this file while the Subject tab is open changes nothing you
+> can see — the scratchpad in `localStorage` is merged *over* the constants,
+> so what is on screen is whatever the panel last held. Press **Reset** on any
+> tab first; it clears the key and reloads. This is the single most confusing
+> thing about the tuning panels and it is worth re-reading *A panel's
+> scratchpad beats source* before concluding a number here does nothing.
+
 Surface is Gloss, Metal and Reflects, and they are **offsets, not absolutes**.
 A piece is several materials on purpose — a disc case is a clear sleeve over a
 printed insert — and writing one roughness across all of them flattens it into

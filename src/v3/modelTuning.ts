@@ -164,30 +164,66 @@ export const MODEL_RIGS: Record<string, ModelTuning> = {
   /* An enclosure, and for a while an enclosure wearing a face's rig. It was
      `{ ...MODEL_DEFAULTS, watchBird: false }`, which is this file's whole
      argument undone: `MODEL_DEFAULTS` *is* Mr. Takahashi's rig, so spreading
-     it is the thing "one rig per model" exists to stop.
+     it is the thing "one rig per model" exists to stop. It is why the case
+     came up the wrong colour — v2 renders *this same GLB* correctly, and
+     every number below is v2's own, not a guess:
+     `LIGHT_DEFAULTS` in `src/three/Gallery3D.tsx` and `CAPSULE_DEFAULTS` in
+     `src/three/CapsuleC1.tsx`.
 
-     `roughnessBoost` is the one number that was provably wrong rather than
-     merely untuned. It is **added** to whatever the export was authored with
-     (see `MechModel`'s frame loop), and at his -0.93 every material on the
-     case clamps to roughness 0 — a perfect mirror. Under a 28.5 key and a
-     71.3 fill that is why the black logo came out light grey: it was not a
-     washed-out black, it was a black mirror reflecting the room. v2 lights
-     the same GLB and boosts the case by -0.24 (`CAPSULE_DEFAULTS` in
-     `src/three/CapsuleC1.tsx`), which is where this comes from.
+     Dumping the export explains what each one was doing. Six materials: two
+     grey at 0.8, two pure black (`[0, 0, 0, 1]` — the logo and the front
+     panel), and **two carrying no `pbrMetallicRoughness` block at all**,
+     which in glTF means the defaults apply: white, `metallicFactor: 1`,
+     `roughnessFactor: 1`.
 
-     **The framing is still the face's and still wrong**, and it is not a
-     number to guess at from here. `fit` in MechModel normalises a model by
-     its *height* alone — `TARGET_HEIGHT / size.y` — which is right for a head
-     and wrong for a wide, flat box: scaling the case's short axis up to a
-     head's height is what makes it overrun the stage. `fill`, `turn` and
-     `tilt` want a pass on the **Subject** tab with the case actually on
-     screen, and the copy button will hand back this object with them in it.
+     - **`envMapIntensity: 0` was the big one.** It scales the environment's
+       contribution on every material, and at zero the case gets no reflection
+       whatsoever — only the two directional lights. A metal has no diffuse
+       response, so the export's two metallic materials had *nothing* left to
+       render with. For an injection-moulded enclosure the environment is the
+       look. v2 sets 1.3.
+     - **`metalnessScale` is a multiplier and `metalnessBoost` in v2 is
+       additive.** At 0 it forced those two metals to dielectric. 1 is the
+       identity, which leaves the export saying what it was authored to say;
+       v2's +0.24 cannot be expressed here, and does not need to be — the two
+       materials it was lifting are already at 1.
+     - **`roughnessBoost` is added too**, and his -0.93 clamps all six to
+       roughness 0. The black logo was not a washed-out black, it was a black
+       mirror. v2 boosts the case by -0.24.
+     - **The fill light was nearly six times too strong** — 71.3 against
+       v2's 12.3 — which flattens the case and lifts the blacks off the floor.
+
+     `exposure` comes across as v2's 0.1 rather than his 0.05, and the light
+     intensities with it, because the two are one setting: ACES is not linear,
+     so v2's key of 30 at 0.1 is not 60 at 0.05. `MechModel` sets
+     `toneMappingExposure` per canvas and a project screen has one subject on
+     it, so this is the case's own exposure and reaches nothing else.
+
+     The framing (`fill`, `turn`, `tilt`) is deliberately still `MODEL_DEFAULTS`
+     and still wants a pass on the **Subject** tab — `fit` normalises a model by
+     its height alone, which is right for a head and wrong for a wide flat box.
 
      It has no eyes to move and no reason to look at a bird — `watchBird`
      drives the whole subject's lean toward whatever the gaze is tracking, so
      left on it made a piece of hardware turn to follow something flying
      past. */
-  'capsule-c1': { ...MODEL_DEFAULTS, roughnessBoost: -0.24, watchBird: false }
+  'capsule-c1': {
+    ...MODEL_DEFAULTS,
+    exposure: 0.1,
+    envIntensity: 3.4,
+    keyIntensity: 30,
+    keyX: -3.78,
+    keyY: 0.2,
+    keyZ: 9,
+    fillIntensity: 12.3,
+    fillX: 2.1,
+    fillY: -0.2,
+    fillZ: -1,
+    envMapIntensity: 1.3,
+    roughnessBoost: -0.24,
+    metalnessScale: 1,
+    watchBird: false
+  }
 }
 
 export const rigFor = (projectId: string): ModelTuning => MODEL_RIGS[projectId] ?? MODEL_DEFAULTS
@@ -289,7 +325,15 @@ export function useModelTuning(
     Lens: folder(
       {
         focalLength: { value: seed.focalLength, min: 18, max: 200, step: 1, label: 'mm' },
-        fill: { value: seed.fill, min: 0.2, max: 0.95, step: 0.01, label: 'Fills' },
+        /* 0.05 to 2, not 0.2 to 0.95. The range was set around a head, which
+           `fit` normalises by height and which is about as tall as it is
+           wide — so 0.2 already framed him loosely and 0.95 filled the
+           stage. A wide, flat subject normalised by that same height is
+           enormous before the camera has moved at all, and the old floor
+           could not stand far enough back to get the whole of Capsule C1 on
+           screen. Both ends are open now: `distanceFor` is `1 / fill`, so
+           lower is further away and smaller. */
+        fill: { value: seed.fill, min: 0.05, max: 2, step: 0.01, label: 'Fills' },
         lean: { value: seed.lean, min: 0, max: 40, step: 0.5 }
       },
       { collapsed: true }
