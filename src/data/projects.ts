@@ -636,7 +636,7 @@ const drafts: Draft[] = [
     accent: '#8a4a2b',
     intro:
       'My job at Rockstar was focusing on storytelling through camera work and editing. Red Dead Redemption 2 went on to generate $725M in its opening weekend, and my role gave me a front-row seat to what it takes to craft experiences at that scale.',
-    hero: { v: 'Explosion.mp4', label: 'Scene — created by Tarlok Singh', sound: true },
+    hero: { v: 'Explosion.mp4', label: 'Scene — created by Tarlok Singh' },
     sections: [
       {
         id: 'roles',
@@ -687,7 +687,7 @@ const drafts: Draft[] = [
     accent: '#2f6a94',
     intro:
       'I worked on the storytelling of Rockstar’s GTA V DLC, focusing on camera work and editing. Unlike Red Dead Redemption 2, which demanded slow, deliberate craft, GTA DLC required fast turnarounds to meet release schedules.',
-    hero: { v: '5.2.mp4', label: 'GTA DLC scene', sound: true },
+    hero: { v: '5.2.mp4', label: 'GTA DLC scene' },
     sections: [
       {
         id: 'roles',

@@ -161,11 +161,33 @@ const start: ModelTuning = { ...MODEL_DEFAULTS, ...(typeof window === 'undefined
  *  the defaults, so adding a third GLB needs no entry until it wants one. */
 export const MODEL_RIGS: Record<string, ModelTuning> = {
   'mr-takahashi': { ...MODEL_DEFAULTS },
-  /* An enclosure. It has no eyes to move and no reason to look at a bird —
-     `watchBird` drives the whole subject's lean toward whatever the gaze is
-     tracking, so left on it made a piece of hardware turn to follow
-     something flying past. */
-  'capsule-c1': { ...MODEL_DEFAULTS, watchBird: false }
+  /* An enclosure, and for a while an enclosure wearing a face's rig. It was
+     `{ ...MODEL_DEFAULTS, watchBird: false }`, which is this file's whole
+     argument undone: `MODEL_DEFAULTS` *is* Mr. Takahashi's rig, so spreading
+     it is the thing "one rig per model" exists to stop.
+
+     `roughnessBoost` is the one number that was provably wrong rather than
+     merely untuned. It is **added** to whatever the export was authored with
+     (see `MechModel`'s frame loop), and at his -0.93 every material on the
+     case clamps to roughness 0 — a perfect mirror. Under a 28.5 key and a
+     71.3 fill that is why the black logo came out light grey: it was not a
+     washed-out black, it was a black mirror reflecting the room. v2 lights
+     the same GLB and boosts the case by -0.24 (`CAPSULE_DEFAULTS` in
+     `src/three/CapsuleC1.tsx`), which is where this comes from.
+
+     **The framing is still the face's and still wrong**, and it is not a
+     number to guess at from here. `fit` in MechModel normalises a model by
+     its *height* alone — `TARGET_HEIGHT / size.y` — which is right for a head
+     and wrong for a wide, flat box: scaling the case's short axis up to a
+     head's height is what makes it overrun the stage. `fill`, `turn` and
+     `tilt` want a pass on the **Subject** tab with the case actually on
+     screen, and the copy button will hand back this object with them in it.
+
+     It has no eyes to move and no reason to look at a bird — `watchBird`
+     drives the whole subject's lean toward whatever the gaze is tracking, so
+     left on it made a piece of hardware turn to follow something flying
+     past. */
+  'capsule-c1': { ...MODEL_DEFAULTS, roughnessBoost: -0.24, watchBird: false }
 }
 
 export const rigFor = (projectId: string): ModelTuning => MODEL_RIGS[projectId] ?? MODEL_DEFAULTS
