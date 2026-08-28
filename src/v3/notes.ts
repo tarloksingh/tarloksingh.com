@@ -46,11 +46,45 @@ export interface Note {
 export const NOTES: Record<string, Note[]> = {
   'mr-takahashi/model': [
     { label: 'Name', value: 'Spoke in English and Japanese. ', at: [-0.0519, 0.5049], to: [-0.2072, 0.458] },
-    { label: '', value: 'Sculpted and animated in Blender.', at: [0.9534, 0.1661], to: [1.0561, 0.0889] },
+    { label: '', value: 'Sculpted and animated in Blender.e', at: [0.9534, 0.1661], to: [1.0561, 0.0889] },
     { label: '', value: 'We used whisper voice to text to get the input, and Llama 3 as the intellegence. ', at: [0.0132, 0.8611], to: [-0.0976, 0.9056] }
   ],
-  'mr-takahashi/hero.mp4': [
-    { label: 'made in', value: 'Made in Blender.', fold: 'tools' }
+  'mr-takahashi/MrTakahashi_Demo.mp4': [
+    { label: 'made in', value: 'I used the Black Magic Ursa Mini 4.6k to film the demo video. ', fold: 'tools', at: [0.9331, 0.5969], to: [1.0562, 0.6823] },
+    { label: 'label', value: 'A showcase demo of the app.', at: [0.9681, 0.1186], to: [1.0375, -0.0393] }
+  ],
+  'mr-takahashi/Signed_In.mp4': [
+    { label: '', value: 'The apps welcome screen. ', at: [1.0194, 0.1255], to: [1.0535, 0.0066] },
+    { label: 'label', value: 'Tools used were Blender, After Effects & Adobe premiere. ', at: [1.0222, 0.5439], to: [1.0612, 0.6465] }
+  ],
+  'mr-takahashi/Design_10.mp4': [
+    { label: 'label', value: 'An in-app session of a lesson. ', at: [1.0114, 0.1669], to: [1.0666, 0.0447] }
+  ],
+  'mr-takahashi/Menu.png': [
+    { label: 'still', value: 'The home screen which shows the lesson plan in weeks. ', at: [1.0271, 0.2579], to: [1.0667, 0.1492] }
+  ],
+  'mr-takahashi/Process_00.webp': [
+    { label: 'still', value: 'Early version of an ear piece I designed for conversating with Adam. Learn more about Adam in the process section', at: [0.9418, 0.443], to: [1.0525, 0.3782] },
+    { label: '', value: 'We wanted a custom ear piece you can wear all day to conversate any time with Adam', at: [0.9716, 0.6671], to: [1.0702, 0.624] }
+  ],
+  'mr-takahashi/Process_0.webp': [
+    { label: 'p', value: 'Designing Takahashi in Blender.', at: [1.0172, 0.2066], to: [1.0468, -0.0109] }
+  ],
+  'mr-takahashi/Process_2.webp': [
+    { label: 'still', value: 'Wearing version five of Adam open ear headphone.', at: [1.0298, 0.3192], to: [1.0842, 0.2611] }
+  ],
+  'mr-takahashi/Process_3.webp': [
+    { label: 'still', value: 'Wearing version one of Adam headphone.', at: [1.0172, 0.2302], to: [1.0632, 0.2081] },
+    { label: 'made in', value: 'Iterations were done in Blender.', fold: 'tools', at: [1.024, 0.5197], to: [1.0657, 0.4211] }
+  ],
+  'mr-takahashi/Process_1.mp4': [
+    { label: 'clip', value: 'Animating an example of Mr. Takahashi speaking. ', at: [0.9873, 0.2034], to: [1.0273, -0.0898] }
+  ],
+  'mr-takahashi/Adam_Speaking.mp4': [
+    { label: '', value: 'Conversating with Adam. Learn about Adam in process.', at: [1.0113, 0.1455], to: [1.0438, 0.0698] }
+  ],
+  'mr-takahashi/Marketing_6.jpg': [
+    { label: '', value: 'Marketing material for the app store.', at: [1.0342, 0.2053], to: [1.0742, 0.0188] }
   ]
 }
 

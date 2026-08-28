@@ -456,8 +456,7 @@ const drafts: Draft[] = [
         title: 'Branding',
         text: 'We positioned Mr. Takahashi as both trustworthy and entertaining. His 3D persona was designed to feel approachable and playful, someone who could encourage you without feeling robotic or academic. I tested different voices until we found one that struck the right balance of warmth and entertaining.\n\nThe visual identity leaned toward clean layouts and vibrant accents, signaling energy and fun rather than the dry seriousness. Marketing materials emphasized Takahashi not as an app, but as a friend from Japan teaching you to speak Japanese.',
         media: [
-          { i: 'Marketing_6.jpg', label: 'Marketing artwork' },
-          { v: 'hero.mp4', label: 'Character animation' }
+          { i: 'Marketing_6.jpg', label: 'Marketing artwork' }
         ]
       },
       {
