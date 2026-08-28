@@ -178,6 +178,19 @@ export const pointIn = (box: Box, at: readonly [number, number]) => [box.x + at[
 
 const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n))
 
+/* A rough height for a card, in frame units. Only wanted when a forced flip
+   has stood the card on the tip's own side and the leader has to reach across
+   it to the far corner — everywhere else the line meets `anchor` itself and no
+   height is guessed. Clash Display runs about 8.4 units to the glyph at the
+   card's 14-unit body, the line box is 1.32 of that, and the padding plus both
+   borders come to ~22. `.mech-leader-card` in Mech.css is the source of truth
+   for all three. */
+const cardHeight = (value: string, w: number) => {
+  const perLine = Math.max(1, Math.round(w / 8.4))
+  const lines = clamp(Math.ceil(value.length / perLine), 1, 4)
+  return lines * 14 * 1.32 + 22
+}
+
 type Gutter = { left: number; right: number }
 
 /* Where the leader actually meets the card.
@@ -281,12 +294,15 @@ const seated = (note: Note, tip: number[], want: number[], gutter: Gutter, space
   else if (foot > floor) anchor[1] -= foot - floor
 
   /* When a flip put the card on the tip's own side of `anchor`, step across to
-     the far edge — `w` wide, `CARD.room` tall — to land on the corner that
+     the far edge — `w` wide, `cardHeight` tall — to land on the corner that
      actually faces the tip, and hand `meetsCard` the interior direction from
-     *there*, which is back the way we came. */
+     *there*, which is back the way we came. `CARD.room` is the reserved figure
+     and three times too tall for a two-line caption, which dropped the meet
+     into open space below the card; `cardHeight` estimates the real box off
+     the sentence. */
   const meet = [
     sx !== sx0 ? anchor[0] + sx * w : anchor[0],
-    sy !== sy0 ? anchor[1] + sy * CARD.room : anchor[1]
+    sy !== sy0 ? anchor[1] + sy * cardHeight(note.value, w) : anchor[1]
   ]
   const mx = sx !== sx0 ? -sx : sx
   const my = sy !== sy0 ? -sy : sy

@@ -2583,8 +2583,11 @@ frame edge leaves no room that way — a card pinned near the top of the frame
 with its tip *below* it has to grow down, onto the tip's own side. `to` is then
 the *far* corner, and drawing the line to it runs it into the top of the card
 while the tip is under the bottom. `sx0`/`sy0` keep the un-overruled sense, and
-when a flip has happened `meets` is walked across the card — `w` wide,
-`CARD.room` tall — to the corner that actually faces the tip.
+when a flip has happened `meets` is walked across the card to the corner that
+actually faces the tip — `w` wide, and `cardHeight` tall. Not `CARD.room`:
+that is the reserved figure and three times a two-line caption's real height,
+so it dropped the meet into open space below the card. `cardHeight` estimates
+the box off the sentence and the metrics `.mech-leader-card` is drawn with.
 
 Neither is required. A note with no geometry falls into the next free slot of
 the fan, and a fourth starts the fan again a line lower, so a picture with one
