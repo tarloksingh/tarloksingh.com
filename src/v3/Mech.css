@@ -4087,16 +4087,27 @@
    (see the note where that row was, in Mech.tsx) — so the slot is a project's
    alone and the exchange is with nothing.
 
-   The rule stays because the reason for it does: the strip takes its exit
-   from `data-covered` on the root, which is already true for the whole length
-   of a retarget, so it has faded before `shownId` changes underneath it and
-   fades back in after. It is never caught mid-swap, and it does not have to
-   know which direction the move was. */
+   The rule stays because the reason for it does: the strip is a different set
+   of tiles on the other side of a retarget, so it has to be gone before
+   `shownId` changes underneath it and come back after. It is never caught
+   mid-swap, and it does not have to know which direction the move was.
+
+   **`data-transiting`, not `data-covered`.** This is the one thing on the
+   screen that must tell a *screen* changing from a *picture* changing, and
+   `covered` cannot: `phase` goes to `out` for both, so keyed off the cover the
+   strip faded out and back in every time you stepped along it to a different
+   still or clip — the control you were using, blinking at you for using it,
+   while the tiles in it never changed. `transiting` is set in the retarget
+   effect alone and cleared on the beat `shownId` changes, which is exactly the
+   window where these tiles are about to be replaced. Stepping the strip leaves
+   it alone entirely, live and lit under the pointer, and the swap happens on
+   the stage where it belongs. Same distinction the wordmark makes for the same
+   reason — see `transiting` in Mech.tsx. */
 .mech-rail-wrap {
   transition: opacity 300ms var(--ease);
 }
 
-.mech[data-covered='true'] .mech-rail-wrap {
+.mech[data-transiting='true'] .mech-rail-wrap {
   opacity: 0;
   pointer-events: none;
   transition-duration: 240ms;

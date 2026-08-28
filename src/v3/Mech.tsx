@@ -926,9 +926,12 @@ export default function Mech({ id, onProject, onHome }: Props) {
   const frames = useMemo(() => (entry ? modelFirst(entry) : []), [entry])
   /* Whether the *screen* is changing, as opposed to the frame on it.
      `phase === 'out'` is true for both — stepping the tile rail runs the same
-     beat — and the name handing itself to the header has to happen only on
-     the first. See the retarget effect below, which is the one place this is
-     ever set. */
+     beat — and two things have to happen only on the first: the name handing
+     itself to the header, and the tile strip clearing out for the set of tiles
+     that is about to replace it. Anything hung off the cover instead answers a
+     step along the strip as well, which is how the strip came to fade itself
+     out every time you picked a picture with it. See the retarget effect
+     below, which is the one place this is ever set. */
   const [transiting, setTransiting] = useState(false)
   const [index, setIndex] = useState(0)
   /* What is actually on the stage, which trails `index` by the swap. Picking
@@ -1257,9 +1260,12 @@ export default function Mech({ id, onProject, onHome }: Props) {
       data-boot={booting}
       data-pins={pinning}
       data-narrow={narrow}
-      /* The whole retarget, not just the stage's part of it. The index and the
-         tile rail take their exit off this — see `the exchange` in Mech.css. */
       data-covered={covered}
+      /* The screen changing, as opposed to the picture on it. The tile strip
+         takes its exit off this and not off `data-covered`, which is also true
+         for an ordinary step along the strip — see `the exchange` in
+         Mech.css. */
+      data-transiting={transiting}
     >
       {/* Sized by both units at once, so the ratio between them can be read
           off one box. See `useTypeScale`. */}

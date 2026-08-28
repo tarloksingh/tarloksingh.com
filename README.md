@@ -2201,6 +2201,16 @@ on the same beat `shownId` does, so whichever of the two names is mounting on
 the other side of it mounts with something to type rather than something to
 delete.
 
+**The tile strip runs off the same flag, and for the same reason.**
+`.mech-rail-wrap` clears out before a retarget and comes back after it, because
+the strip is a different set of tiles on the other side of one — see *the
+exchange* in `Mech.css`. That was keyed off `data-covered` on the root, which
+made it true of stepping the strip as well: pick a different still or clip and
+the control you were using faded out and back in under your hand, while not one
+tile in it changed. It is `data-transiting` now. Stepping leaves the strip
+alone entirely — live, lit, and still taking the pointer — and the swap happens
+on the stage, which is the only place anything actually changed.
+
 The header hangs its one control off `flex-end` rather than spacing two things
 apart, and the signature pushes itself over with `margin-right: auto` when
 there is one. `space-between` with a single child left in it put the index key
