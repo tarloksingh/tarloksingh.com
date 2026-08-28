@@ -142,7 +142,13 @@ export const MODEL_DEFAULTS: ModelTuning = {
    So the defaults are the *starting* rig and each model keeps its own copy.
    Seeded identical, deliberately: nothing changed appearance the day this
    split, and the two only diverge as they are tuned apart. */
-const STORE_KEY = 'v3.model.tuning.v2'
+/* Bumped from `.v2`. Every scratchpad written before the rig-swap fix above
+   has one model's numbers saved under the other's name, and those are merged
+   *over* the source constants — so leaving the old key in place would mean
+   this file's corrected rigs stayed invisible on any browser that had opened
+   both models, with no way for the reader to know why. A new key discards
+   them. */
+const STORE_KEY = 'v3.model.tuning.v3'
 
 const stored = (): Partial<ModelTuning> => {
   try {
@@ -255,9 +261,6 @@ const rigs: Record<string, ModelTuning> = Object.fromEntries(
     { ...MODEL_DEFAULTS, ...MODEL_RIGS[id], ...savedRigs[id] }
   ])
 )
-/** Whose rig `live` currently holds. */
-let owner = 'mr-takahashi'
-
 const keys = Object.keys(MODEL_DEFAULTS) as Array<keyof ModelTuning>
 
 /** Long float tails are what a slider's step arithmetic leaves behind, not a
@@ -418,7 +421,6 @@ export function useModelTuning(
      Capsule C1 after Mr. Takahashi would show his numbers on the panel and
      write them over hers the moment anything was dragged. */
   useEffect(() => {
-    owner = projectId
     const next = rigs[projectId] ?? MODEL_DEFAULTS
     setValues(
       Object.fromEntries(
@@ -428,10 +430,29 @@ export function useModelTuning(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId])
 
+  /* Which model the panel's current `values` actually belong to.
+ 
+     This is the fix for the two rigs swapping places. `setValues` in the
+     reseed above does not land until a render later, so on the commit where
+     `projectId` changes this effect still holds the *previous* model's
+     numbers — and it used to write them into `rigs[owner]`, where `owner` had
+     already been moved on. Opening Capsule C1 after Mr. Takahashi therefore
+     saved his rig as hers, and going back saved hers as his, and both went
+     straight to `localStorage`, so it survived the reload and looked like the
+     source constants were being ignored. It is why his eyes came up blank
+     (her `envMapIntensity: 1.3` and `metalnessScale: 1` on a face lit for
+     neither) and why the case's black logo stayed white however many times
+     this file was corrected. */
+  const wroteFor = useRef(projectId)
+
   const serialised = JSON.stringify(values)
   useEffect(() => {
+    if (wroteFor.current !== projectId) {
+      wroteFor.current = projectId
+      return
+    }
     Object.assign(live, values)
-    rigs[owner] = { ...(values as ModelTuning) }
+    rigs[projectId] = { ...(values as ModelTuning) }
     try {
       window.localStorage.setItem(STORE_KEY, serialised)
       window.localStorage.setItem(`${STORE_KEY}.rigs`, JSON.stringify(rigs))
@@ -439,7 +460,21 @@ export function useModelTuning(
       /* private mode, a full quota — not worth breaking the page over */
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serialised])
+  }, [serialised, projectId])
 
-  return { ...values, store }
+  /* Layered, not handed over bare, and this is the second half of the same
+     bug. Leva reads a schema **once**, and this one is conditional — no Eyes
+     folder unless the model is the face. So whichever model happens to mount
+     first decides what the panel declares for the rest of the session: land
+     on Capsule C1 and Mr. Takahashi is later drawn from a `values` with no
+     `lookH`, no `lookMaxV`, no `blinkMin`. Those reach `MechModel` as
+     `undefined`, the eye and blink arithmetic turns to `NaN`, and a morph
+     target driven by `NaN` renders as a blank eye — which is exactly what it
+     looked like, and reads as the model being broken rather than as a panel
+     that never declared the control.
+ 
+     Merging over the rig and then the defaults means an undeclared key falls
+     back to a real number instead of `undefined`, whatever order the two
+     models are opened in. */
+  return { ...MODEL_DEFAULTS, ...(rigs[projectId] ?? {}), ...values, store }
 }
