@@ -386,10 +386,16 @@ function Model({ src, tuning, look }: { src: string; tuning: ModelTuning; look: 
  *  same bob the model is on rather than approximating it with an animation
  *  that would drift out of step within a minute.
  *
- *  Sits inside `Float` at the origin, so its world position *is* the offset.
- *  The exchange rate falls out of the framing: the camera is placed so the
- *  subject's one world unit of height covers `fill` of 1080 frame pixels. */
-function Drift({ fill }: { fill: number }) {
+ *  Sits inside `Float` at the origin, so its world position is the nominal
+ *  placement plus whatever the float has added this frame. Only the second
+ *  part is drift: `lift` is the constant the outer group applies as
+ *  `position.y = liftY / fill`, and it belongs to the framing the labels were
+ *  laid out against, not to the bob — leaving it in put Capsule's labels a
+ *  standing 16px below their marks. Takahashi's `liftY` is 0, which is why it
+ *  never showed. The exchange rate falls out of the framing: the camera is
+ *  placed so the subject's one world unit of height covers `fill` of 1080
+ *  frame pixels. */
+function Drift({ fill, lift }: { fill: number; lift: number }) {
   const ref = useRef<Group>(null)
   const at = useMemo(() => new Vector3(), [])
 
@@ -399,7 +405,7 @@ function Drift({ fill }: { fill: number }) {
     const perUnit = 1080 * fill
     drift.x = at.x * perUnit
     // Frame coordinates count downward and world units count up.
-    drift.y = -at.y * perUnit
+    drift.y = -(at.y - lift) * perUnit
   })
 
   return <group ref={ref} />
@@ -581,7 +587,7 @@ export function FaceScene({
           floatIntensity={0.5}
           floatingRange={[-tuning.floatRange, tuning.floatRange]}
         >
-          <Drift fill={driftFill ?? tuning.fill} />
+          <Drift fill={driftFill ?? tuning.fill} lift={tuning.liftY / tuning.fill} />
           <Model src={src} tuning={tuning} look={look} />
         </Float>
       </Lean>

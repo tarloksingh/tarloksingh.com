@@ -2554,6 +2554,14 @@ different number of units tall for the same amount of world, so the bob the
 labels ride has to be converted on the way in, or they swing twice as far as
 the head does.
 
+And `drift` is the bob *only*. `Drift` reads the node's world position, which
+is the nominal placement plus what the float added this frame, so it has to
+subtract the placement back off — specifically `liftY / fill`, the constant the
+outer group applies as `position.y`. That lift is part of the framing the pins
+were dropped against, not part of the motion; leaving it in stood Capsule C1's
+labels a fixed 16px below their marks. Mr. Takahashi's `liftY` is 0, so it went
+unseen until a subject that needed lifting turned up.
+
 ### Pinning the leaders
 
 Three arms off a fixed fan is a composition, not a readout: the line that says
