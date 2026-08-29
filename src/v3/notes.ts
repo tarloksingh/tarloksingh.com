@@ -301,6 +301,21 @@ export const NOTES: Record<string, Note[]> = {
   ],
   'block-builder/piece': [
     { label: 'piece', value: '3D model and animation of block builder made with Claude Code in 3JS.' }
+  ],
+  'stitchfam/Design_3.mp4': [
+    { label: 'clip', value: 'Mobile view of a family tree.', at: [0.9732, 0.0956], to: [1.033, 0.0142] }
+  ],
+  'stitchfam/Design_1.mp4': [
+    { label: 'clip', value: 'Adding a family member.', at: [0.9589, 0.1796], to: [1.0441, -0.0546] }
+  ],
+  'stitchfam/Design_2.mp4': [
+    { label: 'clip', value: 'Inviting a family member.', at: [0.9669, 0.2144], to: [1.1605, -0.0568] }
+  ],
+  'stitchfam/Test_1.jpg': [
+    { label: 'still', value: 'Design exploration to be more like stckers or magnets.', at: [0.952, 0.1924], to: [1.0313, 0.0232] }
+  ],
+  'stitchfam/Invited.jpg': [
+    { label: 'still', value: ' Invite in iMessage.', at: [1.0189, 0.2181], to: [1.0609, 0.0823] }
   ]
 }
 
