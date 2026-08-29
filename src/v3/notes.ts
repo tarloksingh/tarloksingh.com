@@ -212,6 +212,33 @@ export const NOTES: Record<string, Note[]> = {
   ],
   'mecha-station/shelf_label.jpg': [
     { label: 'still', value: 'Shelf label in use at a grocery store.', at: [1.0296, 0.4148], to: [1.0935, 0.3514] }
+  ],
+  'red-dead-redemption-2/Explosion.mp4': [
+    { label: 'made in', value: 'Camera work done in  Autodesk MotionBuilder.', fold: 'tools', at: [0.9719, 0.4117], to: [1.0375, 0.3521] }
+  ],
+  'red-dead-redemption-2/Guns Out.mp4': [
+    { label: 'label', value: 'Camera work done in  Autodesk MotionBuilder.', at: [1.0543, 0.2701], to: [1.0892, 0.3474] }
+  ],
+  'red-dead-redemption-2/Darkness.mp4': [
+    { label: 'label', value: 'Camera work done in  Autodesk MotionBuilder.', at: [1.0633, 0.47], to: [1.1362, 0.4166] }
+  ],
+  'red-dead-redemption-2/Knifetoneck.mp4': [
+    { label: 'label', value: 'Camera work done in  Autodesk MotionBuilder.', at: [0.828, 0.5711], to: [1.0297, 0.4156] }
+  ],
+  'red-dead-redemption-2/Saved_Micah.mp4': [
+    { label: 'label', value: 'Camera work done in  Autodesk MotionBuilder.', at: [0.9948, 0.4302], to: [1.039, 0.362] }
+  ],
+  'red-dead-redemption-2/Mansionburning.mp4': [
+    { label: 'label', value: 'Camera work done in  Autodesk MotionBuilder.', at: [0.9755, 0.4879], to: [1.0786, 0.3946] }
+  ],
+  'red-dead-redemption-2/Shootout.mp4': [
+    { label: 'label', value: 'Camera work done in  Autodesk MotionBuilder.', at: [1.0135, 0.4845], to: [1.1077, 0.3953] }
+  ],
+  'red-dead-redemption-2/Savemyson.mp4': [
+    { label: 'label', value: 'Camera work done in  Autodesk MotionBuilder.', at: [0.9751, 0.4545], to: [1.0798, 0.3726] }
+  ],
+  'red-dead-redemption-2/talking.mp4': [
+    { label: 'label', value: 'Camera work done in  Autodesk MotionBuilder.', at: [1.0102, 0.4287], to: [1.0607, 0.3545] }
   ]
 }
 
