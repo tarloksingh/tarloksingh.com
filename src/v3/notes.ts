@@ -286,6 +286,21 @@ export const NOTES: Record<string, Note[]> = {
   ],
   'grand-theft-auto-v/hero.mp4': [
     { label: 'clip', value: 'Made in Autodesk MotionBuilder.', at: [0.9705, 0.2791], to: [1.0612, 0.119] }
+  ],
+  'block-builder/hero.mp4': [
+    { label: 'clip', value: 'Clip: Modular system demonstration.', at: [1.0286, 0.1002], to: [1.1605, -0.0738] }
+  ],
+  'block-builder/1.mp4': [
+    { label: 'clip', value: 'Starting a build on the IPad.' }
+  ],
+  'block-builder/2.mp4': [
+    { label: 'clip', value: 'Building a car in Block builder.', at: [0.9774, 0.1474], to: [1.0475, -0.0031] }
+  ],
+  'block-builder/3.mp4': [
+    { label: 'clip', value: 'Random design in Block Builder.', at: [1.0211, 0.1523], to: [1.1605, -0.0226] }
+  ],
+  'block-builder/piece': [
+    { label: 'piece', value: '3D model and animation of block builder made with Claude Code in 3JS.' }
   ]
 }
 
