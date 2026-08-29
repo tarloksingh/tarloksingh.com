@@ -1156,6 +1156,17 @@
   background: #050806;
 }
 
+/* Solomon's rider brings its own `<Canvas>` into the bay rather than a
+   scissored view of the shared one — see `MechRider.tsx`. It fills the shot
+   and, like `.mech-bank-gl`, has to give its clicks back to the slot button:
+   r3f writes `pointer-events: auto` inline for its own raycasting, so the
+   override is `!important`. */
+.mech-rider-gl {
+  position: absolute !important;
+  inset: 0;
+  pointer-events: none !important;
+}
+
 /* No material yet — Visa is under an NDA, Solomon's write-up is still to come.
    The slot says so. Both are real work and a gap at position 01 would read as
    a bug rather than as a fact about the project. */

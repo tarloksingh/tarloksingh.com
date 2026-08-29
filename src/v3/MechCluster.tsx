@@ -5,6 +5,7 @@ import { MENU } from './model'
 import { sound } from './sound'
 import { useNarrow } from './narrow'
 import MechSlots, { hasSubject, SlotView } from './MechSlots'
+import { RiderSlot } from './MechRider'
 import type { Tag } from '../data/projects'
 import type { ClusterTuning } from './clusterTuning'
 import './MechCluster.css'
@@ -955,12 +956,17 @@ function SlotBox({
           where the reason the element cannot be handed in from outside is
           written down. Its children are three.js and never reach the DOM, so
           the empty state is a sibling laid over it rather than a child. */}
-      {slot.solid ? (
-        <SlotView id={slot.id} live={on} arrive={arrived} />
-      ) : (
+      {!slot.solid ? (
         <span className="mech-slot-shot">
           <span className="mech-slot-bare">no signal</span>
         </span>
+      ) : slot.id === 'a-game' ? (
+        /* Solomon's rider is the one subject that will not share the bank's
+           canvas — the dark look needs its own environment-less rig, bloom and
+           exposure. See `MechRider.tsx`. */
+        <RiderSlot live={on} arrive={arrived} />
+      ) : (
+        <SlotView id={slot.id} live={on} arrive={arrived} />
       )}
 
       <span className="mech-slot-bar">

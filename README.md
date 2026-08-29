@@ -752,6 +752,23 @@ map is the exception — it is one texture built once at the canvas and assigned
 per scene, picked up from a frame rather than an effect because the views and
 the canvas are siblings and neither can hand the other anything.
 
+**Solomon's rider is the one subject that opts out of all of this.** It has its
+own `<Canvas>` (`MechRider.tsx`), laid into slot `a-game`'s bay in place of a
+`<View>` — `SlotBox` in `MechCluster.tsx` branches on the id. The rider was
+authored for the game as black leather over black metal, and that look only
+holds under a dim, *environment-less* rig with ACES tone mapping at 1.05 and
+UnrealBloom on the red taillight; drop it in the shared `RoomEnvironment`
+turntable and it flattens to grey. Bloom and `toneMappingExposure` are
+whole-canvas settings, so the real look cannot be scoped to one `<View>` — it
+needs a context of its own. That is one extra WebGL context, spent knowingly on
+the one subject on the page that is a game. The dark look itself is four
+material lines per mesh (tint the baked map, null the metalness/roughness maps
+so the numbers get real control, keep the normal map) plus five neutral-grey
+lights and no `scene.environment` at all — the full spec, with game line
+numbers, is `PORTFOLIO-RIDER-HANDOFF.md` in the `solomon-game` checkout. Camera
+and light values are eyeballed for the slot and are the obvious next thing to
+move onto a panel.
+
 **Every view shares one camera.** `View` sets the aspect from its own rect
 before each pass and every slot is the same shape, so it is set once. Framing is
 therefore the subject's business: each is normalised to a unit cube by `Resize`
