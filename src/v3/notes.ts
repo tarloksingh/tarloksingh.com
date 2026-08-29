@@ -316,6 +316,25 @@ export const NOTES: Record<string, Note[]> = {
   ],
   'stitchfam/Invited.jpg': [
     { label: 'still', value: ' Invite in iMessage.', at: [1.0189, 0.2181], to: [1.0609, 0.0823] }
+  ],
+  'wyte-card/hero.mp4': [
+    { label: 'clip', value: 'Promotional content of Wyte Card.', at: [0.94, 0.08], to: [1.0442, -0.1128] },
+    { label: 'label', value: 'Made in Blender.', at: [0.9619, 0.2323], to: [1.0638, 0.1778] }
+  ],
+  'wyte-card/Wyte_1.png': [
+    { label: 'still', value: 'How it looks after an NFC is tapped.', at: [0.9347, 0.2248], to: [1.0306, 0.0138] }
+  ],
+  'wyte-card/Wyte_2.png': [
+    { label: 'still', value: 'Close ups of Social media links.', at: [1.0182, 0.1325], to: [1.106, -0.0706] }
+  ],
+  'wyte-card/Wyte_3.png': [
+    { label: 'still', value: 'Creating your profile in Wyte Card.', at: [0.9516, 0.1109], to: [1.0976, -0.0561] }
+  ],
+  'wyte-card/Gala_Reel.jpg': [
+    { label: 'still', value: 'Early version we called Gala Reel. Gala Reel was a photo capturing appclip launched with custom NFC cards for events.', at: [1.0345, 0.1822], to: [1.0706, 0.1621] }
+  ],
+  'wyte-card/Video1.mp4': [
+    { label: 'clip', value: 'NFC card & app clip.', at: [0.9751, 0.2713], to: [1.1605, -0.0568] }
   ]
 }
 

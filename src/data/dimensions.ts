@@ -90,8 +90,6 @@ export const dimensions: Record<string, [number, number]> = {
   'stitchfam/Invited.jpg': [1920, 1080],
   'stitchfam/Test_1.jpg': [1920, 1080],
   'stitchfam/hero.mp4': [1280, 720],
-  'wyte-card/Bythepeople.jpg': [1800, 1200],
-  'wyte-card/Demo_3.mp4': [1280, 720],
   'wyte-card/Gala_Reel.jpg': [1920, 1080],
   'wyte-card/Video1.mp4': [1280, 720],
   'wyte-card/Wyte_1.png': [1920, 1080],

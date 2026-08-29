@@ -280,9 +280,7 @@ const drafts: Draft[] = [
         text: 'The brand identity leaned into professionalism and minimalism. We named it Wyte to reflect the clean, all-white design of the card. Visuals were sleek, neutral, and premium to signal trust and sophistication for professionals like real estate agents.\n\nMarketing emphasized speed, and long-term cost savings compared to printing traditional cards. Where Gala-Reel was festive and celebratory, Wyte Card was designed to feel sharp, focused, and professional.',
         media: [
           { i: 'Gala_Reel.jpg', label: 'Gala Reel gallery view' },
-          { i: 'Bythepeople.jpg', label: 'By The People campus test' },
-          { v: 'Video1.mp4', label: 'NFC card & app clip' },
-          { v: 'Demo_3.mp4', label: 'By The People app clip test' }
+          { v: 'Video1.mp4', label: 'NFC card & app clip' }
         ]
       },
       {
