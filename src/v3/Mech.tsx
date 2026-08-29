@@ -28,6 +28,9 @@ import './Mech.css'
 
 const MechModel = lazy(() => import('./MechModel'))
 const MechProduct = lazy(() => import('./MechProduct'))
+/* Solomon's rider stands in for a case study the project does not have yet —
+   see `MechRider.tsx`. Its own canvas, so it is lazy like the other two. */
+const RiderStage = lazy(() => import('./MechRider').then((m) => ({ default: m.RiderStage })))
 /* Development only — the render is behind `import.meta.env.DEV`, so a visitor
    never fetches this chunk. See `MechPins.tsx`. */
 const MechPins = lazy(() => import('./MechPins'))
@@ -1242,6 +1245,10 @@ export default function Mech({ id, onProject, onHome }: Props) {
      note on its own card, in place of the subject. See `MENU` in `model.ts`
      for why a project with no media is in the index at all. */
   const bare = !home && !current
+  /* Solomon has no frames, so it would fall through to the "no material" card
+     — but the rider *is* the material until the write-up lands. See
+     `MechRider.tsx`. */
+  const riderStage = bare && project?.id === 'a-game'
   /* What the readout in the side column is about — only ever a project. Home
      has no side column any more: the whole screen is the cluster, and the name
      sits in the middle of it. */
@@ -1413,10 +1420,18 @@ export default function Mech({ id, onProject, onHome }: Props) {
               `live` in MechModel, which puts the render loop to sleep. */}
           {/* Nothing to put on the stage, and that is the truth about the
               project rather than a failure to load one. */}
-          {bare && project && (
+          {bare && !riderStage && project && (
             <div className="mech-bare">
               <span className="mech-bare-tag">no material</span>
               <p>{project.restricted ?? project.intro}</p>
+            </div>
+          )}
+
+          {riderStage && (
+            <div className="mech-model-layer" data-on={true}>
+              <Suspense fallback={null}>
+                <RiderStage live={!covered} />
+              </Suspense>
             </div>
           )}
 

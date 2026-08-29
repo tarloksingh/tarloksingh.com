@@ -765,9 +765,28 @@ the one subject on the page that is a game. The dark look itself is four
 material lines per mesh (tint the baked map, null the metalness/roughness maps
 so the numbers get real control, keep the normal map) plus five neutral-grey
 lights and no `scene.environment` at all — the full spec, with game line
-numbers, is `PORTFOLIO-RIDER-HANDOFF.md` in the `solomon-game` checkout. Camera
-and light values are eyeballed for the slot and are the obvious next thing to
-move onto a panel.
+numbers, is `PORTFOLIO-RIDER-HANDOFF.md` in the `solomon-game` checkout.
+
+The same canvas is mounted a second time, larger, as the **Solomon project
+screen's stage subject** (`RiderStage` in `MechRider.tsx`, wired in `Mech.tsx`
+where `bare && project.id === 'a-game'` would otherwise draw the "no material"
+card). The project has no case study yet and the rider *is* the material until
+it does. `Rider` takes a `place` prop because the slot and the stage frame it
+from different distances; everything else — the rig, the taillight, the dark
+look — is shared.
+
+One trap cost an hour: **do not tone-map twice.** r3f's `<Canvas>` already sets
+`ACESFilmicToneMapping` on the renderer, and adding postprocessing's
+`<ToneMapping>` effect on top of that runs ACES a second time over the whole
+buffer — which turned the pure-red taillight magenta and blew every grey
+specular to cyan, reading as a broken shader rather than a double grade. Pick
+one: the renderer's (what the game does, what this uses) *or* the effect, never
+both. `<HueSaturation>` then runs at +0.26 rather than the spec's +0.42 —
++0.42 was tuned against a frame the game keeps almost fully desaturated, and
+the taillight's own point-light spill makes this frame warmer than that.
+
+Camera, framing and light values are eyeballed and are the obvious next thing
+to move onto a panel — a **Rider** tab, whenever the case study lands.
 
 **Every view shares one camera.** `View` sets the aspect from its own rect
 before each pass and every slot is the same shape, so it is set once. Framing is

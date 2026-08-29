@@ -1,12 +1,11 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { useGLTF } from '@react-three/drei'
-import { EffectComposer, Bloom, HueSaturation, Vignette, ToneMapping } from '@react-three/postprocessing'
-import { ToneMappingMode } from 'postprocessing'
+import { EffectComposer, Bloom, HueSaturation, Vignette } from '@react-three/postprocessing'
 import {
   ACESFilmicToneMapping,
-  AdditiveBlending,
   Box3,
+  SRGBColorSpace,
   Vector3,
   type Group,
   type Mesh,
@@ -73,7 +72,16 @@ function darken(root: Group) {
  *  light distances below are written in units where the rider is 2.9 tall),
  *  sat on the ground, centred in x/z, then shifted so its middle is the
  *  origin the canvas camera already looks at. */
-function Rider({ live, show }: { live: boolean; show: boolean }) {
+function Rider({
+  live,
+  show,
+  place = [0.35, -1.2, 0]
+}: {
+  live: boolean
+  show: boolean
+  /** Where the rig sits — the slot and the project stage frame it differently. */
+  place?: [number, number, number]
+}) {
   const { scene } = useGLTF(SRC, DRACO_PATH)
   const copy = useMemo(() => {
     const c = cloneSkinned(scene) as Group
@@ -98,7 +106,7 @@ function Rider({ live, show }: { live: boolean; show: boolean }) {
     at.current.scale += ((show ? (live ? 1.08 : 1) : 0) - at.current.scale) * k
     node.scale.setScalar(at.current.scale)
     node.rotation.y = YAW_BIAS + Math.sin(t * 0.3) * YAW_SWING
-    node.position.set(0.35, -1.2 + Math.sin(t * 0.5) * 0.02, 0)
+    node.position.set(place[0], place[1] + Math.sin(t * 0.5) * 0.02, place[2])
   })
 
   return (
@@ -109,28 +117,18 @@ function Rider({ live, show }: { live: boolean; show: boolean }) {
           box plus the additive halo plus bloom is what makes it *glow*; on its
           own it is a dull salmon rectangle. Coords measured off the export:
           a wide thin slot at y 1.80, rear face near z 2.10. */}
-      <mesh position={[-0.03, 1.8, 2.06]} scale={[0.5, 0.12, 1]}>
+      <mesh position={[-0.03, 1.86, 2.0]} scale={[0.34, 0.07, 1]}>
         <boxGeometry args={[1, 1, 0.09]} />
-        <meshBasicMaterial color="#ff6a4d" toneMapped={false} />
+        <meshBasicMaterial color="#ff2a12" toneMapped={false} />
       </mesh>
-      <sprite position={[-0.03, 1.8, 2.14]} scale={0.42}>
-        <spriteMaterial
-          color="#ff2010"
-          opacity={0.4}
-          transparent
-          depthWrite={false}
-          blending={AdditiveBlending}
-          toneMapped={false}
-        />
-      </sprite>
-      <pointLight color="#ff2020" intensity={2.5} distance={7} decay={2} position={[-0.03, 1.8, 2.31]} />
+      <pointLight color="#ff2020" intensity={1.6} distance={4} decay={2} position={[-0.03, 1.86, 2.25]} />
 
       {/* The rig — five neutral-grey lights, no environment map anywhere. The
           near-black wet read on the bike is the *absence* of an environment:
           metalness 0.8 with nothing to reflect leaves only the specular from
           these four. */}
-      <ambientLight color="#606060" intensity={0.62} />
-      <directionalLight color="#b2b2b2" intensity={0.55} position={[-6, 20, 8]} />
+      <ambientLight color="#606060" intensity={0.7} />
+      <directionalLight color="#b2b2b2" intensity={0.62} position={[-6, 20, 8]} />
       <pointLight color="#9a9a9a" intensity={8} distance={14} decay={2} position={[-3, 7, 12]} />
       {/* a second grey rim from the camera side so the specular edges read at
           slot size — the game frames this much larger */}
@@ -164,14 +162,55 @@ export function RiderSlot({ live, arrive }: { live: boolean; arrive: boolean }) 
             <Rider live={live} show={arrive} />
           </Suspense>
           <EffectComposer>
-            <Bloom intensity={0.4} luminanceThreshold={0.15} luminanceSmoothing={0.2} radius={0.6} mipmapBlur />
-            <HueSaturation saturation={0.42} />
+            <Bloom intensity={0.6} luminanceThreshold={0.35} luminanceSmoothing={0.3} radius={0.6} mipmapBlur />
+            <HueSaturation saturation={0.26} />
             <Vignette darkness={0.32} eskil={false} />
-            <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
           </EffectComposer>
         </Canvas>
       )}
     </span>
+  )
+}
+
+/** The rider as a project screen's stage subject.
+ *
+ *  Same scene as the bank slot, framed for room: the Solomon project has no
+ *  case study yet, so instead of the "no material" card it gets the subject
+ *  itself, large. This canvas is the whole point of the handoff's §5 — a
+ *  three-quarter rear view with the taillight blooming, which the 65px bay
+ *  could only hint at. Its own context; mounted only on `/v3/p/a-game`.
+ *
+ *  Camera and grade are eyeballed and belong on a panel eventually, same as
+ *  the slot's. Bloom runs at the game's own baked numbers here (threshold 0,
+ *  strength ~0.5) because there is finally the resolution to carry them. */
+export function RiderStage({ live = true }: { live?: boolean }) {
+  return (
+    <Canvas
+      className="mech-rider-gl"
+      dpr={[1, 2]}
+      frameloop={live ? 'always' : 'never'}
+      gl={{
+        antialias: true,
+        alpha: true,
+        powerPreference: 'high-performance',
+        toneMapping: ACESFilmicToneMapping,
+        outputColorSpace: SRGBColorSpace
+      }}
+      camera={{ position: [5.0, 3.3, 13.5], fov: 24 }}
+      onCreated={({ gl }) => {
+        gl.toneMappingExposure = 1.05
+        gl.setClearAlpha(0)
+      }}
+    >
+      <Suspense fallback={null}>
+        <Rider live show place={[0, -1.35, 0]} />
+      </Suspense>
+      <EffectComposer>
+        <Bloom intensity={0.7} luminanceThreshold={0.35} luminanceSmoothing={0.3} radius={0.7} mipmapBlur />
+        <HueSaturation saturation={0.26} />
+        <Vignette darkness={0.45} eskil={false} />
+      </EffectComposer>
+    </Canvas>
   )
 }
 
