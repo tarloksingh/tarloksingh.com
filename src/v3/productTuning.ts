@@ -25,33 +25,32 @@ import { copyText } from './clipboard'
    source to paste over it. Nothing set here reaches a visitor until it is
    pasted. */
 
-/** What every piece shares: the lens they are framed with and the drift they
- *  sit on.
+/** The drift every piece sits on, and nothing else.
  *
- *  Everything about *light* used to be here too, and that was wrong. One
- *  exposure, one environment and two fixed lamps had to suit a matte business
- *  card, a glossy moulded kiosk, a video-texture monitor and a flipbook of
- *  fish at the same time — so any of them being right meant the others were
- *  approximately lit. They are on `PieceTuning` now.
+ *  Everything about *light* used to be here, and that was wrong. One exposure,
+ *  one environment and two fixed lamps had to suit a matte business card, a
+ *  glossy moulded kiosk, a video-texture monitor and a flipbook of fish at the
+ *  same time — so any of them being right meant the others were approximately
+ *  lit. They are on `PieceTuning` now.
  *
- *  This can be per-piece where the cast's could not: a project screen shows
- *  one piece at a time in a canvas of its own, so exposure and the scene's
- *  environment — both of which are one-per-canvas and had to be shared on the
- *  home stage — are free here. No layers, no isolation, nothing to keep
- *  apart. */
+ *  The *lens* was here too, and was wrong for the same reason and in a way
+ *  that was much harder to notice: the Lens folder sat next to the per-piece
+ *  folder on the panel, so framing one piece by eye silently reframed the
+ *  other seven. Nothing on screen said so — every other piece was on a
+ *  different screen. `focalLength` and `fill` are on `PieceTuning` now.
+ *
+ *  All of that can be per-piece where the cast's could not: a project screen
+ *  shows one piece at a time in a canvas of its own, so exposure, the scene's
+ *  environment and the camera — all one-per-canvas, and all of which had to be
+ *  shared on the home stage — are free here. No layers, no isolation, nothing
+ *  to keep apart. */
 export interface ProductTuning {
-  /** Millimetres on a 35mm back. The camera backs off to hold the framing. */
-  focalLength: number
-  /** How much of the frame's height a piece fills before its own `size`. */
-  fill: number
   floatSpeed: number
   floatRange: number
   floatRotation: number
 }
 
 export const PRODUCT_DEFAULTS: ProductTuning = {
-  focalLength: 60,
-  fill: 0.72,
   floatSpeed: 1.1,
   floatRange: 0.06,
   floatRotation: 0.35
@@ -68,6 +67,21 @@ export interface PieceTuning {
   turn: number
   /** Frame heights above centre. */
   liftY: number
+
+  /* ---- its own camera ----
+
+     Per-piece for the same reason the light is, and it is the more surprising
+     of the two: a lens is not a neutral setting. A disc case at 60mm and the
+     same case at 75mm are differently shaped objects — the near corner stops
+     running away from the far one — and which of those is right depends
+     entirely on what the piece is. A card wants the flat one; a kiosk you are
+     meant to read the depth of does not. */
+
+  /** Millimetres on a 35mm back. The camera backs off to hold the framing, so
+   *  this changes how much perspective the piece has, not how large it is. */
+  focalLength: number
+  /** How much of the frame's height the piece fills before its own `size`. */
+  fill: number
 
   /* ---- its own light ----
 
@@ -119,6 +133,8 @@ export const PIECE_FALLBACK: PieceTuning = {
   size: 1,
   turn: 0,
   liftY: 0,
+  focalLength: 60,
+  fill: 0.72,
   exposure: 0.55,
   envIntensity: 2.2,
   keyIntensity: 2.4,
@@ -151,7 +167,10 @@ export const PIECE_DEFAULTS: Record<string, PieceTuning> = {
      through rather than any of them, and at a neutral size the blocks
      themselves come out the size of the type. */
   'block-builder': { ...PIECE_FALLBACK, size: 2.4, turn: 131.1, liftY: 0.06 },
-  'slider-engine': { ...PIECE_FALLBACK, size: 0.86, turn: 0, liftY: 0 }
+  /* The one piece framed on a lens of its own so far: a flipbook of fish is a
+     billboard, and at the shared 60mm the sprite's own plane read as leaning
+     away. 75mm flattens it back. */
+  'slider-engine': { ...PIECE_FALLBACK, size: 0.71, turn: 0, liftY: 0, focalLength: 75, fill: 0.71, gloss: -0.84 }
 }
 
 export const pieceFor = (projectId: string): PieceTuning => PIECE_DEFAULTS[projectId] ?? PIECE_FALLBACK
@@ -240,6 +259,18 @@ export function useProductTuning(projectId: string) {
           turn: { value: seed.turn, min: -180, max: 180, step: 0.1, label: 'Turn' },
           liftY: { value: seed.liftY, min: -0.5, max: 0.5, step: 0.005, label: 'Lift' },
 
+          /* This piece's camera, and nobody else's. It was a sibling of this
+             folder rather than inside it, which read as a studio setting and
+             behaved as one — reframing a piece here used to reframe all
+             eight. */
+          Lens: folder(
+            {
+              focalLength: { value: seed.focalLength, min: 18, max: 200, step: 1, label: 'mm' },
+              fill: { value: seed.fill, min: 0.2, max: 0.95, step: 0.01, label: 'Fills' }
+            },
+            { collapsed: true }
+          ),
+
           /* This piece's rig, and nobody else's. */
           Light: folder(
             {
@@ -273,14 +304,9 @@ export function useProductTuning(projectId: string) {
         { collapsed: false }
       ),
 
-      Lens: folder(
-        {
-          focalLength: { value: start.focalLength, min: 18, max: 200, step: 1, label: 'mm' },
-          fill: { value: start.fill, min: 0.2, max: 0.95, step: 0.01, label: 'Fills' }
-        },
-        { collapsed: true }
-      ),
-
+      /* The last thing on this panel that is still every piece's at once, and
+         it is here on purpose: drift is the stage's own idle, not a property
+         of the object standing on it. */
       Drift: folder(
         {
           floatSpeed: { value: start.floatSpeed, min: 0, max: 4, step: 0.05, label: 'Speed' },

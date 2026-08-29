@@ -320,8 +320,8 @@ export default function MechProduct({
   piece?: PieceTuning
   live?: boolean
 }) {
-  const fill = tuning.fill * piece.size
-  const distance = distanceFor(PRODUCT_DEFAULTS.focalLength, PRODUCT_DEFAULTS.fill)
+  const fill = piece.fill * piece.size
+  const distance = distanceFor(piece.focalLength, fill)
 
   return (
     <Canvas
@@ -331,7 +331,7 @@ export default function MechProduct({
          WebGL context, a compiled shader set and a generated environment map
          costs most of a hundred milliseconds to build again. */
       frameloop={live ? 'always' : 'never'}
-      camera={{ fov: fovForFocalLength(PRODUCT_DEFAULTS.focalLength), position: [0, 0, distance] }}
+      camera={{ fov: fovForFocalLength(piece.focalLength), position: [0, 0, distance] }}
       gl={{ alpha: true, antialias: true, toneMapping: ACESFilmicToneMapping, outputColorSpace: SRGBColorSpace }}
       style={{ background: 'transparent' }}
     >
@@ -345,7 +345,7 @@ export default function MechProduct({
           exposure and the scene's environment — one-per-canvas, and the two
           things the cast genuinely had to share — are free to differ. No
           layers, nothing to keep apart. */}
-      <Lens focalLength={tuning.focalLength} fill={fill} />
+      <Lens focalLength={piece.focalLength} fill={fill} />
       <Studio intensity={piece.envIntensity} exposure={piece.exposure} />
       <directionalLight position={[piece.keyX, piece.keyY, piece.keyZ]} intensity={piece.keyIntensity} />
       <directionalLight position={[piece.fillX, piece.fillY, piece.fillZ]} intensity={piece.fillIntensity} />

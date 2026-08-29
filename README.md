@@ -1756,6 +1756,41 @@ its surface. One shared studio had to suit a matte business card, a glossy
 moulded kiosk, a video-texture monitor and a flipbook of fish at once, which
 means at most one of them was ever right.
 
+**And the lens is the piece's too, which took a second pass to find.** When
+light went per-piece the camera did not, so `focalLength` and `fill` stayed on
+`ProductTuning` — one lens for all eight. On the panel that read as a settled
+studio default and behaved as anything but: the **Lens** folder sat as a
+*sibling* of the per-piece folder, one scroll below Size and Turn, so framing
+one piece by eye silently reframed the other seven. Nothing on screen could
+say so, because every other piece is on a different screen. It surfaced only
+when a tuning session on Slider Engine was pasted back and the diff moved
+`PRODUCT_DEFAULTS` — 60mm to 75mm across the board.
+
+A lens is not a neutral setting to share. The camera backs off to hold the
+framing, so millimetres do not change how *large* a piece is — they change how
+much perspective it has, and a disc case at 60mm and the same case at 75mm are
+differently shaped objects. Which one is right depends on what the piece is.
+So `focalLength` and `fill` are on `PieceTuning`, seeded at the old shared
+60mm/0.72 so nothing but Slider Engine moved the day it split, and the panel's
+**Lens** folder is now *inside* `This piece` beside Light and Surface — the
+grouping is the documentation.
+
+**`Drift` is the one folder still shared, on purpose.** Speed, range and turn
+are the stage's own idle rather than a property of the object standing on it,
+and every piece drifting to the same clock is what makes the stage read as one
+place.
+
+Splitting the lens also closed a **frame-one pop** on the pieces, the same
+shape as the two written up under the cast's exit. A `camera` prop is read
+once at mount, so it has to be computed from the tuning actually in force —
+and `MechProduct`'s was quoting the shared `PRODUCT_DEFAULTS.fill` raw, with
+no `piece.size` in it. Every piece is sized, so every piece drew one frame at
+the wrong distance before the `Lens` effect corrected it. It is
+`distanceFor(piece.focalLength, piece.fill * piece.size)` now, which is exact
+for seven of the eight. Block Builder is the exception and always will be:
+its `fill` of 1.728 is past what `Lens` will allow at any normal window shape,
+and that cap needs an aspect ratio the canvas does not have until it exists.
+
 **And the two GLB models** were both running on `MODEL_DEFAULTS` — a rig built
 around a face, with an enclosure tuned to look acceptable under it. That is
 now `MODEL_RIGS`, one entry each, seeded identical so nothing changed the day
