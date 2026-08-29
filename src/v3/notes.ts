@@ -239,6 +239,37 @@ export const NOTES: Record<string, Note[]> = {
   ],
   'red-dead-redemption-2/talking.mp4': [
     { label: 'label', value: 'Camera work done in  Autodesk MotionBuilder.', at: [1.0102, 0.4287], to: [1.0607, 0.3545] }
+  ],
+  'openup/piece': [
+    { label: 'piece', value: 'Deisgned in Figma' },
+    { label: 'made in', value: 'Final version of plus one / openup app. ', fold: 'tools', at: [0, 0.285], to: [-0.1305, 0.2301] },
+    { label: 'label', value: 'Animations made in after effects.', at: [0.9096, 0.3825], to: [1.029, 0.2755] }
+  ],
+  'openup/hero.mp4': [
+    { label: 'clip', value: 'Commercial created in After Effects and Rotato.', at: [0.94, 0.08], to: [1.0399, -0.1172] }
+  ],
+  'openup/One.mp4': [
+    { label: 'clip', value: 'Quick look at the home screen.', at: [0.5055, 0.1335], to: [0.5603, -0.1431] }
+  ],
+  'openup/Two.mp4': [
+    { label: 'clip', value: 'The messages section of Plus One.', at: [0.5071, 0.1267], to: [0.5818, -0.1239] }
+  ],
+  'openup/Three.mp4': [
+    { label: 'clip', value: 'Version 3 of the app called Bonjour that had a map showing you were people were somewhat located.', at: [0.9755, 0.1354], to: [1.0462, 0.1787] }
+  ],
+  'openup/Four.mp4': [
+    { label: 'clip', value: 'Promotional  content made in After effects.', at: [0.9628, 0.2878], to: [1.0427, 0.0131] },
+    { label: 'label', value: ' Version 2 named bff.', at: [0.2604, 0.0462], to: [0.1955, -0.1706] }
+  ],
+  'openup/Five.mp4': [
+    { label: 'clip', value: 'OpenUp: version 2 demo.', at: [0.94, 0.08], to: [1.018, -0.1959] }
+  ],
+  'openup/Six.mp4': [
+    { label: 'clip', value: 'Animations made for the first version of Openup.', at: [0.94, 0.08], to: [1.0451, -0.1945] }
+  ],
+  'openup/Seven.mp4': [
+    { label: 'clip', value: 'Designed in Figma 2019.', at: [0.94, 0.08], to: [1.0206, -0.1602] },
+    { label: 'made in', value: 'Version one (Openup).', fold: 'tools', at: [0.3553, 0.0651], to: [0.3014, -0.1647] }
   ]
 }
 
