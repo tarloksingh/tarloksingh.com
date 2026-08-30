@@ -76,6 +76,9 @@ export interface Project {
   sections: Section[]
   /** Set when an NDA or an unfinished write-up limits what can be shown. */
   restricted?: string
+  /** `restricted` is an NDA rather than an unwritten case study — the v3 card
+   *  shows a lock and reads "not yet disclosable" instead of "no material". */
+  locked?: boolean
   /** `'work'` (the default) rides the main vitrine row and the home page's
    *  work timeline; `'side'` skips the row entirely and appears only on the
    *  smaller side-projects timeline beside it. Still a full case study
@@ -102,6 +105,7 @@ interface Draft {
   accent: string
   hero?: Ref
   restricted?: string
+  locked?: boolean
   category?: 'work' | 'side'
   sections: Array<{
     id: string
@@ -171,8 +175,9 @@ const drafts: Draft[] = [
     company: 'Visa',
     timeline: 'Jan — Jul 2026',
     accent: '#1a1f71',
+    locked: true,
     restricted:
-      'Covered by a non-disclosure agreement. What can be said: I replaced Visa’s external agency pipeline with a 114,000-line in-house platform, cut roughly €120K of agency spend, and taught three organisations to run it without me.',
+      'Covered by a non-disclosure agreement. What can be said: as Staff Designer I replaced a $65K-per-event external agency with a TypeScript/React demo platform I built solo — shared design tokens keep every demo on-brand, a carry-forward library reuses them between events, and each event ships as its own offline PWA. It took a build from three or four weeks down to a day or two, turned the work of ten-plus product teams into twenty-two demos for the Visa Payments Forum, and left four organisations running the pipeline without me.',
     intro:
       'Visa’s marketing production ran through an external agency. I built the platform that brought it in-house — and then handed it over.',
     sections: []
@@ -755,6 +760,7 @@ const build = (draft: Draft): Project => {
     intro: draft.intro,
     accent: draft.accent,
     restricted: draft.restricted,
+    locked: draft.locked,
     category: draft.category ?? 'work',
     tags: PROJECT_TAGS[draft.id] ?? [],
     year: yearOf(draft.timeline),

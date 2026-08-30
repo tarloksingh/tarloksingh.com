@@ -1414,8 +1414,18 @@ export default function Mech({ id, onProject, onHome }: Props) {
           {/* Nothing to put on the stage, and that is the truth about the
               project rather than a failure to load one. */}
           {bare && project && (
-            <div className="mech-bare">
-              <span className="mech-bare-tag">no material</span>
+            <div className="mech-bare" data-locked={Boolean(project.locked)}>
+              {project.locked && (
+                <span className="mech-bare-lock" aria-hidden="true">
+                  <svg viewBox="0 0 44 44">
+                    <path className="lock-shackle" d="M13 21v-7a9 9 0 0 1 18 0v7" />
+                    <rect className="lock-body" x="8" y="21" width="28" height="18" rx="3" />
+                    <circle className="lock-keyhole" cx="22" cy="28.5" r="2.4" />
+                    <rect className="lock-keyhole" x="20.9" y="29" width="2.2" height="6" rx="1.1" />
+                  </svg>
+                </span>
+              )}
+              <span className="mech-bare-tag">{project.locked ? 'not yet disclosable' : 'no material'}</span>
               <p>{project.restricted ?? project.intro}</p>
             </div>
           )}

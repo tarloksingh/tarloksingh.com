@@ -3153,13 +3153,16 @@
   .mech-leader-label,
   .mech-leader-value,
   .mech-side,
-  .mech-flat {
+  .mech-flat,
+  .mech-bare {
     animation-duration: 1ms;
   }
 
   .mech-ring,
   .mech-pin,
-  .mech-foot-dot {
+  .mech-foot-dot,
+  .mech-bare-lock .lock-shackle,
+  .mech-bare-lock .lock-keyhole {
     animation: none;
   }
 
@@ -4221,19 +4224,49 @@
    A project in the index with no material — Visa, under an NDA; Solomon,
    whose write-up is still to come. The card says so in the panel's own voice
    rather than the stage being left empty, which reads as a failure to load.
-   See `MENU` in model.ts for why a project with no media is in the index. */
+   See `MENU` in model.ts for why a project with no media is in the index.
+
+   `[data-locked]` is the NDA case rather than the unfinished one: it centres
+   its head, shows a lock, and reads "not yet disclosable" — see `.mech-bare`
+   in Mech.tsx and `restricted` on the Visa entry in projects.ts. */
+
+/* Its own entrance rather than `mech-in`. This card centres itself with a
+   translate, and `mech-in`'s rest frame is `transform: translateY(0)` held by
+   `animation-fill-mode: both` — which overwrites that translate and drops the
+   card down and right by half its own size. Same trap as every reused keyframe
+   on this screen; the fix is a keyframe that carries the centring offset in
+   both frames. */
+@keyframes mech-bare-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 10 * var(--px)));
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+
 .mech-bare {
   position: absolute;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
   width: calc(560 * var(--px));
+  /* Narrow re-bases `--px` to the window, and the widest a phone can be is
+     still under this card's frame width — cap it so it never runs off. */
+  max-width: calc(100vw - 32px);
   padding: calc(30 * var(--px)) calc(34 * var(--px));
   border: 1px solid rgba(var(--accent-rgb), 0.28);
   border-radius: var(--round);
   background: rgba(0, 0, 0, 0.5);
   box-shadow: inset 0 0 calc(40 * var(--px)) rgba(var(--accent-rgb), 0.05);
-  animation: mech-in 620ms var(--ease) both;
+  animation: mech-bare-in 620ms var(--ease) both;
+}
+
+.mech-bare[data-locked='true'] {
+  width: calc(600 * var(--px));
+  text-align: center;
 }
 
 .mech-bare-tag {
@@ -4249,6 +4282,74 @@
   font-size: calc(14 * var(--type));
   line-height: 1.6;
   color: var(--mid);
+}
+
+.mech-bare[data-locked='true'] p {
+  margin-top: calc(16 * var(--px));
+  text-align: left;
+}
+
+/* The lock on an NDA card. Phosphor, because it is the machine reporting a
+   state the pointer cannot change; it gives the shackle a small tug and
+   settles back, so it reads as held shut rather than as an ornament. */
+.mech-bare-lock {
+  display: block;
+  width: calc(46 * var(--px));
+  height: calc(46 * var(--px));
+  margin: 0 auto calc(20 * var(--px));
+  color: var(--accent);
+}
+
+.mech-bare-lock svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.mech-bare-lock .lock-body,
+.mech-bare-lock .lock-shackle {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  filter: drop-shadow(
+    0 0 calc(6 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.55 * var(--g)))
+  );
+}
+
+.mech-bare-lock .lock-shackle {
+  transform-box: fill-box;
+  animation: mech-lock-tug 4.6s var(--ease) infinite;
+}
+
+.mech-bare-lock .lock-keyhole {
+  fill: currentColor;
+  animation: mech-lock-pulse 2.8s ease-in-out infinite;
+}
+
+@keyframes mech-lock-tug {
+  0%,
+  80%,
+  100% {
+    transform: translateY(0);
+  }
+  86% {
+    transform: translateY(calc(-2 * var(--px)));
+  }
+  92% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes mech-lock-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 /* ---- the wave's layer ----
