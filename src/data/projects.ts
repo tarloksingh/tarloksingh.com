@@ -177,7 +177,7 @@ const drafts: Draft[] = [
     accent: '#1a1f71',
     locked: true,
     restricted:
-      'Covered by a non-disclosure agreement. What can be said: as Staff Designer I replaced a $65K-per-event external agency with a TypeScript/React demo platform I built solo — shared design tokens keep every demo on-brand, a carry-forward library reuses them between events, and each event ships as its own offline PWA. It took a build from three or four weeks down to a day or two, turned the work of ten-plus product teams into twenty-two demos for the Visa Payments Forum, and left four organisations running the pipeline without me.',
+      'Covered by a non-disclosure agreement. What can be said: as Staff Designer I replaced a $65K-per-event external agency with a TypeScript/React demo platform I built solo — shared design tokens keep every demo on-brand, a carry-forward library reuses them between events, and each event ships as its own offline PWA. It took a build from three or four weeks down to a day or two, and turned the work of ten-plus product teams into twenty-two demos for the Visa Payments Forum.',
     intro:
       'Visa’s marketing production ran through an external agency. I built the platform that brought it in-house — and then handed it over.',
     sections: []
