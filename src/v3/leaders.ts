@@ -335,7 +335,64 @@ const seated = (
   ]
   const mx = sx !== sx0 ? -sx : sx
   const my = sy !== sy0 ? -sy : sy
-  return { ...note, tip, anchor, sx, sy, w, meets: meetsCard(tip, meet, mx, my) }
+  return { ...note, tip, anchor, sx, sy, w, free, meets: meetsCard(tip, meet, mx, my) }
+}
+
+type Seated = ReturnType<typeof seated>
+
+/** How far apart two cards are left when one has been pushed off the other. */
+const APART = 12
+
+/* ---- two cards in the same place ----
+
+   The fan is three arms traced off one Figma frame, and it holds that shape on
+   a wide window because there is room either side of the subject for it to
+   hold. A portrait stage has no sideways room at all: every card is squeezed
+   to the middle, and two of them land on top of each other — which is what a
+   phone actually looked like, and no amount of landing the *line* correctly
+   fixes a label printed over another label.
+
+   So a card that overlaps one already placed is pushed down until it does not.
+   In order, so the first arm keeps the spot the fan chose for it and later ones
+   give way; only far enough to clear, so the group stays as near the shape it
+   was drawn in as the room allows; and only ever downward, because a narrow
+   stage is the one that is taller than it is wide.
+
+   Two things it deliberately does not do. It does not touch a hand-placed
+   card — those are `free`, somebody put them there, and shuffling them is the
+   same argument as clamping them. And it works off `w` and `cardHeight`, the
+   same estimates `seated` uses, rather than a measured box: this runs during
+   render, where no card has been laid out yet. The estimates are generous, so
+   it separates a little more than strictly needed, which on a phone is the
+   right way to be wrong. The line follows whatever the card ends up doing —
+   `fitCards` re-aims it off the real box once there is one. */
+const spread = (list: Seated[], space: Space): Seated[] => {
+  const taken: Array<{ x0: number; x1: number; y0: number; y1: number }> = []
+  const floor = space.h - edgeFor(space).bottom
+
+  for (const leader of list) {
+    const h = cardHeight(leader.value, leader.w)
+    const x0 = leader.sx === 1 ? leader.anchor[0] : leader.anchor[0] - leader.w
+    let y0 = leader.sy === 1 ? leader.anchor[1] : leader.anchor[1] - h
+
+    if (!leader.free) {
+      // Bounded: a card that cannot be cleared in a few steps has run out of
+      // stage, and pushing it further only walks it off the bottom.
+      for (let guard = 0; guard < 8; guard += 1) {
+        const hit = taken.find(
+          (box) => x0 < box.x1 && x0 + leader.w > box.x0 && y0 < box.y1 && y0 + h > box.y0
+        )
+        if (!hit) break
+        const shift = hit.y1 + APART - y0
+        if (y0 + shift + h > floor) break
+        y0 += shift
+        leader.anchor[1] += shift
+      }
+    }
+
+    taken.push({ x0, x1: x0 + leader.w, y0, y1: y0 + h })
+  }
+  return list
 }
 
 const pinned = (note: Note, box: Box, gutter: Gutter, space: Space, placed: boolean) =>
@@ -354,7 +411,7 @@ const slotted = (note: Note, index: number, box: Box, gutter: Gutter, space: Spa
 
 export const leadersFor = (notes: Note[], box: Box, space: Space = FRAME_SPACE) => {
   const gutter = gutterFor(space)
-  return notes.map((note, i) => {
+  const list = notes.map((note, i) => {
     /* The narrow layout gets its own pair of points if one was placed, and
        falls back to the wide `at`/`to` — and then to the auto fan — if not.
        A phone stage is a third the width of the frame, so a card set off the
@@ -372,5 +429,10 @@ export const leadersFor = (notes: Note[], box: Box, space: Space = FRAME_SPACE) 
       ? pinned({ ...note, at, to }, box, gutter, space, placed)
       : slotted(note, i, box, gutter, space)
   })
+
+  /* Narrow only. The wide frame has room either side of the subject for the
+     fan to keep its shape, and cards do not collide there; a portrait stage
+     squeezes all of them to the middle. See `spread`. */
+  return space.narrow ? spread(list, space) : list
 }
 
