@@ -233,14 +233,35 @@ export const meetsCard = (tip: number[], anchor: number[], sx: number, sy: numbe
    Both directions can be overruled by the room actually available. A seat
    dragged hard against the rail has nothing to its right whichever side of the
    subject it started on, and a card that hangs off the frame is worse than one
-   on the wrong side of its own corner. */
-const seated = (note: Note, tip: number[], want: number[], gutter: Gutter, space: Space) => {
+   on the wrong side of its own corner.
+
+   `free` turns all of that off, and it is on for every note that carries its
+   own two points. The clamps and flips below exist to rescue a card whose
+   position was *derived* — the auto fan is one shape traced off the Figma and
+   reused for every subject and every window, so it has to be talked out of the
+   edges it walks into. A hand-placed note is not derived: somebody dragged it
+   to that spot on this layout and watched where it landed. Overruling that is
+   the editor fighting the person using it, which is exactly what it felt like
+   — a label that jumps somewhere else as you let go of it. On the wide frame
+   this changes almost nothing (the note in `across` below says these never
+   fire there); on a phone it is the whole difference between placing a label
+   and negotiating with one. */
+const seated = (
+  note: Note,
+  tip: number[],
+  want: number[],
+  gutter: Gutter,
+  space: Space,
+  free = false
+) => {
   const most = space.narrow ? Math.min(CARD.w, space.w * 0.6) : CARD.w
   const least = Math.min(CARD.min, most)
   const edge = edgeFor(space)
   const floor = space.h - edge.bottom
 
-  const anchor = [clamp(want[0], gutter.left, gutter.right), clamp(want[1], edge.top, floor)]
+  const anchor = free
+    ? [want[0], want[1]]
+    : [clamp(want[0], gutter.left, gutter.right), clamp(want[1], edge.top, floor)]
 
   const side = { left: anchor[0] - gutter.left, right: gutter.right - anchor[0] }
   let sx = anchor[0] < tip[0] ? -1 : 1
@@ -251,14 +272,18 @@ const seated = (note: Note, tip: number[], want: number[], gutter: Gutter, space
      the line has to reach across the card to the near one. `sx0`/`sy0` remember
      the un-overruled sense so `meets` can be walked to the right corner. */
   const sx0 = sx
-  if (sx === 1 && side.right < least && side.left > side.right) sx = -1
-  else if (sx === -1 && side.left < least && side.right > side.left) sx = 1
+  if (!free) {
+    if (sx === 1 && side.right < least && side.left > side.right) sx = -1
+    else if (sx === -1 && side.left < least && side.right > side.left) sx = 1
+  }
 
   const room = { up: anchor[1] - edge.top, down: floor - anchor[1] }
   let sy = anchor[1] <= tip[1] ? -1 : 1
   const sy0 = sy
-  if (sy === 1 && room.down < CARD.room && room.up > room.down) sy = -1
-  else if (sy === -1 && room.up < CARD.room && room.down > room.up) sy = 1
+  if (!free) {
+    if (sy === 1 && room.down < CARD.room && room.up > room.down) sy = -1
+    else if (sy === -1 && room.up < CARD.room && room.down > room.up) sy = 1
+  }
 
   /** The widest this card may be set here, which is whatever is left between
    *  its corner and the gutter it is growing towards. */
@@ -273,7 +298,9 @@ const seated = (note: Note, tip: number[], want: number[], gutter: Gutter, space
      Dropping it clear vertically is the move that always has somewhere to go,
      because a narrow stage is the one that is taller than it is wide. The
      anchor moves; the line simply follows it. */
-  const across = sx === 1 ? tip[0] > anchor[0] - CLEAR && tip[0] < anchor[0] + w : tip[0] < anchor[0] + CLEAR && tip[0] > anchor[0] - w
+  const across =
+    !free &&
+    (sx === 1 ? tip[0] > anchor[0] - CLEAR && tip[0] < anchor[0] + w : tip[0] < anchor[0] + CLEAR && tip[0] > anchor[0] - w)
   if (across) {
     const held = clamp(tip[1] + sy * CLEAR, edge.top, floor)
     // Only if the side it was pushed to is the side it actually landed on —
@@ -290,8 +317,10 @@ const seated = (note: Note, tip: number[], want: number[], gutter: Gutter, space
      deck in the corner of the header. */
   const head = sy === -1 ? anchor[1] - CARD.room : anchor[1]
   const foot = sy === -1 ? anchor[1] : anchor[1] + CARD.room
-  if (head < edge.top) anchor[1] += edge.top - head
-  else if (foot > floor) anchor[1] -= foot - floor
+  if (!free) {
+    if (head < edge.top) anchor[1] += edge.top - head
+    else if (foot > floor) anchor[1] -= foot - floor
+  }
 
   /* When a flip put the card on the tip's own side of `anchor`, step across to
      the far edge — `w` wide, `cardHeight` tall — to land on the corner that
@@ -309,8 +338,8 @@ const seated = (note: Note, tip: number[], want: number[], gutter: Gutter, space
   return { ...note, tip, anchor, sx, sy, w, meets: meetsCard(tip, meet, mx, my) }
 }
 
-const pinned = (note: Note, box: Box, gutter: Gutter, space: Space) =>
-  seated(note, pointIn(box, note.at!), pointIn(box, note.to!), gutter, space)
+const pinned = (note: Note, box: Box, gutter: Gutter, space: Space, placed: boolean) =>
+  seated(note, pointIn(box, note.at!), pointIn(box, note.to!), gutter, space, placed)
 
 const slotted = (note: Note, index: number, box: Box, gutter: Gutter, space: Space) => {
   const slot = SLOTS[index % SLOTS.length]
@@ -332,7 +361,16 @@ export const leadersFor = (notes: Note[], box: Box, space: Space = FRAME_SPACE) 
        right edge on desktop is off the screen here. */
     const at = space.narrow ? note.atNarrow ?? note.at : note.at
     const to = space.narrow ? note.toNarrow ?? note.to : note.to
-    return at && to ? pinned({ ...note, at, to }, box, gutter, space) : slotted(note, i, box, gutter, space)
+    /* Placed *on this layout*, which is what earns a note the free placement
+       in `seated`. A narrow screen falling back to the wide pair is not a
+       hand-placed note, it is the desktop's answer being reused — and those
+       sit off the left and right of the subject, where a wide frame has margin
+       and a phone has nothing. Reused coordinates keep the clamps that drag
+       them back on screen; a pair actually dragged here does not. */
+    const placed = space.narrow ? Boolean(note.atNarrow && note.toNarrow) : Boolean(note.at && note.to)
+    return at && to
+      ? pinned({ ...note, at, to }, box, gutter, space, placed)
+      : slotted(note, i, box, gutter, space)
   })
 }
 

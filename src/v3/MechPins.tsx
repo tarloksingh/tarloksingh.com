@@ -152,13 +152,19 @@ export default function MechPins({ frame, notes, space, onClose }: Props) {
               title="Drag to the spot this line points at"
               aria-label="Move the point"
             />
-            <div className="mech-pin-chip" style={place(text[0], text[1])} onPointerDown={(e) => e.stopPropagation()}>
-              <span className="mech-pin-grip" onPointerDown={grab(i, 'to')} title="Drag the label" />
+            {/* The whole chip is the handle. It used to be the grip alone —
+                a six-pixel bar on a phone, which is not a target, and which
+                left the rest of the label looking draggable and not being. The
+                fields and the delete key stop the event so tapping into one is
+                still tapping into one. */}
+            <div className="mech-pin-chip" style={place(text[0], text[1])} onPointerDown={grab(i, 'to')}>
+              <span className="mech-pin-grip" title="Drag the label" />
               {/* The handle, which never appears on the readout — see `Note`
                   in notes.ts. Narrow on purpose: the room in this chip belongs
                   to the sentence next to it. */}
               <input
                 className="mech-pin-name"
+                onPointerDown={(event) => event.stopPropagation()}
                 value={notes[i].label}
                 spellCheck={false}
                 onChange={(event) => edit(i, { label: event.target.value })}
@@ -166,6 +172,7 @@ export default function MechPins({ frame, notes, space, onClose }: Props) {
               />
               <input
                 className="mech-pin-say"
+                onPointerDown={(event) => event.stopPropagation()}
                 value={notes[i].value}
                 spellCheck={false}
                 placeholder="what the card says"
@@ -174,6 +181,7 @@ export default function MechPins({ frame, notes, space, onClose }: Props) {
               />
               <input
                 className="mech-pin-fold"
+                onPointerDown={(event) => event.stopPropagation()}
                 value={notes[i].fold ?? ''}
                 placeholder="fold"
                 spellCheck={false}
@@ -182,6 +190,7 @@ export default function MechPins({ frame, notes, space, onClose }: Props) {
               />
               <button
                 className="mech-pin-drop"
+                onPointerDown={(event) => event.stopPropagation()}
                 onClick={() => write(notes.filter((_, at) => at !== i))}
                 aria-label="Remove this line"
               >

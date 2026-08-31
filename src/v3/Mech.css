@@ -3521,28 +3521,20 @@
   font-size: calc(17 * var(--type));
 }
 
-/* Below the header, not across it, and scrolling with the page rather than
-   pinned over it. The wide layout floats the warning pair fixed on the
-   header's own row — there is width to spare either side of the index key
-   there. A phone header is the wordmark and one control filling the line, and
-   a second fixed row under it just rides over the content as you scroll. So
-   here it is `position: absolute` inside `.mech` (the scroll container): it
-   sits on its own row under the sticky header at the top of the page and
-   scrolls away with everything else. `.mech-lede` below reserves the band so
-   the project title clears it. */
+/* Down to the foot of the window, centred, with the deck. The wide layout
+   floats the warning pair on the header's own row — there is width to spare
+   either side of the index key there. A phone header is the wordmark and one
+   control filling the line, and everything below it is the work; a lamp about
+   whether there is something to shoot at belongs with the other floating
+   control rather than in front of the project's title. Stacked directly over
+   `.mech-deck-slot`, which is fixed at 18 off the same edge and about forty
+   tall, so the two read as one column of chrome. */
 .mech[data-narrow='true'] .mech-alarm {
-  position: absolute;
-  top: calc(84 * var(--px));
-  left: var(--gutter);
-  transform: none;
-  justify-content: flex-start;
-}
-
-/* The band the fixed warning pair sits in. Only when the lede has something in
-   it — home leaves it empty and the cluster below wants no gap in front of
-   it. */
-.mech[data-narrow='true'] .mech-lede:not(:empty) {
-  padding-top: calc(64 * var(--px));
+  top: auto;
+  bottom: calc(76 * var(--px) + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  justify-content: center;
 }
 
 /* Three rules of the same weight as everything else drawn on this panel. */
