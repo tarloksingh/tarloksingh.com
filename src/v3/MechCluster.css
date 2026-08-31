@@ -1725,12 +1725,13 @@
   grid-template-columns: repeat(2, 1fr);
   /* The bay is a square, not the wide rail's letterbox: a cell is
      (bank width − one column gap) / 2, and the bank is the viewport less the
-     rail's 14-unit side padding. `--slot-bay` carries that one value to both
-     the shot and the veil cell so the two grids stay aligned cell for cell,
-     and it is what the row height is built on. A rectangular bay also framed
-     the subjects out — every slot shares one camera whose aspect is the bay's
-     (see `MechSlots.tsx`). */
-  --slot-bay: calc((100vw - 28 * var(--px) - 10 * var(--px)) / 2);
+     cluster's 30-unit gutter and the rail's 14-unit padding, both sides — so
+     `100vw − (30 + 30 + 14 + 14 + 10) · --px`. `--slot-bay` carries that one
+     value to the shot and the veil cell so the two grids stay aligned cell for
+     cell, and it is what the row height is built on. A rectangular bay also
+     framed the subjects out — every slot shares one camera whose aspect is the
+     bay's (see `MechSlots.tsx`). */
+  --slot-bay: calc((100vw - 98 * var(--px)) / 2);
   grid-auto-rows: calc(var(--slot-bay) + var(--slot-label, 56) * var(--px));
   gap: calc(10 * var(--px));
 }
