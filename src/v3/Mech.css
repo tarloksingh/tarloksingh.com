@@ -3506,6 +3506,30 @@
   font-size: calc(17 * var(--type));
 }
 
+/* Below the header, not across it, and scrolling with the page rather than
+   pinned over it. The wide layout floats the warning pair fixed on the
+   header's own row — there is width to spare either side of the index key
+   there. A phone header is the wordmark and one control filling the line, and
+   a second fixed row under it just rides over the content as you scroll. So
+   here it is `position: absolute` inside `.mech` (the scroll container): it
+   sits on its own row under the sticky header at the top of the page and
+   scrolls away with everything else. `.mech-lede` below reserves the band so
+   the project title clears it. */
+.mech[data-narrow='true'] .mech-alarm {
+  position: absolute;
+  top: calc(84 * var(--px));
+  left: var(--gutter);
+  transform: none;
+  justify-content: flex-start;
+}
+
+/* The band the fixed warning pair sits in. Only when the lede has something in
+   it — home leaves it empty and the cluster below wants no gap in front of
+   it. */
+.mech[data-narrow='true'] .mech-lede:not(:empty) {
+  padding-top: calc(64 * var(--px));
+}
+
 /* Three rules of the same weight as everything else drawn on this panel. */
 .mech-menu-key {
   display: grid;
@@ -3889,12 +3913,15 @@
   transform: rotate(45deg) scale(1.3);
 }
 
-/* The column is the window here, and a display printing at home's cell across
-   a phone is a caption. Back to filling the room, which on this layout is the
-   same order of size the wide layout's fixed cell gives. */
+/* Sized to a cell here too, not to the room — a display run at the full width
+   of a phone column is a headline, and these are section markers over body
+   copy. Narrower than the wide layout's cell (`* 12`) because `--px` is
+   re-based bigger on this layout, so the same multiplier would print larger
+   than it does on desktop; `* 7` lands them at about the wide heading's size. */
 .mech[data-narrow='true'] .mech-fold > button .mech-seg {
-  flex: 1;
-  width: auto;
+  flex: none;
+  width: calc(var(--fold-cells, 19) * 7 * var(--px));
+  max-width: 100%;
   min-width: 0;
 }
 
