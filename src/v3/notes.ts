@@ -41,6 +41,14 @@ export interface Note {
   /** Where the text sits, in the same fractions. Outside 0..1 on purpose most
    *  of the time — a label belongs off the edge of the thing it names. */
   to?: [number, number]
+  /** The same two points for the narrow layout. A phone stage is a third the
+   *  width of the wide frame and about as tall, so a card set off the right
+   *  edge on desktop lands off the screen on a phone and the wide fan collapses
+   *  onto the subject. When present these win below the breakpoint; when not,
+   *  the narrow layout falls back to `at`/`to` and then to the auto fan. Placed
+   *  by pressing P at a narrow window — see `MechPins.tsx`. */
+  atNarrow?: [number, number]
+  toNarrow?: [number, number]
 }
 
 export const NOTES: Record<string, Note[]> = {
@@ -414,6 +422,8 @@ const asSource = (id: string, notes: Note[]) => {
     if (note.fold) parts.push(`fold: ${quoted(note.fold)}`)
     if (note.at) parts.push(`at: [${round(note.at[0])}, ${round(note.at[1])}]`)
     if (note.to) parts.push(`to: [${round(note.to[0])}, ${round(note.to[1])}]`)
+    if (note.atNarrow) parts.push(`atNarrow: [${round(note.atNarrow[0])}, ${round(note.atNarrow[1])}]`)
+    if (note.toNarrow) parts.push(`toNarrow: [${round(note.toNarrow[0])}, ${round(note.toNarrow[1])}]`)
     return `    { ${parts.join(', ')} }`
   }
   return `  '${id}': [\n${notes.map(line).join(',\n')}\n  ]`
@@ -471,10 +481,9 @@ export const notesFor = (entry: Entry, frame: Frame, drafts: Draft = draft): Not
 /** Add a line to a frame's draft, pointing at a fraction of its picture. Used
  *  by the editor's own click-to-place and by the panel's button, which has no
  *  picture to click on. */
-export const addNote = (id: string, at: [number, number], from: Note[]) => {
+export const addNote = (id: string, at: [number, number], from: Note[], narrow = false) => {
   const side = at[0] > 0.5 ? 1 : -1
-  pins.set(id, [
-    ...from,
-    { label: 'label', value: 'Say what this is, in a sentence.', at, to: [at[0] + side * 0.3, at[1] - 0.1] }
-  ])
+  const to: [number, number] = [at[0] + side * 0.3, at[1] - 0.1]
+  const geometry = narrow ? { atNarrow: at, toNarrow: to } : { at, to }
+  pins.set(id, [...from, { label: 'label', value: 'Say what this is, in a sentence.', ...geometry }])
 }

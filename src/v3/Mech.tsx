@@ -1271,7 +1271,10 @@ export default function Mech({ id, onProject, onHome }: Props) {
     ? narrow
       ? home
         ? []
-        : [{ id: 'scale', label: 'Scale', store: narrowStore }]
+        : [
+            { id: 'scale', label: 'Scale', store: narrowStore },
+            { id: 'labels', label: 'Labels', store: labels }
+          ]
       : home
         ? [{ id: 'cluster', label: 'Cluster', store: cluster.store }]
         : [
@@ -1529,7 +1532,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
 
           {import.meta.env.DEV && pinning && current && (
             <Suspense fallback={null}>
-              <MechPins frame={current} notes={notes} onClose={() => setPinning(false)} />
+              <MechPins frame={current} notes={notes} space={space} onClose={() => setPinning(false)} />
             </Suspense>
           )}
         </div>

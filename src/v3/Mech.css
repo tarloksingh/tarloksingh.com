@@ -2537,6 +2537,21 @@
   font-weight: 600;
 }
 
+/* The narrow stage is a short box in the middle of a scroll, not the whole
+   frame, so a bar sat `bottom: 24` off it lands over the picture. Dock it to
+   the window instead and let it wrap — this is a dev tool and the room it
+   needs is more than a phone's width has on one line. */
+.mech[data-narrow='true'] .mech-pins-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  transform: none;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 10px;
+}
+
 /* ---- the same editor, for the cast ----
 
    Home has no picture to pin a note to; it has five subjects standing in a

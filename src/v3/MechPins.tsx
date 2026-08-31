@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { boxOf, leadersFor, pointIn, type Box } from './leaders'
+import { boxOf, leadersFor, pointIn, type Box, type Space } from './leaders'
 import { addNote, pins, type Note } from './notes'
 import { sound } from './sound'
 import type { Frame } from './model'
@@ -23,22 +23,29 @@ import type { Frame } from './model'
 interface Props {
   frame: Frame
   notes: Note[]
+  space: Space
   onClose: () => void
 }
 
-/** Client pixels to a fraction of the subject's box. The overlay is the whole
- *  1920×1080 frame, so a point in it converts through the frame first — and
- *  reading the rect per drag rather than per move keeps a drag from measuring
- *  layout on every pointer event. */
-const fractionIn = (rect: DOMRect, box: Box, x: number, y: number): [number, number] => [
-  Number((((x - rect.left) / rect.width) * 1920 - box.x) / box.w),
-  Number((((y - rect.top) / rect.height) * 1080 - box.y) / box.h)
+/** Client pixels to a fraction of the subject's box. The overlay fills the
+ *  stage, which is the whole frame on the wide layout and a `space.w × space.h`
+ *  box on the narrow one, so a point in it converts through that space first —
+ *  and reading the rect per drag rather than per move keeps a drag from
+ *  measuring layout on every pointer event. */
+const fractionIn = (rect: DOMRect, box: Box, space: Space, x: number, y: number): [number, number] => [
+  Number((((x - rect.left) / rect.width) * space.w - box.x) / box.w),
+  Number((((y - rect.top) / rect.height) * space.h - box.y) / box.h)
 ]
 
-export default function MechPins({ frame, notes, onClose }: Props) {
+export default function MechPins({ frame, notes, space, onClose }: Props) {
   const host = useRef<HTMLDivElement>(null)
-  const box = boxOf(frame)
-  const laid = leadersFor(notes, box)
+  const box = boxOf(frame, space)
+  const laid = leadersFor(notes, box, space)
+  /* Which pair of points this editor writes. Below the breakpoint it places
+     `atNarrow`/`toNarrow` and leaves the desktop pair alone, so one picture
+     can be laid out twice — once for each layout. */
+  const kAt = space.narrow ? 'atNarrow' : 'at'
+  const kTo = space.narrow ? 'toNarrow' : 'to'
   // Set for the length of a drag, and read by the overlay's own click handler
   // so letting go of a handle over the picture does not also add a note.
   const dragging = useRef(false)
@@ -59,9 +66,10 @@ export default function MechPins({ frame, notes, onClose }: Props) {
     if (!rect) return
 
     const laidOut = laid[index]
-    const seat: Pick<Note, 'at' | 'to'> = {
-      at: notes[index].at ?? [(laidOut.tip[0] - box.x) / box.w, (laidOut.tip[1] - box.y) / box.h],
-      to: notes[index].to ?? [(laidOut.anchor[0] - box.x) / box.w, (laidOut.anchor[1] - box.y) / box.h]
+    const key = end === 'at' ? kAt : kTo
+    const seat: Partial<Note> = {
+      [kAt]: notes[index][kAt] ?? [(laidOut.tip[0] - box.x) / box.w, (laidOut.tip[1] - box.y) / box.h],
+      [kTo]: notes[index][kTo] ?? [(laidOut.anchor[0] - box.x) / box.w, (laidOut.anchor[1] - box.y) / box.h]
     }
 
     dragging.current = true
@@ -70,7 +78,7 @@ export default function MechPins({ frame, notes, onClose }: Props) {
     node.setPointerCapture(event.pointerId)
 
     const move = (moved: PointerEvent) => {
-      edit(index, { ...seat, [end]: fractionIn(rect, box, moved.clientX, moved.clientY) })
+      edit(index, { ...seat, [key]: fractionIn(rect, box, space, moved.clientX, moved.clientY) })
     }
     const drop = () => {
       node.releasePointerCapture(event.pointerId)
@@ -90,7 +98,7 @@ export default function MechPins({ frame, notes, onClose }: Props) {
   /** A new line, pointing at a fraction of the picture, with its text out to
    *  whichever side has more room. Shared with the panel's own button, which
    *  drops one down the middle. */
-  const addAt = (at: [number, number]) => addNote(frame.id, at, notes)
+  const addAt = (at: [number, number]) => addNote(frame.id, at, notes, space.narrow)
 
   /** Clicking the picture adds a note there. Anywhere else on the overlay is
    *  a miss and does nothing — the frame's own edges are the only thing that
@@ -100,7 +108,7 @@ export default function MechPins({ frame, notes, onClose }: Props) {
     if (dragging.current) return
     const rect = host.current?.getBoundingClientRect()
     if (!rect) return
-    const at = fractionIn(rect, box, event.clientX, event.clientY)
+    const at = fractionIn(rect, box, space, event.clientX, event.clientY)
     if (at[0] < -0.02 || at[0] > 1.02 || at[1] < -0.02 || at[1] > 1.02) return
     addAt(at)
   }
@@ -130,13 +138,13 @@ export default function MechPins({ frame, notes, onClose }: Props) {
       </div>
 
       {laid.map((leader, i) => {
-        const tip = notes[i].at ? pointIn(box, notes[i].at) : leader.tip
+        const tip = notes[i][kAt] ? pointIn(box, notes[i][kAt]!) : leader.tip
         // `to` is the corner the leader runs into, which is the corner the
         // card grows away from — so the grip belongs on the same spot rather
         // than out at the far end the text used to be set from.
-        const text = notes[i].to ? pointIn(box, notes[i].to) : leader.anchor
+        const text = notes[i][kTo] ? pointIn(box, notes[i][kTo]!) : leader.anchor
         return (
-          <div key={i} className="mech-pin-note" data-live={live === i} data-loose={!notes[i].at}>
+          <div key={i} className="mech-pin-note" data-live={live === i} data-loose={!notes[i][kAt]}>
             <button
               className="mech-pin-tip"
               style={place(tip[0], tip[1])}

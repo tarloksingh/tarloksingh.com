@@ -325,8 +325,14 @@ const slotted = (note: Note, index: number, box: Box, gutter: Gutter, space: Spa
 
 export const leadersFor = (notes: Note[], box: Box, space: Space = FRAME_SPACE) => {
   const gutter = gutterFor(space)
-  return notes.map((note, i) =>
-    note.at && note.to ? pinned(note, box, gutter, space) : slotted(note, i, box, gutter, space)
-  )
+  return notes.map((note, i) => {
+    /* The narrow layout gets its own pair of points if one was placed, and
+       falls back to the wide `at`/`to` — and then to the auto fan — if not.
+       A phone stage is a third the width of the frame, so a card set off the
+       right edge on desktop is off the screen here. */
+    const at = space.narrow ? note.atNarrow ?? note.at : note.at
+    const to = space.narrow ? note.toNarrow ?? note.to : note.to
+    return at && to ? pinned({ ...note, at, to }, box, gutter, space) : slotted(note, i, box, gutter, space)
+  })
 }
 
