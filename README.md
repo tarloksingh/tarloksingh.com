@@ -1853,22 +1853,56 @@ black (the logo and the front panel), and **two carrying no
   0. The black logo was not a washed-out black, it was a black mirror.
 - **The fill light was nearly six times too strong** — 71.3 against v2's 12.3.
 
-Every replacement number is v2's own, from `LIGHT_DEFAULTS` in `Gallery3D.tsx`
-and `CAPSULE_DEFAULTS` in `CapsuleC1.tsx`. `exposure` comes across as v2's 0.1
-rather than the face's 0.05 *with* the intensities, because the two are one
-setting and ACES is not linear — a key of 30 at 0.1 is not 60 at 0.05. It
-reaches nothing else: `MechModel` sets `toneMappingExposure` per canvas, a
-project screen has one subject on it, and home's bank (`MechSlots.tsx`) sets
-its own exposure and never reads `MODEL_RIGS`.
+Every replacement number was v2's own, from `LIGHT_DEFAULTS` in `Gallery3D.tsx`
+and `CAPSULE_DEFAULTS` in `CapsuleC1.tsx` — and the two surface ones still are.
+The lamps and the exposure are not, any more: they were v2's for exactly as
+long as it took to look at the case on *this* screen, which frames it far
+larger and from another side, and they have since been set by eye on the
+Subject tab. Exposure and intensity stay one setting either way — ACES is not
+linear, so a key of 30 at 0.1 is not 60 at 0.05 and neither number means
+anything alone. It reaches nothing else: `MechModel` sets
+`toneMappingExposure` per canvas, a project screen has one subject on it, and
+home's bank (`MechSlots.tsx`) sets its own exposure and never reads
+`MODEL_RIGS`.
 
-**The framing is still the face's**, deliberately. `fit` normalises a model by
-its **height alone** (`TARGET_HEIGHT / size.y`), which is right for a head —
-about as tall as it is wide — and wrong for a wide, flat box, whose short axis
-gets scaled up to a head's height before the camera has moved at all. So the
-**Fills** control runs 0.05–2 now instead of 0.2–0.95: the old floor was set
-around a head and could not stand the camera far enough back to get the whole
-case on screen. `distanceFor` is `1 / fill`, so lower is further away and
-smaller.
+**The framing is its own now.** It was the face's for a while, deliberately,
+and then it was tuned: `fill` 0.15 against a head's 0.56, plus a `turn` of
+-138 to meet the case on a corner rather than flat on. `fit` normalises a
+model by its **height alone** (`TARGET_HEIGHT / size.y`), which is right for a
+head — about as tall as it is wide — and wrong for a wide, flat box, whose
+short axis gets scaled up to a head's height before the camera has moved at
+all. So the **Fills** control runs 0.05–2 now instead of 0.2–0.95: the old
+floor was set around a head and could not stand the camera far enough back to
+get the whole case on screen. `distanceFor` is `1 / fill`, so lower is further
+away and smaller.
+
+**What made the case follow the pointer was `lean`, and it is 0 now.** The
+natural place to look for it is the Eyes folder — a Follow slider, a
+sensitivity, a "watch bird" toggle — and every one of those is a red herring
+on this model: they drive morph targets, `capsule-c1.glb` carries none, and
+`setMorph` walks a `morphTargetDictionary` that has no such entry and writes
+nothing. Turning them all down changes exactly nothing, which is a
+frustrating way to spend an evening. The only thing that ever moved the case
+is `Lean` in `MechModel`, which swings the **whole subject** toward the gaze
+by `lean` degrees, and `MODEL_DEFAULTS` sets that to 11 because a head should
+lean. `watchBird: false` had already taken the bird out of that gaze; zero
+takes the pointer out of it too.
+
+**And the Eyes folder should never have been on that panel at all.** The
+schema has been conditional on `isFace` since the split, which reads as
+settled — but Leva reads a schema **once per deps change**, and this hook
+passed no deps. The first mount decides what the panel declares for the whole
+session, the first mount is always home, and home calls
+`useModelTuning(id ?? FACE)` — so the Eyes folder was declared every time and
+stayed declared over Capsule C1. The condition only started meaning something
+when `[isFace]` was passed as deps. Two things had to move with it: `declared`
+is re-read when the schema is rebuilt rather than latched on first mount (a
+stale list hands `set()` a key with no input, which is the blank-paper-gradient
+crash that list exists to prevent), and the write-back merges over the rig
+instead of replacing it — `values` no longer carries the same keys for every
+model, and saving it bare would drop `lookH` and `blinkMin` off the case's
+record, print them back out of `asSource()` as `undefined`, and put a NaN
+rotation into source.
 
 > **Calibrating this is panel work, and the panel beats source.** Editing
 > these numbers in this file while the Subject tab is open changes nothing you

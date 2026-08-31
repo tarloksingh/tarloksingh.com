@@ -210,32 +210,45 @@ export const MODEL_RIGS: Record<string, ModelTuning> = {
      - **The fill light was nearly six times too strong** — 71.3 against
        v2's 12.3 — which flattens the case and lifts the blacks off the floor.
 
-     `exposure` comes across as v2's 0.1 rather than his 0.05, and the light
-     intensities with it, because the two are one setting: ACES is not linear,
-     so v2's key of 30 at 0.1 is not 60 at 0.05. `MechModel` sets
-     `toneMappingExposure` per canvas and a project screen has one subject on
-     it, so this is the case's own exposure and reaches nothing else.
+     The two surface numbers below are still v2's. The lamps and the exposure
+     are not any more: they were v2's for exactly as long as it took to look at
+     the case on this screen, which frames it far larger and from another side,
+     and they have since been set by eye on the **Subject** tab. Exposure and
+     intensity remain one setting — ACES is not linear, so these are only
+     meaningful together — and `MechModel` sets `toneMappingExposure` per
+     canvas, so this is the case's own exposure and reaches nothing else.
 
-     The framing (`fill`, `turn`, `tilt`) is deliberately still `MODEL_DEFAULTS`
-     and still wants a pass on the **Subject** tab — `fit` normalises a model by
-     its height alone, which is right for a head and wrong for a wide flat box.
+     The framing is its own too: `fill` 0.15 against a face's 0.56, because
+     `fit` normalises a model by its height alone — right for a head, and
+     wrong for a wide flat box, which comes out enormous at a head's number.
 
-     It has no eyes to move and no reason to look at a bird — `watchBird`
-     drives the whole subject's lean toward whatever the gaze is tracking, so
-     left on it made a piece of hardware turn to follow something flying
-     past. */
+     **It does not move with the pointer, and that is `lean: 0`.** Not the eye
+     controls, which is the natural place to look: it has no morph targets, so
+     `lookH`, `lookSpeed` and the rest are writing to nothing on this model
+     whatever they are set to — the only thing that ever turned the case was
+     `Lean` in `MechModel`, which swings the whole subject toward the gaze by
+     `lean` degrees. `watchBird: false` had already taken the bird out of that
+     gaze; zero takes the pointer out of it as well and the case stands
+     still. */
   'capsule-c1': {
     ...MODEL_DEFAULTS,
-    exposure: 0.1,
-    envIntensity: 3.4,
-    keyIntensity: 30,
-    keyX: -3.78,
-    keyY: 0.2,
-    keyZ: 9,
-    fillIntensity: 12.3,
-    fillX: 2.1,
-    fillY: -0.2,
-    fillZ: -1,
+    fill: 0.15,
+    lean: 0,
+    turn: -138,
+    tilt: 21,
+    liftY: -0.045,
+    floatRange: 0.24,
+    floatRotation: 0,
+    exposure: 0.05,
+    envIntensity: 1.8,
+    keyIntensity: 41,
+    keyX: 8.36,
+    keyY: -2.66,
+    keyZ: 12,
+    fillIntensity: 44.3,
+    fillX: -1.77,
+    fillY: 1.44,
+    fillZ: -1.15,
     envMapIntensity: 1.3,
     roughnessBoost: -0.24,
     metalnessBoost: 0.24,
@@ -381,7 +394,17 @@ export function useModelTuning(
     /* Only for the face. Spread in rather than rendered conditionally
        because Leva reads the schema once: a folder that exists with its
        inputs disabled is still a folder full of controls for morph targets
-       the other export does not have. */
+       the other export does not have.
+
+       Spreading it was only ever half the job, though, and for a while the
+       half that does not show. Leva reads a schema **once per deps change**,
+       and this hook had no deps — so whichever model the panel first mounted
+       under decided what it declared for the rest of the session. The first
+       mount is always home, home passes `FACE`, and the Eyes folder was
+       therefore declared every single time and stayed declared over Capsule
+       C1: twelve controls for eyes that model does not have, sitting above a
+       Follow slider that could not have moved it. `[isFace]` below is what
+       makes the condition mean anything. */
     ...(isFace
       ? {
           Eyes: folder(
@@ -413,7 +436,7 @@ export function useModelTuning(
       },
       { collapsed: true }
     )
-  }), { store }) as unknown as [ModelTuning, (next: Partial<ModelTuning>) => void]
+  }), { store }, [isFace]) as unknown as [ModelTuning, (next: Partial<ModelTuning>) => void]
 
   /* Keyed on the serialised values rather than the object: Leva hands back a
      fresh object on renders where nothing moved, and writing localStorage on
@@ -425,8 +448,18 @@ export function useModelTuning(
      and `watchBird`. `set()` throws on a key with no input, and a throw here
      unmounts the whole app to a blank paper gradient that reads as a CSS bug
      rather than as a crash. */
+  /* Re-read when the schema is rebuilt, not latched on the first mount. The
+     `[isFace]` deps above mean the key set genuinely changes mid-session now,
+     and a stale list here is the crash this list exists to prevent: it would
+     let `blinkMin` through to a `set()` that no longer has an input for it.
+     Leva has already re-run the schema by the time this render reads
+     `values`, so the keys are the new ones. */
   const declared = useRef<string[]>([])
-  if (declared.current.length === 0) declared.current = Object.keys(values as object)
+  const declaredFor = useRef<boolean | null>(null)
+  if (declaredFor.current !== isFace) {
+    declaredFor.current = isFace
+    declared.current = Object.keys(values as object)
+  }
 
   /* Reseed when the readout swings to the other model. Without this, opening
      Capsule C1 after Mr. Takahashi would show his numbers on the panel and
@@ -463,7 +496,14 @@ export function useModelTuning(
       return
     }
     Object.assign(live, values)
-    rigs[projectId] = { ...(values as ModelTuning) }
+    /* Merged over what the rig already held, never replacing it. `values`
+       only carries what the panel declared, and the panel no longer declares
+       the same thing for every model — saving it bare would drop `lookH` and
+       `blinkMin` off Capsule C1's record the moment anything was dragged, and
+       `asSource()` prints every key of every rig, so they would come back out
+       as `undefined`. Pasted into source that is `degToRad(undefined)`, a NaN
+       rotation, and a subject that renders nowhere. */
+    rigs[projectId] = { ...MODEL_DEFAULTS, ...rigs[projectId], ...(values as ModelTuning) }
     try {
       window.localStorage.setItem(STORE_KEY, serialised)
       window.localStorage.setItem(`${STORE_KEY}.rigs`, JSON.stringify(rigs))
