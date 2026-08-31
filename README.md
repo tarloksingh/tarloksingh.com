@@ -2711,8 +2711,28 @@ project — `turn` seeded from the value each piece already carried in
 pointer, and toward the bird while it is in the air — the same preference the
 face has. That gesture suits a thing on a stand, not a fixed object: Mecha
 Station's till is a piece of hardware, not a character, and following a moth
-across the room read as a bug. `sway` scales the whole effect, `0` on the till
-holds it still, `1` (the default) is the built-in amount.
+across the room read as a bug. `sway` scales the whole effect: `1` is the
+built-in amount, `0` holds the piece still.
+
+**Every piece is on 0 now, and only Mr. Takahashi answers the pointer.** The
+till was the first exception and the argument it was made on — a fixed object
+has no reason to track anything — turned out not to stop at the till. None of
+the eight is a face. A disc case, a card and a phone all tipping toward the
+cursor read as the page being loose rather than as anything paying attention,
+and eight subjects doing it at once made the sameness obvious in a way one
+did not. So the default is 0, the per-piece overrides are gone, and the two
+places anything still follows a pointer are both his: `Lean` in `MechModel`
+at 11 degrees, and the eye morphs. Capsule C1 is on `lean: 0` for the same
+reason — see **the case does not move with the pointer** above. The knob
+stays on the Piece tab, because this is a judgement per piece rather than a
+law, and the next piece may well want it.
+
+> Changing this in source will not move anything on a machine that has a
+> scratchpad, and `sway` is per piece inside it. Rather than Reset — which
+> takes every piece's framing and lighting with it — rewrite the one field:
+> `const k='v3.product.tuning.v1', s=JSON.parse(localStorage.getItem(k)||'{}');`
+> `for (const p of Object.values(s.pieces||{})) p.sway=0;`
+> `localStorage.setItem(k,JSON.stringify(s)); location.reload()`
 
 **One piece is three objects.** Mecha Station is a cash register, a card reader
 and a monitor on a stand, each placed by a literal inside `PosStation.tsx` —

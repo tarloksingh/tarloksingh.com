@@ -70,9 +70,17 @@ export interface PieceTuning {
   /** Frame widths right of centre. */
   liftX: number
   /** How much the piece leans toward the pointer, and toward the bird while it
-   *  is in the air. 1 is the built-in amount, 0 holds it still — which is what
-   *  a fixed object like the till wants, since it is not a face and has no
-   *  reason to track anything. */
+   *  is in the air. 1 is the built-in amount, 0 holds it still.
+   *
+   *  **0 is the default, and every piece is on it.** It went in at 1 and the
+   *  till was the first exception, on the grounds that a fixed object has no
+   *  reason to track anything — and that argument does not stop at the till.
+   *  None of these is a face: a disc case, a card and a phone tipping toward
+   *  the cursor read as the page being loose rather than as anything paying
+   *  attention. Following a pointer is the one subject's on this site that
+   *  has eyes, and he does it in `MechModel` — see `lean` there, which is 11
+   *  for him and 0 for the enclosure. The knob stays because the answer is a
+   *  judgement per piece and not a law. */
   sway: number
 
   /* ---- its own camera ----
@@ -141,7 +149,7 @@ export const PIECE_FALLBACK: PieceTuning = {
   turn: 0,
   liftY: 0,
   liftX: 0,
-  sway: 1,
+  sway: 0,
   focalLength: 60,
   fill: 0.72,
   exposure: 0.55,
@@ -165,7 +173,7 @@ export const PIECE_FALLBACK: PieceTuning = {
  *  own composition, which is a readout with leader lines coming off it rather
  *  than a case in a room. */
 export const PIECE_DEFAULTS: Record<string, PieceTuning> = {
-  'mecha-station': { ...PIECE_FALLBACK, size: 1.05, turn: -20, liftY: 0, sway: 0 },
+  'mecha-station': { ...PIECE_FALLBACK, size: 1.05, turn: -20, liftY: 0 },
   openup: { ...PIECE_FALLBACK, size: 0.76, turn: 26, liftY: 0 },
   stitchfam: { ...PIECE_FALLBACK, size: 0.82, turn: 28, liftY: 0 },
   'red-dead-redemption-2': { ...PIECE_FALLBACK, size: 0.8, turn: 34, liftY: 0 },
