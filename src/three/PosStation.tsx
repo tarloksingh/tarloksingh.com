@@ -76,21 +76,12 @@ function CashRegister({ part }: { part: StationPart }) {
       <RoundedBox args={[0.26, 0.014, 0.01]} radius={0.006} position={[0, 0.06, 0.219]}>
         <meshStandardMaterial {...CHROME_PROPS} />
       </RoundedBox>
-      {/* The keypad deck, lying on the top and tipped up at the back — the way
-          a till is actually typed on.
-
-          It used to be a plate standing on end behind the body, tilted 20° off
-          vertical, and it read as exactly that: a black slab rising out of the
-          back of a white box, with its lower half buried inside. The rotation
-          is what fixes it. A quarter turn takes the plate off its end and lays
-          it flat, and the 0.3 left over is the tilt; the keys keep their own
-          local coordinates and come along. */}
-      <group position={[0, 0.345, 0.05]} rotation={[-Math.PI / 2 + 0.3, 0, 0]}>
-        <RoundedBox args={[0.5, 0.28, 0.025]} radius={0.018}>
-          <meshStandardMaterial {...TRIM_PROPS} />
-        </RoundedBox>
-        <Keypad rows={4} cols={3} keyWidth={0.1} keyHeight={0.05} gapX={0.13} gapY={0.065} z={0.018} />
-      </group>
+      {/* No keypad on the top. There was one — a deck of twelve keys lying on
+          the lid — and it was the largest thing on the piece by area, which
+          made the register read as the machine that gets typed on. It is not:
+          the card reader beside it has the keys, and everything the operator
+          touches is on the monitor's screen. What is left is a drawer, which
+          is what this box is. */}
       {/* The customer display, standing at the back. The one part that says
           "till" rather than "white box with buttons" — a register is read from
           in front and typed on from behind. */}
