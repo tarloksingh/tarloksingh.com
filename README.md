@@ -1888,6 +1888,20 @@ by `lean` degrees, and `MODEL_DEFAULTS` sets that to 11 because a head should
 lean. `watchBird: false` had already taken the bird out of that gaze; zero
 takes the pointer out of it too.
 
+**And the rigs export used to claim six models for a site with two.** `Mech`
+calls `useModelTuning` unconditionally — the Subject *tab* only appears when
+there is a model, but the hook runs on every screen, and it runs as
+`id ?? FACE`. The write-back then saved the loaded rig under whatever project
+was open, so opening Mecha Station wrote Mr. Takahashi's lamps into
+`rigs['mecha-station']`, and `asSource()` prints every entry it holds. Nothing
+on screen was ever wrong — `rigFor` is only asked about a model — but the
+export read as the face's rig being smeared across the whole site, which is a
+convincing symptom of a bug that was not there, and it cost an afternoon.
+`MODELS` in `model.ts` is exported now and is the guard, on both sides: the
+write-back returns early for a project that has no model, and `rigs` filters
+`savedRigs` through it on the way in, so a scratchpad already full of the old
+junk sheds it on the next load rather than needing a Reset.
+
 **And the Eyes folder should never have been on that panel at all.** The
 schema has been conditional on `isFace` since the split, which reads as
 settled — but Leva reads a schema **once per deps change**, and this hook

@@ -1,6 +1,7 @@
 import { button, folder, useControls, useCreateStore } from 'leva'
 import { copyText } from './clipboard'
 import { useEffect, useRef } from 'react'
+import { MODELS } from './model'
 
 /* ---- the subject's tuning panel ----
 
@@ -279,11 +280,15 @@ const live: ModelTuning = { ...start }
    `MechModel` as `undefined`, `degToRad(undefined)` is `NaN`, and a group at
    a NaN rotation takes the whole subject off screen — an invisible model that
    reads as the canvas being broken. */
+/* Filtered against `MODELS` on the way in as well as on the way out, because
+   a scratchpad written before the guard below existed has an entry for every
+   project that was ever opened — eight of them piece projects wearing a full
+   copy of the face's rig. Left in, they survive into `asSource()` and the
+   export claims six models for a site that has two. */
 const rigs: Record<string, ModelTuning> = Object.fromEntries(
-  [...new Set([...Object.keys(MODEL_RIGS), ...Object.keys(savedRigs)])].map((id) => [
-    id,
-    { ...MODEL_DEFAULTS, ...MODEL_RIGS[id], ...savedRigs[id] }
-  ])
+  [...new Set([...Object.keys(MODEL_RIGS), ...Object.keys(savedRigs)])]
+    .filter((id) => id in MODELS)
+    .map((id) => [id, { ...MODEL_DEFAULTS, ...MODEL_RIGS[id], ...savedRigs[id] }])
 )
 const keys = Object.keys(MODEL_DEFAULTS) as Array<keyof ModelTuning>
 
@@ -495,6 +500,15 @@ export function useModelTuning(
       wroteFor.current = projectId
       return
     }
+    /* Nothing to remember for a project that has no model. The panel is
+       mounted on every screen — `Mech` calls this hook unconditionally and
+       passes `id ?? FACE` — so without this, opening any of the eight piece
+       projects saved whatever rig was loaded under *that* project's id, and
+       the export came back listing Mecha Station and Block Builder as models
+       wearing Mr. Takahashi's lamps. Harmless on screen, because `rigFor` is
+       only ever asked about a model, and thoroughly confusing on paper. */
+    if (!(projectId in MODELS)) return
+
     Object.assign(live, values)
     /* Merged over what the rig already held, never replacing it. `values`
        only carries what the panel declared, and the panel no longer declares

@@ -1723,8 +1723,28 @@
 .mech[data-narrow='true'] .mech-bank,
 .mech[data-narrow='true'] .mech-bank-veil {
   grid-template-columns: repeat(2, 1fr);
-  grid-auto-rows: calc((110 + var(--slot-label, 56)) * var(--px));
+  /* The bay is a square, not the wide rail's letterbox: a cell is
+     (bank width − one column gap) / 2, and the bank is the viewport less the
+     rail's 14-unit side padding. `--slot-bay` carries that one value to both
+     the shot and the veil cell so the two grids stay aligned cell for cell,
+     and it is what the row height is built on. A rectangular bay also framed
+     the subjects out — every slot shares one camera whose aspect is the bay's
+     (see `MechSlots.tsx`). */
+  --slot-bay: calc((100vw - 28 * var(--px) - 10 * var(--px)) / 2);
+  grid-auto-rows: calc(var(--slot-bay) + var(--slot-label, 56) * var(--px));
   gap: calc(10 * var(--px));
+}
+
+/* The feather that clips the wide rail's canvas to its own scrolled band is
+   driven by a scroll listener on `.mech-work-rail-list` — which does not
+   scroll on a phone (the page does), so its `--rail-clip-*` freeze at their
+   first-paint values and permanently mask off the top of the viewport, taking
+   every bay scrolled into that band with them. Narrow has no inner scroll
+   region to clip to, so drop the clip entirely. */
+.mech[data-narrow='true'] .mech-bank-gl {
+  clip-path: none;
+  -webkit-mask-image: none;
+  mask-image: none;
 }
 
 .mech[data-narrow='true'] .mech-slot {
@@ -1734,12 +1754,12 @@
 
 .mech[data-narrow='true'] .mech-slot-shot {
   width: 100%;
-  height: calc(110 * var(--px));
+  height: var(--slot-bay);
 }
 
 .mech[data-narrow='true'] .mech-bank-veil i {
   width: 100%;
-  height: calc(110 * var(--px));
+  height: var(--slot-bay);
   justify-self: stretch;
   align-self: start;
   margin-left: 0;

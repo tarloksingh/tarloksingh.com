@@ -13,7 +13,11 @@ import type { MediaItem } from '../data/media'
    picked up by the media globs and have to be named. A project with a model
    gets it appended to its media, and the stage renders it live rather than
    as a picture of it. */
-const MODELS: Record<string, { file: string; label: string }> = {
+/* Exported because it is the answer to "does this project have a model at
+   all", and `modelTuning.ts` needs it: the Subject panel is mounted on every
+   screen and would otherwise save the face's rig under the id of whatever
+   piece project you happened to open. */
+export const MODELS: Record<string, { file: string; label: string }> = {
   'capsule-c1': { file: '/models/capsule-c1.glb', label: 'Capsule C1 — enclosure' },
   /* `adam-face.glb` is Mr. Takahashi — the head was modelled for Adam and
      kept its filename through the pivot. This is the export v2 renders (see
