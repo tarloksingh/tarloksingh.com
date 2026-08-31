@@ -80,7 +80,11 @@ const partFolder = (id: (typeof PARTS)[number]) =>
 export function useStationTuning() {
   const store = useCreateStore()
 
-  const values = useControls(
+  /* The *function* form of `useControls` hands back `[values, set]`, not the
+     values — the same tuple `productTuning.ts` destructures. Reading it as the
+     values gave every part an `undefined` X and Y, which three quietly turns
+     into a `NaN` matrix: no error, no warning, an empty canvas. */
+  const [values] = useControls(
     () => ({
       'Copy for source': button(() => {
         const text = asSource(live)
@@ -97,7 +101,7 @@ export function useStationTuning() {
       [LABELS.monitor]: partFolder('monitor')
     }),
     { store }
-  ) as unknown as Record<string, number>
+  ) as unknown as [Record<string, number>]
 
   const parts: StationParts = Object.fromEntries(
     PARTS.map((id) => [

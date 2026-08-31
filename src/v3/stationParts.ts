@@ -39,12 +39,14 @@ export interface StationParts {
   monitor: StationPart
 }
 
-/** Where the three sat when they were literals in `PosStation.tsx`. Seeded
- *  from those exactly, so nothing moved the day this became tunable. */
+/** Where the three stand. Seeded from the literals `PosStation.tsx` used to
+ *  carry, then settled by eye on the project screen — the register turned onto
+ *  its corner and stood back, the monitor further back again and larger, so
+ *  the three read as a counter rather than as a pile. */
 export const STATION_DEFAULTS: StationParts = {
-  register: { x: -0.34, y: -0.42, z: 0, scale: 1, turn: 0 },
-  reader: { x: 0.4, y: -0.46, z: 0.1, scale: 1, turn: -28.65 },
-  monitor: { x: 0, y: 0.05, z: -0.12, scale: 1, turn: 0 }
+  register: { x: -0.39, y: -0.535, z: -0.325, scale: 0.74, turn: 54.5 },
+  reader: { x: 0.3, y: -0.525, z: 0.1, scale: 0.95, turn: -26.65 },
+  monitor: { x: 0.015, y: 0.05, z: -0.64, scale: 1.14, turn: -5 }
 }
 
 let current: StationParts = STATION_DEFAULTS

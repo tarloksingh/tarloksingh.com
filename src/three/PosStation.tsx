@@ -67,19 +67,47 @@ function CashRegister({ part }: { part: StationPart }) {
       <RoundedBox args={[0.62, 0.3, 0.42]} radius={0.035} position={[0, 0.15, 0]}>
         <meshStandardMaterial {...BODY_PROPS} />
       </RoundedBox>
-      {/* drawer face, sitting flush in the front */}
-      <RoundedBox args={[0.56, 0.1, 0.015]} radius={0.01} position={[0, 0.03, 0.21]}>
+      {/* Drawer face, flush in the front. Sat at y 0.03 and hung its own
+          bottom edge below the body's — a black lip under a white box, which
+          read as a part that had come loose rather than as a drawer. */}
+      <RoundedBox args={[0.56, 0.1, 0.015]} radius={0.01} position={[0, 0.06, 0.21]}>
         <meshStandardMaterial {...TRIM_PROPS} />
       </RoundedBox>
-      <RoundedBox args={[0.26, 0.014, 0.01]} radius={0.006} position={[0, 0.03, 0.219]}>
+      <RoundedBox args={[0.26, 0.014, 0.01]} radius={0.006} position={[0, 0.06, 0.219]}>
         <meshStandardMaterial {...CHROME_PROPS} />
       </RoundedBox>
-      {/* angled keypad deck */}
-      <group position={[0, 0.33, -0.03]} rotation={[-0.35, 0, 0]}>
-        <RoundedBox args={[0.5, 0.28, 0.03]} radius={0.02}>
+      {/* The keypad deck, lying on the top and tipped up at the back — the way
+          a till is actually typed on.
+
+          It used to be a plate standing on end behind the body, tilted 20° off
+          vertical, and it read as exactly that: a black slab rising out of the
+          back of a white box, with its lower half buried inside. The rotation
+          is what fixes it. A quarter turn takes the plate off its end and lays
+          it flat, and the 0.3 left over is the tilt; the keys keep their own
+          local coordinates and come along. */}
+      <group position={[0, 0.345, 0.05]} rotation={[-Math.PI / 2 + 0.3, 0, 0]}>
+        <RoundedBox args={[0.5, 0.28, 0.025]} radius={0.018}>
           <meshStandardMaterial {...TRIM_PROPS} />
         </RoundedBox>
-        <Keypad rows={4} cols={3} keyWidth={0.1} keyHeight={0.05} gapX={0.13} gapY={0.065} z={0.02} />
+        <Keypad rows={4} cols={3} keyWidth={0.1} keyHeight={0.05} gapX={0.13} gapY={0.065} z={0.018} />
+      </group>
+      {/* The customer display, standing at the back. The one part that says
+          "till" rather than "white box with buttons" — a register is read from
+          in front and typed on from behind. */}
+      <group position={[0, 0.385, -0.145]} rotation={[-0.12, 0, 0]}>
+        <RoundedBox args={[0.28, 0.17, 0.022]} radius={0.014}>
+          <meshStandardMaterial {...TRIM_PROPS} />
+        </RoundedBox>
+        <mesh position={[0, 0.012, 0.012]}>
+          <planeGeometry args={[0.22, 0.1]} />
+          <meshStandardMaterial
+            color="#2f4a3c"
+            emissive="#1d3a2c"
+            emissiveIntensity={0.6}
+            roughness={0.3}
+            metalness={0.1}
+          />
+        </mesh>
       </group>
     </Placed>
   )
