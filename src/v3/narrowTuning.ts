@@ -1,98 +1,141 @@
 import { button, useControls, useCreateStore } from 'leva'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { copyText } from './clipboard'
 
 /* ---- the phone's knobs ----
 
-   The subject's panel and the label editor are both off on a narrow screen:
-   at three hundred and ninety points a Leva panel is most of the window, and
-   the thing it is meant to help you look at is behind it. What is left is the
-   handful of adjustments the narrow layout actually needs by eye — how big
-   the subject and the pictures sit in a stage that is no longer a 16:9 island
-   in the middle of a wide frame — and they get a panel of their own, short
-   enough to work under.
+   The subject's panel and the label editor are both open on a narrow screen
+   now — see `labelTuning.ts` and the note in `MechPins.tsx` — but the wide
+   layout's lighting rigs still are not: at three hundred and ninety points a
+   Leva panel is most of the window, and a folder of ten light positions is
+   not what anyone reaches for on a phone. What is left is the handful of
+   adjustments the narrow layout actually needs by eye — how big the subject
+   and the pictures sit in a stage that is no longer a 16:9 island in the
+   middle of a wide frame.
 
-   Same arrangement as `modelTuning.ts` otherwise: a `_DEFAULTS` constant that
-   is the shipped value, a localStorage scratchpad so a session survives a
-   reload, and a copy button that hands back source to paste over the
-   constant. Nothing set here reaches a visitor until it is pasted.
+   Keyed by project id, the same way `MODEL_RIGS` is: a phone stage is a
+   different shape for every subject, and a wide flat enclosure and a tall
+   head do not fill it at one number. A project with no entry runs at
+   `NARROW_FALLBACK`. The panel shows whichever project is on screen and
+   reseeds when the readout swings to another.
+
+   Same arrangement as `modelTuning.ts` otherwise: a constant that is the
+   shipped value, a localStorage scratchpad so a session survives a reload,
+   and a copy button that hands back source to paste over the constant.
+   Nothing set here reaches a visitor until it is pasted.
 
    Nothing here touches `MODEL_DEFAULTS`. Each number is applied on the way
    *into* the component that reads it, on this layout only — `model`
    multiplies the subject's `fill`, `media` scales the housing in CSS. The
-   desktop layout never reads either, and the panels those constants belong to
-   still describe the wide composition alone.
-
-   There were two more, `castSpread` and `castLift`, which pulled the home
-   line-up in from the sides of a portrait window and dropped it down the
-   stage. They went with the line-up — home is a cluster of readouts now and
-   stacks itself. See `narrow viewports` at the foot of `MechCluster.css`. */
+   desktop layout never reads either. */
 
 export interface NarrowTuning {
-  /** Multiplies `MODEL_DEFAULTS.fill` — how much of the stage's height the
-   *  subject fills — on narrow layouts only. */
+  /** Multiplies the subject's `fill` — how much of the stage's height it
+   *  fills — on narrow layouts only. */
   model: number
   /** Scales the picture and its housing inside the narrow stage. */
   media: number
 }
 
-export const NARROW_DEFAULTS: NarrowTuning = {
+/** What a project scales to when it has no entry of its own. */
+export const NARROW_FALLBACK: NarrowTuning = {
   model: 1.5,
   media: 1
 }
 
-const STORE_KEY = 'v3.narrow.tuning.v1'
+/** Per-project overrides, pasted back from the panel's copy button. */
+export const NARROW_TUNING: Record<string, Partial<NarrowTuning>> = {}
 
-const stored = (): Partial<NarrowTuning> => {
+const STORE_KEY = 'v3.narrow.tuning.v2'
+
+const saved = ((): Record<string, Partial<NarrowTuning>> => {
   try {
     const parsed: unknown = JSON.parse(window.localStorage.getItem(STORE_KEY) ?? 'null')
-    return parsed && typeof parsed === 'object' ? (parsed as Partial<NarrowTuning>) : {}
+    return parsed && typeof parsed === 'object' ? (parsed as Record<string, Partial<NarrowTuning>>) : {}
   } catch {
     return {}
   }
-}
+})()
 
-const start: NarrowTuning = { ...NARROW_DEFAULTS, ...(typeof window === 'undefined' ? {} : stored()) }
+const keys = Object.keys(NARROW_FALLBACK) as Array<keyof NarrowTuning>
 
-const live: NarrowTuning = { ...start }
+/** Every project that has ever been tuned, defaults filled in — the shipped
+ *  override first, then whatever was last saved. */
+const tunings: Record<string, NarrowTuning> = Object.fromEntries(
+  [...new Set([...Object.keys(NARROW_TUNING), ...Object.keys(saved)])].map((id) => [
+    id,
+    { ...NARROW_FALLBACK, ...NARROW_TUNING[id], ...saved[id] }
+  ])
+)
+
+/** The scale a project's narrow subject and pictures run at. */
+export const narrowFor = (id: string): NarrowTuning =>
+  tunings[id] ?? { ...NARROW_FALLBACK, ...NARROW_TUNING[id] }
 
 const tidy = (value: number) => String(Number(value.toFixed(3)))
 
-const asSource = (values: NarrowTuning) =>
-  `export const NARROW_DEFAULTS: NarrowTuning = {\n${(Object.keys(NARROW_DEFAULTS) as Array<keyof NarrowTuning>)
-    .map((k) => `  ${k}: ${tidy(values[k])}`)
+const asSource = () =>
+  `export const NARROW_TUNING: Record<string, Partial<NarrowTuning>> = {\n${Object.entries(tunings)
+    .map(([id, t]) => `  '${id}': { ${keys.map((k) => `${k}: ${tidy(t[k])}`).join(', ')} }`)
     .join(',\n')}\n}`
 
 /** Its own store, and therefore its own panel — the same arrangement
  *  `labelTuning.ts` uses, and for the same reason: this is not a folder under
- *  the subject's lighting, it is the only panel the phone gets. */
-export function useNarrowTuning() {
+ *  the subject's lighting, it is the only numeric panel the phone gets. */
+export function useNarrowTuning(projectId: string) {
   const store = useCreateStore()
 
-  const values = useControls(
-    {
-      model: { value: start.model, min: 0.4, max: 3.5, step: 0.05, label: 'Subject' },
-      media: { value: start.media, min: 0.4, max: 1.6, step: 0.01, label: 'Pictures' },
+  /* The schema is read once, so it has to open on the project that is on
+     screen — the effect below only catches the next one. */
+  const seed = tunings[projectId] ?? NARROW_FALLBACK
+
+  const [values, setValues] = useControls(
+    () => ({
+      model: { value: seed.model, min: 0.4, max: 3.5, step: 0.05, label: 'Subject' },
+      media: { value: seed.media, min: 0.4, max: 1.6, step: 0.01, label: 'Pictures' },
       'Copy for source': button(() => {
-        const text = asSource(live)
+        const text = asSource()
         void copyText(text)
         // eslint-disable-next-line no-console
-        console.log(`[narrow] paste over NARROW_DEFAULTS in src/v3/narrowTuning.ts:\n\n${text}`)
+        console.log(`[narrow] paste over NARROW_TUNING in src/v3/narrowTuning.ts:\n\n${text}`)
+      }),
+      Reset: button(() => {
+        window.localStorage.removeItem(STORE_KEY)
+        window.location.reload()
       })
-    },
+    }),
     { store }
-  ) as unknown as NarrowTuning
+  ) as unknown as [NarrowTuning, (next: Partial<NarrowTuning>) => void]
+
+  /* Reseed when the readout swings to another project. Without this, opening a
+     second project shows the first one's numbers and writes them over its
+     record the moment anything is dragged. */
+  useEffect(() => {
+    const next = tunings[projectId] ?? NARROW_FALLBACK
+    setValues({ model: next.model, media: next.media })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId])
+
+  /* Which project the panel's current `values` belong to. `setValues` above
+     does not land until a render later, so on the commit where `projectId`
+     changes this still holds the previous project's numbers — the same guard
+     `modelTuning.ts` carries, and for the same reason. */
+  const wroteFor = useRef(projectId)
 
   const serialised = JSON.stringify(values)
   useEffect(() => {
-    Object.assign(live, values)
+    if (wroteFor.current !== projectId) {
+      wroteFor.current = projectId
+      return
+    }
+    tunings[projectId] = { ...NARROW_FALLBACK, ...tunings[projectId], ...(values as NarrowTuning) }
     try {
-      window.localStorage.setItem(STORE_KEY, serialised)
+      window.localStorage.setItem(STORE_KEY, JSON.stringify(tunings))
     } catch {
       /* private mode, a full quota — not worth breaking the page over */
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serialised])
+  }, [serialised, projectId])
 
-  return { store, values }
+  return { store, values: { ...NARROW_FALLBACK, ...tunings[projectId], ...values } }
 }

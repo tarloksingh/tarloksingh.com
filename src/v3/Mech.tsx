@@ -918,7 +918,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
   /* The phone's two knobs — how large the subject and the pictures sit in a
      stage that is no longer a 16:9 island. Its own panel, because the other
      two are hidden at this width. See `narrowTuning.ts`. */
-  const { store: narrowStore, values: narrowScale } = useNarrowTuning()
+  const { store: narrowStore, values: narrowScale } = useNarrowTuning(id ?? 'mr-takahashi')
   /* The label maker's half that belongs on the panel rather than over the
      picture: copying out, reverting, and adding a line without having a
      picture to click on. See `labelTuning.ts`. */
@@ -1269,7 +1269,9 @@ export default function Mech({ id, onProject, onHome }: Props) {
      described; what is left is the cluster's own handful of numbers. */
   const panels: PanelTab[] = import.meta.env.DEV
     ? narrow
-      ? [{ id: 'scale', label: 'Scale', store: narrowStore }]
+      ? home
+        ? []
+        : [{ id: 'scale', label: 'Scale', store: narrowStore }]
       : home
         ? [{ id: 'cluster', label: 'Cluster', store: cluster.store }]
         : [
