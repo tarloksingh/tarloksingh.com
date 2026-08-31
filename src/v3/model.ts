@@ -131,10 +131,10 @@ export const byYear = (visible: Entry[]): Array<{ year: number; entries: Entry[]
    on a stage", and that is the correct rule for the timeline and the tile
    rail — a screen whose whole job is showing frames cannot show a project
    that has none. It is the wrong rule for an index. Visa is the largest piece
-   of work here and it is under an NDA, so it has no media and never will;
-   Solomon is a sibling checkout with a write-up still to come. Both belong in
-   a list of the work, and a filter that reads `media.length` cannot know
-   that.
+   of work here and it is under an NDA, so it has no media and never will — it
+   still belongs in a list of the work, and a filter that reads `media.length`
+   cannot know that. (Solomon is held out of the list for now, write-up
+   pending.)
 
    So the order is a decision, and it lives here as one. A project named in
    this list opens whether or not it has frames — see the restricted card in
@@ -142,11 +142,10 @@ export const byYear = (visible: Entry[]): Array<{ year: number; entries: Entry[]
    put on the stage. */
 const MENU_IDS = [
   'visa',
-  'a-game',
   'mr-takahashi',
   'capsule-c1',
-  'slider-engine',
   'mecha-station',
+  'slider-engine',
   'red-dead-redemption-2',
   'openup',
   'grand-theft-auto-v',
