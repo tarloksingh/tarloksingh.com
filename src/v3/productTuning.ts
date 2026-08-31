@@ -179,7 +179,7 @@ export const PIECE_DEFAULTS: Record<string, PieceTuning> = {
   /* The one piece framed on a lens of its own so far: a flipbook of fish is a
      billboard, and at the shared 60mm the sprite's own plane read as leaning
      away. 75mm flattens it back. */
-  'slider-engine': { ...PIECE_FALLBACK, size: 0.71, turn: 0, liftY: 0, focalLength: 75, fill: 0.71, gloss: -0.84 }
+  'slider-engine': { ...PIECE_FALLBACK, size: 0.64, turn: 0, liftY: 0, focalLength: 75, fill: 0.71, gloss: -0.84 }
 }
 
 export const pieceFor = (projectId: string): PieceTuning => PIECE_DEFAULTS[projectId] ?? PIECE_FALLBACK
