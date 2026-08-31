@@ -205,7 +205,10 @@ const clipFor = (projectId: string, filename: string) => resolveVideo(projectId,
    was actually wanted from that file is the eight components, and this is
    the shortest way to name them. */
 const PIECES: Record<string, () => ReactNode> = {
-  'mecha-station': () => <PosStation videoUrl="/videos/mecha-station-hero.mp4" scale={1} />,
+  /* `tuned` puts its three parts — register, reader, monitor — where the
+     **Station** tab has them rather than where v2's case wanted them. See
+     `stationParts.ts`. */
+  'mecha-station': () => <PosStation videoUrl="/videos/mecha-station-hero.mp4" scale={1} tuned />,
   openup: () => {
     const src = clipFor('openup', 'One.mp4')
     return src ? <Phone3D videoUrl={src} scale={1} /> : null

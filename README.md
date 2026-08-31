@@ -2666,6 +2666,27 @@ Station's till is a piece of hardware, not a character, and following a moth
 across the room read as a bug. `sway` scales the whole effect, `0` on the till
 holds it still, `1` (the default) is the built-in amount.
 
+**One piece is three objects.** Mecha Station is a cash register, a card reader
+and a monitor on a stand, each placed by a literal inside `PosStation.tsx` —
+placed against each other for the case v2's gallery stood them in, which is a
+different composition from a project screen. On this stage they overlapped and
+the register read as outsized next to the machine beside it, and `size` on the
+**Piece** tab is no help there: it scales all three together. So the three
+placements come off `stationParts.ts` — X, Y, Z, Size and Turn each — with a
+**Station** tab (`stationTuning.ts`) that only mounts on that project.
+
+Two things about that module are deliberate. It holds nothing but numbers and
+imports nothing but React, because `PosStation` is in `src/three/` and is
+mounted by *both* sites — pulling leva or a panel through it would drag them
+into v2's gallery. And the placement reaches the piece through a live store
+rather than a prop, subscribed with `useSyncExternalStore` the same way
+`subject.ts` crosses the Canvas boundary: `Piece` in `MechProduct` memoises the
+element on the project id precisely so a slider does not rebuild a component
+that fetches a video, and threading the placement in as a prop would remount
+the monitor's `<video>` on every tick. `tuned` is what says which site is
+asking — false in v2, so tuning this screen cannot quietly recompose a screen
+nobody is looking at.
+
 Four projects (`a-game`, `mr-grocery`, `visa`, `3d-printing`) never reach any
 of this: `entries` in `model.ts` drops a project with no media, and those four
 have none. They are write-ups waiting for assets, and adding a piece for them

@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Center, RoundedBox, useVideoTexture } from '@react-three/drei'
 import type { VideoTexture } from 'three'
+import { useStationParts, type StationPart } from '../v3/stationParts'
 
 // Matches the gloss-white/black look the glTF hero products (Capsule C1,
 // Mr. Takahashi) render with under the same studio environment, rather than
@@ -43,9 +44,25 @@ function Keypad({ rows, cols, keyWidth, keyHeight, gapX, gapY, z }: {
   )
 }
 
-function CashRegister() {
+/** One part, where the panel currently has it. The three used to carry their
+ *  own placement as a literal on this group; they were composed against each
+ *  other for v2's case and read as overlapping on v3's stage, so where they
+ *  stand is tunable and the geometry inside is not — see `stationParts.ts`. */
+function Placed({ part, children }: { part: StationPart; children: React.ReactNode }) {
   return (
-    <group position={[-0.34, -0.42, 0]}>
+    <group
+      position={[part.x, part.y, part.z]}
+      rotation={[0, (part.turn * Math.PI) / 180, 0]}
+      scale={part.scale}
+    >
+      {children}
+    </group>
+  )
+}
+
+function CashRegister({ part }: { part: StationPart }) {
+  return (
+    <Placed part={part}>
       {/* body */}
       <RoundedBox args={[0.62, 0.3, 0.42]} radius={0.035} position={[0, 0.15, 0]}>
         <meshStandardMaterial {...BODY_PROPS} />
@@ -64,13 +81,13 @@ function CashRegister() {
         </RoundedBox>
         <Keypad rows={4} cols={3} keyWidth={0.1} keyHeight={0.05} gapX={0.13} gapY={0.065} z={0.02} />
       </group>
-    </group>
+    </Placed>
   )
 }
 
-function CardReader() {
+function CardReader({ part }: { part: StationPart }) {
   return (
-    <group position={[0.4, -0.46, 0.1]} rotation={[0, -0.5, 0]}>
+    <Placed part={part}>
       {/* base */}
       <RoundedBox args={[0.24, 0.06, 0.34]} radius={0.025} position={[0, 0.03, 0]}>
         <meshStandardMaterial {...BODY_PROPS} />
@@ -98,7 +115,7 @@ function CardReader() {
           <Keypad rows={2} cols={3} keyWidth={0.04} keyHeight={0.025} gapX={0.05} gapY={0.032} z={0} />
         </group>
       </group>
-    </group>
+    </Placed>
   )
 }
 
@@ -128,12 +145,12 @@ function Screen({ videoUrl, width, height }: { videoUrl: string; width: number; 
   )
 }
 
-function Monitor({ videoUrl }: { videoUrl: string }) {
+function Monitor({ videoUrl, part }: { videoUrl: string; part: StationPart }) {
   const screenWidth = 0.62
   const screenHeight = screenWidth * (9 / 16)
 
   return (
-    <group position={[0, 0.05, -0.12]}>
+    <Placed part={part}>
       {/* neck */}
       <mesh position={[0, -0.27, 0]}>
         <cylinderGeometry args={[0.018, 0.022, 0.42, 16]} />
@@ -150,7 +167,7 @@ function Monitor({ videoUrl }: { videoUrl: string }) {
         </RoundedBox>
         <Screen videoUrl={videoUrl} width={screenWidth} height={screenHeight} />
       </group>
-    </group>
+    </Placed>
   )
 }
 
@@ -159,6 +176,11 @@ export interface PosStationProps {
    *  but static, the way they'd sit idle next to whatever's on screen. */
   videoUrl: string
   scale?: number
+  /** Whether the three parts follow v3's **Station** panel. False — v2's
+   *  gallery — holds the placement the case was composed against, so tuning
+   *  the project screen cannot quietly recompose a screen nobody is looking
+   *  at. See `stationParts.ts`. */
+  tuned?: boolean
 }
 
 /**
@@ -167,13 +189,14 @@ export interface PosStationProps {
  * is assembled here from primitives in the same material language
  * LoadedModel normalises glTF imports into.
  */
-export default function PosStation({ videoUrl, scale = 1 }: PosStationProps) {
+export default function PosStation({ videoUrl, scale = 1, tuned = false }: PosStationProps) {
+  const parts = useStationParts(tuned)
   return (
     <Center>
       <group scale={scale}>
-        <CashRegister />
-        <CardReader />
-        <Monitor videoUrl={videoUrl} />
+        <CashRegister part={parts.register} />
+        <CardReader part={parts.reader} />
+        <Monitor videoUrl={videoUrl} part={parts.monitor} />
       </group>
     </Center>
   )

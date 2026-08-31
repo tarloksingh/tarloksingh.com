@@ -12,6 +12,7 @@ import MechHud from './MechHud'
 import MechTiles from './MechTiles'
 import { useModelTuning } from './modelTuning'
 import { useProductTuning } from './productTuning'
+import { useStationTuning } from './stationTuning'
 import { useClusterTuning } from './clusterTuning'
 import MechDeck from './MechDeck'
 import MechMenu from './MechMenu'
@@ -930,6 +931,12 @@ export default function Mech({ id, onProject, onHome }: Props) {
   /* The pieces' own studio, on its own panel. Keyed on the project because
      the per-piece folder shows one piece at a time — see `productTuning.ts`. */
   const pieces = useProductTuning(shownId ?? '')
+  /* Mecha Station's three parts, which no other piece has — one object's
+     `size` cannot pull a register out of a monitor's foot. Its tab only shows
+     on that project; the hook is unconditional because a hook has to be, and
+     it writes into the same live store the piece reads whether the tab is up
+     or not. See `stationTuning.ts`. */
+  const station = useStationTuning()
   /* Home's own handful of numbers — where the cluster sits, how large the name
      is, how far it bleeds. The four tabs this replaces (Cast, Tags, Wave,
      Name) went with the line-up they described. See `clusterTuning.ts`. */
@@ -1268,6 +1275,9 @@ export default function Mech({ id, onProject, onHome }: Props) {
         : [
             ...(modelFrame ? [{ id: 'subject', label: 'Subject', store: tuning.store }] : []),
             ...(pieceFrame ? [{ id: 'piece', label: 'Piece', store: pieces.store }] : []),
+            ...(pieceFrame && shownId === 'mecha-station'
+              ? [{ id: 'station', label: 'Station', store: station.store }]
+              : []),
             { id: 'labels', label: 'Labels', store: labels }
           ]
     : []
