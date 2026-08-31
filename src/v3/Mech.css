@@ -3932,10 +3932,11 @@
    of a phone column is a headline, and these are section markers over body
    copy. Narrower than the wide layout's cell (`* 12`) because `--px` is
    re-based bigger on this layout, so the same multiplier would print larger
-   than it does on desktop; `* 7` lands them at about the wide heading's size. */
+   than it does on desktop — but not by as much as it first was: at `* 7` these
+   read as captions under the body copy rather than as headings over it. */
 .mech[data-narrow='true'] .mech-fold > button .mech-seg {
   flex: none;
-  width: calc(var(--fold-cells, 19) * 7 * var(--px));
+  width: calc(var(--fold-cells, 19) * 9.5 * var(--px));
   max-width: 100%;
   min-width: 0;
 }

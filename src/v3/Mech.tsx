@@ -24,7 +24,7 @@ import { drift, flinch, quarry } from './subject'
 import { findProject, thumbOf, type Entry, type Frame } from './model'
 import { focus, notesFor, pins, type Note } from './notes'
 import { useLabelTuning, type Handed } from './labelTuning'
-import { boxOf, CARD, FRAME_SPACE, leadersFor, mediaBox, type Space } from './leaders'
+import { boxOf, CARD, FRAME_SPACE, leadersFor, mediaBox, meetsCard, type Space } from './leaders'
 import './Mech.css'
 
 const MechModel = lazy(() => import('./MechModel'))
@@ -393,7 +393,10 @@ const OUT_STEP = { by: 90, most: 260 }
 const fitCards = (root: SVGGElement | null) => {
   if (!root) return
   const range = document.createRange()
-  root.querySelectorAll<HTMLElement>('.mech-leader-card').forEach((card) => {
+  root.querySelectorAll<SVGGElement>('g').forEach((leader) => {
+    const card = leader.querySelector<HTMLElement>('.mech-leader-card')
+    if (!card) return
+
     // Back to the seat's full width before measuring, or each pass measures
     // the last pass's answer and the card walks itself narrower.
     card.style.width = ''
@@ -405,21 +408,77 @@ const fitCards = (root: SVGGElement | null) => {
     const lines = Array.from(range.getClientRects())
     // One line is already hugging its text — that is what `max-content` is
     // for, and there is nothing to take off it.
-    if (lines.length < 2) return
+    if (lines.length > 1) {
+      const style = getComputedStyle(card)
+      const chrome =
+        style.boxSizing === 'border-box'
+          ? parseFloat(style.paddingLeft) +
+            parseFloat(style.paddingRight) +
+            parseFloat(style.borderLeftWidth) +
+            parseFloat(style.borderRightWidth)
+          : 0
+      // A pixel of slack: the widest line measured back to exactly its own
+      // width is a line one sub-pixel rounding away from wrapping again.
+      const widest = Math.max(...lines.map((line) => line.width)) / scale
+      card.style.width = `${Math.ceil(widest) + 1 + chrome}px`
+    }
 
-    const style = getComputedStyle(card)
-    const chrome =
-      style.boxSizing === 'border-box'
-        ? parseFloat(style.paddingLeft) +
-          parseFloat(style.paddingRight) +
-          parseFloat(style.borderLeftWidth) +
-          parseFloat(style.borderRightWidth)
-        : 0
-    // A pixel of slack: the widest line measured back to exactly its own width
-    // is a line one sub-pixel rounding away from wrapping again.
-    const widest = Math.max(...lines.map((line) => line.width)) / scale
-    card.style.width = `${Math.ceil(widest) + 1 + chrome}px`
+    aimLeader(leader, card)
   })
+}
+
+/* ---- landing the line on the card that was actually drawn ----
+
+   `seated` in leaders.ts aims the leader before anything is laid out, so it
+   has to guess two of the card's four edges: the far one is `anchor + w`,
+   where `w` is the width the card was *allowed* rather than the width it took,
+   and the lower one is `cardHeight()`, an estimate off the sentence.
+
+   Both guesses are only ever read when a flip has stood the card on the tip's
+   own side — which on the wide frame effectively never happens, and on a phone
+   happens constantly: there is no room beside the subject there, so nearly
+   every card is forced back across the middle. `fitCards` above then shrinks
+   the box to its longest line, and the line is left pointing at a corner the
+   card no longer has. That is the mobile bug where the leaders end in open
+   space beside their labels.
+
+   Nothing here re-places the card. It measures the box that exists, takes the
+   corner of it nearest the tip — which is what "the corner facing the tip"
+   means once the card is real — and re-cuts the line on that corner's arc.
+   Inside a `foreignObject`, CSS pixels are the viewBox's own user units, so
+   `offsetWidth`/`offsetHeight` need no conversion; the seat's 34px padding is
+   `CARD.glow`, the slack the halo is drawn into. */
+const aimLeader = (leader: SVGGElement, card: HTMLElement) => {
+  const line = leader.querySelector<SVGLineElement>('.mech-leader')
+  const mark = leader.querySelector<SVGCircleElement>('.mech-leader-mark')
+  const note = leader.querySelector<SVGForeignObjectElement>('.mech-leader-note')
+  const seat = leader.querySelector<HTMLElement>('.mech-leader-seat')
+  if (!line || !mark || !note || !seat) return
+
+  const w = card.offsetWidth
+  const h = card.offsetHeight
+  if (!w || !h) return
+
+  const boxX = note.x.baseVal.value
+  const boxY = note.y.baseVal.value
+  const left =
+    seat.dataset.x === 'left' ? boxX + CARD.glow : boxX + note.width.baseVal.value - CARD.glow - w
+  const top =
+    seat.dataset.y === 'top' ? boxY + CARD.glow : boxY + note.height.baseVal.value - CARD.glow - h
+
+  const tip = [mark.cx.baseVal.value, mark.cy.baseVal.value]
+  // The corner facing the tip, and the direction from it into the card — which
+  // is all `meetsCard` needs to put the cut on the rounded corner's arc.
+  const onLeft = tip[0] < left + w / 2
+  const onTop = tip[1] < top + h / 2
+  const corner = [onLeft ? left : left + w, onTop ? top : top + h]
+  const meets = meetsCard(tip, corner, onLeft ? 1 : -1, onTop ? 1 : -1)
+
+  line.setAttribute('x1', String(meets[0]))
+  line.setAttribute('y1', String(meets[1]))
+  // The draw-in animation runs on a dash the length of the line, so the length
+  // has to move with the end that moved or the last of it never arrives.
+  line.style.setProperty('--l', String(Math.hypot(tip[0] - meets[0], tip[1] - meets[1])))
 }
 
 function Leaders({ notes, box, space, floats, lit, onLit }: LeadersProps) {

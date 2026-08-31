@@ -206,7 +206,7 @@ type Gutter = { left: number; right: number }
    Standard ray-circle: the first crossing coming from the tip. No crossing
    means the line is running alongside an edge rather than into the corner, and
    the corner is then as good a place to stop as any. */
-const meetsCard = (tip: number[], anchor: number[], sx: number, sy: number) => {
+export const meetsCard = (tip: number[], anchor: number[], sx: number, sy: number) => {
   const r = CARD.round
   // The arc's centre sits that far inside the corner in both directions, which
   // is the one place `sx` and `sy` are needed after the card has been placed.
