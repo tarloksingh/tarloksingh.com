@@ -822,6 +822,26 @@ inheritance is a tree relationship, not a layout one — so the fixed canvas,
 nested inside the list in the markup despite covering the whole viewport,
 picks the values up without anything having to be passed to it directly.
 
+**And that clip has to come off on a phone**, because the listener driving it
+is on `.mech-work-rail-list` — which does not scroll down there. The page does.
+So `--rail-clip-*` froze at their first-paint values and masked off the whole
+top band of the viewport permanently, taking every bay scrolled up into it. The
+bays read as simply not rendering, which sends you looking at the canvas and
+the views; it was the mask. Narrow has no inner scroll region to clip against,
+so it drops `clip-path` and the mask outright.
+
+**The narrow bay is a square, and it has to be said out loud.** Two columns of
+slots is right for a thumb, but the bay was a fixed 110-unit height against a
+full-width cell — a letterbox, and every slot shares one camera whose aspect
+comes from the bay's own rect, so the subjects were framed out of their own
+boxes as well as being the wrong shape. `--slot-bay` is the cell width worked
+out from the viewport and the gutters either side of it
+(`(100vw - 98 * --px) / 2`), handed to the shot, to the veil cell, and into the
+row height. It has to be one value rather than an `aspect-ratio` on each,
+because the bank and the veil laid over it are two grids that must agree track
+for track, and a veil cell is a square where a bank row is a square plus its
+label.
+
 The subject is never quite still while it sits in its bay, and it turns all
 the time — a full rotation every fourteen seconds or so, at a fixed rate that
 has nothing to do with whether the pointer is anywhere near its slot. It used
@@ -2587,7 +2607,7 @@ order:
 | rail | the tile strip, sideways |
 | `.mech-folds-wrap` | the write-up, one section open at a time |
 | footer | the contact line |
-| deck | floating over all of it, centred at the bottom of the window |
+| deck, and `SHOOT`/`STOP` over it | floating, centred at the bottom of the window |
 
 The subject is the change worth naming. The stage is no longer a 16:9 island
 in the middle of the frame: it's a tall box the width of the window, the
@@ -2596,6 +2616,33 @@ never `MODEL_DEFAULTS`), and a picture fills the box rather than sitting in a
 780-unit rectangle inside it — `Flat` drops its inline frame-coordinate
 `left/top/width/height` when narrow, which is what leaves the stylesheet
 anything to set.
+
+**That multiplier is per project.** One number for every subject cannot be
+right: `fill` is normalised by height, so a tall head and a wide flat enclosure
+do not fill a portrait stage at the same scale, and tuning one threw the rest
+out. `narrowTuning.ts` is keyed by project id the same way `MODEL_RIGS` is —
+`NARROW_TUNING` holds the overrides, `NARROW_FALLBACK` is what an untuned
+project runs at, and the hook takes the project on screen and reseeds when the
+readout swings to another (with the same `wroteFor` guard `modelTuning.ts`
+carries, because `setValues` does not land until a render later and without it
+one project's numbers get saved under the next one's id). The **Scale** tab is
+hidden on home, which has no subject to scale.
+
+**`SHOOT`/`STOP` sits at the foot of the window, not the head.** On the wide
+frame the warning pair floats on the header's own row, where there is width to
+spare either side of the index key. A phone header is the wordmark and one
+control filling the line, and the pair printed straight over both — then over
+the project's title when it was moved down a row. It is stacked over
+`.mech-deck-slot` instead, so the two floating controls read as one column of
+chrome rather than two things that happen to be fixed.
+
+**The fold headings are sized to a cell here too.** They are the same
+fourteen-segment display the wide layout uses, and `Segment` scales by width —
+so a heading handed the full width of a phone column prints as a headline over
+the body copy it is only meant to mark. Narrow sets it to `--fold-cells * 9.5 *
+--px` rather than letting it fill the row. The multiplier is lower than the
+wide layout's 12 because `--px` is re-based *bigger* down here, and 12 would
+print larger on a phone than it does on a desktop.
 
 The write-up is the same accordion the wide layout has, and like the wide
 layout **every section arrives shut** — here and on desktop both. A project
@@ -3035,10 +3082,26 @@ with its tip *below* it has to grow down, onto the tip's own side. `to` is then
 the *far* corner, and drawing the line to it runs it into the top of the card
 while the tip is under the bottom. `sx0`/`sy0` keep the un-overruled sense, and
 when a flip has happened `meets` is walked across the card to the corner that
-actually faces the tip — `w` wide, and `cardHeight` tall. Not `CARD.room`:
-that is the reserved figure and three times a two-line caption's real height,
-so it dropped the meet into open space below the card. `cardHeight` estimates
-the box off the sentence and the metrics `.mech-leader-card` is drawn with.
+actually faces the tip — `w` wide, and `cardHeight` tall.
+
+Which is still not enough on its own, because both of the edges it walks to are
+**guesses**. `seated` runs before anything is laid out: the far edge is
+`anchor + w`, the width the card was *allowed* rather than the width it took,
+and the lower one is `cardHeight`, an estimate off the sentence. `fitCards`
+then shrinks the box to its own longest line, and the line is left pointing at
+a corner the card no longer has. That is leaders ending in open space beside
+their labels — and it was a phone-only symptom for a reason worth keeping in
+mind: the flips are the only thing that reads those two guesses, and the flips
+effectively never fire where there is room beside the subject.
+
+So `fitCards` re-aims as well as fits. It measures the box that actually
+exists — inside a `foreignObject`, CSS pixels *are* the viewBox's own user
+units, so `offsetWidth`/`offsetHeight` need no conversion, and the seat's 34px
+padding is `CARD.glow` — takes the corner of that box nearest the tip, which is
+what "facing the tip" means once the card is real, and re-cuts the line on that
+corner's arc with the same `meetsCard`. `--l` moves with the endpoint, or the
+draw-in animation stops short of where the line now ends. Measured on both
+layouts, every leader lands with a zero-pixel gap to its card.
 
 Neither is required. A note with no geometry falls into the next free slot of
 the fan, and a fourth starts the fan again a line lower, so a picture with one
@@ -3050,15 +3113,67 @@ Placing is not typing. Press **P** on a project screen in development:
 - **click the picture** to add a line where you clicked — the box a click
   counts inside is drawn and says so, and **+ line** on the bar drops one down
   the middle for anyone who would rather not aim
-- **drag the dot** to move where it points, **drag the label** to move where it
-  reads — the first drag of either pins both, since a half-pinned note would
-  leave its other end in a slot it no longer shares
+- **drag the dot** to move where it points, **drag the label anywhere on it** to
+  move where it reads — the first drag of either pins both, since a half-pinned
+  note would leave its other end in a slot it no longer shares. The whole chip
+  is the handle; it used to be the six-pixel grip alone, which is not a target
+  on a phone and left the rest of the label looking draggable without being.
+  The fields and the delete key stop the pointer, so tapping into one is still
+  tapping into one
 - the three fields are the handle, the sentence the card says, and the fold in
   the left column the line is evidence for (hovering either lights the other).
   Three sizes, not three equal boxes: the sentence is what the card is built
   around and it gets the room
 - **copying and reverting are on the Labels panel**, not on the overlay — see
   below
+
+### A placed label goes where you put it
+
+`seated` does four things to a card it is handed: clamps the anchor into the
+gutters, flips which way the box grows when a side is short, pushes the card
+clear of its own tip, and pulls it back inside the top and bottom edges. All of
+that exists to rescue a **derived** position. The auto fan is one shape traced
+off the Figma and reused for every subject, every picture and every window, so
+it has to be talked out of the edges it inevitably walks into.
+
+A hand-placed note is not derived. Somebody dragged it to that spot, on this
+layout, and watched where it landed — and overruling that is the editor arguing
+with the person using it. It reads exactly as it sounds: you let go of a label
+and it jumps somewhere else. So `free` in `seated` turns all four off, and
+`leadersFor` sets it for any note carrying its own two points.
+
+The qualifier that matters is **on this layout**. A phone falling back to the
+wide `at`/`to` is reusing the desktop's answer, not honouring a placement — and
+those answers sit off the left and right of the subject, where a wide frame has
+margin and a phone has nothing. Reused coordinates therefore keep the clamps
+that drag them back on screen; only a pair actually placed at this width goes
+free. Get that distinction wrong in either direction and it shows: all-free
+puts every un-pinned card half off the edge, all-clamped is the snapping.
+
+Desktop is unchanged in practice by any of this. The note on the *never over
+its own tip* guard already said those branches do not fire on a wide frame, and
+the card positions measure identical either side of the change.
+
+### Two layouts, two placements
+
+A note can carry `atNarrow`/`toNarrow` as well as `at`/`to`. Below the
+breakpoint `leadersFor` prefers them, falls back to the wide pair, and falls
+back again to the fan — so a picture can be laid out once for the desktop and
+once for the phone, and neither placement disturbs the other.
+
+The editor writes whichever pair belongs to the width it is open at, which is
+the whole of what makes this usable: press **P** at a phone width and every
+drag lands in `atNarrow`/`toNarrow`. `MechPins` takes the stage's `Space` for
+this — `boxOf(frame, space)` for the subject's box, `space.w`/`space.h` to turn
+a click into a fraction — and the overlay itself needed nothing, because it
+already positions in `calc(unit * var(--px))`, which maps a space unit to a
+stage pixel on both layouts by construction.
+
+On a phone the panel carries **Scale** and **Labels**, so copying and reverting
+are reachable without a keyboard; *Place them — press P* on the Labels tab
+dispatches the keypress, which is how the editor opens on a device that has no
+**P** to press. The pins bar docks to the window rather than to the foot of a
+short stage.
 
 **The same P, on the home screen, places the cast's tags.** There is no
 picture there, so there is nothing to click on to *add* a line — the roster
