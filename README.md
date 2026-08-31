@@ -1938,6 +1938,20 @@ ids, and a project named in it opens whether or not it has frames — a
 voice, because an empty stage reads as a failure to load. The tile rail does
 not draw at all for those, for the same reason.
 
+`restricted` prose alone does not say *why* there is nothing to show, and the
+two reasons are not the same: Solomon's write-up is unfinished, Visa's is
+sealed. `locked: true` on the project (`projects.ts`) is the second case —
+`.mech-bare[data-locked]` centres its head, reads **not yet disclosable**
+instead of "no material", and shows a **lock**: a phosphor padlock, SVG, that
+gives its shackle a small tug and settles back so it reads as held shut rather
+than drawn on. The card also has **its own entrance keyframe**, `mech-bare-in`,
+and not `mech-in`: this card centres itself with a `translate(-50%, -50%)`, and
+`mech-in`'s rest frame is `transform: translateY(0)` held by
+`animation-fill-mode: both`, which overwrites that translate and drops the card
+down and to the right by half its own size. Same trap as every reused keyframe
+on this screen — the fix is a keyframe that carries the centring offset in both
+of its frames.
+
 `MENU` is also where a subject's *number* comes from: the tag on the stage
 prints the same two digits the sheet does, because they are the same index and
 there is only one order of the work.
@@ -4138,7 +4152,10 @@ To add a project:
 
 `visa` and `3d-printing` are placeholders carrying a `restricted` note instead
 of sections; the case study renders that rather than an empty page. Fill in
-`sections` and `hero` to promote either to a full study.
+`sections` and `hero` to promote either to a full study. `visa` also sets
+`locked: true` — an NDA rather than an unwritten study — which is what puts the
+lock and the *not yet disclosable* wording on its v3 card (see **Home is the
+project screen**).
 
 ### Posters
 
