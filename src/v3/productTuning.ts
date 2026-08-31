@@ -67,6 +67,13 @@ export interface PieceTuning {
   turn: number
   /** Frame heights above centre. */
   liftY: number
+  /** Frame widths right of centre. */
+  liftX: number
+  /** How much the piece leans toward the pointer, and toward the bird while it
+   *  is in the air. 1 is the built-in amount, 0 holds it still — which is what
+   *  a fixed object like the till wants, since it is not a face and has no
+   *  reason to track anything. */
+  sway: number
 
   /* ---- its own camera ----
 
@@ -133,6 +140,8 @@ export const PIECE_FALLBACK: PieceTuning = {
   size: 1,
   turn: 0,
   liftY: 0,
+  liftX: 0,
+  sway: 1,
   focalLength: 60,
   fill: 0.72,
   exposure: 0.55,
@@ -156,7 +165,7 @@ export const PIECE_FALLBACK: PieceTuning = {
  *  own composition, which is a readout with leader lines coming off it rather
  *  than a case in a room. */
 export const PIECE_DEFAULTS: Record<string, PieceTuning> = {
-  'mecha-station': { ...PIECE_FALLBACK, size: 1.05, turn: -20, liftY: 0 },
+  'mecha-station': { ...PIECE_FALLBACK, size: 1.05, turn: -20, liftY: 0, sway: 0 },
   openup: { ...PIECE_FALLBACK, size: 0.76, turn: 26, liftY: 0 },
   stitchfam: { ...PIECE_FALLBACK, size: 0.82, turn: 28, liftY: 0 },
   'red-dead-redemption-2': { ...PIECE_FALLBACK, size: 0.8, turn: 34, liftY: 0 },
@@ -258,6 +267,8 @@ export function useProductTuning(projectId: string) {
           size: { value: seed.size, min: 0.2, max: 2.5, step: 0.01, label: 'Size' },
           turn: { value: seed.turn, min: -180, max: 180, step: 0.1, label: 'Turn' },
           liftY: { value: seed.liftY, min: -0.5, max: 0.5, step: 0.005, label: 'Lift' },
+          liftX: { value: seed.liftX, min: -0.5, max: 0.5, step: 0.005, label: 'Slide' },
+          sway: { value: seed.sway, min: 0, max: 1, step: 0.01, label: 'Sway' },
 
           /* This piece's camera, and nobody else's. It was a sibling of this
              folder rather than inside it, which read as a studio setting and

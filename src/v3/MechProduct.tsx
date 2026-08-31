@@ -75,7 +75,7 @@ function Drift({ fill }: { fill: number }) {
 /** Turns the piece a few degrees toward the pointer, on top of whatever face
  *  it was set to. Not the face's lean — that tips a head; this swings a
  *  product on its stand, which is the gesture a thing in a case makes. */
-function Swing({ turn, children }: { turn: number; children: React.ReactNode }) {
+function Swing({ turn, sway, children }: { turn: number; sway: number; children: React.ReactNode }) {
   const ref = useRef<Group>(null)
   const to = useRef({ x: 0, y: 0 })
   const at = useRef({ x: 0, y: 0 })
@@ -109,8 +109,8 @@ function Swing({ turn, children }: { turn: number; children: React.ReactNode }) 
     const k = 1 - Math.pow(0.004, delta)
     at.current.x = MathUtils.lerp(at.current.x, target.x, k)
     at.current.y = MathUtils.lerp(at.current.y, target.y, k)
-    group.rotation.y = MathUtils.degToRad(turn) + at.current.x * 0.34
-    group.rotation.x = -at.current.y * 0.12
+    group.rotation.y = MathUtils.degToRad(turn) + at.current.x * 0.34 * sway
+    group.rotation.x = -at.current.y * 0.12 * sway
   })
 
   return <group ref={ref}>{children}</group>
@@ -351,7 +351,7 @@ export default function MechProduct({
       <directionalLight position={[piece.fillX, piece.fillY, piece.fillZ]} intensity={piece.fillIntensity} />
 
       <Suspense fallback={null}>
-        <group position={[0, piece.liftY / fill, 0]}>
+        <group position={[piece.liftX / fill, piece.liftY / fill, 0]}>
           <Float
             speed={tuning.floatSpeed}
             rotationIntensity={tuning.floatRotation}
@@ -360,7 +360,7 @@ export default function MechProduct({
           >
             <Drift fill={fill} />
             <Sheen piece={piece}>
-              <Swing turn={piece.turn}>
+              <Swing turn={piece.turn} sway={piece.sway}>
                 <Piece project={project} />
               </Swing>
             </Sheen>

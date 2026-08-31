@@ -2655,9 +2655,16 @@ every one of them was built at whatever size suited the thing it is, and the
 gallery they came from fitted them into a case for the same reason. Which is
 also why they each need a `size` afterwards: a flat card and a tall monitor
 fitted to the same bounding box do not read as the same size, they read as a
-card blown up. `PIECE_DEFAULTS` carries `size`, `turn` and `liftY` per project
-— `turn` seeded from the value each piece already carried in `products.tsx`,
-since those were settled by eye against a real render.
+card blown up. `PIECE_DEFAULTS` carries `size`, `turn`, `liftY` and `liftX` per
+project — `turn` seeded from the value each piece already carried in
+`products.tsx`, since those were settled by eye against a real render.
+
+`sway` is on that list too. `Swing` leans the piece a few degrees toward the
+pointer, and toward the bird while it is in the air — the same preference the
+face has. That gesture suits a thing on a stand, not a fixed object: Mecha
+Station's till is a piece of hardware, not a character, and following a moth
+across the room read as a bug. `sway` scales the whole effect, `0` on the till
+holds it still, `1` (the default) is the built-in amount.
 
 Four projects (`a-game`, `mr-grocery`, `visa`, `3d-printing`) never reach any
 of this: `entries` in `model.ts` drops a project with no media, and those four
