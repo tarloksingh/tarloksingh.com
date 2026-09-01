@@ -406,16 +406,43 @@
   box-shadow: 0 0 calc(60 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.12 * var(--g)));
 }
 
-.mech-greet-line {
+/* Two classes deep on purpose: `TextType.css` sets `display: inline-block` on
+   `.text-type`, and this element carries both classes at equal specificity —
+   which one wins would then come down to the order two stylesheets happened
+   to land in the bundle. A block is what the paragraph wants: an inline-block
+   is shrink-to-fit, and the reel's width would follow whatever it had typed
+   so far. */
+.mech-greet .mech-greet-line {
+  display: block;
   margin: 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: calc(15 * var(--type));
   line-height: 1.6;
   color: rgba(var(--accent-rgb), 0.92);
   text-shadow: 0 0 calc(10 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.4 * var(--g)));
-  /* Each line holds its own height from the first frame, so the card does
-     not grow a row as the second sentence starts. */
-  min-height: calc(24 * var(--type));
+  /* Room for the longest line's fully wrapped height, held from the first
+     frame. It is one reel now rather than two stacked paragraphs — the note
+     is typed, taken back off and replaced by the sign-off in the same box —
+     so without a floor the card would grow as the greeting wraps and then
+     collapse to a single line on "bye...", which is a modal changing size
+     twice while you read it. */
+  min-height: calc(48 * var(--type));
+}
+
+/* Three wrapped lines rather than two: the card is the full width of a phone
+   less its gutter, and the greeting takes one more row at that measure. */
+.mech[data-narrow='true'] .mech-greet .mech-greet-line {
+  min-height: calc(77 * var(--type));
+}
+
+/* The block cursor sits on the text's own baseline rather than a quarter-em
+   off it — the default margin is built for a thin `|`, and a `▎` at that
+   distance reads as a separate mark rather than the caret at the end of the
+   line. */
+.mech-greet .text-type__cursor {
+  margin-left: calc(2 * var(--type));
+  color: var(--warn);
+  text-shadow: 0 0 calc(10 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.5 * var(--g)));
 }
 
 /* Warm, like every other thing on this site that answers a press. It is in
@@ -1816,27 +1843,48 @@
   transition-delay: 130ms;
 }
 
-/* ---- right rail ---- */
+/* ---- the media strip ----
+
+   **Along the foot of the frame, not down the right-hand margin.** It was a
+   vertical column opposite the write-up for as long as there was nothing else
+   asking for that side; the projects rail has it now — `MechBank` is mounted
+   on a project screen too (see `.mech-bank-col` below), so the one persistent
+   thing on this site stops disappearing the moment you use it. The strip took
+   the only other edge with room on it.
+
+   Which turns out to be the better place for it anyway, and the narrow layout
+   had already worked that out: pictures of *this* project are a row you scan,
+   not a list you read, and a row wants the long axis. It sits above the coords
+   readout and below everything else, so the order down the frame is the
+   subject, the pictures of it, and then the machine's own footer.
+
+   Everything below is horizontal now as the base case, with the narrow rules
+   keeping only what is genuinely narrow — tile sizes, snap and gutters. Two
+   copies of "make this sideways" was one copy too many the moment both
+   layouts wanted it. */
 
 .mech-rail-wrap {
   position: absolute;
-  right: calc(101 * var(--px));
-  top: 50%;
-  transform: translateY(-50%);
+  left: 50%;
+  bottom: calc(78 * var(--px));
+  transform: translateX(-50%);
   z-index: 3;
   display: flex;
-  align-items: stretch;
-  gap: calc(10 * var(--px));
-  /* Five tiles is the Figma; a dozen is what several of the projects actually
-     have. The strip scrolls rather than running off the bottom. */
-  max-height: calc(690 * var(--px));
+  /* The strip, and its scrubber under it. */
+  flex-direction: column;
+  gap: calc(8 * var(--px));
+  /* Wide enough for a dozen tiles and narrow enough to stay clear of the
+     write-up's column and the bank's; the strip scrolls rather than running
+     under either. */
+  max-width: calc(940 * var(--px));
 }
 
 .mech-rail {
   display: flex;
-  flex-direction: column;
-  gap: calc(21 * var(--px));
-  overflow-y: auto;
+  flex-direction: row;
+  gap: calc(14 * var(--px));
+  overflow-x: auto;
+  overflow-y: hidden;
   scrollbar-width: none;
   padding: calc(14 * var(--px)) calc(12 * var(--px));
   border: 1px solid rgba(var(--accent-rgb), 0.16);
@@ -1869,19 +1917,20 @@
 .mech-rail-track {
   position: relative;
   flex: none;
-  width: calc(3 * var(--px));
+  width: 100%;
+  height: calc(3 * var(--px));
   border-radius: calc(2 * var(--px));
   background: rgba(var(--accent-rgb), 0.18);
   opacity: 0;
-  transform: scaleY(0);
-  transform-origin: top;
+  transform: scaleX(0);
+  transform-origin: left;
   transition: opacity 200ms linear;
   animation: mech-rail-track-in 380ms var(--ease) calc(1200ms + 940ms) both;
 }
 
 @keyframes mech-rail-track-in {
   to {
-    transform: scaleY(1);
+    transform: scaleX(1);
   }
 }
 
@@ -1891,10 +1940,10 @@
 
 .mech-rail-thumb {
   position: absolute;
-  left: 0;
-  right: 0;
-  top: var(--thumb-top, 0%);
-  height: var(--thumb-h, 30%);
+  top: 0;
+  bottom: 0;
+  left: var(--thumb-left, 0%);
+  width: var(--thumb-w, 30%);
   border-radius: calc(2 * var(--px));
   background: var(--accent);
   box-shadow: 0 0 calc(7 * var(--px)) rgba(var(--accent-rgb), 0.7);
@@ -3612,8 +3661,12 @@
   order: 5;
 }
 
+/* Last, after the bank. It was 6 with nothing below it; a project screen
+   puts the projects rail at the foot of the column now (`.mech-bank-col` in
+   MechCluster.css) and the contact line belongs under that rather than
+   between the write-up and the list of everything else. */
 .mech[data-narrow='true'] .mech-foot {
-  order: 6;
+  order: 7;
 }
 
 /* The name on a phone, and the taller home stage the line-up needed, are both
@@ -3888,16 +3941,17 @@
   right: auto;
   top: auto;
   transform: none;
-  flex-direction: column;
-  max-height: none;
+  bottom: auto;
+  left: auto;
+  max-width: none;
   margin: calc(22 * var(--px)) 0 0;
   padding: 0 var(--gutter);
 }
 
+/* Sideways is the base case now — see *the media strip* in this file. What is
+   left down here is the phone's own numbers, and the snap: a strip you flick
+   with a thumb should come to rest on a picture rather than between two. */
 .mech[data-narrow='true'] .mech-rail {
-  flex-direction: row;
-  overflow-x: auto;
-  overflow-y: hidden;
   gap: calc(12 * var(--px));
   padding: calc(12 * var(--px));
   scroll-snap-type: x proximity;
@@ -3924,30 +3978,6 @@
   box-shadow:
     inset 0 0 0 calc(2 * var(--px)) var(--accent),
     0 0 calc(20 * var(--px)) rgba(var(--accent-rgb), 0.35);
-}
-
-.mech[data-narrow='true'] .mech-rail-track {
-  width: 100%;
-  height: calc(3 * var(--px));
-  margin-top: calc(8 * var(--px));
-  transform: scaleX(0);
-  transform-origin: left;
-  animation-name: mech-rail-track-in-x;
-}
-
-@keyframes mech-rail-track-in-x {
-  to {
-    transform: scaleX(1);
-  }
-}
-
-.mech[data-narrow='true'] .mech-rail-thumb {
-  left: var(--thumb-left, 0%);
-  right: auto;
-  top: 0;
-  bottom: 0;
-  height: auto;
-  width: var(--thumb-w, 30%);
 }
 
 /* ---- the title and the write-up ---- */

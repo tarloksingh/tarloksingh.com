@@ -10,7 +10,9 @@ import MechLaser from './MechLaser'
 import Alarm from './Alarm'
 import MechHud from './MechHud'
 import MechTiles from './MechTiles'
-import MechGreeting from './MechGreeting'
+import MechGreeting, { shouldGreet } from './MechGreeting'
+import MechBank from './MechBank'
+import { slotOf } from './bank'
 import { useModelTuning } from './modelTuning'
 import { useProductTuning } from './productTuning'
 import { useStationTuning } from './stationTuning'
@@ -961,6 +963,14 @@ function Source({ handed, onClose }: { handed: Handed; onClose: () => void }) {
  *  scene graph. */
 const BOOT_MS = 1200
 
+/** How long after the cover lifts the overview fold puts itself down — see
+ *  *the overview puts itself down* in the component. Long enough that the side
+ *  column's own entrance (`mech-in`, 420ms on a stagger) has finished, so the
+ *  fold opens against a column that has settled rather than during its
+ *  arrival, where it would read as part of the same animation instead of as
+ *  the machine answering afterwards. */
+const OVERVIEW_MS = 900
+
 interface Props {
   /** The project on screen, or `null` for the home screen.
    *
@@ -1041,8 +1051,13 @@ export default function Mech({ id, onProject, onHome }: Props) {
   /* The note about the birds, and the press that dismisses it. It gates the
      boot rather than running alongside it — see `MechGreeting.tsx` — so
      `booting` stays true, and every entrance on the page stays held, until
-     this is true. It is also where the AudioContext gets its gesture. */
-  const [greeted, setGreeted] = useState(false)
+     this is true. It is also where the AudioContext gets its gesture.
+
+     Seeded from `shouldGreet`, so a visitor who saw the note in the last ten
+     minutes starts already past it and the boot runs on mount as it always
+     did. Read once in a lazy initialiser rather than in an effect: a note
+     that mounts and then removes itself on the next commit is a flash. */
+  const [greeted, setGreeted] = useState(() => !shouldGreet())
   const [lit, setLit] = useState<string | null>(null)
   /* `home` is the whole difference between the two states, and it is read
      off what is on screen rather than off the prop — during a retarget the
@@ -1074,6 +1089,10 @@ export default function Mech({ id, onProject, onHome }: Props) {
   const [shown, setShown] = useState(0)
   const [phase, setPhase] = useState<'in' | 'out' | 'hold'>('in')
   const [open, setOpen] = useState<string | null>(null)
+  /* Which project's overview has already been put down — see *the overview
+     puts itself down* below. A ref because it must not cause a render and
+     must survive the ones the retarget causes. */
+  const openedFor = useRef<string | null>(null)
   const rail = useRef<HTMLDivElement>(null)
   const railWrap = useRef<HTMLDivElement>(null)
   const stage = useRef<HTMLDivElement>(null)
@@ -1196,11 +1215,13 @@ export default function Mech({ id, onProject, onHome }: Props) {
          screen is fully covered — a jump the reader can see is a jump, and
          this one lands while there is nothing to see. */
       root.current?.scrollTo({ top: 0, behavior: 'auto' })
-      /* Shut, not open on the overview. A project used to arrive with its
-         first fold already down, which is a screen answering a question
-         nobody asked yet — the subject is on the stage and the title is
-         above it, and the write-up is there to be opened when you want it. */
+      /* Shut *here*, and opened a beat later by the effect below. What must
+         not happen is the fold arriving already down: the write-up is
+         underneath the cover on this frame, and a drawer that is simply found
+         open is a drawer nobody watched open. It is put down deliberately,
+         on screen, once there is a screen to put it down on. */
       setOpen(null)
+      openedFor.current = null
       setPhase('hold')
       /* Cleared on the same beat the screen actually changes, so whichever
          of the two names is mounting on the other side of it mounts with
@@ -1329,26 +1350,25 @@ export default function Mech({ id, onProject, onHome }: Props) {
 
   // The rail's own scrubber: a thumb sized and placed off the tile strip's
   // real scroll state, and a track that only shows itself once there is
-  // somewhere for the thumb to go. Narrow, the rail scrolls sideways instead
-  // of down — see the `NARROW_QUERY` comment above — so the same measurement
-  // is taken off the other axis and written to a different pair of custom
-  // properties, which Mech.css only reads under `[data-narrow='true']`.
+  // somewhere for the thumb to go.
+  //
+  // One axis, on both layouts. The strip used to run down the right-hand
+  // margin on a wide window and sideways on a phone, so this measured
+  // whichever of the two the current layout was using and wrote a different
+  // pair of custom properties for each. The margin belongs to the projects
+  // rail now and the strip is horizontal everywhere — see *the media strip*
+  // in Mech.css — so there is one measurement and one pair of properties.
   useEffect(() => {
     const el = rail.current
     const wrap = railWrap.current
     if (!el || !wrap) return
 
     const update = () => {
-      const scrollable = narrow ? el.scrollWidth > el.clientWidth + 1 : el.scrollHeight > el.clientHeight + 1
+      const scrollable = el.scrollWidth > el.clientWidth + 1
       wrap.dataset.scrollable = String(scrollable)
       if (!scrollable) return
-      if (narrow) {
-        wrap.style.setProperty('--thumb-w', `${(el.clientWidth / el.scrollWidth) * 100}%`)
-        wrap.style.setProperty('--thumb-left', `${(el.scrollLeft / el.scrollWidth) * 100}%`)
-      } else {
-        wrap.style.setProperty('--thumb-h', `${(el.clientHeight / el.scrollHeight) * 100}%`)
-        wrap.style.setProperty('--thumb-top', `${(el.scrollTop / el.scrollHeight) * 100}%`)
-      }
+      wrap.style.setProperty('--thumb-w', `${(el.clientWidth / el.scrollWidth) * 100}%`)
+      wrap.style.setProperty('--thumb-left', `${(el.scrollLeft / el.scrollWidth) * 100}%`)
     }
 
     update()
@@ -1391,6 +1411,38 @@ export default function Mech({ id, onProject, onHome }: Props) {
      opening depends on whether the card under it already said the same thing.
      See `foldsFor`. */
   const folds = foldsFor(project ?? undefined, bare && !riderStage)
+
+  /* ---- the overview puts itself down ----
+
+     A project arrives with its first fold open, a beat after the screen does.
+
+     "Everything arrives shut" was the rule before this, and the argument for
+     it was that a drawer standing open is the one thing in the column nobody
+     opened. What that missed is that the column then arrives saying nothing
+     at all: a title, a tagline, and seven closed headings, with the answer to
+     *what is this* one press away and no indication that pressing is where
+     the writing lives. The overview is the fold that answers the question the
+     screen has already raised by putting an object on a stage.
+
+     So it opens, but it is **not open on arrival** — the distinction is the
+     whole of it. `setOpen` runs on the covered beat above and clears; this
+     runs once the cover is off and the side column has had time to draw
+     itself in, so the fold is seen going down. A fold found open is furniture;
+     a fold that opens is the machine answering.
+
+     Once per project, held on a ref rather than on state. `covered` also goes
+     true for an ordinary step along the tile rail, and re-opening the overview
+     every time somebody looked at a different picture would fight them for
+     the column. The ref is cleared in the retarget above, so coming back to a
+     project you have already read opens it again. */
+  const firstFold = folds[0]?.id ?? null
+  useEffect(() => {
+    if (home || covered || !shownId || !firstFold) return
+    if (openedFor.current === shownId) return
+    openedFor.current = shownId
+    const timer = window.setTimeout(() => setOpen(firstFold), OVERVIEW_MS)
+    return () => window.clearTimeout(timer)
+  }, [home, covered, shownId, firstFold])
   /* What the readout in the side column is about — only ever a project. Home
      has no side column any more: the whole screen is the cluster, and the name
      sits in the middle of it. */
@@ -1766,6 +1818,46 @@ export default function Mech({ id, onProject, onHome }: Props) {
             <div className="mech-rail-thumb" />
           </div>
         </div>
+        )}
+
+        {/* ---- the work, on every screen ----
+
+            The same rail home puts in its right flank, down a project's
+            right-hand margin — the one the media strip used to have. It is the
+            list of what is on this site, and it used to vanish the moment you
+            opened anything on it: you pressed a project and the way to every
+            other project went with the screen you pressed it from, leaving the
+            header's index sheet as the only way on. A list that disappears
+            when you use it is not navigation, it is a menu.
+
+            `MechBank` is the same component either way — see the note at the
+            top of it — but it reports something different here. There is no
+            selection to make on this screen, so `onPick` is left out, which is
+            also what makes a press open a project directly rather than
+            selecting it first (`direct` in `SlotBox`). The lit slot is the
+            project you are on, and the head says `PROJECTS` rather than naming
+            a choice you have not made. */}
+        {!home && (
+          <div
+            className="mech-bank-col"
+            /* The one cluster token that has to be handed over rather than
+               declared in CSS: `--cluster-slot` is the Slot height knob, set
+               inline on `.mech-cluster` from the same panel. Without it the
+               rail falls back to the stylesheet's 150 here and to the panel's
+               98 on home — a bay half again as wide on a project screen,
+               which eats the room the name needs and clamps "Mr. Takahashi"
+               to an ellipsis. One knob, both screens. */
+            style={{ ['--cluster-slot' as string]: cluster.values.slot }}
+            data-arrive
+          >
+            <MechBank
+              picked={slotOf(shownId)}
+              onOpen={onProject}
+              up={!booting}
+              covered={covered && transiting}
+              narrow={narrow}
+            />
+          </div>
         )}
 
         {/* A project's column, and only a project's. It used to be mounted on

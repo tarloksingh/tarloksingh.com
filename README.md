@@ -608,6 +608,46 @@ something silkscreened onto the housing beside it. Both halves of the glow ride
 `--profile-ink`, so the knob still turns the whole thing down in one move
 rather than leaving a halo behind dimmed text.
 
+It is also on **its own hue** — `#8FE2CB`, a shade cooler and bluer than either
+the panel's `--accent` (`#a2e0cc`) or the site's (`#86e2b4`). Written as a
+local `--profile-rgb` on that one rule rather than inline, so the alpha and the
+glow are built off one pair the way every other colour here is, and declared
+nowhere else: it is one block's colour, not a change to what the panel is lit
+in.
+
+#### Three gauges, not one reading drawn three times
+
+`ORGS SHIPPED` is gone, and the argument against it is not that the word is
+ugly. Reading the three off every slot in turn gives this:
+
+| slice                          | yrs | roles | orgs |
+|--------------------------------|-----|-------|------|
+| product (RDR2, GTA, Plus One…) | 11  | 4     | 3    |
+| brand (Capsule, Mecha, Slider) | 10  | 3     | 2    |
+| code (Stitchfam, Wyte, Block)  | 1   | 1     | 1    |
+
+They never disagree. All three are *how big is this slice* drawn three times —
+more projects in a field means more years and more roles and more companies,
+always — so the block spent three gauges on one reading. Which also rules out
+the obvious swaps: projects, tags, media count, anything of the form "count the
+things in the slice" inherits exactly the same correlation.
+
+To get three readings, at least one has to be a **position** rather than a
+count. `recent` is that one: where the slice's latest work sits in the span of
+everything, so it answers *is this live* rather than *is there a lot of it*.
+The code slice is two years wide and reads near the top of its scale; the
+Rockstar work is the same size and sits at the bottom. Two bars that moved
+together now separate, which is the entire reason for having a second one.
+`roles` stays — it is the one number not visible anywhere else on the panel,
+and it is what the reel opposite is reading out.
+
+**And the ceilings are derived rather than picked.** They were `{16, 12, 8}`
+against real maxima of 11, 7 and 4, so `ORGS` could never pass 38% of its own
+bar and `ROLES` never passed 58%, regardless of what was selected — two thirds
+of two gauges unreachable by construction, which is a scale nothing is ever
+plotted against. The ceiling is the whole roster's own figure now: everything
+reads full, a slice reads its share of it.
+
 #### The name came off the instrument
 
 The name used to be laid **over** the quiet left end of the tachometer, on a
@@ -1615,6 +1655,76 @@ once, for both lines, rather than each one carrying its own copy, at
 `.mech-profile`'s own size (`10.5`, not the footer's old `13`) — the same
 voice at a different size would still have read as a second document.
 
+### The bank is on every screen
+
+The rail of work used to be one of home's four blocks, and opening a project
+took it off the page — so the one permanent thing about this site, the list of
+what is *in* it, was the thing that disappeared the moment you used it. You
+pressed a project and every other project went with the screen you pressed it
+from, leaving the header's index sheet as the only way on. A list that vanishes
+when you use it is not navigation, it is a menu.
+
+So it is `MechBank.tsx` now, mounted from two places: home puts it in the
+cluster's right flank, and a project screen puts it down the right-hand margin.
+The extraction is the interesting part, and three things fell out of it.
+
+**`bank.ts` exists because two components need the same rows.** `SLOTS`, the
+`Field` scale and `FIELD_OF` were consts in `MechCluster.tsx`, and `MechBank`
+needs the first while the cluster still needs all three for its counts and
+dials. A const in one component's file that another component imports is a
+circular import waiting to happen the first time the traffic goes the other
+way, so the data is its own module and both import from it.
+
+**Only ever one bank is mounted**, which matters more than it looks: `MechSlots`
+lives inside it, and that is the *one* WebGL canvas all eleven subjects are
+scissored into. Two banks would be two canvases, eleven subjects each.
+
+**It reports something different on each screen, off one prop.** Home passes
+`onPick`; a project screen does not, and that single absence carries three
+consequences. The head is a **readout** on home (crossing a slot names it) and
+a **sign** on a project (`PROJECTS`, permanently, because the lit slot is the
+project you are already on). A press **opens directly** rather than selecting
+first — `direct` in `SlotBox`, which a phone also sets, both being the cases
+where there is no hover to have done the selecting for you. And the rail
+**scrolls the lit slot into view**, which is right where the selection arrived
+from somewhere else (open Wyte Card from the index sheet and slot 11 is four
+rows below the fold) and wrong on home, where scrolling a list under the cursor
+that is choosing from it moves the next row out from under the finger.
+
+`.mech-bank-col` is the project screen's wrapper, and it exists to hand over
+what the rail inherits from `.mech-cluster` on home and would otherwise be
+missing: `--count-w`, `--flank-w`, `--panel-h`, and **the panel's own green**.
+`--accent` is redeclared on `.mech-cluster` — a paler sage-mint than the site's
+— and every rule in `MechCluster.css` reads that rather than the root pair, so
+the same eleven slots mounted outside the cluster come up in a different green
+from the one they were drawn in a moment earlier. `--cluster-slot` is the one
+token handed over from JS instead, because it is a live knob on the Cluster
+tab; without it the rail falls back to the stylesheet's 150 here and the
+panel's 98 on home, and a bay half again as wide eats the room the name needs
+and clamps "Mr. Takahashi" to an ellipsis.
+
+It takes no transform, for the same reason `.mech-cluster` and `.mech-body`
+take none: a transformed ancestor becomes the containing block for a
+`position: fixed` descendant, and `.mech-bank-gl` would quietly stop being the
+viewport. Its entrance is an opacity fade for exactly that reason.
+
+#### And the media strip moved to the foot
+
+It had the right-hand margin only because nothing else was asking for it. The
+strip is horizontal on both layouts now, above the coords readout and below
+everything else, so the order down a project screen is the subject, the
+pictures of it, then the machine's own footer.
+
+The narrow layout had already worked this out — pictures of one project are a
+row you scan, not a list you read — so making it the base case deleted rather
+than added: `.mech-rail`, `.mech-rail-track` and `.mech-rail-thumb` are
+horizontal in their own rules, the narrow overrides that repeated it are gone,
+and what is left under `[data-narrow]` is genuinely narrow (tile sizes, snap,
+gutters). The scrubber in `Mech.tsx` lost its branch with them: it measured
+`scrollHeight`/`scrollTop` on one layout and `scrollWidth`/`scrollLeft` on the
+other, writing a different pair of custom properties for each, and there is one
+axis now.
+
 ### The bank, on a phone
 
 Two problems in one place, and only the second one is interesting.
@@ -2254,11 +2364,52 @@ running and the exit never plays. The boot starts on the same beat the exit
 does rather than after it, so the grid is already striking behind the note as
 it clears — which is what keeps the press from feeling like it bought a pause.
 
-It shows on **every load**, including a project deep link. `Mech` is never
-remounted, so that is once per page load rather than once per navigation. A
-`sessionStorage` flag would make it once per visit; it is not there because
-the point is the introduction, and a returning visitor is exactly who has
-already forgotten.
+**Once, and then not again for a while.** It showed on every load to begin
+with, which is right for the one visitor who has never seen it and wrong for
+everybody else — including me, reloading it forty times an afternoon.
+`shouldGreet` is a **timestamp**, not a flag: show it if there is nothing
+stored, or if what is stored is older than ten minutes. A first visit gets the
+note, a reload five minutes later does not, and coming back tomorrow does — by
+which point the reticle *is* worth explaining again, because nobody remembers
+a modal from yesterday. `localStorage` and not `sessionStorage`: a session
+ends when the tab does, which would put the note back in front of anyone who
+keeps one window open all day and never in front of anyone who closed the tab
+and came back in a minute. The read is wrapped, because private mode throws on
+read as well as write, and the fallback is to *show* it — a visitor who sees
+it twice is a much smaller failure than one who never learns the page can be
+shot at. `Mech` seeds `greeted` from it in a lazy initialiser rather than an
+effect, because a note that mounts and removes itself on the next commit is a
+flash.
+
+**The note is a reel, and it is the one place `TextType` is used.** React
+Bits' component, ported to TypeScript in `TextType.tsx`: it types a line, holds
+it, takes it back off a character at a time, and types the next one into the
+space. `Typed.tsx` cannot do that — it knows one line and how to unwrite it,
+not a *set* — and both are staying, because they buy different things. `Typed`
+writes straight to a DOM node, so a hundred and twenty characters is a hundred
+and twenty text writes and no renders, which is what makes it safe on the name
+and the profile while a WebGL context is compiling shaders on the same beat.
+`TextType` costs a render per character. That is the right trade in exactly one
+place: a modal over a page that has not booted yet, where nothing is competing
+for the main thread. Do not reach for it on the readout.
+
+Two things changed on the way in. The cursor's blink is a GSAP tween in the
+original and stays one — `cursorBlinkDuration` is a prop, and a number handed
+to a CSS keyframe means either a hard-coded duration or a custom property per
+instance — but it is **killed on unmount**, which the original does not do: the
+card is removed the instant it is dismissed, and a tween on a detached node is
+a tween GSAP ticks forever. And `.mech-greet-line` carries a `min-height` for
+the longest line's fully wrapped height, because one box cycling two sentences
+of different lengths otherwise grows as the greeting wraps and collapses to a
+single line on "bye...", which is a modal changing size twice while you read
+it.
+
+It has no `loop`, so the reel stops on the sign-off rather than starting the
+greeting over behind a button that is by then asking to be pressed. `BUTTON_MS`
+is worked out from the text's own length rather than picked — editing the lines
+cannot leave the button arriving over a half-typed sentence — and off the
+*maximum* of the variable-speed range, because the button turning up early is
+the only failure that matters.
 
 ### The panel coming alive
 
@@ -2898,12 +3049,27 @@ the body copy it is only meant to mark. Narrow sets it to `--fold-cells * 9.5 *
 wide layout's 12 because `--px` is re-based *bigger* down here, and 12 would
 print larger on a phone than it does on a desktop.
 
-The write-up is the same accordion the wide layout has, and like the wide
-layout **every section arrives shut** — here and on desktop both. A project
-used to open on its overview (on this layout, on whatever it led with), and
-that is a screen answering before it has been asked: the subject is already on
-the stage and the title already above it, and a drawer standing open is the
-one thing in the column that nobody opened.
+The write-up is the same accordion the wide layout has, and **the overview
+puts itself down** — here and on desktop both.
+
+That has been round twice. It used to arrive already open, which was a screen
+answering before it had been asked. It then arrived shut, on the argument that
+a drawer standing open is the one thing in the column nobody opened — and what
+*that* missed is that the column then says nothing at all: a title, a tagline
+and seven closed headings, with the answer to "what is this" one press away and
+nothing indicating that pressing is where the writing lives.
+
+The distinction that resolves it is between **open on arrival** and **opening**.
+`setOpen(null)` still runs on the covered beat, so the fold is shut underneath
+the cover; `OVERVIEW_MS` (900ms, long enough for `.mech-side`'s own staggered
+entrance to finish) then puts it down on screen, where it is seen going down. A
+fold found open is furniture. A fold that opens is the machine answering.
+
+Once per project, held on a ref rather than state. `covered` also goes true for
+an ordinary step along the tile rail, and re-opening the overview every time
+somebody looked at a different picture would fight them for the column. The ref
+is cleared in the retarget, so coming back to a project you have already read
+opens it again.
 
 **Home's line-up needed its own two numbers here.** The objects *are* the index
 now, so all five of them have to be on the screen and reachable by thumb — and

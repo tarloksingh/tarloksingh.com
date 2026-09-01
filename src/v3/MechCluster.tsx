@@ -1,12 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import Segment from './Segment'
 import Typed from './Typed'
-import { MENU } from './model'
-import { sound } from './sound'
 import { useNarrow } from './narrow'
-import MechSlots, { hasSubject, SlotView } from './MechSlots'
-import { RiderSlot } from './MechRider'
-import type { Tag } from '../data/projects'
+import MechBank, { CELLS as BANK_CELLS } from './MechBank'
+import { SLOTS, FIELDS, FIELD_LABEL, type Field } from './bank'
 import type { ClusterTuning } from './clusterTuning'
 import './MechCluster.css'
 
@@ -92,43 +89,6 @@ const TITLES: Array<{ title: string; field: Field }> = [
   { title: 'DESIGN ENGINEER', field: 'design' }
 ]
 
-type Field = 'design' | 'code' | 'film' | 'games' | 'product'
-
-/** The scale, in the order it is printed. Three now, not five — `games` and
- *  `film` dropped off the dial row entirely rather than being left to
- *  overflow the rail's own width. */
-const FIELDS: Field[] = ['product', 'code', 'design']
-
-/** What each field reads on the dial row — not always the field's own key.
- *  `design` prints as "brand" here: the row is Product / Code / Brand, and the
- *  underlying `Field` stays `design` because that is still what `FIELD_OF`
- *  maps `3d` tags onto. Cosmetic, and kept separate from the key on purpose —
- *  the key is a fact about the data, the label is a fact about this scale. */
-const FIELD_LABEL: Record<Field, string> = {
-  design: 'brand',
-  code: 'code',
-  film: 'film',
-  games: 'games',
-  product: 'product'
-}
-
-/** Which field each of a project's tags falls under.
- *
- *  An editorial mapping, and it has to be — `TAGS` in projects.ts is a filter
- *  row written for browsing, and this is a five-mark scale on an instrument.
- *  Kept here rather than on the data because it is a fact about *this readout*
- *  and not about the projects. */
-const FIELD_OF: Record<Tag, Field> = {
-  '3d': 'design',
-  tools: 'code',
-  film: 'film',
-  motion: 'film',
-  music: 'film',
-  'video games': 'games',
-  hardware: 'product',
-  work: 'product'
-}
-
 /** How long a reading holds before the display settles onto the next one.
  *  It is one interval for both halves of the strip: with nothing selected the
  *  left display cycles the titles, and with a project up it cycles whatever I
@@ -146,81 +106,17 @@ const NAME = 'Tarlok Singh'
 const PROFILE =
   'Artist with 10+ years building 0→1 developer tools, AI applications, and consumer products and films. In love with building and designing beautiful things.'
 
-/** How many cells each half of the strip has. Wide enough for the longest
- *  title and the longest project name — "Red Dead Redemption 2" is twenty-one
- *  characters and it is not going to be abbreviated on the one display whose
- *  job is naming it. Fixed, and the same on both sides: a readout is a fixed
- *  number of lamps, and one that resized itself around each word would be a
- *  text box. */
-const CELLS = 21
-
-/** Cells in the role reel under the counts. Matches `CELLS` exactly now,
- *  not the role's own longest word — `.mech-display-role` and
- *  `.mech-work-rail-head` are boxed to the same width (`--count-w` and
- *  `--flank-w` are the same variable), and `Segment` scales by *width*, so
- *  two displays the same width but a different cell count render their
- *  glyphs at two different sizes: fewer cells over the same box is a bigger
- *  glyph. Sixteen used to read as deliberately louder than the project
- *  title opposite it; on one panel reporting two kinds of fact, both
- *  readouts should print at the same size. */
-const ROLE_CELLS = CELLS
-
-/** What the right-hand display says with nothing picked. A dark box on
- *  arrival reads as broken; this labels what the box is for, and it goes out
- *  the moment there is something real to put there. */
-const IDLE = 'projects'
-
-/** A role, split into the things it actually is. "Founder & Product Designer"
- *  is two jobs printed as one string, and the display cycles them — see
- *  `TITLE_MS`. */
-const rolesOf = (role: string): string[] =>
-  role
-    .split(/[&,/]/)
-    .map((part) => part.trim().toUpperCase())
-    .filter(Boolean)
-
-/* ---- the bank ----
-
-   `MENU`'s own order, which is a decision about what to lead with rather than
-   a sort — see `MENU_IDS` in model.ts. So slot 01 is the work that should be
-   seen first, and the number on a slot means something.
-
-   Everything a slot needs is worked out once, on the module. Twelve slots
-   re-deriving their own tags and hero on every pointer move is real work on
-   the one interaction this screen has. */
-interface Slot {
-  id: string
-  title: string
-  tagline: string
-  company: string
-  timeline: string
-  year: number
-  fields: Field[]
-  /** What I did on it, one job per entry — what the left display reads out
-   *  while this slot is up. */
-  roles: string[]
-  /** No material yet: Visa is under an NDA, Solomon's write-up is still to
-   *  come. The slot says so rather than being left out of the bank — both are
-   *  real work, and a gap at position 01 would read as a bug. */
-  restricted: boolean
-  /** Whether there is a subject to stand in the slot — a model or a piece.
-   *  Visa is the only one without, and its slot says so rather than being left
-   *  out of the bank. */
-  solid: boolean
-}
-
-const SLOTS: Slot[] = MENU.map((item) => ({
-  id: item.project.id,
-  title: item.project.title,
-  tagline: item.project.tagline,
-  company: item.project.company,
-  timeline: item.project.timeline,
-  year: item.project.year,
-  fields: [...new Set(item.project.tags.map((tag) => FIELD_OF[tag]).filter(Boolean))],
-  roles: rolesOf(item.project.role),
-  restricted: Boolean(item.project.restricted),
-  solid: hasSubject(item.project.id)
-}))
+/** Cells in the role reel over the counts, and in the `INTRO` cap beside it.
+ *  It is the bank head's own count (`CELLS` in `MechBank.tsx`) rather than a
+ *  number of its own: `.mech-display-role` and `.mech-work-rail-head` are
+ *  boxed to the same width (`--count-w` and `--flank-w` are the same
+ *  variable), and `Segment` scales by *width*, so two displays the same width
+ *  but a different cell count render their glyphs at two different sizes —
+ *  fewer cells over the same box is a bigger glyph. Sixteen (the role's own
+ *  longest word) used to read as deliberately louder than the project title
+ *  opposite it; on one panel reporting two kinds of fact, both readouts should
+ *  print at the same size. */
+const ROLE_CELLS = BANK_CELLS
 
 /* ---- the counts ----
 
@@ -241,24 +137,63 @@ const SLOTS: Slot[] = MENU.map((item) => ({
    as decoration wearing an instrument's styling — a gauge that never moves is
    a sticker. So the gauges are filtered to whichever field is current: the
    field the cycling title falls under with nothing picked, or every field the
-   selected project touches. Point at "filmmaker" and `YRS ACTIVE` becomes
-   years active *as one* — the span between the earliest and latest film work,
-   not the whole career. The scale each bar is read against (`of`) stays fixed
-   to the whole roster, though, so a field with two projects in it reads as a
-   short bar against the same ceiling rather than a differently-scaled gauge
-   every time the reading changes. */
-const COUNT_OF = { yrs: 16, roles: 12, orgs: 8 }
+   selected project touches. Point at "filmmaker" and `YRS` becomes years
+   active *as one* — the span between the earliest and latest film work, not
+   the whole career. The scale each bar is read against (`of`) stays fixed to
+   the whole roster, so a field with two projects in it reads as a short bar
+   against the same ceiling rather than a differently-scaled gauge every time
+   the reading changes.
+
+   ---- three readings, not one drawn three times ----
+
+   `ORGS SHIPPED` is gone, and the argument against it is not that the word is
+   ugly. Reading the three off every slot in turn gives this:
+
+   | slice                          | yrs | roles | orgs |
+   |--------------------------------|-----|-------|------|
+   | product (RDR2, GTA, Plus One…) | 11  | 4     | 3    |
+   | brand (Capsule, Mecha, Slider) | 10  | 3     | 2    |
+   | code (Stitchfam, Wyte, Block)  | 1   | 1     | 1    |
+
+   They never disagree. All three are *how big is this slice* drawn three
+   times — more projects in a field means more years and more roles and more
+   companies, always — so the block was one reading taking up three gauges'
+   worth of panel. Which also rules out the obvious swaps: projects, tags,
+   media count, anything of the form "count the things in the slice" inherits
+   exactly the same correlation.
+
+   To get three readings, at least one has to be a **position** rather than a
+   count. `recent` is that one: where the slice's latest work sits in the span
+   of everything, so it answers *is this live* rather than *is there a lot of
+   it*. The code slice is two years wide and lands at the top of the scale;
+   the Rockstar work is the same size and sits at the bottom. Two bars that
+   used to move together now separate, which is the whole reason for having a
+   second one.
+
+   And the ceilings are derived rather than picked. They were `{16, 12, 8}`
+   against real maxima of 11, 7 and 4 — so `ORGS` could never pass 38% of its
+   own bar and `ROLES` never passed 58%, regardless of what was selected. Two
+   thirds of two gauges were unreachable by construction, which is a scale
+   nothing is ever plotted against. The ceiling is the whole roster's own
+   figure now: everything reads full, a slice reads its share of it. */
+const YEARS = SLOTS.map((slot) => slot.year)
+const FIRST = Math.min(...YEARS)
+const SPAN = Math.max(...YEARS) - FIRST + 1
+const ALL_ROLES = new Set(SLOTS.flatMap((slot) => slot.roles)).size
 
 const countsFor = (fields: Field[]) => {
   const pool = SLOTS.filter((slot) => slot.fields.some((f) => fields.includes(f)))
   const rows = pool.length ? pool : SLOTS
   const years = rows.map((slot) => slot.year)
   const roles = new Set(rows.flatMap((slot) => slot.roles))
-  const orgs = new Set(rows.map((slot) => slot.company))
+  const latest = Math.max(...years)
   return [
-    { label: 'yrs', value: Math.max(...years) - Math.min(...years) + 1, of: COUNT_OF.yrs },
-    { label: 'roles', value: roles.size, of: COUNT_OF.roles },
-    { label: 'orgs', value: orgs.size, of: COUNT_OF.orgs }
+    { label: 'yrs', value: latest - Math.min(...years) + 1, of: SPAN, reads: 'years spanned' },
+    { label: 'roles', value: roles.size, of: ALL_ROLES, reads: 'roles worn' },
+    /* Not a count of anything. `latest` against the first year of the whole
+       roster: a full bar is work finished this year, an empty one is work that
+       stopped at the beginning. */
+    { label: 'recent', value: latest - FIRST + 1, of: SPAN, reads: 'how recent' }
   ]
 }
 
@@ -882,7 +817,7 @@ function Counts({ fields, start }: { fields: Field[]; start: boolean }) {
        still a readout, just one that is not repeating the row below it. */
     <section className="mech-counts">
       {rows.map((count, n) => (
-        <div className="mech-gauge" key={count.label} aria-label={`${count.value} ${count.label}`}>
+        <div className="mech-gauge" key={count.label} aria-label={`${count.reads}: ${count.value} of ${count.of}`}>
           {/* Stacked bottom-up: the strip is `column-reverse`, so the first
               cell is the one at the foot of the gauge and lighting the first
               `--lit` of them fills it from the bottom, which is the only
@@ -903,100 +838,6 @@ function Counts({ fields, start }: { fields: Field[]; start: boolean }) {
         </div>
       ))}
     </section>
-  )
-}
-
-/** One slot in the bank.
- *
- *  The subject is live only for the selected slot. Twelve of them turning at
- *  once is work nobody is looking at; selected, the slot comes alive. Which is
- *  also the clearest thing the bank does: the one you are on is the one that
- *  is moving. */
-function SlotBox({
-  slot,
-  n,
-  on,
-  arrived,
-  narrow,
-  onPick,
-  onOpen
-}: {
-  slot: Slot
-  n: number
-  on: boolean
-  /** Whether the deal has reached this slot — see `dealt` below. */
-  arrived: boolean
-  /** One tap opens, down here. See `onClick`. */
-  narrow: boolean
-  onPick: () => void
-  onOpen: () => void
-}) {
-  return (
-    <button
-      className="mech-slot"
-      data-on={on}
-      data-bare={!slot.solid}
-      aria-label={`${slot.title} — ${slot.tagline}, ${slot.timeline}`}
-      aria-pressed={on}
-      style={{ ['--i' as string]: n }}
-      onPointerEnter={(event) => {
-        if (event.pointerType === 'mouse') onPick()
-      }}
-      onFocus={onPick}
-      onClick={() => {
-        sound.select()
-        /* A press on the slot you are already on opens it; a press on any
-           other selects it first. On a mouse that is one click either way,
-           because the pointer selected it on the way in.
-
-           **One tap on a phone.** It used to be two, on the reasoning that a
-           control with no hover has to select before it commits and the first
-           tap was not wasted — it filled in the display, the scale and the
-           name above the bank. All three of those are gone from the narrow
-           layout now (the rail's head and the field dials are hidden, and
-           nothing else reads the selection down here), so the first tap
-           bought nothing and cost the one thing a tile in a grid of tiles is
-           obviously for. It still picks on the way through, so the beat
-           between the press and the screen leaving has the right project
-           lit under the reticle. */
-        if (narrow) {
-          onPick()
-          onOpen()
-        } else if (on) onOpen()
-        else onPick()
-      }}
-    >
-      {/* The bay. `SlotView` renders the `.mech-slot-shot` element itself and
-          scissors the shared canvas to it — see `MechSlots.tsx`, which is also
-          where the reason the element cannot be handed in from outside is
-          written down. Its children are three.js and never reach the DOM, so
-          the empty state is a sibling laid over it rather than a child. */}
-      {!slot.solid ? (
-        <span className="mech-slot-shot">
-          <span className="mech-slot-bare">no signal</span>
-        </span>
-      ) : slot.id === 'a-game' ? (
-        /* Solomon's rider is the one subject that will not share the bank's
-           canvas — the dark look needs its own environment-less rig, bloom and
-           exposure. See `MechRider.tsx`. */
-        <RiderSlot live={on} arrive={arrived} />
-      ) : (
-        <SlotView id={slot.id} live={on} arrive={arrived} />
-      )}
-
-      <span className="mech-slot-bar">
-        <span className="mech-slot-name">{slot.title}</span>
-        <span className="mech-slot-foot">
-          {/* Stencilled on the bay, the way a number on a bank of anything is.
-              It sits in the label rather than over the picture because the
-              picture is WebGL and the canvas paints above the DOM under it. */}
-          <span className="mech-slot-n">
-            <Segment text={String(n + 1).padStart(2, '0')} cells={2} settle={false} label={`slot ${n + 1}`} />
-          </span>
-          <span className="mech-slot-year">{slot.year}</span>
-        </span>
-      </span>
-    </button>
   )
 }
 
@@ -1073,7 +914,6 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
   const [picked, setPicked] = useState<number | null>(null)
   const [step, setStep] = useState(0)
   const release = useRef(0)
-  const railList = useRef<HTMLDivElement>(null)
   const narrow = useNarrow()
   const identRef = useRef<HTMLElement>(null)
   const nameProbe = useRef<HTMLHeadingElement>(null)
@@ -1096,48 +936,6 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
      around them to have finished arriving before they start. */
   const revUp = useBeat(up, IN.tach)
   const countsUp = useBeat(up, IN.counts)
-
-  /** How far down the rail the deal has got. The bank fills one slot at a
-   *  time from the top — the subjects are WebGL and the slot's CSS entrance
-   *  cannot carry them, so the stagger has to be told to the scene as well as
-   *  to the box. One timer, not twelve: an index that walks. */
-  const [dealt, setDealt] = useState(0)
-
-  useEffect(() => {
-    if (reduced()) {
-      setDealt(up ? SLOTS.length : 0)
-      return
-    }
-
-    /* Out, and the deal runs backwards: last in, first out, so the bank
-       empties from the bottom of the rail up. Quicker than it filled, because
-       the exit has a couple of hundred milliseconds and the entrance had the
-       whole screen. */
-    if (!up) {
-      const back = window.setInterval(() => {
-        setDealt((n) => {
-          if (n <= 1) window.clearInterval(back)
-          return Math.max(0, n - 1)
-        })
-      }, IN.slotBack)
-      return () => window.clearInterval(back)
-    }
-
-    let timer = 0
-    const open = window.setTimeout(() => {
-      setDealt(1)
-      timer = window.setInterval(() => {
-        setDealt((n) => {
-          if (n + 1 >= SLOTS.length) window.clearInterval(timer)
-          return n + 1
-        })
-      }, IN.slotStep)
-    }, IN.slot)
-    return () => {
-      window.clearTimeout(open)
-      window.clearInterval(timer)
-    }
-  }, [up])
 
   /* The field dials' ignition sweep: all the way round, back to nothing, then
      live. Three timers rather than a keyframe because the dial has no
@@ -1164,46 +962,6 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
     ]
     return () => timers.forEach(window.clearTimeout)
   }, [up])
-
-  /* The bank's canvas is `position: fixed` and scissors each subject to its
-     slot's own rect — see `MechSlots.tsx`. `getBoundingClientRect` does not
-     know the rail scrolls: a slot half scrolled out of `.mech-work-rail-list`
-     is clipped by the browser as a *button*, but its picture is drawn by a
-     scissor test against a rect that never shrank, so it painted straight
-     through the clip and out the top or bottom of the rail.
-
-     `--rail-clip-top` / `--rail-clip-bottom` are the fix: the rail-list's own
-     distance from the top and bottom of the viewport, written onto itself so
-     `.mech-bank-gl` — a descendant in the tree even though it is fixed —
-     inherits them and clips its own paint to exactly the band the list
-     occupies. Recomputed on scroll and resize, not every frame: the rail's
-     position on screen only changes on those two events. */
-  useEffect(() => {
-    const node = railList.current
-    if (!node) return
-    let raf = 0
-    const measure = () => {
-      raf = 0
-      const rect = node.getBoundingClientRect()
-      node.style.setProperty('--rail-clip-top', `${Math.max(0, rect.top)}px`)
-      node.style.setProperty('--rail-clip-bottom', `${Math.max(0, window.innerHeight - rect.bottom)}px`)
-    }
-    const request = () => {
-      if (raf) return
-      raf = requestAnimationFrame(measure)
-    }
-    request()
-    node.addEventListener('scroll', request, { passive: true })
-    window.addEventListener('resize', request)
-    const ro = new ResizeObserver(request)
-    ro.observe(node)
-    return () => {
-      node.removeEventListener('scroll', request)
-      window.removeEventListener('resize', request)
-      ro.disconnect()
-      cancelAnimationFrame(raf)
-    }
-  }, [])
 
   const slot = picked === null ? null : SLOTS[picked]
 
@@ -1458,90 +1216,27 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
         {/* ---- the rail ----
 
             Work, on the right, the full height of the panel — see *the bank is
-            the navigation* for why it is pressable slots rather than a graph. */}
-        <aside className="mech-work-rail">
-          {/* The project's own title, above the bank rather than in a run
-              across the top of the panel — pressing a slot still changes
-              what this reads.
-
-              **On both layouts, and it means two different things.** Wide, it
-              is a readout: a slot is selected on the way past and this names
-              it. Narrow, a tap opens the project rather than selecting it
-              (see `SlotBox`), so it never leaves `IDLE` — it is a *sign* on
-              the bank, the third of three down the column after the role reel
-              and `INTRO`, and it is left-set rather than centred because it
-              labels the grid under it rather than heading a centred block.
-              It came off this layout for a pass on the grounds that a display
-              which never changes is not a readout, which was true and beside
-              the point: what the column was missing was the label. */}
-          <div className="mech-work-rail-head">
-            {/* Always the warm channel — this is what has been picked, and
-                the rail and the scale under it are the two things on the
-                panel that report a *pick* rather than a *reading*. It does
-                not drop back to green with nothing selected, unlike the
-                rest of the panel's readouts: the row it sits above is warm
-                too now (see `.mech-slot-name`), and a header that changed
-                colour depending on what it named would say the opposite of
-                what the row under it says. */}
-            <div className="mech-display" data-on={slot !== null} data-idle={slot === null} data-warn>
-              <Segment
-                text={slot ? slot.title : IDLE}
-                cells={CELLS}
-                align={narrow ? 'left' : 'center'}
-                arrive
-                wait={IN.head}
-                start={up}
-                back={covered}
-                warn
-                label={slot ? slot.title : 'nothing selected'}
-              />
-            </div>
-          </div>
-
-          {/* Scrolls on its own — twelve rows at a size worth pressing do not
-              all fit a real window's height, and a rail is allowed to scroll
-              where a row of preset buttons across the bottom was not.
-              `railList` is what keeps the bank's canvas clipped to exactly
-              this band as it scrolls — see the effect above. */}
-          <div className="mech-work-rail-list" ref={railList}>
-            <div className="mech-bank" onPointerEnter={hold} onPointerLeave={letGo}>
-              {SLOTS.map((item, n) => (
-                <SlotBox
-                  key={item.id}
-                  slot={item}
-                  n={n}
-                  on={picked === n}
-                  arrived={n < dealt}
-                  narrow={narrow}
-                  onPick={() => {
-                    hold()
-                    setPicked(n)
-                  }}
-                  onOpen={() => onProject(item.id)}
-                />
-              ))}
-
-              {/* The one canvas every bay above draws into. Mounted inside the
-                  bank so it stacks with them — it covers the whole viewport
-                  and paints only in the rectangles the views give it. */}
-              <MechSlots />
-
-              {/* The scan lines and the accent that turn twelve full-colour
-                  renders into the panel's own phosphor. A grid of its own,
-                  matching the bank cell for cell — see *twelve renders, on one
-                  panel's supply* for why it cannot be a child of a bay or a
-                  flat sheet over the whole rail. */}
-              <span className="mech-bank-veil" aria-hidden>
-                {SLOTS.map((item) => (
-                  <i key={item.id} />
-                ))}
-              </span>
-            </div>
-          </div>
-
-          {/* The scale, moved down under the bank — see `FieldGauge` above.
-              Was under the instrument in the middle column; the rail is
-              where the rest of what a selection *says* lives now. */}
+            the navigation* for why it is pressable slots rather than a graph.
+            It is `MechBank.tsx` now rather than markup here, because a project
+            screen mounts the same rail down its own right-hand margin. */}
+        <MechBank
+          picked={picked}
+          onPick={(n) => {
+            hold()
+            setPicked(n)
+          }}
+          onOpen={onProject}
+          up={up}
+          covered={covered}
+          narrow={narrow}
+          title={slot ? slot.title : null}
+          onHold={hold}
+          onRelease={letGo}
+        >
+          {/* The scale, under the bank — see `FieldGauge` above. Handed in as
+              children rather than living in `MechBank`: the dials report on
+              home's own selection, and a project screen's copy of the bank
+              has no selection to report. */}
           <div className="mech-scale-row">
             {/* `arc` is the ignition sweep — every dial round to full, then
                 back to nothing, then whatever is actually being read. See the
@@ -1550,7 +1245,7 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
               <FieldGauge key={name} name={name} on={arc === 'full' || (arc === 'live' && marked.includes(name))} />
             ))}
           </div>
-        </aside>
+        </MechBank>
         </div>
       </div>
     </div>

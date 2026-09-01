@@ -444,9 +444,17 @@
      with the same bleed off `--g` every lit thing on this panel carries, so
      it reads as something the display is showing rather than something
      silkscreened onto the housing beside it. `--profile-ink` is still the
-     knob and still rides the bleed with it. */
-  color: rgba(var(--accent-rgb), var(--profile-ink, 0.62));
-  text-shadow: 0 0 calc(10 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.45 * var(--profile-ink, 0.62) * var(--g)));
+     knob and still rides the bleed with it.
+
+     **Its own hue, not the panel's.** `#8FE2CB` — a client-supplied green,
+     a shade cooler and bluer than either `--accent` here (`#a2e0cc`) or the
+     site's own (`#86e2b4`). Written as a local token rather than inline so
+     the alpha and the glow can both be built off one pair, the same way every
+     other colour on this panel is; and declared on this rule alone, because
+     it is one block's colour and not a change to what the panel is lit in. */
+  --profile-rgb: 143, 226, 203;
+  color: rgba(var(--profile-rgb), var(--profile-ink, 0.62));
+  text-shadow: 0 0 calc(10 * var(--px) * var(--g)) rgba(var(--profile-rgb), calc(0.45 * var(--profile-ink, 0.62) * var(--g)));
   font-size: calc(var(--profile-size, 11) * var(--type));
   line-height: 1.6;
 }
@@ -833,6 +841,64 @@
   min-height: 0;
 }
 
+/* ---- the bank, on a project screen ----
+
+   The same `<aside class="mech-work-rail">` home puts in its right flank,
+   mounted down a project's right-hand margin — see the note at the top of
+   `MechBank.tsx` for why it is on every screen now.
+
+   This wrapper exists to give it the two things it inherits from
+   `.mech-cluster` on home and would otherwise be missing: the panel's own
+   sizing tokens, and the panel's own green. `--accent` is redeclared on
+   `.mech-cluster` (a paler sage-mint than the site's) and every rule in this
+   file reads that rather than the root pair — mount the rail outside the
+   cluster without this and it comes up in the project screen's own accent,
+   which is a different green from the one the same eleven slots were drawn in
+   a moment earlier on home.
+
+   It occupies the margin the media strip used to have, on the same left edge
+   (`101` units, the header's own inset) and running between the header and
+   the footer rather than centring on nothing. */
+.mech-bank-col {
+  position: absolute;
+  right: calc(101 * var(--px));
+  /* Clear of the audio deck, which is docked to this same right edge at
+     `top: 90` and stands about forty units tall — see `.mech-deck-slot` in
+     Mech.css. Home has no deck in its right flank to duck under, which is why
+     its rail starts higher. */
+  top: calc(148 * var(--px));
+  bottom: calc(120 * var(--px));
+  width: calc(253 * var(--px));
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+
+  /* The panel's tokens, matching `.mech-cluster`'s. `--panel-h` is the one
+     that differs on purpose: on home the rail is sized to end level with the
+     tachometer beside it, and there is no tachometer here — it fills the
+     column it has been given instead. */
+  --count-w: calc(253 * var(--px));
+  --flank-w: var(--count-w);
+  --panel-h: 100%;
+  --accent: #a2e0cc;
+  --accent-rgb: 162, 224, 204;
+}
+
+/* No transform, for the same reason `.mech-cluster` and `.mech-body` carry
+   none: a transformed ancestor becomes the containing block for a
+   `position: fixed` descendant, and `.mech-bank-gl` — the canvas every bay is
+   scissored into — would quietly stop being the viewport. Its entrance is an
+   opacity fade for exactly that reason. */
+.mech-bank-col {
+  animation: mech-bank-col-in 500ms var(--ease) 1200ms both;
+}
+
+@keyframes mech-bank-col-in {
+  from {
+    opacity: 0;
+  }
+}
+
 /* The project's own title, above the bank. Pressing a slot changes what this
    reads — see `.mech-display` for the box it draws in, which is the same one
    the role reel uses on the other flank. */
@@ -1189,12 +1255,18 @@
 /* No material yet — Visa is under an NDA, Solomon's write-up is still to come.
    The slot says so. Both are real work and a gap at position 01 would read as
    a bug rather than as a fact about the project. */
+/* `NO SIGNAL` wraps to two lines in a bay this narrow, and the flex centring
+   only centres the *block* — each line inside it still aligned to the start,
+   so the shorter word sat hard against the left of the longer one and the
+   whole label read as pinned to a corner. `text-align` is what centres the
+   lines within the block; both are needed. */
 .mech-slot-bare {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  text-align: center;
   font-size: calc(9 * var(--type));
   letter-spacing: calc(1.8 * var(--type));
   text-transform: uppercase;
@@ -1744,6 +1816,26 @@
    nobody reads. */
 .mech[data-narrow='true'] .mech-work-rail-head {
   margin-bottom: calc(14 * var(--px));
+}
+
+/* A phone has no right-hand margin to put the rail in, so on a project screen
+   it is simply the last block down the page — after the write-up, which is
+   the reading order it wants: what this is, look at it, read about it, and
+   then here is everything else. `.mech-frame` is a flex column at this width
+   and `order: 7` puts it past the footer's own 6.
+
+   Absolutely positioned up there and static down here, which also means the
+   entrance has to be re-declared: the wide rule's `mech-bank-col-in` counts
+   1200ms off page load, and this block is a screen and a half below the fold
+   where nobody sees it happen. `data-arrive` — the shared narrow reveal in
+   Mech.css — draws it as it is reached instead. */
+.mech[data-narrow='true'] .mech-bank-col {
+  position: static;
+  order: 6;
+  width: 100%;
+  height: auto;
+  animation: none;
+  padding: calc(26 * var(--px)) var(--gutter) calc(30 * var(--px));
 }
 
 .mech[data-narrow='true'] .mech-work-rail-head .mech-display {

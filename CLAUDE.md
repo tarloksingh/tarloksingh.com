@@ -48,7 +48,7 @@ being false (which is why `navigator.clipboard` does not exist — see
 | `model.ts` | Projects flattened into what the panes draw; `MENU` is the index |
 | `Browse.tsx`, `Detail.tsx`, `Stage.tsx` | The timeline screen |
 | `Mech.tsx` | **Home and a project both** — layout, the swap, transit |
-| `MechCluster.tsx`, `MechCluster.css` | **Home**: the instrument cluster — the shoot lamp, the display run, the tachometer, the name, the counts, and the bank |
+| `MechCluster.tsx`, `MechCluster.css` | **Home**: the instrument cluster — the display run, the tachometer, the name and the counts. The bank is `MechBank.tsx` |
 | `MechSlots.tsx` | Every project's own 3D subject, one per slot, one canvas |
 | `Segment.tsx`, `Segment.css` | The fourteen-segment display, drawn in SVG |
 | `clusterTuning.ts` | Home's four knobs, the **Cluster** tab |
@@ -57,7 +57,8 @@ being false (which is why `navigator.clipboard` does not exist — see
 | `MechPins.tsx`, `labelTuning.ts` | Placing a picture's labels (**P**) and copying them out |
 | `MechModel.tsx` | The subject: one GLB, lit, drifting, watching, shootable |
 | `MechHud.tsx`, `MechCursor.tsx` | The dashboard, and the reticle |
-| `MechGreeting.tsx` | The note before the boot, and the press that starts the sound |
+| `MechBank.tsx`, `bank.ts` | **The rail of work, on every screen** — the slots, and the roster they are built from |
+| `MechGreeting.tsx`, `TextType.tsx` | The note before the boot, the press that starts the sound, and the reel it is typed with |
 | `MechTiles.tsx` | The boot: the grid's cells struck in a ring from the middle |
 | `MechBird.tsx`, `MechLaser.tsx` | The bird, and the gun |
 | `MechDeck.tsx`, `sound.ts` | The music deck, and every synthesised sound |
@@ -226,6 +227,35 @@ all of them look like something other than what they are:
   its `animation-name` changes. Same rule as the frame swap.
 
 ## Where this is up to
+
+**The bank is on every screen.** It was one of home's blocks and vanished the
+moment you opened a project, which made the list of what is on this site the
+one thing that disappeared when you used it. `MechBank.tsx` is mounted from two
+places now — home's right flank and a project's right-hand margin
+(`.mech-bank-col`) — and the media strip took the foot of the frame in
+exchange, horizontal on both layouts. `bank.ts` holds the roster both
+`MechBank` and `MechCluster` read, because a const in one component's file that
+another imports is a circular import waiting to happen. **Only ever one bank is
+mounted**: `MechSlots` is inside it, and that is the single WebGL canvas all
+eleven subjects are scissored into. One prop decides everything that differs —
+`onPick` is passed on home and omitted on a project, which makes the head a
+sign rather than a readout, makes a press open directly, and turns on the
+scroll-the-lit-slot-into-view. `.mech-bank-col` has to re-declare the cluster's
+tokens *and its `--accent`*, and take `--cluster-slot` from JS. See **The bank
+is on every screen** in `README.md`.
+
+**The overview puts itself down.** A project arrives with its first fold
+opening 900ms after the cover lifts — not open on arrival, which is the whole
+distinction: `setOpen(null)` still runs under the cover and `OVERVIEW_MS` puts
+it down where it can be seen. Once per project, on a ref, because `covered` is
+also true for a tile-rail step.
+
+**The greeting is once every ten minutes, and it is a reel.** `shouldGreet` is
+a timestamp in `localStorage`, not a flag. The note types one line, deletes it
+and types the next — `TextType.tsx`, React Bits' component ported to TS, and
+the *only* place it is used. `Typed.tsx` is still what the readout uses:
+`TextType` costs a render per character, which is affordable over a page that
+has not booted and nowhere else.
 
 **The bank's canvas scrolls with the bank on a phone.** `.mech-bank-gl` is
 `position: absolute` over `.mech-bank` on narrow rather than fixed over the
