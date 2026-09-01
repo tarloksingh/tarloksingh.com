@@ -44,7 +44,9 @@ export const NARROW_FALLBACK: NarrowTuning = {
 }
 
 /** Per-project overrides, pasted back from the panel's copy button. */
-export const NARROW_TUNING: Record<string, Partial<NarrowTuning>> = {}
+export const NARROW_TUNING: Record<string, Partial<NarrowTuning>> = {
+  'mr-takahashi': { model: 1.2, media: 1 }
+}
 
 const STORE_KEY = 'v3.narrow.tuning.v2'
 

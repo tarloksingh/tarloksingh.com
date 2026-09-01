@@ -53,9 +53,9 @@ export interface Note {
 
 export const NOTES: Record<string, Note[]> = {
   'mr-takahashi/model': [
-    { label: 'Name', value: 'Spoke in English and Japanese. ', at: [-0.0519, 0.5049], to: [-0.2072, 0.458], atNarrow: [0.2698, 0.1272], toNarrow: [0.1714, -0.0473] },
-    { label: '', value: 'Sculpted and animated in Blender.e', at: [0.9534, 0.1661], to: [1.0561, 0.0889], atNarrow: [0.5487, 0.08], toNarrow: [0.6866, -0.135] },
-    { label: '', value: 'We used whisper voice to text to get the input, and Llama 3 as the intellegence. ', at: [0.0132, 0.8611], to: [-0.0976, 0.9056], atNarrow: [0.6624, 0.9948], toNarrow: [0.696, 1.0329] }
+    { label: 'Name', value: 'Spoke in English and Japanese. ', at: [-0.0519, 0.5049], to: [-0.2072, 0.458], atNarrow: [0.6692, 0.0453], toNarrow: [0.7467, -0.0569] },
+    { label: '', value: 'Sculpted and animated in Blender.e', at: [0.9534, 0.1661], to: [1.0561, 0.0889], atNarrow: [0.3093, 0.8346], toNarrow: [0.2663, 0.9075] },
+    { label: '', value: 'We used whisper voice to text to get the input, and Llama 3 as the intellegence. ', at: [0.0132, 0.8611], to: [-0.0976, 0.9056], atNarrow: [0.4776, 0.9247], toNarrow: [0.4914, 0.9517] }
   ],
   'mr-takahashi/MrTakahashi_Demo.mp4': [
     { label: 'made in', value: 'I used the Black Magic Ursa Mini 4.6k to film the demo video. ', fold: 'tools', at: [0.9331, 0.5969], to: [1.0562, 0.6823] },
