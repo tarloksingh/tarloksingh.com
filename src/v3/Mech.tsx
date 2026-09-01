@@ -320,10 +320,19 @@ const TITLE_CELLS = 21
  *  "roles" are what say so. Same argument as `CELLS` in MechCluster.tsx. */
 const FOLD_CELLS = 19
 
-const foldsFor = (project: Entry['project'] | undefined) => {
+/** `carded` is whether the restricted note is on the stage — see `bare` below.
+ *  When it is, the whole of what can be said about the project is already
+ *  printed in the middle of the screen, and "project overview" opens a drawer
+ *  onto a second, shorter paragraph about the same thing. Visa is the case
+ *  that made it obvious: one fold, holding one sentence, under a card holding
+ *  five. The column is empty on those screens instead, which is honest — there
+ *  is no write-up to open yet. */
+const foldsFor = (project: Entry['project'] | undefined, carded: boolean) => {
   if (!project) return []
   return [
-    ...(project.intro ? [{ id: 'overview', title: 'project overview', text: project.intro, tags: undefined }] : []),
+    ...(project.intro && !carded
+      ? [{ id: 'overview', title: 'project overview', text: project.intro, tags: undefined }]
+      : []),
     ...project.sections
       .filter((section) => section.id === 'roles')
       .map((section) => ({ id: section.id, title: section.title.toLowerCase(), text: section.text, tags: section.tags })),
@@ -1141,6 +1150,20 @@ export default function Mech({ id, onProject, onHome }: Props) {
       setShownId(id)
       setIndex(0)
       setShown(0)
+      /* Back to the top, under the cover.
+
+         `.mech` is the scroll container on the narrow layout (the wide one
+         does not scroll at all), and it is never remounted — home and a
+         project are the same element, which is the whole point of this
+         component. So the scroll offset survives the change: press a slot
+         from halfway down the bank and the project arrives already scrolled
+         to its write-up, with the subject it was opened for off the top of
+         the window.
+
+         Done here rather than on mount because here is the one frame the
+         screen is fully covered — a jump the reader can see is a jump, and
+         this one lands while there is nothing to see. */
+      root.current?.scrollTo({ top: 0, behavior: 'auto' })
       /* Shut, not open on the overview. A project used to arrive with its
          first fold already down, which is a screen answering a question
          nobody asked yet — the subject is on the stage and the title is
@@ -1322,7 +1345,6 @@ export default function Mech({ id, onProject, onHome }: Props) {
   if (!home && !project) return <div className="mech" />
 
   const notes = entry && current ? notesFor(entry, current, drafts) : []
-  const folds = foldsFor(project ?? undefined)
   /* A project in the index with nothing to put on the stage — Visa, under an
      NDA, and Solomon, whose write-up is still to come. Both are real work and
      both are listed, so opening one has to land somewhere: the `restricted`
@@ -1333,6 +1355,10 @@ export default function Mech({ id, onProject, onHome }: Props) {
      — but the rider *is* the material until the write-up lands. See
      `MechRider.tsx`. */
   const riderStage = bare && project?.id === 'a-game'
+  /* Computed after the two above, because whether the overview fold is worth
+     opening depends on whether the card under it already said the same thing.
+     See `foldsFor`. */
+  const folds = foldsFor(project ?? undefined, bare && !riderStage)
   /* What the readout in the side column is about — only ever a project. Home
      has no side column any more: the whole screen is the cluster, and the name
      sits in the middle of it. */

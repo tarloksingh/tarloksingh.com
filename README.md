@@ -142,6 +142,17 @@ leaves, `shownId` changes underneath it, what replaces it draws itself in.
 Same `EXIT_MS`, same four beats, same code path. The background cannot flicker
 because nothing repaints it.
 
+**And the scroll survives it too, which it should not.** On the narrow layout
+`.mech` is the scroll container, and it is exactly the element that is never
+remounted — so pressing a slot from halfway down the bank landed you halfway
+down the project, with the subject you opened it for off the top of the
+window. It reads as the page having loaded wrong. The fix is one line in the
+retarget effect, next to `setShownId`: `root.current?.scrollTo({ top: 0 })`.
+It goes *there* and not in an effect on mount, because that timeout is the one
+beat the screen is fully covered — a jump you can see is a jump, and this one
+lands while there is nothing to see. Nothing had to change on the wide layout,
+which does not scroll at all.
+
 The index and the rail take their exit from `data-covered` on the root, which
 is already true for the whole length of a retarget — so whichever one is up
 has faded before the swap and the other fades in after it, and neither is ever
@@ -841,6 +852,20 @@ row height. It has to be one value rather than an `aspect-ratio` on each,
 because the bank and the veil laid over it are two grids that must agree track
 for track, and a veil cell is a square where a bank row is a square plus its
 label.
+
+**And "plus its label" has to be the label's real height.** `--slot-label` is
+the second half of that row and the row is a *fixed* track, so a bar taller
+than its allowance does not push the row down — it overflows into the one
+underneath, which is what read as the name and the year sitting "tight and
+misaligned in there". The bar is two lines of a 12-unit name, a gap, and a row
+holding the number and the year, inside its own padding: about ninety units
+down there, against the fifty-six it was given. The number's own alignment in
+that row is a second thing and looks like the same one — `Segment`'s viewBox is
+forty units tall with the glyph between 2 and 34, so the digits sit five per
+cent of the box above the box's middle and centring the *box* against the year
+centres nothing you can see. `.mech-slot-n` is nudged back down by that five
+per cent, as a percentage of its own height rather than a pixel guessed at one
+window size.
 
 The subject is never quite still while it sits in its bay, and it turns all
 the time — a full rotation every fourteen seconds or so, at a fixed rate that
@@ -2429,6 +2454,17 @@ competing for it, so a section marker can take most of the width; what it must
 not do is reach the gutters, where it stops being a readout in a panel and
 becomes a headline.
 
+**A restricted project has no overview fold.** Visa, 3D Printing and Mr
+Grocery all put their `restricted` note on a card in the middle of the stage,
+because there is nothing else to put there — and then printed "project
+overview" underneath, opening onto a second, shorter paragraph about the same
+thing. One drawer, holding one sentence, under a card holding five. `foldsFor`
+takes a `carded` flag now and drops the overview when the card is up, which
+leaves those screens with an empty column. That is the honest state: there is
+no write-up to open yet, and a fold saying so twice is worse than no fold.
+Solomon is the exception the flag exists for — it is `bare` too, but the rider
+is on its stage rather than the card, so its overview stays.
+
 It replaced a `Typed` line, and `Segment` grew one prop to carry that arrival
 over. **`arrive`** runs the settle on the *first* word rather than only on a
 change. The default is off and the comment in `Segment.tsx` says why — a readout
@@ -2887,6 +2923,18 @@ than as a panel coming up. Three things, all narrow-only:
   *background* moves at a third of it. The background and not the element: a
   transform would drag the mask and the blurred copy with it, and both of
   those belong to the window rather than to the page.
+
+  **Captured means every scroller, not the one you meant.** A capturing
+  listener on `window` hears the scroll event of any element on the page, and
+  the handler read `event.target.scrollTop` off whatever fired. The fact deck
+  under a picture (`MechFacts.tsx`) scrolls *sideways*, so its `scrollTop` is
+  a permanent zero — and the first swipe across it wrote `--scrolled: 0px`
+  and snapped the grid back to the top of its parallax while the page had not
+  moved at all. That is the whole of the "background jitters on the first
+  swipe, project screens only" bug: one number, taken from the wrong box. The
+  handler now ignores any scroller that is not `.mech` itself. Anything else
+  that ever scrolls inside this screen inherits the fix for free, which is
+  the reason it is a check on the element rather than on the axis.
 
 The menu draws itself in the same way — every row typed out, staggered down
 the list, on the same `SplitReveal` the taglines and the section titles use.
@@ -3805,6 +3853,19 @@ which is a credit line and not a contact. Same address and the same `mailto:`
 — this is a static site and a contact *form* would need a backend nobody asked
 for — given the shape every other readout here has: a strip naming what it is,
 and the value beside it.
+
+**It is one line on a phone as well.** It was stacked and centred for a while,
+on the argument that two things at opposite ends of a 390-point line are two
+things nowhere near each other. What that produced was a centred block, which
+is a sign-off — every other layout of this page ends in a machine's footer with
+its two corners occupied, and the phone had no reason to be the one that
+doesn't. What made the row fit is the size and only the size: both halves are
+boxed in `ch` against their own character counts (see `.mech-comms-to`), so the
+pair costs exactly 46 monospace advances and no amount of layout can shrink it.
+At the wide layout's 11 units that is wider than a small phone; at 8.5 the two
+ends clear each other on a 320-point window, and it prints at very nearly the
+size the wide footer already does — `--type` has bottomed out on its rem floor
+by then either way.
 
 ## One number
 

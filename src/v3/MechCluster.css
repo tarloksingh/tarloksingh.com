@@ -1195,8 +1195,11 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: calc(4 * var(--px));
-  padding: calc(9 * var(--px)) calc(12 * var(--px));
+  /* Room, rather than the least that fits. Two lines of name and a row under
+     them at nine units of padding sat hard against all four edges of the bay's
+     label — the box read as clipped rather than as tight. */
+  gap: calc(5 * var(--px));
+  padding: calc(13 * var(--px)) calc(12 * var(--px));
   border-left: 1px solid rgba(var(--accent-rgb), 0.2);
   flex: 1;
   min-width: 0;
@@ -1241,10 +1244,18 @@
   margin-top: calc(3 * var(--px));
 }
 
+/* The number and the year read as sitting on different lines, and the display
+   is why: `Segment`'s viewBox is forty units tall with the glyph drawn between
+   2 and 34, so its digits sit five per cent of the box above the box's own
+   middle (`CELL` and the `viewBox` in Segment.tsx). Centring the *box* against
+   the year therefore centres nothing you can see. Nudged back down by that
+   same five per cent — a percentage of its own height, so it holds at any
+   `--px` rather than being a pixel guessed at one window size. */
 .mech-slot-n {
   display: block;
   flex: none;
   width: calc(24 * var(--px));
+  transform: translateY(5%);
   opacity: 0.7;
   transition: opacity 180ms linear;
 }
@@ -1732,7 +1743,15 @@
      framed the subjects out — every slot shares one camera whose aspect is the
      bay's (see `MechSlots.tsx`). */
   --slot-bay: calc((100vw - 98 * var(--px)) / 2);
-  grid-auto-rows: calc(var(--slot-bay) + var(--slot-label, 56) * var(--px));
+  /* The label's share of the row, and it has to be the label's *real* height:
+     the row is a fixed track, so a bar taller than its allowance does not push
+     the row down, it overflows into the one under it — which is what "tight
+     and misaligned in there" was. Down here that bar is two lines of a
+     12-unit name, a gap, and a row holding the number and the year, inside
+     13 units of padding top and bottom. Fifty-six units was short of that
+     before the padding went up, and the second line of every long name was
+     sitting on the bay below it. */
+  grid-auto-rows: calc(var(--slot-bay) + var(--slot-label, 96) * var(--px));
   gap: calc(10 * var(--px));
 }
 

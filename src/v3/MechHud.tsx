@@ -129,7 +129,16 @@ function MechHud({ gridOn = true }: { gridOn?: boolean }) {
 
     const read = (event: Event) => {
       const target = event.target as HTMLElement | Document | null
-      const top = target && 'scrollTop' in target ? (target as HTMLElement).scrollTop : window.scrollY
+      /* Captured, so this hears *every* scroller on the page and not only the
+         one the panel rides. The fact deck under a picture (`MechFacts.tsx`)
+         scrolls sideways, and its `scrollTop` is a permanent zero — so the
+         first swipe across it wrote `--scrolled: 0px` and snapped the grid
+         back to the top of its parallax while the page had not moved at all.
+         That is the "background jitters on the first swipe, project screens
+         only" bug: one number, from the wrong box. */
+      const el = target && 'scrollTop' in target ? (target as HTMLElement) : null
+      if (el && !el.classList.contains('mech')) return
+      const top = el ? el.scrollTop : window.scrollY
       if (raf) return
       raf = requestAnimationFrame(() => {
         raf = 0

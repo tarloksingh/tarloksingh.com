@@ -4027,15 +4027,25 @@
 /* ---- the contact line ---- */
 
 /* Narrow, the footer is a block in the scroll rather than a strip across the
-   bottom of a window, and two things at opposite ends of a 390-point line is
-   two things nowhere near each other. Stacked and centred instead — which is
-   also why `margin-left: auto` has to come off the address here. */
+   bottom of a window — but it is still the same line, held apart at the same
+   two corners. It was stacked and centred for a while, on the argument that
+   two things at opposite ends of a 390-point line are two things nowhere near
+   each other; what that actually produced was a centred credit block, which
+   is a sign-off, where every other layout has a machine's footer.
+
+   What made the row fit is the size. Both halves are boxed in `ch` against
+   their own character counts (see `.mech-comms-to`), so the pair costs exactly
+   46 monospace advances and nothing about the layout can shrink it — the only
+   knob is the font. At the wide layout's 11 that is wider than a small phone;
+   at 8.5 the two ends clear each other with room to spare on a 320-point
+   window, and it prints at very nearly the size the wide footer already does,
+   because `--type` has bottomed out on its rem floor by then either way. */
 .mech[data-narrow='true'] .mech-foot {
-  flex-direction: column;
-  align-items: center;
-  gap: calc(12 * var(--px));
   position: static;
-  justify-content: center;
+  justify-content: space-between;
+  align-items: center;
+  gap: calc(10 * var(--px));
+  font-size: calc(8.5 * var(--type));
   margin-top: calc(34 * var(--px));
   padding: calc(26 * var(--px)) var(--gutter) calc(10 * var(--px));
 }
