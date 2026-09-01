@@ -3046,11 +3046,21 @@ What is there:
   Japanese." was a box with a hand's width of empty green after it — and the
   shoulder of the next card, which is the thing that says the deck is
   swipeable, is not worth faking by padding one out.
-- **The halo needs room in the scroller.** A card's glow is drawn well outside
-  its border and a scroll container clips to its padding box on both axes —
-  `overflow-y: visible` is not available, because a box that scrolls on one
-  axis computes `visible` to `auto` on the other. So the room is padding, and a
-  negative margin hands it back to the layout.
+- A card is **the height of its own sentence**, and carries **its number in
+  front of the words** rather than on a line above them. Both are the same
+  complaint: a flex row stretches its items, so a one-line fact was drawn in a
+  box built for the longest fact in the set, and the number cost it another
+  line on top.
+- **The card is the one block on the site with no halo.** A scroll container
+  clips to its padding box on both axes — `overflow-y: visible` is not
+  available, because a box that scrolls on one axis computes `visible` to
+  `auto` on the other — so a glow drawn outside the border is cut off square
+  along the whole length of the deck. That reads as a lit panel sitting behind
+  the cards rather than as light coming off them, and padding the run out far
+  enough only moves the cut. The border does the work instead. The rule that
+  ran out of the number to the far edge went at the same time: a divider
+  separates a heading from a body, and this is one line with a number in front
+  of it.
 
 The two halves are joined by an index, held in `Mech` because they sit in
 different halves of the tree. Press a mark and its card comes up; swipe to a
