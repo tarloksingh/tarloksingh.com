@@ -153,6 +153,28 @@ beat the screen is fully covered — a jump you can see is a jump, and this one
 lands while there is nothing to see. Nothing had to change on the wide layout,
 which does not scroll at all.
 
+**Everything on the stage has to key off `shownId`, and one thing did not.**
+`id` is the URL and it changes the instant you press a tile — a full
+`EXIT_MS` before the screen does. `useModelTuning` was keyed on it, so for the
+whole of its own fade the outgoing subject was being re-framed and re-lit with
+the *incoming* project's rig. Leaving Capsule C1 (`fill: 0.15`) for home
+retuned it to Mr. Takahashi's `0.56` and it swelled to four times its size and
+past the edges of the window while dissolving; the two guns swap a focal
+length as well (18mm against 200), so the framing jumped with the scale. It
+read as the subject flinching on its way out, and it was on both layouts and
+on every route out of a project — to another project or to home.
+
+`useNarrowTuning` had it too, and compounded it: `model` multiplies the
+subject's `fill`, so on a phone both numbers moved at once. `useProductTuning`
+was always keyed on `shownId`, which is exactly why a *piece* never flinched
+and only the four GLB subjects did — a good reminder that "it only happens on
+some projects" is usually a difference in the code and not in the data.
+
+All three key off `shownId` now, which meant declaring it above them rather
+than below. Nothing about a subject moves after the cover starts coming down,
+and the incoming one still arrives on its own rig because it mounts on the
+`hold` beat, by which point `shownId` has already swung over.
+
 The index and the rail take their exit from `data-covered` on the root, which
 is already true for the whole length of a retarget — so whichever one is up
 has faded before the swap and the other fades in after it, and neither is ever
@@ -2951,12 +2973,16 @@ nothing and cost the one thing a tile in a grid of tiles is obviously for.
 `SlotBox` still picks on the way through, so the beat between the press and
 the screen leaving has the right project lit under the reticle.
 
-**The rail's head is gone with it.** With nothing selectable it read
-`projects` from the moment the page arrived until the moment the screen left
-— a twenty-one cell lamp housing spelling out the name of the block directly
-underneath it. The slots say what they are.
+**The rail's head came off and went back on.** It came off because with
+nothing selectable it read `projects` from the page arriving to the screen
+leaving — a display that never changes is not a readout. That was true and
+beside the point: what the column was missing was not a readout, it was a
+**label**. It is back, and it means a different thing on each layout — a
+reading wide, a sign on the bank narrow — which is why it is `align="left"`
+down here and centred up there. A sign that labels a grid sits at the grid's
+own left edge; a heading over a centred block does not.
 
-**So are the field dials.** Product / Code / Brand report on the selection,
+**The field dials are still gone.** Product / Code / Brand report on the selection,
 and there is no selection to report; all three sat at whatever the cycling
 title happened to fall under. Three rings and three words is also most of a
 phone's width spent on the smallest reading on the panel. `display: none`
@@ -2964,16 +2990,38 @@ rather than an unmounted branch — the ignition sweep that drives them is the
 same one the wide layout runs, and a second code path for "did this screen
 draw the dials" is a second thing to keep in step.
 
-**The role reel moves out of the flank and up between the instrument and the
-name.** Wide, it stands over the gauges, with the bars beneath it as its
-scale — the arrangement the whole panel uses. Down here the counts are a wide
-row rather than a column of gauges, so a reading standing over them was a
-caption on a chart; above the name it is the line that says what the name
-*does*, which is the order those two facts want to be read in. Its size is a
-**width**, not a font size: `Segment` scales its cells to whatever box it is
-given, so shrinking the box is the only knob that makes the reading smaller
-while keeping the cells square. `roleSize` / `roleTop` / `roleGap` on the
-Cluster tab.
+**The column is reordered around the name.** Wide, the role reel stands over
+the gauges with the bars beneath it as its scale, and `INTRO` caps the
+paragraph in the instrument's head row. Neither arrangement survives one
+column: the counts are a wide row down here rather than a stack of gauges, so
+a reading standing over them is a caption on a chart, and the intro following
+the counts put the one paragraph on the page — the block that says what the
+name above it actually *does* — three screens below it, after two instruments
+nobody had asked a question of yet. So the order is
+
+> tachometer → role reel → **the name** → `INTRO` → the paragraph → the counts
+> → `PROJECTS` → the bank
+
+which is what the name means, then the name, then what it means at length,
+then the numbers behind it. `.mech-intro` takes `order: 1` and `.mech-flank`
+`order: 2` to get there; the markup is untouched, because the wide layout
+needs the opposite of both.
+
+**And the three signs are one size.** The role reel, `INTRO` and `PROJECTS`
+are all twenty-one-cell `Segment` displays, and `Segment` scales its glyphs to
+whatever box it is handed — so equal boxes is the only way to get equal type
+out of them, and one number is the only way to keep three boxes equal.
+`--sign` on `.mech-body` is that number (`--role-size` × 100%), and it works
+at all three use sites because all three parents are full-width children of
+the same column even though each percentage is measured against its own. The
+reel and `INTRO` are centred, `PROJECTS` is not. Size is a **width** and not a
+font size for the same reason: shrinking the box is the only knob that makes a
+segment reading smaller while keeping its cells square. `roleSize` /
+`roleTop` / `roleGap` on the Cluster tab move all of it.
+
+`.mech-ident` also gave up its 26 units of top padding. The reel sits directly
+on the name now, and the reel's own bottom padding plus `.mech-main`'s column
+gap is already more separation than a title and the line above it want.
 
 **And the bank lines up with everything above it.** `.mech-work-rail` carried
 fourteen units of padding of its own, bought so a full-width slot was not

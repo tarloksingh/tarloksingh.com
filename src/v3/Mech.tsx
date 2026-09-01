@@ -986,26 +986,46 @@ interface Props {
 
 
 export default function Mech({ id, onProject, onHome }: Props) {
-  /* Keyed on whichever model is on screen. The two GLB models used to share
-     one rig, so Capsule C1 — an injection-moulded enclosure — was lit by a
-     setup built around a face. At home it is always Mr. Takahashi, who stands
-     in the cast. See `MODEL_RIGS` in `modelTuning.ts`. */
-  const tuning = useModelTuning(id ?? 'mr-takahashi')
+  /* The project on screen trails the one in the URL by a transit, the same
+     way the frame trails the tile you picked. Retargeting is the readout
+     swinging over to something else, not a page being replaced.
+
+     It is declared first because three tuning hooks below have to key off it,
+     and one of them used to key off `id` instead — see the note on `tuning`. */
+  const [shownId, setShownId] = useState<string | null>(id)
+  /* Keyed on whichever model is **on screen**, which is `shownId` and not
+     `id`. The two GLB models used to share one rig, so Capsule C1 — an
+     injection-moulded enclosure — was lit by a setup built around a face. At
+     home it is always Mr. Takahashi, who stands in the cast. See `MODEL_RIGS`
+     in `modelTuning.ts`.
+
+     **`id` was the whole of the flash on the way out.** It is the URL, and it
+     changes the instant you press a tile — a full `EXIT_MS` before the screen
+     does. So for the length of its own fade the outgoing subject was being
+     re-framed and re-lit with the *incoming* project's numbers: leaving
+     Capsule C1 (`fill: 0.15`) for home retuned it to Mr. Takahashi's 0.56 and
+     it grew almost four times over while dissolving, and the two guns swap a
+     focal length as well (18mm against 200), so the framing jumped with the
+     size. It read as the subject flinching before it left. Keyed on what is
+     actually on the stage, nothing about a subject moves after the cover
+     starts coming down; the incoming one mounts on the `hold` beat with
+     `shownId` already swung over, so it still arrives on its own rig. */
+  const tuning = useModelTuning(shownId ?? 'mr-takahashi')
   /* The phone's two knobs — how large the subject and the pictures sit in a
      stage that is no longer a 16:9 island. Its own panel, because the other
-     two are hidden at this width. See `narrowTuning.ts`. */
-  const { store: narrowStore, values: narrowScale } = useNarrowTuning(id ?? 'mr-takahashi')
+     two are hidden at this width. Keyed on `shownId` for the same reason, and
+     it had the same bug: `model` multiplies the subject's `fill`, so on a
+     phone the flash was both numbers changing at once. See `narrowTuning.ts`. */
+  const { store: narrowStore, values: narrowScale } = useNarrowTuning(shownId ?? 'mr-takahashi')
   /* The label maker's half that belongs on the panel rather than over the
      picture: copying out, reverting, and adding a line without having a
      picture to click on. See `labelTuning.ts`. */
   const [handed, setHanded] = useState<Handed>(null)
   const labels = useLabelTuning(setHanded)
-  /* The project on screen trails the one in the URL by a transit, the same
-     way the frame trails the tile you picked. Retargeting is the readout
-     swinging over to something else, not a page being replaced. */
-  const [shownId, setShownId] = useState<string | null>(id)
   /* The pieces' own studio, on its own panel. Keyed on the project because
-     the per-piece folder shows one piece at a time — see `productTuning.ts`. */
+     the per-piece folder shows one piece at a time — see `productTuning.ts`.
+     This one was always keyed on `shownId`, which is why a piece never
+     flinched on its way out and only the two GLB subjects did. */
   const pieces = useProductTuning(shownId ?? '')
   /* Mecha Station's three parts, which no other piece has — one object's
      `size` cannot pull a register out of a monitor's foot. Its tab only shows

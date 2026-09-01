@@ -246,14 +246,28 @@ it is dismissed. The press is also the gesture that opens the AudioContext, so
 `sound.boot()` moved onto it (before this it fired into a suspended context on
 every load and was never heard). Every load, including a project deep link.
 
-**Home's narrow layout lost three blocks and moved a fourth.** One tap opens a
-project instead of two; the rail's head and the field dials are hidden (both
-reported on a selection that no longer exists down there); the role reel moved
-out of the flank to sit between the instrument and the name, with `roleSize` /
-`roleTop` / `roleGap` on the Cluster tab — which is now open on narrow home
-for exactly that reason. The bank also gave back the fourteen units of padding
+**Home's narrow layout is reordered around the name.** One tap opens a project
+instead of two, and the field dials are hidden (they reported on a selection
+that no longer exists down there). The column reads tachometer → role reel →
+**name** → `INTRO` → paragraph → counts → `PROJECTS` → bank, which is
+`order: 1` on `.mech-intro` and `order: 2` on `.mech-flank`; the markup is
+untouched because the wide layout wants the opposite. The three segment signs
+(reel, `INTRO`, `PROJECTS`) are boxed to one shared `--sign` width, because
+`Segment` scales by width and equal boxes is the only way to get equal type —
+the first two centred, `PROJECTS` left-set with `align="left"`. `roleSize` /
+`roleTop` / `roleGap` on the Cluster tab, which is open on narrow home for
+exactly that reason. The bank also gave back the fourteen units of padding
 that had it inset further than every other block on the page. See **Home, on a
 phone** in `README.md`.
+
+**Everything on the stage keys off `shownId`, never `id`.** `id` is the URL
+and changes a full `EXIT_MS` before the screen does, so a tuning hook keyed on
+it re-frames the *outgoing* subject with the *incoming* project's rig for the
+length of its own fade — Capsule C1 leaving for home grew four times over and
+past the edges of the window. `useModelTuning` and `useNarrowTuning` both had
+it; `useProductTuning` never did, which is why only the GLB subjects flinched.
+`shownId` is declared above all three now. See **Home is the project screen**
+in `README.md`.
 
 **Four subjects changed.** Red Dead Redemption 2 and Grand Theft Auto V both
 stood on the same `DiscHolder` — one disc case, twice — and are `MODELS` now:

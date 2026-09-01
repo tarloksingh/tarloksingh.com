@@ -1349,7 +1349,11 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
         <Segment
           text="INTRO"
           cells={ROLE_CELLS}
-          align="left"
+          /* Left-set beside the paragraph it caps on the wide layout; centred
+             down here, where the whole intro block is centred under the name
+             and a sign hard against the left edge of a centred paragraph is
+             the one thing in the column not lining up with anything. */
+          align={narrow ? 'center' : 'left'}
           arrive
           wait={IN.intro}
           start={up}
@@ -1460,13 +1464,16 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
               across the top of the panel — pressing a slot still changes
               what this reads.
 
-              **Wide only.** Down here a tap opens the project rather than
-              selecting it (see `SlotBox`), so this display had nothing left
-              to report: it read "projects" from the moment the page arrived
-              until the moment the screen left, which is a twenty-one cell
-              lamp housing spelling out the name of the block underneath it.
-              The slots say what they are. */}
-          {!narrow && (
+              **On both layouts, and it means two different things.** Wide, it
+              is a readout: a slot is selected on the way past and this names
+              it. Narrow, a tap opens the project rather than selecting it
+              (see `SlotBox`), so it never leaves `IDLE` — it is a *sign* on
+              the bank, the third of three down the column after the role reel
+              and `INTRO`, and it is left-set rather than centred because it
+              labels the grid under it rather than heading a centred block.
+              It came off this layout for a pass on the grounds that a display
+              which never changes is not a readout, which was true and beside
+              the point: what the column was missing was the label. */}
           <div className="mech-work-rail-head">
             {/* Always the warm channel — this is what has been picked, and
                 the rail and the scale under it are the two things on the
@@ -1480,6 +1487,7 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
               <Segment
                 text={slot ? slot.title : IDLE}
                 cells={CELLS}
+                align={narrow ? 'left' : 'center'}
                 arrive
                 wait={IN.head}
                 start={up}
@@ -1489,7 +1497,6 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
               />
             </div>
           </div>
-          )}
 
           {/* Scrolls on its own — twelve rows at a size worth pressing do not
               all fit a real window's height, and a rail is allowed to scroll

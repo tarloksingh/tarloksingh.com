@@ -1560,6 +1560,20 @@
   align-items: stretch;
   gap: calc(34 * var(--px));
   padding: calc(28 * var(--px)) 0 0;
+
+  /* ---- three signs, one width ----
+
+     The role reel, `INTRO` and the bank's `PROJECTS` are all twenty-one-cell
+     `Segment` displays, and `Segment` scales its glyphs to whatever box it is
+     handed — so equal boxes is the only way to get equal type out of them, and
+     one number is the only way to keep three boxes equal. `--role-size` on the
+     Cluster tab moves all three at once.
+
+     Every one of them is a full-width child of this column (`.mech-main`,
+     `.mech-intro`, `.mech-work-rail` all take `width: 100%` down here), so the
+     percentage resolves to the same figure at all three use sites even though
+     each is measured against its own parent. */
+  --sign: calc(var(--role-size, 0.8) * 100%);
 }
 
 /* The rail was a full-height column beside the middle one on a wide window;
@@ -1589,18 +1603,31 @@
    grows with every character, pushing the graph underneath it down for the
    length of the type-in. Measured off the built page at the narrow font
    size below, with a few units of slack rather than trimmed exact. */
+/* Straight under the name, before the counts rather than after them. It used
+   to follow the gauges, which put the one paragraph on the page — the block
+   that says what the name above it actually does — three screens down, after
+   two instruments nobody had asked a question of yet. Name, then what the
+   name does, then the numbers behind it. */
 .mech[data-narrow='true'] .mech-intro {
-  order: 2;
+  order: 1;
   width: 100%;
-  height: calc(110 * var(--px));
-  margin-bottom: calc(20 * var(--px));
-  /* Nothing to line up against down here — it follows the counts in a
-     single column — so the wide layout's drop is undone. */
+  /* Still a fixed box, not `height: auto` — the paragraph types itself in the
+     same as it does on the wide layout, and an `auto` height grows with every
+     character, pushing the counts underneath it down for the length of the
+     type-in. Measured off the built page at the narrow size below, with a few
+     units of slack rather than trimmed exact. */
+  height: calc(162 * var(--px));
+  /* Nothing to line up against down here — it is a block in a single column —
+     so the wide layout's drop is undone. */
   transform: none;
+  text-align: center;
 }
 
+/* Centred with the paragraph under it, and boxed to the same width as the
+   other two signs — see `--sign` above. */
 .mech[data-narrow='true'] .mech-intro-cap {
-  width: 100%;
+  width: var(--sign);
+  margin: 0 auto;
 }
 
 /* Narrow drops the intro out of `.mech-tach` into its own place after the
@@ -1619,11 +1646,17 @@
    size knob, not a layout one. It used to bleed past the gutter to buy the
    name a little extra width; that read as the one thing on the page running
    edge to edge, so it gave the width back. */
+/* No air of its own above the name. The reel sits directly on top of it now
+   (see `.mech-display-role` below), and the reel's own bottom padding plus
+   `.mech-main`'s column gap is already more separation than the pair wants —
+   a further 26 units on top of that read as two unrelated blocks rather than
+   a title and the line above it. `--role-gap` is the knob if it wants moving
+   either way, and it goes negative. */
 .mech[data-narrow='true'] .mech-ident {
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: calc(26 * var(--px)) calc(10 * var(--px)) calc(14 * var(--px));
+  padding: 0 calc(10 * var(--px)) calc(14 * var(--px));
 }
 
 /* The wide formula's `1.15` is an average advance for Audiowide, not this
@@ -1659,7 +1692,7 @@
 }
 
 .mech[data-narrow='true'] .mech-flank {
-  order: 1;
+  order: 2;
   width: 100%;
   margin-top: 0;
 }
@@ -1671,7 +1704,7 @@
    stretched because `.mech-main` is `align-items: stretch` down here and a
    shrunk box would otherwise sit against the left edge. */
 .mech[data-narrow='true'] .mech-display-role {
-  width: calc(var(--role-size, 0.8) * 100%);
+  width: var(--sign);
   align-self: center;
   margin-top: calc(var(--role-top, 10) * var(--px));
   margin-bottom: calc(var(--role-gap, 0) * var(--px));
@@ -1695,6 +1728,26 @@
   height: auto;
   align-self: auto;
   padding: 0;
+}
+
+/* The third sign, and the only one of the three that is not centred: it
+   labels the grid under it rather than heading a centred block, so it sits at
+   the left edge of the column with its glyphs left-set too (`align` on
+   `Segment`, from `MechCluster.tsx`). Same box as the other two — see
+   `--sign` — because equal boxes is the only way to get equal type out of
+   three displays that scale by width.
+
+   `margin-bottom` is clear air under it: narrow stacks the head straight onto
+   the bank, and the bay's top edge (and the reticle brackets that acquire it)
+   was riding up into the word. A fixed number rather than a knob — the panel
+   already carries three for this column and a fourth for one gap is a panel
+   nobody reads. */
+.mech[data-narrow='true'] .mech-work-rail-head {
+  margin-bottom: calc(14 * var(--px));
+}
+
+.mech[data-narrow='true'] .mech-work-rail-head .mech-display {
+  width: var(--sign);
 }
 
 /* No inner scroll on a phone — the page itself scrolls, and a scroll region
