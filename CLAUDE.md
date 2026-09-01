@@ -57,6 +57,7 @@ being false (which is why `navigator.clipboard` does not exist — see
 | `MechPins.tsx`, `labelTuning.ts` | Placing a picture's labels (**P**) and copying them out |
 | `MechModel.tsx` | The subject: one GLB, lit, drifting, watching, shootable |
 | `MechHud.tsx`, `MechCursor.tsx` | The dashboard, and the reticle |
+| `MechGreeting.tsx` | The note before the boot, and the press that starts the sound |
 | `MechTiles.tsx` | The boot: the grid's cells struck in a ring from the middle |
 | `MechBird.tsx`, `MechLaser.tsx` | The bird, and the gun |
 | `MechDeck.tsx`, `sound.ts` | The music deck, and every synthesised sound |
@@ -157,9 +158,13 @@ larger than about 1600. Use `MediaItem.still` and `MediaItem.thumb`, never
 The line-up is gone from home. What is there instead is an instrument cluster,
 five parts:
 
-- **`SHOOT` / `STOP`** at the top of the frame (`Alarm`) — one lit at a time,
-  reporting whether there is a bird or a moth in the air to shoot at. It asks
-  `quarry.creatures` once a frame rather than being wired to either.
+- **Two lamps and a count** at the top of the frame (`Alarm`) — a green square,
+  the tally, a red square; one lamp lit at a time, reporting whether there is a
+  bird or a moth in the air to shoot at. It asks `quarry.creatures` once a
+  frame rather than being wired to either. The words `SHOOT` / `STOP` are gone
+  and the count shows at `000` rather than mounting on the first kill, so the
+  row is a fixed-width block that never reflows — see **The warning pair** in
+  `README.md`, sixth pass.
 - **A run of lamp cells** across the top of the panel (`.mech-run`): the left
   display cycles my titles, or — with a project selected — the jobs I did on
   *that* project one at a time; the right one names the selection. Three dark
@@ -221,6 +226,34 @@ all of them look like something other than what they are:
   its `animation-name` changes. Same rule as the frame swap.
 
 ## Where this is up to
+
+**The bank's canvas scrolls with the bank on a phone.** `.mech-bank-gl` is
+`position: absolute` over `.mech-bank` on narrow rather than fixed over the
+window, because drei's `View` computes a scissor box as the *difference*
+between two viewport rects and only the compositor is fast enough to keep them
+aligned during a touch fling. That arrangement then requires `Track` in
+`MechSlots.tsx` to re-read the canvas's rect once a frame (r3f measures its own
+container on a 50ms debounce, which never fires during a continuous scroll) and
+`useNear` to put back the offscreen culling `View`'s own test can no longer do
+once the canvas is taller than the window. Two earlier attempts are in the
+history and both are written up: cutting per-frame cost (helps, cannot fix it)
+and hiding the canvas while scrolling (fixes it, reads badly). Full account in
+**The bank, on a phone** in `README.md`.
+
+**A note comes up before the boot.** `MechGreeting.tsx` — two typed lines
+about the birds and one button, with `booting` in `Mech.tsx` held true until
+it is dismissed. The press is also the gesture that opens the AudioContext, so
+`sound.boot()` moved onto it (before this it fired into a suspended context on
+every load and was never heard). Every load, including a project deep link.
+
+**Home's narrow layout lost three blocks and moved a fourth.** One tap opens a
+project instead of two; the rail's head and the field dials are hidden (both
+reported on a selection that no longer exists down there); the role reel moved
+out of the flank to sit between the instrument and the name, with `roleSize` /
+`roleTop` / `roleGap` on the Cluster tab — which is now open on narrow home
+for exactly that reason. The bank also gave back the fourteen units of padding
+that had it inset further than every other block on the page. See **Home, on a
+phone** in `README.md`.
 
 **Four subjects changed.** Red Dead Redemption 2 and Grand Theft Auto V both
 stood on the same `DiscHolder` — one disc case, twice — and are `MODELS` now:

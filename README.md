@@ -576,6 +576,16 @@ rather than framing it separately, and that turned out to be the actual fix:
 not a face for this one paragraph, but the one the rest of the panel's system
 text already had.
 
+It is **lit** now rather than printed. It sat at `0.58` on the accent with no
+glow, which is the panel's caption treatment — the weight of `GAL. UNLEADED
+FUEL ONLY` under a gauge — and this is the only prose on the site: the one
+block that says what I actually do. It burns at the readings' own strength
+(`profileInk` up to `0.94`) with the same bleed off `--g` every lit thing here
+carries, so it reads as something the display is showing rather than as
+something silkscreened onto the housing beside it. Both halves of the glow ride
+`--profile-ink`, so the knob still turns the whole thing down in one move
+rather than leaving a halo behind dimmed text.
+
 #### The name came off the instrument
 
 The name used to be laid **over** the quiet left end of the tachometer, on a
@@ -1490,6 +1500,35 @@ key it now sits beside. The inline tally between the two keys lost its
 enlarged variant at the same time — same width as every other reading on the
 panel, not a bigger one, once the row around it had come down in volume too.
 
+**A sixth pass took the words off it.** Every note above is about making two
+words in segment glyphs sit better on the page, and the sixth one is that they
+should not be words. Three things were wrong and they are all the same thing —
+the row was loud:
+
+- Two twenty-unit readings across the top of every screen is the second
+  largest thing on the page, competing with the name on home and with the
+  project title everywhere else, and neither of those is what a lamp about
+  the birds is for.
+- `SHOOT` and `STOP` read as instructions and behave as status. The lit one
+  reports whether there is anything up there; it is not telling you to pull
+  the trigger. A word that says one thing and does another is a word arguing
+  with itself, and no amount of scaling it fixes that.
+- The tally only mounted after the first kill, so the row changed **width**
+  the first time you hit something and both keys shuffled outward.
+
+So the row is two small squarish lamps either side of a fixed reading, which
+is what a real cluster does with a binary — green left, red right, `--lamp`
+(19 units) square, one of the two always burning. `Tally` shows at nought
+rather than returning `null`, so the row is one fixed-width block from the
+first painted frame and nothing in it ever moves; `000` is what every other
+gauge on this panel reads before it has anything to report anyway. `Alarm`
+lost its `start` prop with the last `Segment` — there is nothing left to spell
+out a cell at a time, so the row simply comes up on `[data-boot]`'s own fade
+with the rest of the chrome. Two whole blocks of `Mech.css` went with it: the
+glyph sizing that scaled `STOP` and `SHOOT` to the same height in different
+viewBoxes, and the white-on-glow rules that kept a lit word legible over a
+filled housing. Neither has anything left to size or to light.
+
 **`ROLE_CELLS` now equals `CELLS`.** The role reel under the counts and the
 project title over the bank are boxed to the same width (`--count-w` and
 `--flank-w` are the same variable), and `Segment` scales by *width* — two
@@ -1553,6 +1592,88 @@ other piece of running text down here already uses. `.mech-foot` now sets it
 once, for both lines, rather than each one carrying its own copy, at
 `.mech-profile`'s own size (`10.5`, not the footer's old `13`) — the same
 voice at a different size would still have read as a second document.
+
+### The bank, on a phone
+
+Two problems in one place, and only the second one is interesting.
+
+The bank is eleven live subjects sharing **one canvas**, with drei's `View`
+scissoring that canvas to each bay's rectangle. What `View` actually computes
+is a difference between two viewport positions — the tracked element's rect,
+read fresh once a frame inside `useFrame`, minus the canvas's own, which r3f
+measures and hands over as `state.size`. On the wide layout that is exact by
+construction: the canvas is the viewport (`position: fixed`, inset 0), so its
+own rect is a constant and nothing on the page scrolls anyway.
+
+On a phone the page scrolls under the bank, and the subjects visibly swam
+behind their own borders on every touch fling.
+
+**A fixed canvas cannot be scrolled.** A touch scroll on iOS runs on the
+compositor thread: the boxes move at the display's own rate however busy the
+main thread is, while the rect the canvas reads is only as fresh as the last
+`requestAnimationFrame` the main thread got to — and during a fling WebKit
+*throttles* the main thread's rAF callbacks in favour of keeping the
+compositor smooth. So the pictures lag their boxes by however far the page
+travelled since the last frame the main thread was allowed to run.
+
+Two attempts went past before that was clear. The first cut the canvas's
+per-frame cost — `dpr` to 1 and antialiasing off on narrow — on the reasoning
+that cheaper frames close the gap. It narrows it and cannot close it: the
+bottleneck is how *often* the main thread runs, not how long it takes once it
+does. (Both are still down, and worth keeping on their own merits.) The second
+hid the canvas outright the moment a scroll started and faded it back a beat
+after the page settled, which traded a picture that swims for a picture that
+is not there, and read exactly as badly as that sounds.
+
+**The fix is that the canvas scrolls too.** Narrow, `.mech-bank-gl` is
+`position: absolute` over `.mech-bank` rather than fixed over the window, so
+it is in the same scrolling flow as the bays it paints into. Now the
+compositor moves the drawn pixels and the borders together, for free, between
+main-thread frames — the main thread can be throttled to nothing and the
+subjects stay glued, because the *relative* geometry never changed. This is
+the arrangement an old note in `MechCluster.css` warned against ("sizing it to
+the bank was the first attempt and every subject landed a couple of hundred
+pixels low"), and that note was right about the symptom and wrong about the
+cause, which is the next paragraph.
+
+**It only works if `canvasSize` is as fresh as the bay's rect.** The two are
+subtracted from each other, so they cancel only if they were read in the same
+moment. r3f measures its own container through `react-use-measure` with
+`scroll: true` and a **50ms debounce** — right for a canvas that only moves
+when the layout does, and useless for one that moves with every scroll event,
+because a debounce that keeps being retriggered never fires at all during a
+continuous fling. That mismatch is what put the subjects a couple of hundred
+pixels low the first time this was tried. So `Track` in `MechSlots.tsx`
+re-reads the canvas's rect at the top of every frame, before any view has
+drawn.
+
+It writes **into** `state.size` rather than through r3f's `set()`, and that is
+deliberate. drei's `Container` reads `canvasSize.top` off the same object at
+frame time, so a mutation is picked up with no store update, no re-render of
+eleven views, and no risk of the render loop that anything setting state once
+a frame invites. What it costs is that r3f never learns the canvas moved —
+and nothing in r3f cares, because its resize path keys off width and height
+and neither of those changed. It runs at `useFrame` priority **0**: it has to
+go before the views (all `index={1}`), and a zero is the one priority that
+does not count toward r3f's manual-render flag, which if switched back on
+would clear the canvas out from under every view.
+
+**One thing the new arrangement breaks, and puts back.** `View` has an
+offscreen test of its own, and it compares the bay's rect against *the
+canvas's* box. With the canvas as the viewport, that is a window test and it
+culls correctly. With the canvas as the bank — six rows tall — nothing is ever
+outside it, so all eleven subjects would render every frame including the
+seven nobody can see. `useNear` puts the test back where it belongs: an
+`IntersectionObserver` per bay against the window, a whole bay's height of
+`rootMargin` either side so a subject is drawn before its box arrives, driving
+`View`'s own `visible` prop. `View` clears the region once when that goes
+false and stops rendering it; the scene stays mounted, so coming back is a
+render and not a rebuild.
+
+Solomon's rider is the exception to all of it, as usual — `RiderSlot` has a
+`<Canvas>` of its own inside its bay (it needs an environment-less rig, bloom
+and exposure the shared canvas cannot give it), so it is an ordinary DOM
+element and always scrolled correctly.
 
 ### The cast
 
@@ -2060,6 +2181,62 @@ time now and it is as wide as its own name, so the gauge went with the row.
 `portraitOf` in `model.ts` is likewise still there and likewise unused — there
 was a square in each box for `public/portraits/<project-id>.png`, and none of
 those files were ever made.
+
+### The note before the boot
+
+There is a bird crossing every screen on this site and a moth sitting on it,
+both shootable, with a reticle following the pointer and a gun under it, and
+nothing on the page said so. Somebody who never happens to click empty space
+never finds out. Somebody who does finds out by accident — a laser bolt leaves
+the cursor on what they took for a portfolio, and the reasonable first reading
+is that something broke. The warning pair reports on the birds and has done
+since the third pass, but a lamp that is already lit when you arrive explains
+nothing about what it is a lamp *for*.
+
+So the page says it once, in one line, and then gets out of the way.
+`MechGreeting.tsx`: two typed lines in a readout housing, and one button.
+
+**It is before the boot, not during it.** `Mech.tsx` holds `booting` true
+until it is dismissed — `greeted` — so the grid's cells have not been dealt,
+the compass has not spun and the cluster has not come up. Running it over the
+top of the boot would be two entrances at once, with the note competing with
+the exact thing it is introducing. What is behind it is the bare grid on
+black, which is what a machine that has not been switched on yet should look
+like. `MechTiles` is mounted on the press for the same reason: its ripple is
+the first beat of the boot and starting it behind a card spends the whole
+thing where nobody sees it.
+
+**And the button is where the sound starts.** A browser will not open an
+`AudioContext` before a real gesture, so every page with synthesised noise has
+to find one somewhere — usually by waiting for whatever the visitor happens to
+touch first, which means the first thing they touch is silent and everything
+after it is not. This is that gesture taken honestly. `sound.wake()`,
+`sound.toggle()` if a previous visit had turned it off, and `sound.select()`
+all run inside the click handler itself: a context opened from a `setTimeout`
+is not opened from a gesture as far as the browser is concerned, and it starts
+suspended exactly as it would have without the press. The boot chime moved
+with it — `sound.boot()` used to fire on mount into a suspended context on
+every load and was simply never heard, and it now runs on the same beat the
+context opens.
+
+The button is in the tree from the first frame and only *arrives* once the
+typing is done (`ready`, worked out from the text's own length rather than
+picked, so editing the lines cannot leave it turning up over a half-typed
+sentence). A note that grows a button pushes its own text up the screen half a
+second after you have started reading it.
+
+The exit is `mech-greet-out` and not `mech-greet-in` reversed, the same rule
+as every other exit here: an animation only restarts when its
+`animation-name` changes, so reusing the name leaves the finished entrance
+running and the exit never plays. The boot starts on the same beat the exit
+does rather than after it, so the grid is already striking behind the note as
+it clears — which is what keeps the press from feeling like it bought a pause.
+
+It shows on **every load**, including a project deep link. `Mech` is never
+remounted, so that is once per page load rather than once per navigation. A
+`sessionStorage` flag would make it once per visit; it is not there because
+the point is the introduction, and a returning visitor is exactly who has
+already forgotten.
 
 ### The panel coming alive
 
@@ -2753,6 +2930,60 @@ the subject, the deck and the title. What's left is `narrowTuning.ts`: subject
 scale, picture scale and the home line-up's two, in the same shape as every
 other tuning panel here (a `_DEFAULTS` constant, a localStorage scratchpad, a
 copy button that hands back source).
+
+Home's **Cluster** tab is the one exception to that. Three of its controls —
+the role reel's size and the air either side of it — only do anything on this
+layout, so a narrow window is the only place they can be adjusted from, and a
+panel that cannot be reached where its controls apply is a panel that does not
+exist. It is as wide as Leva always is; `H` and the `×` still put it away, and
+that state is remembered.
+
+#### Home, on a phone
+
+Four things move, and every one of them is a block that had nothing left to
+report once the layout changed under it.
+
+**One tap opens a project.** It used to be two — a control with no hover has
+to select before it commits, and the first tap was not wasted because it
+filled in the rail's head, the field dials and the counts. The first three
+of those are gone from this layout now (below), so the first tap bought
+nothing and cost the one thing a tile in a grid of tiles is obviously for.
+`SlotBox` still picks on the way through, so the beat between the press and
+the screen leaving has the right project lit under the reticle.
+
+**The rail's head is gone with it.** With nothing selectable it read
+`projects` from the moment the page arrived until the moment the screen left
+— a twenty-one cell lamp housing spelling out the name of the block directly
+underneath it. The slots say what they are.
+
+**So are the field dials.** Product / Code / Brand report on the selection,
+and there is no selection to report; all three sat at whatever the cycling
+title happened to fall under. Three rings and three words is also most of a
+phone's width spent on the smallest reading on the panel. `display: none`
+rather than an unmounted branch — the ignition sweep that drives them is the
+same one the wide layout runs, and a second code path for "did this screen
+draw the dials" is a second thing to keep in step.
+
+**The role reel moves out of the flank and up between the instrument and the
+name.** Wide, it stands over the gauges, with the bars beneath it as its
+scale — the arrangement the whole panel uses. Down here the counts are a wide
+row rather than a column of gauges, so a reading standing over them was a
+caption on a chart; above the name it is the line that says what the name
+*does*, which is the order those two facts want to be read in. Its size is a
+**width**, not a font size: `Segment` scales its cells to whatever box it is
+given, so shrinking the box is the only knob that makes the reading smaller
+while keeping the cells square. `roleSize` / `roleTop` / `roleGap` on the
+Cluster tab.
+
+**And the bank lines up with everything above it.** `.mech-work-rail` carried
+fourteen units of padding of its own, bought so a full-width slot was not
+flush to the viewport edge and the reticle's lock brackets had room. What it
+actually paid for was the one block on the page inset further than every
+other: counts, reel, name and intro all sit at `--gutter`, and the grid of
+boxes — the block whose edges are most visible — sat at `--gutter` plus
+fourteen. The padding is gone and `--slot-bay`'s sum lost the twenty-eight
+units with it. The brackets are drawn over a page that scrolls; a few units
+past a slot's corner is not worth a seam down the whole layout.
 
 ### The subject, when there is no model
 

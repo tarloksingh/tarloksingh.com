@@ -917,6 +917,7 @@ function SlotBox({
   n,
   on,
   arrived,
+  narrow,
   onPick,
   onOpen
 }: {
@@ -925,6 +926,8 @@ function SlotBox({
   on: boolean
   /** Whether the deal has reached this slot — see `dealt` below. */
   arrived: boolean
+  /** One tap opens, down here. See `onClick`. */
+  narrow: boolean
   onPick: () => void
   onOpen: () => void
 }) {
@@ -944,10 +947,22 @@ function SlotBox({
         sound.select()
         /* A press on the slot you are already on opens it; a press on any
            other selects it first. On a mouse that is one click either way,
-           because the pointer selected it on the way in. On a phone it is the
-           two taps a control with no hover has always needed — and the first
-           one is not wasted, it fills in the display and the scale. */
-        if (on) onOpen()
+           because the pointer selected it on the way in.
+
+           **One tap on a phone.** It used to be two, on the reasoning that a
+           control with no hover has to select before it commits and the first
+           tap was not wasted — it filled in the display, the scale and the
+           name above the bank. All three of those are gone from the narrow
+           layout now (the rail's head and the field dials are hidden, and
+           nothing else reads the selection down here), so the first tap
+           bought nothing and cost the one thing a tile in a grid of tiles is
+           obviously for. It still picks on the way through, so the beat
+           between the press and the screen leaving has the right project
+           lit under the reticle. */
+        if (narrow) {
+          onPick()
+          onOpen()
+        } else if (on) onOpen()
         else onPick()
       }}
     >
@@ -1301,6 +1316,29 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
      of the name's, or a hundred and fifty-odd characters either takes
      several seconds to arrive or is still typing itself out after
      `EXIT_MS` has already unmounted it. */
+  /* What I do — cycling the titles with nothing picked, or what I did on the
+     selected project.
+
+     Two places, one of which renders. Wide it stands over the gauges in the
+     left flank, in the place the three two-cell numbers used to occupy —
+     under them it was a fourth line on a block that was already digits, noun
+     and qualifier deep; over them it is the block's one reading with the bars
+     beneath it as the scale, which is the arrangement the whole panel uses
+     everywhere else.
+
+     Narrow it comes out of the flank entirely and sits between the
+     instrument and the name. Down here the counts are a wide row rather than
+     a column of gauges, so a reading standing over them was a caption on a
+     chart; above the name it is the line that says what the name *does*,
+     which is the order those two facts want to be read in. `--role-size`,
+     `--role-top` and `--role-gap` on the Cluster tab are its size and the air
+     either side of it — see `.mech-display-role` in MechCluster.css. */
+  const roleDisplay = (
+    <div className="mech-display mech-display-role" data-on={slot !== null} data-warn>
+      <Segment text={reading} cells={ROLE_CELLS} arrive wait={IN.role} start={up} back={covered} label={reading} warn />
+    </div>
+  )
+
   const introSection = (
     <section className="mech-intro">
       <span className="mech-intro-cap mech-display" data-on data-warn>
@@ -1348,7 +1386,9 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
         ['--intro-y' as string]: tuning.introY,
         ['--bay-fade' as string]: tuning.bayFade,
         ['--bay-blur' as string]: tuning.bayBlur,
-        ['--head-gap' as string]: tuning.headGap,
+        ['--role-size' as string]: tuning.roleSize,
+        ['--role-top' as string]: tuning.roleTop,
+        ['--role-gap' as string]: tuning.roleGap,
         ['--profile-size' as string]: tuning.profileSize,
         ['--profile-ink' as string]: tuning.profileInk
       }}
@@ -1376,22 +1416,12 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
         <div className="mech-body">
         {/* ---- the left flank ---- */}
         <div className="mech-flank">
-          {/* What I do — cycling the titles with nothing picked, or what I
-              did on the selected project.
-
-              It stands *over* the gauges now, in the place the three two-cell
-              numbers used to occupy. Under them it was a fourth line on a block
-              that was already digits, noun and qualifier deep; over them it is
-              the block's one reading, with the bars beneath it as the scale —
-              which is the arrangement the whole panel uses everywhere else.
-
-              Centred in a box that is the gauges' own width (`--count-w`), so
+          {/* Centred in a box that is the gauges' own width (`--count-w`), so
               it lands over the middle of the three. It was left-set for a pass
               while the box was still wider than they were and drifting looked
-              like the problem. */}
-          <div className="mech-display mech-display-role" data-on={slot !== null} data-warn>
-            <Segment text={reading} cells={ROLE_CELLS} arrive wait={IN.role} start={up} back={covered} label={reading} warn />
-          </div>
+              like the problem. Narrow renders the same block above the name
+              instead — see `roleDisplay`. */}
+          {!narrow && roleDisplay}
 
           <Counts fields={marked} start={countsUp} />
         </div>
@@ -1416,6 +1446,8 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
               instead. */}
           {!narrow && introSection}
           </Tach>
+          {/* The reel first, then the name it is a reading about. */}
+          {narrow && roleDisplay}
           {narrow && identity}
         </div>
 
@@ -1426,7 +1458,15 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
         <aside className="mech-work-rail">
           {/* The project's own title, above the bank rather than in a run
               across the top of the panel — pressing a slot still changes
-              what this reads. */}
+              what this reads.
+
+              **Wide only.** Down here a tap opens the project rather than
+              selecting it (see `SlotBox`), so this display had nothing left
+              to report: it read "projects" from the moment the page arrived
+              until the moment the screen left, which is a twenty-one cell
+              lamp housing spelling out the name of the block underneath it.
+              The slots say what they are. */}
+          {!narrow && (
           <div className="mech-work-rail-head">
             {/* Always the warm channel — this is what has been picked, and
                 the rail and the scale under it are the two things on the
@@ -1449,6 +1489,7 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
               />
             </div>
           </div>
+          )}
 
           {/* Scrolls on its own — twelve rows at a size worth pressing do not
               all fit a real window's height, and a rail is allowed to scroll
@@ -1464,6 +1505,7 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
                   n={n}
                   on={picked === n}
                   arrived={n < dealt}
+                  narrow={narrow}
                   onPick={() => {
                     hold()
                     setPicked(n)

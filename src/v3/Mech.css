@@ -343,6 +343,128 @@
   border-top: 0;
 }
 
+/* ---- the note before the boot ----
+
+   One line about the birds, and a button that starts the machine and the
+   sound with it. See `MechGreeting.tsx` for what it is for; this is only how
+   it sits.
+
+   Over everything, including the dev panel's own layer: nothing behind it is
+   meant to be reachable, and the boot has not run, so there is nothing behind
+   it worth reaching. No scrim of its own beyond a wash — the page under it is
+   the bare grid on black, which is already most of a backdrop. */
+.mech-greet {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--gutter);
+  background: radial-gradient(ellipse at 50% 50%, rgba(var(--accent-rgb), 0.05), rgba(0, 0, 0, 0.72) 70%);
+  /* It comes up on its own rather than being there on the first painted
+     frame, which would be a modal that was already open before the page
+     existed. */
+  animation: mech-greet-in 420ms var(--ease) both;
+}
+
+/* Its own keyframes for the exit, never the entrance reversed — same rule as
+   every other exit on this site: an animation only restarts when its
+   `animation-name` changes, so reusing the name leaves the finished entrance
+   running and the exit never plays. */
+.mech-greet[data-going='true'] {
+  animation: mech-greet-out 420ms var(--ease) both;
+  pointer-events: none;
+}
+
+@keyframes mech-greet-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes mech-greet-out {
+  to {
+    opacity: 0;
+  }
+}
+
+/* A readout box, not a dialog. The same border, radius and phosphor fill
+   every housing on this panel wears — the note is the machine talking, so it
+   is printed on the machine's own furniture rather than in a card borrowed
+   from an operating system. */
+.mech-greet-card {
+  width: calc(720 * var(--px));
+  max-width: 100%;
+  padding: calc(34 * var(--px)) calc(34 * var(--px)) calc(26 * var(--px));
+  border: 1px solid rgba(var(--accent-rgb), 0.3);
+  border-radius: var(--round);
+  background: rgba(5, 8, 6, 0.86);
+  box-shadow: 0 0 calc(60 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.12 * var(--g)));
+}
+
+.mech-greet-line {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: calc(15 * var(--type));
+  line-height: 1.6;
+  color: rgba(var(--accent-rgb), 0.92);
+  text-shadow: 0 0 calc(10 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.4 * var(--g)));
+  /* Each line holds its own height from the first frame, so the card does
+     not grow a row as the second sentence starts. */
+  min-height: calc(24 * var(--type));
+}
+
+/* Warm, like every other thing on this site that answers a press. It is in
+   the tree from the start and only *arrives* once the typing has finished —
+   see `ready` in MechGreeting.tsx — so the card's height is settled before
+   anybody reads a word of it. */
+.mech-greet-ok {
+  display: block;
+  margin: calc(26 * var(--px)) 0 0 auto;
+  padding: calc(9 * var(--px)) calc(26 * var(--px));
+  border: 1px solid rgba(var(--warn-rgb), 0.45);
+  border-radius: calc(4 * var(--px));
+  background: rgba(var(--warn-rgb), 0.1);
+  color: var(--warn);
+  font: inherit;
+  font-size: calc(12 * var(--type));
+  letter-spacing: calc(1.6 * var(--type));
+  text-transform: uppercase;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(calc(6 * var(--px)));
+  pointer-events: none;
+  transition: opacity 260ms var(--ease), transform 260ms var(--ease), background-color 160ms linear,
+    box-shadow 160ms linear;
+}
+
+.mech-greet-ok[data-ready='true'] {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.mech-greet-ok[data-ready='true']:hover,
+.mech-greet-ok[data-ready='true']:focus-visible {
+  background: rgba(var(--warn-rgb), 0.24);
+  box-shadow: 0 0 calc(18 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.3 * var(--g)));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mech-greet,
+  .mech-greet[data-going='true'] {
+    animation: none;
+  }
+
+  .mech-greet[data-going='true'] {
+    opacity: 0;
+  }
+}
+
 /* ---- boot ----
 
    The machine comes up rather than simply being on. The chrome holds off,
@@ -409,94 +531,60 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: calc(4 * var(--px));
+  gap: calc(7 * var(--px));
+  /* One number for the whole row: the side of a lamp, and the height of the
+     count between them. Declared here rather than with the tokens at the top
+     of the file because nothing outside this row has any use for it. */
+  --lamp: calc(19 * var(--px));
 }
 
-/* Three equal cells now, to a client-supplied lamp design — a fixed box each
-   (`81.6 × 34`, the design's own units, which line up close enough with this
-   panel's frame that they carry over as `--px` multiples directly), not a
-   box sized to its own word.
+/* A lamp, and that is all it is — see the note at the top of `Alarm.tsx` for
+   what it replaced and why.
 
-   The word is still drawn in the panel's own segment glyphs, not typed — see
-   `Segment.tsx` — and still scaled by fixed **height**, not width: `STOP` at
-   its own length (`cells={4}`) has a narrower viewBox than `SHOOT`
-   (`cells={5}`), and scaling both to the same *box* width would size their
-   glyphs differently even though the boxes now match. Height-scaling and
-   then centring the result in a fixed-width cell gets both: identical glyph
-   size and identical cell width. */
+   Two squares of `--lamp` either side of the count. Small: the whole row is
+   under a fifth of the width it used to be, which is what puts it back to
+   being chrome hung off the top edge rather than a second headline competing
+   with the name under it. Squarish rather than square — a couple of frame
+   units of radius, the same treatment every other housing on this panel gets
+   — and sized off `--lamp`, declared on the row above so the two lamps and
+   the number between them cannot drift apart. */
 .mech-alarm-key {
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: calc(81.6 * var(--px));
-  height: calc(34 * var(--px));
-  border-radius: calc(3 * var(--px));
-  border: 1px solid rgba(var(--accent-rgb), 0.22);
-  background: rgba(var(--accent-rgb), 0.07);
+  display: block;
+  flex: none;
+  width: var(--lamp);
+  height: var(--lamp);
+  border-radius: calc(4 * var(--px));
+  /* Unlit: the lamp's own colour at housing strength. A dark cell with a
+     coloured rim reads as wired and off, which is exactly what it is —
+     nothing here ever goes properly dead, because both states are real
+     readings and one of the two is always burning. */
+  border: 1px solid rgba(var(--accent-rgb), 0.26);
+  background: rgba(var(--accent-rgb), 0.08);
   transition: border-color 200ms linear, background-color 200ms linear, box-shadow 200ms linear;
 }
 
 .mech-alarm-key[data-warn] {
-  border-color: rgba(var(--warn-rgb), 0.22);
-  background: rgba(var(--warn-rgb), 0.07);
+  border-color: rgba(var(--warn-rgb), 0.26);
+  background: rgba(var(--warn-rgb), 0.08);
 }
 
-/* A fixed pixel height, not `100%` of the key — the key is a lamp housing
-   now, much taller than the word it holds, and a glyph stretched to fill it
-   would swallow the housing rather than sit inside it. */
-.mech-alarm-key .mech-seg {
-  display: block;
-  height: calc(13 * var(--px));
-  width: auto;
-}
-
-.mech-alarm-key .mech-seg svg {
-  width: auto;
-  height: 100%;
-}
-
-/* Idle: the housing's colour, dim — a lamp that is wired but not lit, not a
-   dead one. */
-.mech-alarm-key .mech-seg-on,
-.mech-alarm-key .mech-seg-glow {
-  opacity: 0.4;
-  transition: opacity 200ms linear;
-}
-
-/* Lit: the housing fills with its own colour and the glyphs turn white on
-   top of it, glowing in the housing's colour — a backlit LED cell, not green
-   or red text with a border around it. */
+/* Lit: the housing fills with its own colour and bleeds off `--g` like every
+   other lit thing in the room. */
 .mech-alarm-key[data-on='true'] {
-  border-color: rgba(var(--accent-rgb), 0.7);
-  background: rgba(var(--accent-rgb), 0.5);
+  border-color: rgba(var(--accent-rgb), 0.8);
+  background: rgba(var(--accent-rgb), 0.62);
   box-shadow:
-    0 0 calc(10 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.35 * var(--g))),
-    0 0 calc(30 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.18 * var(--g)));
+    0 0 calc(9 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.4 * var(--g))),
+    0 0 calc(24 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.2 * var(--g)));
 }
 
 .mech-alarm-key[data-warn][data-on='true'] {
-  border-color: rgba(var(--warn-rgb), 0.85);
-  background: rgba(var(--warn-rgb), 0.75);
+  border-color: rgba(var(--warn-rgb), 0.9);
+  background: rgba(var(--warn-rgb), 0.8);
   box-shadow:
-    0 0 calc(11 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.4 * var(--g))),
-    0 0 calc(34 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.2 * var(--g)));
-}
-
-.mech-alarm-key[data-on='true'] .mech-seg-on,
-.mech-alarm-key[data-on='true'] .mech-seg-glow {
-  opacity: 1;
-}
-
-.mech-alarm-key[data-on='true'] .mech-seg-on line {
-  stroke: #fff;
-}
-
-/* The unlit segments still show through a lit cell — the same "grid of lamps,
-   not a font" the rest of the display relies on — just lightened so they read
-   against a filled housing instead of a bare one. */
-.mech-alarm-key[data-on='true'] .mech-seg-off line {
-  stroke: rgba(255, 255, 255, 0.16);
+    0 0 calc(10 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.44 * var(--g))),
+    0 0 calc(28 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.22 * var(--g)));
 }
 
 /* The subject arrives out of nothing rather than out of a cover — on the
@@ -3385,30 +3473,26 @@
   text-shadow: 0 0 calc(9 * var(--px)) rgba(var(--accent-rgb), 0.5);
 }
 
-/* The middle cell of the warning pair now — the same fixed box the two keys
-   either side of it use (`.mech-alarm-key`, `81.6 × 34`), so the row reads as
-   three lamps in one housing rather than two keys either side of a stray
-   number. No fill or border of its own: it is a reading, not a switch, and
-   its glyphs go white-on-glow to match the lit key beside it rather than
-   the panel's usual dim phosphor. */
+/* The middle of the warning row — the reading the two lamps either side of it
+   are about. No fill and no border of its own: it is a reading, not a switch,
+   and the housings belong to the lamps.
+
+   As tall as a lamp and no taller, and wide enough for three cells at that
+   height. It is always mounted now (see `Tally`), so this width is the row's
+   width from the first frame and nothing in it ever moves. */
 .mech-tally[data-inline='true'] {
   position: static;
   left: auto;
   top: auto;
   transform: none;
   z-index: auto;
-  width: calc(81.6 * var(--px));
-  height: calc(34 * var(--px));
+  height: var(--lamp);
   justify-content: center;
 }
 
 .mech-tally[data-inline='true'] .mech-tally-n {
-  width: calc(40 * var(--px));
+  width: calc(38 * var(--px));
   padding: 0;
-}
-
-.mech-tally[data-inline='true'] .mech-seg-on line {
-  stroke: #fff;
 }
 
 /* The number is the segment display, the same one the counts on home are

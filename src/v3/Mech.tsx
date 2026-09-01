@@ -10,6 +10,7 @@ import MechLaser from './MechLaser'
 import Alarm from './Alarm'
 import MechHud from './MechHud'
 import MechTiles from './MechTiles'
+import MechGreeting from './MechGreeting'
 import { useModelTuning } from './modelTuning'
 import { useProductTuning } from './productTuning'
 import { useStationTuning } from './stationTuning'
@@ -1017,6 +1018,11 @@ export default function Mech({ id, onProject, onHome }: Props) {
      Name) went with the line-up they described. See `clusterTuning.ts`. */
   const cluster = useClusterTuning()
   const [booting, setBooting] = useState(true)
+  /* The note about the birds, and the press that dismisses it. It gates the
+     boot rather than running alongside it — see `MechGreeting.tsx` — so
+     `booting` stays true, and every entrance on the page stays held, until
+     this is true. It is also where the AudioContext gets its gesture. */
+  const [greeted, setGreeted] = useState(false)
   const [lit, setLit] = useState<string | null>(null)
   /* `home` is the whole difference between the two states, and it is read
      off what is on screen rather than off the prop — during a retarget the
@@ -1098,12 +1104,18 @@ export default function Mech({ id, onProject, onHome }: Props) {
      `animation-fill-mode: both` until its delay runs out, which is the flash. */
   const leaving = phase === 'out'
 
-  // The machine coming up, once, on arrival.
+  /* The machine coming up, once — on the press that clears the note rather
+     than on arrival. Two things follow from waiting: the chime is audible,
+     because the context has just been opened by the same gesture (before
+     this, `sound.boot()` fired into a suspended context on every load and
+     was simply never heard), and the boot is watched rather than missed,
+     because nobody arrives mid-sequence with the page already half up. */
   useEffect(() => {
+    if (!greeted) return
     sound.boot()
     const timer = window.setTimeout(() => setBooting(false), BOOT_MS)
     return () => window.clearTimeout(timer)
-  }, [])
+  }, [greeted])
 
   /* The subject's canvas learns its size from a ResizeObserver, and a tab that
      is still in the background when the page loads throttles that observer's
@@ -1373,7 +1385,13 @@ export default function Mech({ id, onProject, onHome }: Props) {
   const panels: PanelTab[] = import.meta.env.DEV
     ? narrow
       ? home
-        ? []
+        ? /* Home's own numbers are open down here too now. Leva's minimum
+             width is most of a phone and that is still true — but three of
+             the Cluster tab's controls only do anything on this layout (the
+             role reel's size and the air either side of it), so a narrow
+             *window* on a desktop is where they have to be reachable from,
+             and that is the same `narrow` this branch is testing. */
+          [{ id: 'cluster', label: 'Cluster', store: cluster.store }]
         : [
             { id: 'scale', label: 'Scale', store: narrowStore },
             { id: 'labels', label: 'Labels', store: labels }
@@ -1435,18 +1453,31 @@ export default function Mech({ id, onProject, onHome }: Props) {
           What is left under the readout is the flat phosphor grid, which is
           the surface this panel is printed on and the one the reference has. */}
       <MechHud />
+      {/* The note about the birds, first, and the machine held down behind
+          it — see `greeted` above. */}
+      {!greeted && <MechGreeting onDone={() => setGreeted(true)} />}
+
       {/* The grid's cells dealt in from the middle of the window, once, while
           the rest of the machine comes up. It takes itself down when its own
           ripple is over rather than being cut off with the boot flag, which
           is a little shorter than the furthest cell needs — see `LIFE` in
-          `MechTiles.tsx`. Mounted plainly, because `.mech` is never
-          unmounted: this runs once per page load, which is the point. */}
-      <MechTiles />
+          `MechTiles.tsx`.
+
+          Mounted on the press rather than plainly: it runs once per page
+          load and its ripple is the first beat of the boot, so starting it
+          while the note is still up would spend the whole thing behind a
+          card. It has no exit to miss — every cell animates to nothing and
+          the layer removes itself. */}
+      {greeted && <MechTiles />}
       <MechCursor />
       <MechBird />
       <MechMoth />
       <MechLaser />
-      <Alarm start={!booting} />
+      {/* No `start` any more: the pair used to spell its two words a cell at
+          a time and had to be held until the cover lifted. Two lamps and a
+          number have nothing to spell, so the row simply comes up with the
+          rest of the chrome on `[data-boot]`'s own fade. */}
+      <Alarm />
 
       {menu && (
         <MechMenu shownId={shownId} onProject={onProject} onHome={onHome} onClose={() => setMenu(false)} />

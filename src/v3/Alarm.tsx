@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import Segment from './Segment'
 import Tally from './Tally'
 import { quarry } from './subject'
 
@@ -17,15 +16,47 @@ import { quarry } from './subject'
    `.mech-head`) rather than tied to wherever home's cluster happens to sit.
 
    So it is a pair rather than a single lamp, and only one of them is ever
-   lit: `STOP` while there is nothing in the air, `SHOOT` the moment there
-   is. Two states of one instruction, which is what a shift light is, and
-   what makes the row read as an instruction rather than as a label.
+   lit: the red one while there is nothing in the air, the green one the
+   moment there is. Two states of one instruction, which is what a shift
+   light is.
 
    It asks `quarry` rather than being told. The gun already walks that set
    several times a frame to find out what a bolt has hit; this is the same
    question one frame at a time, and it means a third creature mounted
-   tomorrow lights the lamp with nothing wired up. */
-export default function Alarm({ start }: { start: boolean }) {
+   tomorrow lights the lamp with nothing wired up.
+
+   ---- two lamps and a number ----
+
+   It used to be the words. `SHOOT` and `STOP`, each spelled a cell at a time
+   into its own eighty-two unit housing, with the count wedged into a third
+   housing between them only once something had actually been shot. Three
+   problems with that, and they are all the same problem — the row was
+   *loud*:
+
+   - Two words in segment glyphs at the top of every screen is the second
+     biggest reading on the page, competing with the name on home and with the
+     project title everywhere else, and neither of those is what it is for.
+   - `SHOOT` and `STOP` are instructions, and the pair does not actually
+     instruct: the lit one is reporting whether there is anything up there,
+     not telling you to pull the trigger. A word that reads as a command and
+     behaves as a status is a word arguing with itself.
+   - The count only appeared after the first kill, so the row changed *width*
+     the first time you hit something and everything in it shuffled sideways.
+
+   What it is instead is what a real cluster does with a binary: two small
+   square lamps, one green, one red, either side of a fixed reading. The
+   number is always there and starts at nought — the whole row is now one
+   fixed-width block that never reflows — and which of the two lamps is
+   burning is the whole of the report. Nothing is spelled out because there
+   is nothing to spell: a lit lamp and an unlit one is the oldest readout
+   there is.
+
+   Still `aria-hidden`, as the row always was. Nothing here is a control and
+   nothing here is content — the birds and the moths are a thing the page
+   does, not a thing it is about — and a screen reader working down this page
+   should reach the name and the work, not a running commentary on what is
+   flying over it. */
+export default function Alarm() {
   const [up, setUp] = useState(false)
 
   useEffect(() => {
@@ -49,25 +80,9 @@ export default function Alarm({ start }: { start: boolean }) {
 
   return (
     <div className="mech-alarm" aria-hidden>
-      {/* `cells` matches each word exactly — `STOP` at `cells={5}` (padded to
-          `SHOOT`'s own length) left a trailing blank cell, which is what was
-          reading as the word sitting in the upper-left of its box instead of
-          centred in it. */}
-      {/* Both housings fade up with every lamp dark and the word is spelled
-          into them afterwards, a cell at a time — `type` on `Segment`, held
-          until the boot's cover lifts by `start`. The scramble every other
-          readout arrives on is wrong for these two: it is a display being told
-          something *else*, and these two words never change, so there was
-          nothing for them to scramble from. A pair of boxes that arrive with
-          their instruction already printed is signage; a pair that spell it
-          out is an instrument switching on. */}
-      <i className="mech-alarm-key" data-on={up}>
-        <Segment text="SHOOT" cells={5} type wait={260} start={start} settle={false} label="shoot" />
-      </i>
+      <i className="mech-alarm-key" data-on={up} />
       <Tally inline />
-      <i className="mech-alarm-key" data-warn data-on={!up}>
-        <Segment text="STOP" cells={4} warn type wait={420} start={start} settle={false} label="stop" />
-      </i>
+      <i className="mech-alarm-key" data-warn data-on={!up} />
     </div>
   )
 }

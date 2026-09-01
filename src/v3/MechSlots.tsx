@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Center, Resize, useGLTF, View } from '@react-three/drei'
 import { ACESFilmicToneMapping, PMREMGenerator, type Group, type Texture } from 'three'
@@ -303,81 +303,137 @@ function Environment() {
  *  grew into it. */
 export function SlotView({ id, live, arrive }: { id: string; live: boolean; arrive: boolean }) {
   const [mounted, setMounted] = useState(arrive)
+  const box = useRef<HTMLElement>(null)
+  const near = useNear(box, useNarrow())
+
   useEffect(() => {
     if (arrive) setMounted(true)
   }, [arrive])
 
   return (
-    <View className="mech-slot-shot" index={1}>
+    <View ref={box} className="mech-slot-shot" index={1} visible={near}>
       {mounted && <Slot id={id} live={live} show={arrive} />}
     </View>
   )
 }
 
-/* ---- scrolling the bank on a phone ----
-
-   Twelve live subjects, one canvas, and every bay's scissor rect is
-   `getBoundingClientRect()` on the tracked `<View>` element, read once a
-   frame inside `useFrame` — see the note at the top of this file. That is
-   right when nothing on the page scrolls, which is the wide layout's whole
-   composition. Narrow, the page itself scrolls under the rail, and a touch
-   scroll on iOS runs on the *compositor* thread: the boxes move at 120Hz
-   however busy the main thread is, while the rect this canvas reads is only
-   as fresh as the last `requestAnimationFrame` the main thread got to — and
-   during a fling, WebKit itself throttles the main thread's rAF callbacks in
-   favour of keeping the compositor smooth, which no amount of cutting this
-   canvas's own per-frame cost can outrun. `dpr` and antialiasing came down
-   first (below) on the reasoning that less work per frame closes the gap; it
-   narrows it and does not close it, because the bottleneck during a fling is
-   how often the main thread runs at all, not how long it takes once it does.
-
-   So the picture does not try to keep up. `settled` — a scroll listener on
-   the narrow-only scroller, `.mech`, with a short quiet timer — hides the
-   canvas the moment a scroll starts and brings it back once the page has
-   actually stopped, which is also the one moment `View`'s next frame is
-   guaranteed to measure the *finished* position rather than a mid-flight one.
-   What was a picture visibly swimming behind its own border is a picture that
-   is simply not there while the border moves, and reappears already correct
-   — a rougher trade than perfect tracking, and the only one available that
-   does not touch how the rest of the page scrolls. */
-function useSettled(narrow: boolean) {
-  const [settled, setSettled] = useState(true)
+/** Whether this bay is anywhere near the window — narrow only, and it is
+ *  culling rather than an effect.
+ *
+ *  `View` has an offscreen test of its own and it is the right one *when the
+ *  canvas is the viewport*: a bay whose rect falls outside the canvas's own
+ *  box is skipped. On the narrow layout the canvas is the bank instead (see
+ *  `.mech-bank-gl` in MechCluster.css and the note below), and the bank is
+ *  six rows tall — so nothing is ever outside it and all twelve subjects
+ *  render every frame, including the eight nobody can see. This puts the test
+ *  back, against the window, where it belongs.
+ *
+ *  A whole bay's height of margin either side, so a subject is already drawn
+ *  by the time its box is on screen. `View` clears the region once when this
+ *  goes false and stops rendering it; the scene stays mounted, so coming back
+ *  is a render and not a rebuild. */
+const useNear = (box: RefObject<HTMLElement | null>, narrow: boolean) => {
+  const [near, setNear] = useState(true)
 
   useEffect(() => {
     if (!narrow) {
-      setSettled(true)
+      setNear(true)
       return
     }
-    setSettled(false)
-    let timer = 0
-    // Captured: on this layout the scroller is `.mech`, not the document —
-    // same reasoning as the grid's parallax listener in MechHud.tsx, and the
-    // same guard against hearing the fact deck's sideways scroll instead.
-    const onScroll = (event: Event) => {
-      const el = event.target
-      if (!(el instanceof HTMLElement) || !el.classList.contains('mech')) return
-      setSettled(false)
-      window.clearTimeout(timer)
-      timer = window.setTimeout(() => setSettled(true), 140)
-    }
-    window.addEventListener('scroll', onScroll, { passive: true, capture: true })
-    return () => {
-      window.removeEventListener('scroll', onScroll, { capture: true })
-      window.clearTimeout(timer)
-    }
-  }, [narrow])
+    const node = box.current
+    if (!node) return
+    const watch = new IntersectionObserver((entries) => setNear(entries[entries.length - 1].isIntersecting), {
+      rootMargin: '100% 0px'
+    })
+    watch.observe(node)
+    return () => watch.disconnect()
+  }, [box, narrow])
 
-  return settled
+  return near
+}
+
+/* ---- scrolling the bank on a phone ----
+
+   Twelve live subjects, one canvas, and every bay's scissor box is worked out
+   from two rectangles: the tracked `<View>` element's, read fresh once a
+   frame inside `useFrame`, and the *canvas's own*, which r3f measures and
+   drei subtracts. Both are viewport-relative. So the scissor is a
+   **difference between two viewport positions**, and everything about how
+   this behaves follows from where those two numbers come from.
+
+   On the wide layout the canvas is the viewport — `position: fixed`, inset 0
+   — so its own rect is a constant, nothing on the page scrolls, and the
+   arithmetic is exact by construction.
+
+   On a phone the page scrolls under the bank, and that broke it twice over.
+
+   **First: a fixed canvas cannot be scrolled.** A touch scroll on iOS runs on
+   the compositor thread. The boxes move at the display's own rate however
+   busy the main thread is, while the rect this canvas reads is only as fresh
+   as the last `requestAnimationFrame` the main thread got to — and during a
+   fling, WebKit *throttles* the main thread's rAF callbacks in favour of
+   keeping the compositor smooth. The pictures lag their own borders, and no
+   amount of cutting this canvas's per-frame cost closes the gap, because the
+   bottleneck is how often the main thread runs at all rather than how long it
+   takes once it does. Two attempts went past before the shape of that was
+   clear: `dpr` and antialiasing came down first (still down, below, and worth
+   keeping); then the canvas was hidden outright the moment a scroll started
+   and faded back once the page settled, which traded a picture that swims for
+   a picture that is not there, and reads exactly as badly as it sounds.
+
+   **The fix is that the canvas scrolls too.** Narrow, `.mech-bank-gl` is
+   `position: absolute` over `.mech-bank` rather than fixed over the window,
+   so it is in the same scrolling flow as the bays it paints into. Now the
+   compositor moves the drawn pixels and the borders together, for free,
+   between main-thread frames — the main thread can be throttled to nothing
+   and the subjects stay glued to their boxes, because the *relative*
+   geometry never changed.
+
+   **Which leaves one thing to fix: `canvasSize` has to be as fresh as the
+   bay's rect.** They are subtracted from each other, so they only cancel if
+   they were read in the same moment. r3f measures its container through
+   `react-use-measure` with `scroll: true` and a 50ms debounce — right for a
+   canvas that only moves when the layout does, and useless for one that moves
+   with every scroll event, because a debounce that keeps being retriggered
+   never fires at all during a continuous fling. So `Track` below re-reads the
+   canvas's rect at the top of every frame, before any view has drawn.
+
+   It writes **into** `state.size` rather than through `set()`, and that is
+   deliberate: drei's `Container` reads `canvasSize.top` off the same object
+   at frame time, so a mutation is picked up with no store update, no
+   re-render of twelve views, and no chance of a render loop — which is a real
+   risk for anything setting state once a frame. What it costs is that r3f
+   itself does not learn the canvas moved; nothing in r3f cares, because
+   `setSize` keys off width and height and neither of those changed. */
+function Track({ on }: { on: boolean }) {
+  const get = useThree((state) => state.get)
+
+  /* Priority 0. It has to run before the views (which are all `index={1}`),
+     and a zero does not count toward r3f's manual-render flag — only a
+     priority above zero switches off the automatic render, and switching that
+     back on here would clear the canvas out from under every view. */
+  useFrame(() => {
+    if (!on) return
+    const state = get()
+    const box = state.gl.domElement.getBoundingClientRect()
+    const size = state.size as { top: number; left: number }
+    if (size.top !== box.top) size.top = box.top
+    if (size.left !== box.left) size.left = box.left
+  }, 0)
+
+  return null
 }
 
 export default function MechSlots() {
   const narrow = useNarrow()
-  const settled = useSettled(narrow)
 
   return (
     <Canvas
       className="mech-bank-gl"
-      style={{ opacity: settled ? 1 : 0 }}
+      /* Down on a phone, and it stays down. This is not what fixed the
+         scrolling — see above — but twelve subjects on a handset is still
+         twelve subjects, and a bank of hundred-and-fifty-unit bays behind a
+         scan-line veil is not where anyone is counting samples. */
       dpr={narrow ? 1 : [1, 1.75]}
       gl={{ antialias: !narrow, alpha: true, powerPreference: 'high-performance' }}
       camera={{ position: [0, 0, 3.1], fov: 34 }}
@@ -387,6 +443,7 @@ export default function MechSlots() {
       }}
     >
       <Environment />
+      <Track on={narrow} />
       <View.Port />
     </Canvas>
   )

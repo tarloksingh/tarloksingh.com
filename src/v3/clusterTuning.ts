@@ -59,10 +59,20 @@ export interface ClusterTuning {
    *  `bayFade`: the fade is the colour ramp, this is the softening of the
    *  picture under it. */
   bayBlur: number
-  /** Frame units of clear air under the rail's selection name on the narrow
-   *  layout, so the bay's top edge and the reticle's lock brackets do not
-   *  ride up into it. Wide keeps its own fixed gap. */
-  headGap: number
+  /** **Narrow only.** How large the role reel stands above the name, as a
+   *  fraction of the column's width.
+   *
+   *  It is a width and not a font size because `Segment` scales its glyphs to
+   *  whatever box it is given — twenty-one cells across whatever it has — so
+   *  the box's width *is* the reading's size, and shrinking the box is the
+   *  only knob that keeps the cells square while it does it. */
+  roleSize: number
+  /** **Narrow only.** Frame units of air between the instrument and the role
+   *  reel. */
+  roleTop: number
+  /** **Narrow only.** Frame units of air between the role reel and the name
+   *  under it. */
+  roleGap: number
 }
 
 export const CLUSTER_DEFAULTS: ClusterTuning = {
@@ -73,10 +83,12 @@ export const CLUSTER_DEFAULTS: ClusterTuning = {
   tach: 995,
   introY: 0,
   profileSize: 11.5,
-  profileInk: 0.58,
+  profileInk: 0.94,
   bayFade: 30,
   bayBlur: 3,
-  headGap: 18
+  roleSize: 0.8,
+  roleTop: 10,
+  roleGap: 0
 }
 
 const STORE_KEY = 'v3.cluster.tuning.v1'
@@ -116,7 +128,12 @@ export function useClusterTuning() {
       profileInk: { value: start.profileInk, min: 0.2, max: 1, step: 0.01, label: 'Intro ink' },
       bayFade: { value: start.bayFade, min: 0, max: 80, step: 1, label: 'Bay edge fade' },
       bayBlur: { value: start.bayBlur, min: 0, max: 12, step: 0.5, label: 'Bay edge blur' },
-      headGap: { value: start.headGap, min: 0, max: 60, step: 1, label: 'Rail head gap' },
+      /* Narrow only, and labelled so — the same panel is open on both
+         layouts and three controls that do nothing on the one in front of
+         you are three controls that read as broken. */
+      roleSize: { value: start.roleSize, min: 0.3, max: 1, step: 0.01, label: 'Reel size (phone)' },
+      roleTop: { value: start.roleTop, min: -40, max: 80, step: 1, label: 'Reel air above (phone)' },
+      roleGap: { value: start.roleGap, min: -40, max: 80, step: 1, label: 'Reel air below (phone)' },
       'Copy for source': button(() => {
         const text = asSource(live)
         void copyText(text)

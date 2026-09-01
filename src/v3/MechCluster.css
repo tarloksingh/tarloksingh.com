@@ -435,8 +435,18 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   /* Pulled toward the phosphor rather than neutral white. Plain white on this
      panel is the one colour nothing else is, and it made the block read as a
-     different document sitting on the screen. */
+     different document sitting on the screen.
+
+     **Lit, not printed.** It sat at 0.58 alpha with no glow, which is the
+     panel's caption treatment — the same weight as `GAL. UNLEADED FUEL ONLY`
+     under a gauge — and this is the only prose on the site: the one block
+     that says what I actually do. It burns at the readings' own strength now,
+     with the same bleed off `--g` every lit thing on this panel carries, so
+     it reads as something the display is showing rather than something
+     silkscreened onto the housing beside it. `--profile-ink` is still the
+     knob and still rides the bleed with it. */
   color: rgba(var(--accent-rgb), var(--profile-ink, 0.62));
+  text-shadow: 0 0 calc(10 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.45 * var(--profile-ink, 0.62) * var(--g)));
   font-size: calc(var(--profile-size, 11) * var(--type));
   line-height: 1.6;
 }
@@ -908,11 +918,20 @@
 
 /* The canvas every slot's subject is drawn into, one scissored view each.
 
-   **The whole viewport, fixed.** drei's `View` works out each view's scissor
-   box from the canvas's own rect and the tracked element's, and both come from
-   `getBoundingClientRect` — so the arithmetic is exactly right when the canvas
-   is the viewport and merely close when it is not. Sizing it to the bank was
-   the first attempt and every subject landed a couple of hundred pixels low.
+   **The whole viewport, fixed — on this layout.** drei's `View` works out each
+   view's scissor box from the canvas's own rect and the tracked element's, and
+   both come from `getBoundingClientRect`, so what it actually computes is the
+   difference between two viewport positions. That is exact when the canvas is
+   the viewport and the page cannot scroll, which is this composition; sizing
+   it to the bank was the first attempt and every subject landed a couple of
+   hundred pixels low, because r3f only re-measures its own container on a
+   debounce and the two rects stopped being readings of the same moment.
+
+   The narrow rule at the foot of this file does size it to the bank, on
+   purpose, and pays for it by keeping r3f's measurement fresh once a frame —
+   see the note there. Nothing about the wide layout wants that: there is
+   nothing to scroll, so there is nothing to keep in step.
+
    `View` only ever paints inside the rectangles it is given; the rest of this
    surface is never touched, and it takes no pointer, so the slots underneath
    are still ordinary buttons.
@@ -931,12 +950,6 @@
 .mech-bank-gl {
   position: fixed !important;
   inset: 0;
-  /* Narrow only, in practice — `settled` in MechSlots.tsx never leaves `true`
-     on the wide layout, which has nothing to scroll. Short both ways: long
-     enough that the bank does not visibly pop off and back on for a tap that
-     only nudges the scroll, short enough that a real scroll is most of the
-     way empty before the eye has settled on anything. */
-  transition: opacity 120ms linear;
   /* `!important`: r3f's `<Canvas>` sets `pointer-events: auto` as an inline
      style on this same element (for its own raycasting), and an inline style
      beats an external rule at equal specificity regardless of source order.
@@ -1651,27 +1664,37 @@
   margin-top: 0;
 }
 
+/* Out of the flank and up between the instrument and the name — see
+   `roleDisplay` in MechCluster.tsx for why it moved. The width is the size
+   knob: `Segment` scales its twenty-one cells to whatever box it is handed,
+   so a narrower box is a smaller reading, and it is centred rather than
+   stretched because `.mech-main` is `align-items: stretch` down here and a
+   shrunk box would otherwise sit against the left edge. */
 .mech[data-narrow='true'] .mech-display-role {
-  width: 100%;
+  width: calc(var(--role-size, 0.8) * 100%);
+  align-self: center;
+  margin-top: calc(var(--role-top, 10) * var(--px));
+  margin-bottom: calc(var(--role-gap, 0) * var(--px));
 }
 
+/* Flush with the cluster's own gutter, and nothing else.
+
+   It used to carry a further fourteen units of its own padding, on the
+   reasoning that a full-width slot wants a little air before the viewport
+   edge — the reticle's lock brackets acquire a slot's box and were spilling
+   past the right edge without it. What that actually bought was a block
+   inset further than every block above it: the counts, the reel, the name
+   and the intro all sit at `--gutter` and the bank sat at `--gutter` plus
+   fourteen, so the one block on the page that is a grid of boxes was the one
+   block whose edges did not line up with anything. The brackets are drawn
+   `overflow`-visible over a page that scrolls; a few units past a slot's
+   corner is not worth a visible seam down the whole layout. */
 .mech[data-narrow='true'] .mech-work-rail {
   order: 3;
   width: 100%;
   height: auto;
   align-self: auto;
-  /* A gutter so a full-width slot is not flush to the viewport edge — the
-     reticle's lock brackets acquire the slot's box with a little breathing
-     room and were spilling past the right edge without it. It also gives the
-     head, the bank and the dial row one shared centre line. */
-  padding: 0 calc(14 * var(--px));
-}
-
-/* Clear air under the selection name — narrow stacks the head straight onto
-   the bank, and the bay's top edge (and the reticle brackets that acquire it)
-   was riding up into the name. */
-.mech[data-narrow='true'] .mech-work-rail-head {
-  margin-bottom: calc(var(--head-gap, 18) * var(--px));
+  padding: 0;
 }
 
 /* No inner scroll on a phone — the page itself scrolls, and a scroll region
@@ -1717,11 +1740,17 @@
   height: calc(200 * var(--px));
 }
 
+/* Gone on a phone. Product / Code / Brand are three dials reporting on the
+   selection, and there is no selection to report down here any more — a tap
+   opens the project rather than picking it (see `SlotBox` in
+   MechCluster.tsx), so all three sat at whatever the cycling title happened
+   to fall under and read as decoration under the bank. Three rings and three
+   words is also most of a phone's width spent on the smallest reading on the
+   panel. Left in the tree rather than unmounted: the ignition sweep that
+   drives them is the same one the wide layout runs, and a second code path
+   for "did this screen draw the dials" is a second thing to keep in step. */
 .mech[data-narrow='true'] .mech-scale-row {
-  flex-wrap: wrap;
-  gap: calc(14 * var(--px));
-  width: 100%;
-  justify-content: center;
+  display: none;
 }
 
 /* Twelve slots across a phone is twelve thirty-point boxes, which is a row of
@@ -1742,13 +1771,15 @@
   grid-template-columns: repeat(2, 1fr);
   /* The bay is a square, not the wide rail's letterbox: a cell is
      (bank width − one column gap) / 2, and the bank is the viewport less the
-     cluster's 30-unit gutter and the rail's 14-unit padding, both sides — so
-     `100vw − (30 + 30 + 14 + 14 + 10) · --px`. `--slot-bay` carries that one
+     cluster's 30-unit gutter both sides — so `100vw − (30 + 30 + 10) · --px`.
+     The rail's own fourteen units of padding are gone from both this sum and
+     the rule above; it is flush with the gutter now, like every other block
+     down here. `--slot-bay` carries that one
      value to the shot and the veil cell so the two grids stay aligned cell for
      cell, and it is what the row height is built on. A rectangular bay also
      framed the subjects out — every slot shares one camera whose aspect is the
      bay's (see `MechSlots.tsx`). */
-  --slot-bay: calc((100vw - 98 * var(--px)) / 2);
+  --slot-bay: calc((100vw - 70 * var(--px)) / 2);
   /* The label's share of the row, and it has to be the label's *real* height:
      the row is a fixed track, so a bar taller than its allowance does not push
      the row down, it overflows into the one under it — which is what "tight
@@ -1761,13 +1792,39 @@
   gap: calc(10 * var(--px));
 }
 
-/* The feather that clips the wide rail's canvas to its own scrolled band is
-   driven by a scroll listener on `.mech-work-rail-list` — which does not
-   scroll on a phone (the page does), so its `--rail-clip-*` freeze at their
-   first-paint values and permanently mask off the top of the viewport, taking
-   every bay scrolled into that band with them. Narrow has no inner scroll
-   region to clip to, so drop the clip entirely. */
+/* ---- the bank's canvas, on a phone ----
+
+   **It scrolls with the bank rather than sitting still over the window**, and
+   that is the whole fix for the subjects lagging their own borders on a touch
+   fling. `position: absolute` over `.mech-bank` puts the canvas in the same
+   scrolling flow as the bays it paints into, so the compositor moves the
+   drawn pixels and the boxes together between main-thread frames — which is
+   the only mechanism on the page fast enough, because during a fling iOS
+   throttles the main thread's rAF and no amount of work done there can keep
+   up. The full account, including the two attempts that came before it and
+   the one thing this arrangement then *requires* of the main thread, is at
+   *scrolling the bank on a phone* in MechSlots.tsx.
+
+   `!important` for the same reason the fixed rule above needs it: r3f writes
+   `position: relative` onto this element as an inline style, and an inline
+   style beats an external rule at any specificity.
+
+   `.mech-bank` is already `position: relative` (for the veil), so it is the
+   containing block with nothing to add — and it is `isolation: isolate`,
+   which makes a stacking context but *not* a containing block for fixed
+   descendants, which is why the wide layout's fixed canvas was never caught
+   by it either.
+
+   The feather that clips the wide rail's canvas to its own scrolled band goes
+   with the fixed positioning: it is driven by a scroll listener on
+   `.mech-work-rail-list`, which does not scroll down here (the page does), so
+   `--rail-clip-*` freeze at their first-paint values and permanently mask off
+   the top of the viewport, taking every bay scrolled into that band with
+   them. There is no inner scroll region to clip to, so there is nothing to
+   clip. */
 .mech[data-narrow='true'] .mech-bank-gl {
+  position: absolute !important;
+  inset: 0;
   clip-path: none;
   -webkit-mask-image: none;
   mask-image: none;
