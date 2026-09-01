@@ -323,28 +323,61 @@ export function SlotView({ id, live, arrive }: { id: string; live: boolean; arri
    composition. Narrow, the page itself scrolls under the rail, and a touch
    scroll on iOS runs on the *compositor* thread: the boxes move at 120Hz
    however busy the main thread is, while the rect this canvas reads is only
-   as fresh as the last `requestAnimationFrame` the main thread got to. Twelve
-   live scenes, dpr 1.75, MSAA and a fresh environment map is enough per-frame
-   cost that a scroll gesture — which is also asking the main thread for
-   layout and paint — starts missing frames, and the subjects visibly lag a
-   beat behind their own bays: the picture "swims" against a border that is
-   not swimming at all, because the border is CSS and never left the
-   compositor.
+   as fresh as the last `requestAnimationFrame` the main thread got to — and
+   during a fling, WebKit itself throttles the main thread's rAF callbacks in
+   favour of keeping the compositor smooth, which no amount of cutting this
+   canvas's own per-frame cost can outrun. `dpr` and antialiasing came down
+   first (below) on the reasoning that less work per frame closes the gap; it
+   narrows it and does not close it, because the bottleneck during a fling is
+   how often the main thread runs at all, not how long it takes once it does.
 
-   There is no way to make a WebGL canvas move on the compositor thread the
-   way a scrolled `<div>` does — the fix is to make each dropped frame smaller,
-   not to stop dropping them. Narrower, this canvas renders at native
-   resolution with no antialiasing rather than 1.75x with MSAA: a scissored
-   view a few dozen pixels on a side does not show the jaggies, and the frame
-   it costs to draw is most of what was making the lag visible. `dpr` also
-   drops relative *device* pixels — most phones report 2 or 3 — so the
-   savings compound with the resolution cap rather than adding to it. */
+   So the picture does not try to keep up. `settled` — a scroll listener on
+   the narrow-only scroller, `.mech`, with a short quiet timer — hides the
+   canvas the moment a scroll starts and brings it back once the page has
+   actually stopped, which is also the one moment `View`'s next frame is
+   guaranteed to measure the *finished* position rather than a mid-flight one.
+   What was a picture visibly swimming behind its own border is a picture that
+   is simply not there while the border moves, and reappears already correct
+   — a rougher trade than perfect tracking, and the only one available that
+   does not touch how the rest of the page scrolls. */
+function useSettled(narrow: boolean) {
+  const [settled, setSettled] = useState(true)
+
+  useEffect(() => {
+    if (!narrow) {
+      setSettled(true)
+      return
+    }
+    setSettled(false)
+    let timer = 0
+    // Captured: on this layout the scroller is `.mech`, not the document —
+    // same reasoning as the grid's parallax listener in MechHud.tsx, and the
+    // same guard against hearing the fact deck's sideways scroll instead.
+    const onScroll = (event: Event) => {
+      const el = event.target
+      if (!(el instanceof HTMLElement) || !el.classList.contains('mech')) return
+      setSettled(false)
+      window.clearTimeout(timer)
+      timer = window.setTimeout(() => setSettled(true), 140)
+    }
+    window.addEventListener('scroll', onScroll, { passive: true, capture: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll, { capture: true })
+      window.clearTimeout(timer)
+    }
+  }, [narrow])
+
+  return settled
+}
+
 export default function MechSlots() {
   const narrow = useNarrow()
+  const settled = useSettled(narrow)
 
   return (
     <Canvas
       className="mech-bank-gl"
+      style={{ opacity: settled ? 1 : 0 }}
       dpr={narrow ? 1 : [1, 1.75]}
       gl={{ antialias: !narrow, alpha: true, powerPreference: 'high-performance' }}
       camera={{ position: [0, 0, 3.1], fov: 34 }}

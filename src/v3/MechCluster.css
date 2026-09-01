@@ -931,6 +931,12 @@
 .mech-bank-gl {
   position: fixed !important;
   inset: 0;
+  /* Narrow only, in practice — `settled` in MechSlots.tsx never leaves `true`
+     on the wide layout, which has nothing to scroll. Short both ways: long
+     enough that the bank does not visibly pop off and back on for a tap that
+     only nudges the scroll, short enough that a real scroll is most of the
+     way empty before the eye has settled on anything. */
+  transition: opacity 120ms linear;
   /* `!important`: r3f's `<Canvas>` sets `pointer-events: auto` as an inline
      style on this same element (for its own raycasting), and an inline style
      beats an external rule at equal specificity regardless of source order.
