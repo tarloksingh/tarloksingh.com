@@ -41,21 +41,20 @@ export interface Note {
   /** Where the text sits, in the same fractions. Outside 0..1 on purpose most
    *  of the time — a label belongs off the edge of the thing it names. */
   to?: [number, number]
-  /** The same two points for the narrow layout. A phone stage is a third the
-   *  width of the wide frame and about as tall, so a card set off the right
-   *  edge on desktop lands off the screen on a phone and the wide fan collapses
-   *  onto the subject. When present these win below the breakpoint; when not,
-   *  the narrow layout falls back to `at`/`to` and then to the auto fan. Placed
-   *  by pressing P at a narrow window — see `MechPins.tsx`. */
+  /** Where the leader touches on the narrow layout, in the same fractions.
+   *  One point and not two: a phone has no card to seat, only the mark on the
+   *  picture and the sentence in the deck under it (`MechFacts.tsx`), so there
+   *  is nowhere for a `toNarrow` to put anything. When present this wins below
+   *  the breakpoint; when not, the mark falls back to `at` and then to the auto
+   *  fan. Placed by pressing P at a narrow window — see `MechPins.tsx`. */
   atNarrow?: [number, number]
-  toNarrow?: [number, number]
 }
 
 export const NOTES: Record<string, Note[]> = {
   'mr-takahashi/model': [
-    { label: 'Name', value: 'Spoke in English and Japanese. ', at: [-0.0519, 0.5049], to: [-0.2072, 0.458], atNarrow: [0.6692, 0.0453], toNarrow: [0.7467, -0.0569] },
-    { label: '', value: 'Sculpted and animated in Blender.e', at: [0.9534, 0.1661], to: [1.0561, 0.0889], atNarrow: [0.3093, 0.8346], toNarrow: [0.2663, 0.9075] },
-    { label: '', value: 'We used whisper voice to text to get the input, and Llama 3 as the intellegence. ', at: [0.0132, 0.8611], to: [-0.0976, 0.9056], atNarrow: [0.4776, 0.9247], toNarrow: [0.4914, 0.9517] }
+    { label: 'Name', value: 'Spoke in English and Japanese. ', at: [-0.0519, 0.5049], to: [-0.2072, 0.458], atNarrow: [0.6692, 0.0453] },
+    { label: '', value: 'Sculpted and animated in Blender.e', at: [0.9534, 0.1661], to: [1.0561, 0.0889], atNarrow: [0.3093, 0.8346] },
+    { label: '', value: 'We used whisper voice to text to get the input, and Llama 3 as the intellegence. ', at: [0.0132, 0.8611], to: [-0.0976, 0.9056], atNarrow: [0.4776, 0.9247] }
   ],
   'mr-takahashi/MrTakahashi_Demo.mp4': [
     { label: 'made in', value: 'I used the Black Magic Ursa Mini 4.6k to film the demo video. ', fold: 'tools', at: [0.9331, 0.5969], to: [1.0562, 0.6823] },
@@ -423,7 +422,6 @@ const asSource = (id: string, notes: Note[]) => {
     if (note.at) parts.push(`at: [${round(note.at[0])}, ${round(note.at[1])}]`)
     if (note.to) parts.push(`to: [${round(note.to[0])}, ${round(note.to[1])}]`)
     if (note.atNarrow) parts.push(`atNarrow: [${round(note.atNarrow[0])}, ${round(note.atNarrow[1])}]`)
-    if (note.toNarrow) parts.push(`toNarrow: [${round(note.toNarrow[0])}, ${round(note.toNarrow[1])}]`)
     return `    { ${parts.join(', ')} }`
   }
   return `  '${id}': [\n${notes.map(line).join(',\n')}\n  ]`
@@ -483,7 +481,8 @@ export const notesFor = (entry: Entry, frame: Frame, drafts: Draft = draft): Not
  *  picture to click on. */
 export const addNote = (id: string, at: [number, number], from: Note[], narrow = false) => {
   const side = at[0] > 0.5 ? 1 : -1
-  const to: [number, number] = [at[0] + side * 0.3, at[1] - 0.1]
-  const geometry = narrow ? { atNarrow: at, toNarrow: to } : { at, to }
+  // Narrow places one point: there is no card on the picture to seat, so
+  // nothing wants a second. See `Note` above.
+  const geometry = narrow ? { atNarrow: at } : { at, to: [at[0] + side * 0.3, at[1] - 0.1] as [number, number] }
   pins.set(id, [...from, { label: 'label', value: 'Say what this is, in a sentence.', ...geometry }])
 }

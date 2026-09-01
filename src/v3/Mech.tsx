@@ -24,7 +24,7 @@ import { drift, flinch, quarry } from './subject'
 import { findProject, thumbOf, type Entry, type Frame } from './model'
 import { focus, notesFor, pins, type Note } from './notes'
 import { useLabelTuning, type Handed } from './labelTuning'
-import { boxOf, CARD, FRAME_SPACE, leadersFor, mediaBox, meetsCard, type Space } from './leaders'
+import { boxOf, CARD, FRAME_SPACE, leadersFor, mediaBox, meetsCard, tipsFor, type Space } from './leaders'
 import './Mech.css'
 
 const MechModel = lazy(() => import('./MechModel'))
@@ -35,6 +35,9 @@ const RiderStage = lazy(() => import('./MechRider').then((m) => ({ default: m.Ri
 /* Development only — the render is behind `import.meta.env.DEV`, so a visitor
    never fetches this chunk. See `MechPins.tsx`. */
 const MechPins = lazy(() => import('./MechPins'))
+/* Narrow only, and a phone is the one place a chunk it never needs is worth
+   not sending. See `MechFacts.tsx`. */
+const MechFacts = lazy(() => import('./MechFacts'))
 /* Home, and everything in it. Lazy because the bank puts every project's own
    3D subject in its slot, which pulls three.js and eleven scene graphs in with
    it — a visitor who lands straight on a project URL should never fetch any of
@@ -481,25 +484,22 @@ const aimLeader = (leader: SVGGElement, card: HTMLElement) => {
   line.style.setProperty('--l', String(Math.hypot(tip[0] - meets[0], tip[1] - meets[1])))
 }
 
-function Leaders({ notes, box, space, floats, lit, onLit }: LeadersProps) {
-  const group = useRef<SVGGElement>(null)
-  const list = leadersFor(notes, box, space)
+/* The labels ride the same bob the subject is on, read from what the float
+   actually did this frame rather than from an animation timed to look like it
+   — two clocks that agree at the start and not a minute later is exactly the
+   sort of thing nobody can name and everybody notices.
 
-  /* The labels ride the same bob the subject is on, read from what the float
-     actually did this frame rather than from an animation timed to look like
-     it — two clocks that agree at the start and not a minute later is exactly
-     the sort of thing nobody can name and everybody notices.
+   Written straight through, no easing. A low-pass here trails the subject by
+   its own time constant, and at the float's slow rate that lag reads as the
+   labels and the model running at different speeds — see the note in
+   `README.md`. `drift` is already the damped-enough output of the frame loop.
 
-     Written straight through, no easing. A low-pass here trails the subject by
-     its own time constant, and at the float's slow rate that lag reads as the
-     labels and the model running at different speeds — see the note in
-     `README.md`. `drift` is already the damped-enough output of the frame
-     loop. */
-  /* `drift` is published in the frame's own coordinates — a 1920×1080 box —
-     because that is the space the wide layout draws in. A narrow canvas is a
-     different number of units tall for the same amount of world, so the bob
-     has to be converted on the way in or the labels swing twice as far as the
-     head does. */
+   `drift` is published in the frame's own coordinates — a 1920×1080 box —
+   because that is the space the wide layout draws in. A narrow canvas is a
+   different number of units tall for the same amount of world, so the bob has
+   to be converted on the way in or the marks swing twice as far as the head
+   does. */
+const useRide = (group: React.RefObject<SVGGElement | null>, floats: boolean, space: Space) => {
   const perFrame = space.h / 1080
   useEffect(() => {
     if (!floats) return
@@ -513,7 +513,14 @@ function Leaders({ notes, box, space, floats, lit, onLit }: LeadersProps) {
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [floats, perFrame])
+  }, [group, floats, perFrame])
+}
+
+function Leaders({ notes, box, space, floats, lit, onLit }: LeadersProps) {
+  const group = useRef<SVGGElement>(null)
+  const list = leadersFor(notes, box, space)
+
+  useRide(group, floats, space)
 
   /* Laid out, then fitted — see `fitCards`. `list` is rebuilt on every render
      so it cannot be a dependency; what actually moves a card is the notes it
@@ -634,6 +641,77 @@ function Leaders({ notes, box, space, floats, lit, onLit }: LeadersProps) {
           </g>
         )
       })}
+      </g>
+    </svg>
+  )
+}
+
+/* ---- the marks, on a phone ----
+
+   The same rings on the same spots, with the lines and the cards taken off:
+   the sentences are in the deck under the picture now (`MechFacts.tsx`), and
+   why they had to leave the picture is the sum at the top of `leaders.ts`.
+
+   What holds the two halves together is a number. Each mark carries the one
+   printed on its card, so a mark and a card can be matched by eye — which a
+   leader line did for free and nothing else here does. Press the mark and its
+   card comes up; swipe to a card and its mark lights.
+
+   The rings are drawn at the same radii the wide layout uses and the tap
+   target is a fourth circle over them, invisible and much larger, because a
+   6.5-unit ring on a 500-unit frame is nine real pixels of target. */
+interface MarksProps {
+  notes: Note[]
+  box: ReturnType<typeof boxOf>
+  space: Space
+  floats: boolean
+  active: number
+  onPick: (index: number) => void
+}
+
+function Marks({ notes, box, space, floats, active, onPick }: MarksProps) {
+  const group = useRef<SVGGElement>(null)
+  useRide(group, floats, space)
+
+  return (
+    <svg
+      className="mech-leaders mech-marks"
+      viewBox={`0 0 ${space.w} ${space.h}`}
+      preserveAspectRatio="none"
+    >
+      <g ref={group}>
+        {tipsFor(notes, box).map((tip, i) => (
+          <g
+            key={`${i}-${tip.note.label}`}
+            data-on={i === active}
+            style={{ ['--d' as string]: `${IN_STEP.from + i * IN_STEP.by}ms` }}
+            onPointerDown={() => onPick(i)}
+          >
+            <circle className="mech-leader-ping" cx={tip.point[0]} cy={tip.point[1]} r={13} />
+            <circle className="mech-leader-mark" cx={tip.point[0]} cy={tip.point[1]} r={6.5} />
+            <circle className="mech-leader-core" cx={tip.point[0]} cy={tip.point[1]} r={1.9} />
+            {/* Set off the ring rather than centred on it: on the right of it
+                by default, and on the left for a mark near the right-hand edge
+                of the stage, where a number set outward is a number half off
+                the window. A tip really can land there — every note pinned for
+                the desktop and not for this layout is pulled in to the edge of
+                the picture, which on a phone is the edge of the screen. */}
+            {(() => {
+              const out = tip.point[0] > space.w - 64
+              return (
+                <text
+                  className="mech-mark-no"
+                  x={tip.point[0] + (out ? -12 : 12)}
+                  y={tip.point[1] - 9}
+                  textAnchor={out ? 'end' : 'start'}
+                >
+                  {String(i + 1).padStart(2, '0')}
+                </text>
+              )
+            })()}
+            <circle className="mech-mark-hit" cx={tip.point[0]} cy={tip.point[1]} r={26} />
+          </g>
+        ))}
       </g>
     </svg>
   )
@@ -1054,12 +1132,20 @@ export default function Mech({ id, onProject, onHome }: Props) {
   const drafts = useSyncExternalStore(pins.subscribe, pins.snapshot, pins.snapshot)
   const [pinning, setPinning] = useState(false)
   const [menu, setMenu] = useState(false)
+  /* Which note is up in the deck under the picture, narrow only — held here
+     rather than inside `MechFacts` because the marks on the picture are lit
+     off the same number and the two are in different halves of the tree. Back
+     to the first one whenever the picture changes: the deck is about *this*
+     frame, and arriving at a new one already three cards along is the readout
+     remembering something that has nothing to do with what is on screen. */
+  const [fact, setFact] = useState(0)
 
   useEffect(() => {
     if (!narrow) setMenu(false)
   }, [narrow])
 
   const current = frames[shown]
+  useEffect(() => setFact(0), [current?.id])
   const modelFrame = frames.find((frame) => frame.kind === 'model')
   const pieceFrame = frames.find((frame) => frame.kind === 'piece')
   const covered = phase !== 'in' || booting
@@ -1577,16 +1663,34 @@ export default function Mech({ id, onProject, onHome }: Props) {
               to the frame that is leaving — and the ones arriving mount at the
               moment the next picture starts, which is what their own draw-in
               is timed against. */}
+          {/* Two readouts, and the narrow one is not a smaller version of the
+              wide one — it is the marks alone, with the sentences in a deck
+              below the stage. See `Marks` above. */}
           {!booting && phase !== 'hold' && current && (
-            <Leaders
-              key={`leaders-${current.id}`}
-              notes={notes}
-              box={boxOf(current, space)}
-              space={space}
-              floats={current.kind !== 'flat'}
-              lit={lit}
-              onLit={setLit}
-            />
+            narrow ? (
+              <Marks
+                key={`marks-${current.id}`}
+                notes={notes}
+                box={boxOf(current, space)}
+                space={space}
+                floats={current.kind !== 'flat'}
+                active={fact}
+                onPick={(at) => {
+                  sound.select()
+                  setFact(at)
+                }}
+              />
+            ) : (
+              <Leaders
+                key={`leaders-${current.id}`}
+                notes={notes}
+                box={boxOf(current, space)}
+                space={space}
+                floats={current.kind !== 'flat'}
+                lit={lit}
+                onLit={setLit}
+              />
+            )
           )}
 
           {import.meta.env.DEV && pinning && current && (
@@ -1595,6 +1699,22 @@ export default function Mech({ id, onProject, onHome }: Props) {
             </Suspense>
           )}
         </div>
+        )}
+
+        {/* What the picture's marks are pointing at, in words. Narrow only:
+            the wide layout says the same things in cards fanned around the
+            subject, which is a shape a phone cannot hold — see the sum at the
+            top of `leaders.ts`.
+
+            Mounted for as long as there is a picture, and not held back to the
+            phases the marks are drawn in. The deck is a block in a scrolling
+            column: taking it out between two frames would drop everything
+            below it up the page and back down again, so it stays and its
+            contents fade on `data-covered` with the picture they belong to. */}
+        {narrow && !home && current && notes.length > 0 && (
+          <Suspense fallback={null}>
+            <MechFacts key={current.id} notes={notes} index={fact} onIndex={setFact} />
+          </Suspense>
         )}
 
         {/* Home's way into the work is the bar graph in the cluster: twelve

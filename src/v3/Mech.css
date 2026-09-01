@@ -1157,6 +1157,53 @@
   }
 }
 
+/* ---- the marks on their own ----
+
+   The narrow readout: the rings above, a number beside each, and no line and
+   no card — those are a deck under the picture now (`MechFacts.tsx`). What is
+   left to style is the pair of things a phone needs and a pointer does not.
+
+   **A target.** The ring is 6.5 units on a 500-unit frame, which is nine real
+   pixels. `.mech-mark-hit` is a transparent circle four times that, drawn last
+   so it is over the three it is standing in for, and it is the only thing in
+   the layer that takes a press. */
+.mech-marks {
+  pointer-events: none;
+  touch-action: manipulation;
+}
+
+.mech-mark-hit {
+  fill: transparent;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+/* **A number.** It is the whole of the link between a mark and its sentence,
+   which on the wide layout is a line you can follow with your eye. Drawn in
+   user units like every other SVG label on this site, so the size is a `px`
+   multiplied by `--type-k` — see `useTypeScale`. */
+.mech-mark-no {
+  font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: calc(11px * var(--type-k, 1));
+  letter-spacing: calc(0.6px * var(--type-k, 1));
+  fill: rgba(var(--accent-rgb), 0.72);
+  opacity: 0;
+  animation: mech-fade 560ms ease calc(var(--d) + 560ms) both;
+  transition: fill 200ms linear;
+  pointer-events: none;
+}
+
+/* The one whose card is up. Nothing dims: the same rule the fold link follows
+   — the answer to "which one is this" is that one getting brighter. */
+.mech-marks g[data-on='true'] .mech-mark-no {
+  fill: var(--accent);
+  filter: drop-shadow(0 0 6px rgba(var(--accent-rgb), 0.8));
+}
+
+.mech-stage[data-covered='true'] .mech-mark-no {
+  animation: mech-out 320ms var(--ease) 170ms both;
+}
+
 /* First in, and the only one of these that is not a fade: the line is drawn
    on out of nothing, which is what a leader is. */
 .mech-leader {
@@ -2428,6 +2475,14 @@
   white-space: nowrap;
 }
 
+/* Narrow, the chip is parked beside its own tip rather than dragged: a phone's
+   readout is one point per note (`CHIP` in MechPins.tsx). Nothing about it is
+   a handle, so it does not offer itself as one. */
+.mech-pin-chip[data-fixed='true'] {
+  transform: none;
+  cursor: default;
+}
+
 /* A note nobody has pinned yet is sitting wherever the fan put it. Dashed,
    so the difference between "placed here" and "fell here" is visible at a
    glance across a frame with eight of them. */
@@ -3479,16 +3534,19 @@
   order: 2;
 }
 
+/* 3 is the fact deck's, set on `.mech-facts` in its own stylesheet — the notes
+   on the picture belong under the picture and above the way to the next one.
+   See `MechFacts.css`. */
 .mech[data-narrow='true'] .mech-rail-wrap {
-  order: 3;
-}
-
-.mech[data-narrow='true'] .mech-folds-wrap {
   order: 4;
 }
 
-.mech[data-narrow='true'] .mech-foot {
+.mech[data-narrow='true'] .mech-folds-wrap {
   order: 5;
+}
+
+.mech[data-narrow='true'] .mech-foot {
+  order: 6;
 }
 
 /* The name on a phone, and the taller home stage the line-up needed, are both

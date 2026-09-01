@@ -1,0 +1,183 @@
+/* ---- the fact deck ----
+
+   Narrow only; the component is not mounted anywhere else, which is why
+   nothing in here is scoped under `.mech[data-narrow='true']` the way the rest
+   of the phone layout is. Every number is still a frame coordinate — `--px` is
+   `100vw / 500` down here — and every type size is on `--type`. That pairing
+   is exactly what broke the leader cards it replaces, and it is safe here for
+   one reason: nothing in this deck is *positioned* by the frame unit. A card
+   is a percentage of a scroller, so type that grows past what the frame
+   expected makes the card taller instead of making it overflow. See the sum at
+   the top of `leaders.ts`. */
+
+.mech-facts {
+  order: 3;
+  margin-top: calc(18 * var(--px));
+}
+
+/* Which readout this is, and where you are in it — the same pairing as the
+   housing strip over the picture: a word on the left, a count on the right. */
+.mech-facts-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(12 * var(--px));
+  padding: 0 var(--gutter) calc(9 * var(--px));
+}
+
+.mech-facts-key {
+  font-size: calc(9.5 * var(--type));
+  letter-spacing: calc(2.2 * var(--type));
+  text-transform: uppercase;
+  color: var(--accent);
+  text-shadow: 0 0 calc(12 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.5 * var(--g)));
+}
+
+/* Five cells: two digits, a slash, two digits. Fixed, so stepping from note
+   nine to note ten does not shift the display sideways. */
+.mech-facts-count .mech-seg {
+  width: calc(5 * 9.5 * var(--px));
+}
+
+/* ---- the cards ----
+
+   Snapped to the start rather than centred, so the card that is up lines up
+   with the title and the write-up down the same left edge. What is left over
+   on the right is the next card's shoulder, and that shoulder is the whole
+   affordance — a deck that fits its screen exactly is a deck nobody swipes. */
+.mech-facts-run {
+  position: relative;
+  display: flex;
+  gap: calc(12 * var(--px));
+  padding: 0 var(--gutter);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-padding-left: var(--gutter);
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.mech-facts-run::-webkit-scrollbar {
+  display: none;
+}
+
+.mech-facts-run[data-one='true'] .mech-facts-card {
+  flex-basis: 100%;
+}
+
+.mech-facts-card {
+  flex: 0 0 86%;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  gap: calc(10 * var(--px));
+  min-height: calc(96 * var(--px));
+  padding: calc(14 * var(--px)) calc(16 * var(--px)) calc(16 * var(--px));
+  border: 1px solid rgba(var(--accent-rgb), 0.5);
+  border-radius: var(--round);
+  background: rgba(var(--accent-rgb), 0.07);
+  box-shadow: inset 0 0 calc(40 * var(--px)) rgba(var(--accent-rgb), 0.07);
+  /* The one off it is not, so a half-swiped deck reads as one card in front of
+     another rather than as two competing for the same sentence. */
+  opacity: 0.4;
+  transition: opacity 220ms linear, border-color 220ms linear, box-shadow 220ms linear;
+}
+
+.mech-facts-card[data-on='true'] {
+  opacity: 1;
+  border-color: rgba(var(--accent-rgb), 0.9);
+  box-shadow:
+    0 0 calc(26 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.22 * var(--g))),
+    inset 0 0 calc(40 * var(--px)) rgba(var(--accent-rgb), 0.09);
+}
+
+/* The number, and a rule running out of it to the edge of the card. The same
+   number is set beside this note's mark on the picture, and that pair is what
+   the leader line used to be — see `Marks` in Mech.tsx. */
+.mech-facts-no {
+  display: flex;
+  align-items: center;
+  gap: calc(10 * var(--px));
+  flex: none;
+  font-size: calc(10 * var(--type));
+  letter-spacing: calc(1.6 * var(--type));
+  color: var(--accent);
+  text-shadow: 0 0 calc(10 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.5 * var(--g)));
+}
+
+.mech-facts-no::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(var(--accent-rgb), 0.45), rgba(var(--accent-rgb), 0));
+}
+
+.mech-facts-card p {
+  margin: 0;
+  font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-weight: 400;
+  font-size: calc(13 * var(--type));
+  line-height: 1.45;
+  color: #fff;
+  text-wrap: pretty;
+}
+
+/* ---- the pips ----
+
+   One bar per note, the current one long and lit: the same furniture as the
+   tile strip's track directly under it, which is deliberate — they are two
+   readouts of the same shape saying where you are in two different sets.
+
+   The bar is drawn by `::before` so the button around it can be a real touch
+   target without the bar growing to match. */
+.mech-facts-pips {
+  display: flex;
+  align-items: center;
+  gap: calc(6 * var(--px));
+  padding: 0 var(--gutter);
+  margin-top: calc(4 * var(--px));
+}
+
+.mech-facts-pip {
+  appearance: none;
+  border: 0;
+  background: none;
+  padding: calc(9 * var(--px)) 0;
+  cursor: pointer;
+}
+
+.mech-facts-pip::before {
+  content: '';
+  display: block;
+  width: calc(22 * var(--px));
+  height: calc(3 * var(--px));
+  border-radius: calc(2 * var(--px));
+  background: rgba(var(--accent-rgb), 0.25);
+  transition: width 260ms var(--ease), background 260ms linear, box-shadow 260ms linear;
+}
+
+.mech-facts-pip[data-on='true']::before {
+  width: calc(40 * var(--px));
+  background: var(--accent);
+  box-shadow: 0 0 calc(14 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.55 * var(--g)));
+}
+
+/* Out with the picture it is about, and back with the next one. Hung off the
+   three children rather than off `.mech-facts` itself, which carries
+   `data-arrive` and is therefore already spoken for: the reveal's own
+   `[data-arrive][data-arrived='true']` sets an opacity of its own, and two
+   rules bidding for one property is the sort of fight that is won by whichever
+   selector happens to be longer. */
+.mech[data-covered='true'] .mech-facts-head,
+.mech[data-covered='true'] .mech-facts-run,
+.mech[data-covered='true'] .mech-facts-pips {
+  opacity: 0;
+}
+
+.mech-facts-head,
+.mech-facts-run,
+.mech-facts-pips {
+  transition: opacity 260ms var(--ease);
+}

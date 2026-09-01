@@ -53,6 +53,7 @@ being false (which is why `navigator.clipboard` does not exist — see
 | `Segment.tsx`, `Segment.css` | The fourteen-segment display, drawn in SVG |
 | `clusterTuning.ts` | Home's four knobs, the **Cluster** tab |
 | `leaders.ts`, `notes.ts` | Where the label lines go, and what they say |
+| `MechFacts.tsx`, `MechFacts.css` | **Narrow only**: the notes as a swipeable deck under the picture |
 | `MechPins.tsx`, `labelTuning.ts` | Placing a picture's labels (**P**) and copying them out |
 | `MechModel.tsx` | The subject: one GLB, lit, drifting, watching, shootable |
 | `MechHud.tsx`, `MechCursor.tsx` | The dashboard, and the reticle |
@@ -220,6 +221,21 @@ all of them look like something other than what they are:
   its `animation-name` changes. Same rule as the frame swap.
 
 ## Where this is up to
+
+**A phone has no leader lines.** Below the breakpoint the picture keeps the
+marks — the ring, the dot, the ping, plus a number beside each — and every
+sentence moves into a deck under the stage: one card, swiped, with pips and a
+count (`MechFacts.tsx`). Press a mark and its card comes up; swipe to a card
+and its mark lights. It is not a smaller fan, and it cannot be: a card's box is
+in frame units while its type is on `--type`, which has a rem floor and stops
+shrinking with the window, so a readable sentence needs about seventy per cent
+of a phone's width and three of them cannot be arranged around a subject on the
+same screen. Every symptom of that — cards clipped mid-word, printed over each
+other, running off the edge — looks like a placement bug and is one sum. The
+full arithmetic is in **The leaders, on a phone** in `README.md` and at the top
+of `leaders.ts`. Two consequences worth knowing: `toNarrow` is gone (a phone
+places one point, not two), and `tipsFor` clamps a *reused* wide tip onto the
+picture while leaving a genuinely narrow-placed one alone.
 
 **The frame transition is settled.** It is not the field of cells any more —
 that was called "somewhat ugly", and the four replacements on the table (CRT

@@ -2999,41 +2999,96 @@ everybody notices.
 
 ### The leaders, on a phone
 
-They were off there, and the reason was not the fan or the type size — it was
-the canvas. The lines are drawn into an SVG with `preserveAspectRatio="none"`
-over a `viewBox` of the frame, which on the wide layout is exactly the stage's
-own shape, so x and y are scaled by the same amount and nothing is distorted.
-Stretch that same 1920×1080 box onto a 390×409 phone stage and the two scales
-differ by nearly two to one: every label comes out squashed flat sideways, on
-top of the next one, on top of the face. Which is what it looked like.
+There are none. A phone gets the **marks** on the picture and the sentences in
+a **deck** under it — `Marks` in `Mech.tsx` and `MechFacts.tsx` — and this
+section is the arithmetic that says why, because the answer is not a font size
+and two previous passes spent themselves finding that out.
 
-So the canvas takes the stage's own proportions instead. `Space` in
-`leaders.ts` is the stage measured **in frame units** — `useStageSpace` in
-`Mech.tsx` reads the stage's box and divides by one `--px`, taken off the same
-probe `--type-k` is measured from, because `--px` is a `min()` over rem and
-viewport units that `getComputedStyle` hands back unevaluated. One user unit
-stays worth one `--px` on both layouts, which is the whole trick: every fixed
-offset in `leaders.ts`, every radius in the stylesheet and `18px *
-var(--type-k)` all keep rendering at the size they were drawn at, with nothing
-overridden anywhere.
+A card's box is in frame units: `min(CARD.w, 0.6 × stage)`, which on a 402pt
+phone is about 240 real pixels. Its type is on `--type`, and `--type` has a rem
+floor — it is a `max()`, deliberately, so browser zoom can reach a readout that
+is otherwise a fraction of the viewport (see **Type is on its own unit**). A
+floor does not shrink. So the two units drift apart as the window narrows, and
+any device that scales its own text — iOS's per-site text size, Dynamic Type,
+zoom — pushes them further. The sentence outgrows the box it was allotted,
+`width: max-content` overflows the `foreignObject`, and what you get is a card
+clipped mid-word, printed across the card below it, running off the right edge
+of the screen. It reads as a placement bug. It is a unit mismatch.
 
-Two things follow from the box being different. `boxOf` takes the space: the
-subject is a centred fraction of a narrow stage rather than `MODEL_BOX`, and a
-picture is the same contain-fit the browser is doing. And the gutter that
-keeps a label clear of the left column and the rail is pointless when there is
-neither — narrow it opens to nearly the full width.
+Turn the sum round and it is worse news than a bug. A sentence set at a size
+anyone can read on a phone wants about 280 real pixels — **seventy per cent of
+the screen's width**. Three of those cannot be arranged around a subject that
+is using the same screen, at any size, in any arrangement. The fan is not a
+composition that can be tuned onto a phone. So it is not there.
 
-The cards made it tighter again, because a sentence needs width and a phone
-stage is a third of the frame's. Two things give: `leaders.ts` caps a card at
-a share of the stage rather than at `CARD.w`, and the stylesheet sets it a size
-down. What is left is the reason the *never over its own tip* guard exists at
-all — there is no room beside the subject there, so a card that cannot go
-sideways is dropped clear vertically instead.
+What is there:
+
+- **The marks.** The same three circles at the same radii, the ring, the dot
+  and the ping, on the same spots. `tipsFor` in `leaders.ts` is the whole of
+  the geometry now — no seat, no width, no flip, no spreading two cards off
+  each other, because a ring has no width to squeeze and nothing to collide
+  with. `atNarrow` first, then the wide `at`, then the fan's slot.
+- **A number beside each one**, and the same number on its card. That pair is
+  what the leader line used to be: a line is the better answer when you have
+  the room for one, and a number is the answer that survives a thumb over half
+  the picture.
+- **The deck**, between the picture and the tile strip: one card, snapped to
+  the left edge the title and the write-up already line up on, the next card's
+  shoulder showing so it reads as swipeable, a pip apiece under it, and the
+  count on a five-cell segment display beside the word `NOTES`.
+
+The two halves are joined by an index, held in `Mech` because they sit in
+different halves of the tree. Press a mark and its card comes up; swipe to a
+card and its mark lights. It goes back to the first note whenever the picture
+changes.
+
+Three things in the deck are worth knowing.
+
+**The wide fallback is pulled onto the picture.** A wide tip is routinely set
+a little *past* the edge — 1.02 across is common — because out there it is in
+the frame's margin beside the 16:9 island, next to its card. On a phone the
+picture is the whole stage, so past the edge is past the window, and a note
+pinned only for the desktop had no mark at all. `tipsFor` clamps a fraction it
+is *reusing* to `0.04..0.96`, and leaves a fraction that was actually placed on
+this layout exactly where it was dropped — the same distinction `seated` makes
+with `free`. The number flips to the other side of its ring near the right
+edge, for the same reason.
+
+**The deck is mounted for as long as there is a picture**, and not only for the
+phases the marks are drawn in. It is a block in a scrolling column: taking it
+out between two frames would drop everything below it up the page and back
+down again. Its contents fade on `data-covered` with the picture instead, and
+that fade is hung off its three children rather than the section itself,
+because the section carries `data-arrive` and the reveal already has an opinion
+about its opacity.
+
+**A card is a percentage of a scroller, not a box in frame units.** Which is
+what makes it safe to set its type on `--type` at all: type that grows past
+what the frame expected makes the card taller, and taller is free on a page
+that scrolls. That is the whole difference between this and the thing it
+replaces.
+
+The canvas the marks are drawn into is still the stage's own shape, and for the
+original reason. The lines were drawn with `preserveAspectRatio="none"` over a
+`viewBox` of the frame, which on the wide layout is exactly the stage's shape,
+so x and y scale by the same amount. Stretch that same 1920×1080 box onto a
+390×409 phone stage and the two scales differ by nearly two to one: everything
+comes out squashed flat sideways. So `Space` in `leaders.ts` is the stage
+measured **in frame units** — `useStageSpace` in `Mech.tsx` reads the stage's
+box and divides by one `--px`, taken off the same probe `--type-k` is measured
+from, because `--px` is a `min()` over rem and viewport units that
+`getComputedStyle` hands back unevaluated. One user unit stays worth one `--px`
+on both layouts, so every fixed offset in `leaders.ts` and every radius in the
+stylesheet keeps rendering at the size it was drawn at.
+
+`boxOf` takes the space for the same reason: the subject is a centred fraction
+of a narrow stage rather than `MODEL_BOX`, and a picture is the same
+contain-fit the browser is doing.
 
 One more: `drift` is published in the frame's own 1920×1080 coordinates,
 because that is the space the wide layout draws in. A narrow canvas is a
 different number of units tall for the same amount of world, so the bob the
-labels ride has to be converted on the way in, or they swing twice as far as
+marks ride has to be converted on the way in, or they swing twice as far as
 the head does.
 
 And `drift` is the bob *only*, measured on screen. `Drift` holds two nodes at
@@ -3058,7 +3113,7 @@ and a low-pass lags by its own time constant regardless of the input's speed,
 so the lag was a fixed fraction of a second at every point in the cycle — which
 does not read as "trailing", it reads as the labels and the model bobbing at
 different speeds. The frame loop's own output is smooth enough; the ride just
-copies it.
+copies it. Both readouts share it as `useRide`.
 
 ### Pinning the leaders
 
@@ -3156,18 +3211,26 @@ the card positions measure identical either side of the change.
 
 ### Two layouts, two placements
 
-A note can carry `atNarrow`/`toNarrow` as well as `at`/`to`. Below the
-breakpoint `leadersFor` prefers them, falls back to the wide pair, and falls
-back again to the fan — so a picture can be laid out once for the desktop and
-once for the phone, and neither placement disturbs the other.
+A note can carry `atNarrow` as well as `at`/`to`. Below the breakpoint
+`tipsFor` prefers it, falls back to the wide `at`, and falls back again to the
+fan — so a picture can be laid out once for the desktop and once for the phone,
+and neither placement disturbs the other.
 
-The editor writes whichever pair belongs to the width it is open at, which is
-the whole of what makes this usable: press **P** at a phone width and every
-drag lands in `atNarrow`/`toNarrow`. `MechPins` takes the stage's `Space` for
-this — `boxOf(frame, space)` for the subject's box, `space.w`/`space.h` to turn
-a click into a fraction — and the overlay itself needed nothing, because it
-already positions in `calc(unit * var(--px))`, which maps a space unit to a
-stage pixel on both layouts by construction.
+**One point on a phone and two on the desktop**, because there is no card on
+the picture down there to seat — the sentence is in the deck under it, and a
+`toNarrow` would have nowhere to put anything. It existed until the deck did;
+the three values that had been placed were deleted with the field rather than
+left in the table as geometry nothing reads.
+
+The editor writes whichever belongs to the width it is open at, which is the
+whole of what makes this usable: press **P** at a phone width and every drag
+lands in `atNarrow`. Narrow, the chip is parked a fixed offset from its own tip
+and only the tip is a handle — it is a form there, not a placement. `MechPins`
+takes the stage's `Space` for this — `boxOf(frame, space)` for the subject's
+box, `space.w`/`space.h` to turn a click into a fraction — and the overlay
+itself needed nothing, because it already positions in `calc(unit *
+var(--px))`, which maps a space unit to a stage pixel on both layouts by
+construction.
 
 On a phone the panel carries **Scale** and **Labels**, so copying and reverting
 are reachable without a keyboard; *Place them — press P* on the Labels tab

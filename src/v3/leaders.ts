@@ -7,7 +7,21 @@ import type { Note } from './notes'
    its own two points — where the line touches and where the text lands, both
    as fractions of the subject's box — and one that carries neither falls into
    the next slot of the fan traced off the Figma. See `notes.ts`, and press P
-   on a project screen to place them by hand. */
+   on a project screen to place them by hand.
+
+   **All of that is the wide layout's.** A phone gets `tipsFor` at the foot of
+   this file and nothing else: the marks on the picture, and the sentences in
+   a deck under it. The reason is a sum. On a phone `--px` is `100vw / 500`,
+   so a card capped at `min(CARD.w, 0.6 × stage)` is about 240 real pixels
+   wide — and the type inside it is on `--type`, which has a rem floor and
+   therefore does *not* halve when the window does. Any device that scales its
+   text at all (iOS's per-site text size, Dynamic Type, browser zoom) pushes
+   the sentence past the box it was allotted, `width: max-content` overflows
+   the `foreignObject`, and the card is clipped mid-word and printed over the
+   next one. Turn the sum round and it is worse news than a bug: a readable
+   sentence needs ~70% of a phone's width, so a phone fits *one* card, not
+   three. The fan is not a thing that can be tuned onto a phone, which is why
+   there is a deck instead of a font size in here. See `MechFacts.tsx`. */
 
 /* ---- a note is a card now ----
 
@@ -33,8 +47,9 @@ import type { Note } from './notes'
  *  card needs: `foreignObject` clips to its own rectangle, so anything past
  *  this is cut off mid-sentence with the border still drawn around what is
  *  left, which looks like a wrapping bug and is not one. It has to cover the
- *  worst case, and the worst case is a small window, where type sits on its
- *  rem floor and is half again the size in frame units that it is at the cap.
+ *  worst case, which is the narrowest window this layout is ever drawn at,
+ *  where type sits on its rem floor and is half again the size in frame units
+ *  that it is at the cap.
  *  Reserving it costs nothing: the seat inside is `pointer-events: none` and
  *  the card is pinned to a corner of it, so the extra never moves anything.
  *
@@ -86,12 +101,11 @@ const TIER = 66
  *  project overview. */
 const GUTTER = { left: 500, right: 1660 }
 
-/** And how far from the top and bottom of the canvas — which on the wide
- *  layout is the whole window, so the top has a header and a music deck across
- *  it and the bottom has the compass and the footer. A two-word label cleared
- *  those by being small; a card has to be told. Narrow, the canvas is the
- *  stage alone and neither is inside it. */
-const edgeFor = (space: Space) => (space.narrow ? { top: 26, bottom: 26 } : { top: 172, bottom: 108 })
+/** And how far from the top and bottom of the canvas, which is the whole
+ *  window: the top has a header and a music deck across it and the bottom has
+ *  the compass and the footer. A two-word label cleared those by being small;
+ *  a card has to be told. */
+const EDGE = { top: 172, bottom: 108 }
 
 /** How far clear of its own tip a card is pushed when it has no choice but to
  *  reach back across it. */
@@ -131,11 +145,6 @@ export const FRAME_SPACE: Space = { w: 1920, h: 1080, narrow: false }
  *  land in the air beside a face rather than on it. A little inside is what
  *  a leader is for. */
 const NARROW_SUBJECT = { w: 0.56, h: 0.7 }
-
-/** Narrow, there is no left column and no rail beside the stage — the only
- *  thing keeping a label on the page is the page. */
-const gutterFor = (space: Space) =>
-  space.narrow ? { left: space.w * 0.07, right: space.w * 0.93 } : GUTTER
 
 const centred = (space: Space, w: number, h: number): Box => ({
   x: (space.w - w) / 2,
@@ -240,12 +249,9 @@ export const meetsCard = (tip: number[], anchor: number[], sx: number, sy: numbe
    position was *derived* — the auto fan is one shape traced off the Figma and
    reused for every subject and every window, so it has to be talked out of the
    edges it walks into. A hand-placed note is not derived: somebody dragged it
-   to that spot on this layout and watched where it landed. Overruling that is
-   the editor fighting the person using it, which is exactly what it felt like
-   — a label that jumps somewhere else as you let go of it. On the wide frame
-   this changes almost nothing (the note in `across` below says these never
-   fire there); on a phone it is the whole difference between placing a label
-   and negotiating with one. */
+   to that spot and watched where it landed. Overruling that is the editor
+   fighting the person using it, which is exactly what it felt like — a label
+   that jumps somewhere else as you let go of it. */
 const seated = (
   note: Note,
   tip: number[],
@@ -254,9 +260,9 @@ const seated = (
   space: Space,
   free = false
 ) => {
-  const most = space.narrow ? Math.min(CARD.w, space.w * 0.6) : CARD.w
+  const most = CARD.w
   const least = Math.min(CARD.min, most)
-  const edge = edgeFor(space)
+  const edge = EDGE
   const floor = space.h - edge.bottom
 
   const anchor = free
@@ -289,15 +295,12 @@ const seated = (
    *  its corner and the gutter it is growing towards. */
   const w = clamp(sx === 1 ? side.right : side.left, least, most)
 
-  /* A card must never be laid over the spot it is pointing at. On a wide frame
-     there is room beside the subject and this never fires; on a phone stage
-     there is not, the card is forced back across the middle by the flip above,
-     and it arrives on top of its own tip — a label covering the thing it
-     names, with its leader disappearing under it.
-
-     Dropping it clear vertically is the move that always has somewhere to go,
-     because a narrow stage is the one that is taller than it is wide. The
-     anchor moves; the line simply follows it. */
+  /* A card must never be laid over the spot it is pointing at — a label
+     covering the thing it names, with its leader disappearing under it. There
+     is room beside the subject on this frame, so it takes a wide still and a
+     seat dragged well inside the picture to reach here at all; when it does,
+     dropping the card clear vertically is the move that has somewhere to go.
+     The anchor moves; the line simply follows it. */
   const across =
     !free &&
     (sx === 1 ? tip[0] > anchor[0] - CLEAR && tip[0] < anchor[0] + w : tip[0] < anchor[0] + CLEAR && tip[0] > anchor[0] - w)
@@ -338,65 +341,10 @@ const seated = (
   return { ...note, tip, anchor, sx, sy, w, free, meets: meetsCard(tip, meet, mx, my) }
 }
 
-type Seated = ReturnType<typeof seated>
-
-/** How far apart two cards are left when one has been pushed off the other. */
-const APART = 12
-
-/* ---- two cards in the same place ----
-
-   The fan is three arms traced off one Figma frame, and it holds that shape on
-   a wide window because there is room either side of the subject for it to
-   hold. A portrait stage has no sideways room at all: every card is squeezed
-   to the middle, and two of them land on top of each other — which is what a
-   phone actually looked like, and no amount of landing the *line* correctly
-   fixes a label printed over another label.
-
-   So a card that overlaps one already placed is pushed down until it does not.
-   In order, so the first arm keeps the spot the fan chose for it and later ones
-   give way; only far enough to clear, so the group stays as near the shape it
-   was drawn in as the room allows; and only ever downward, because a narrow
-   stage is the one that is taller than it is wide.
-
-   Two things it deliberately does not do. It does not touch a hand-placed
-   card — those are `free`, somebody put them there, and shuffling them is the
-   same argument as clamping them. And it works off `w` and `cardHeight`, the
-   same estimates `seated` uses, rather than a measured box: this runs during
-   render, where no card has been laid out yet. The estimates are generous, so
-   it separates a little more than strictly needed, which on a phone is the
-   right way to be wrong. The line follows whatever the card ends up doing —
-   `fitCards` re-aims it off the real box once there is one. */
-const spread = (list: Seated[], space: Space): Seated[] => {
-  const taken: Array<{ x0: number; x1: number; y0: number; y1: number }> = []
-  const floor = space.h - edgeFor(space).bottom
-
-  for (const leader of list) {
-    const h = cardHeight(leader.value, leader.w)
-    const x0 = leader.sx === 1 ? leader.anchor[0] : leader.anchor[0] - leader.w
-    let y0 = leader.sy === 1 ? leader.anchor[1] : leader.anchor[1] - h
-
-    if (!leader.free) {
-      // Bounded: a card that cannot be cleared in a few steps has run out of
-      // stage, and pushing it further only walks it off the bottom.
-      for (let guard = 0; guard < 8; guard += 1) {
-        const hit = taken.find(
-          (box) => x0 < box.x1 && x0 + leader.w > box.x0 && y0 < box.y1 && y0 + h > box.y0
-        )
-        if (!hit) break
-        const shift = hit.y1 + APART - y0
-        if (y0 + shift + h > floor) break
-        y0 += shift
-        leader.anchor[1] += shift
-      }
-    }
-
-    taken.push({ x0, x1: x0 + leader.w, y0, y1: y0 + h })
-  }
-  return list
-}
-
-const pinned = (note: Note, box: Box, gutter: Gutter, space: Space, placed: boolean) =>
-  seated(note, pointIn(box, note.at!), pointIn(box, note.to!), gutter, space, placed)
+/* Hand-placed, and therefore `free`: somebody dragged both ends of this one
+   and watched where it landed. */
+const pinned = (note: Note, box: Box, gutter: Gutter, space: Space) =>
+  seated(note, pointIn(box, note.at!), pointIn(box, note.to!), gutter, space, true)
 
 const slotted = (note: Note, index: number, box: Box, gutter: Gutter, space: Space) => {
   const slot = SLOTS[index % SLOTS.length]
@@ -409,30 +357,51 @@ const slotted = (note: Note, index: number, box: Box, gutter: Gutter, space: Spa
   return seated(note, tip, [tip[0] + slot.seat[0], tip[1] + slot.seat[1]], gutter, space)
 }
 
-export const leadersFor = (notes: Note[], box: Box, space: Space = FRAME_SPACE) => {
-  const gutter = gutterFor(space)
-  const list = notes.map((note, i) => {
-    /* The narrow layout gets its own pair of points if one was placed, and
-       falls back to the wide `at`/`to` — and then to the auto fan — if not.
-       A phone stage is a third the width of the frame, so a card set off the
-       right edge on desktop is off the screen here. */
-    const at = space.narrow ? note.atNarrow ?? note.at : note.at
-    const to = space.narrow ? note.toNarrow ?? note.to : note.to
-    /* Placed *on this layout*, which is what earns a note the free placement
-       in `seated`. A narrow screen falling back to the wide pair is not a
-       hand-placed note, it is the desktop's answer being reused — and those
-       sit off the left and right of the subject, where a wide frame has margin
-       and a phone has nothing. Reused coordinates keep the clamps that drag
-       them back on screen; a pair actually dragged here does not. */
-    const placed = space.narrow ? Boolean(note.atNarrow && note.toNarrow) : Boolean(note.at && note.to)
-    return at && to
-      ? pinned({ ...note, at, to }, box, gutter, space, placed)
-      : slotted(note, i, box, gutter, space)
+/** The wide layout's readout: a line and a card for every note. */
+export const leadersFor = (notes: Note[], box: Box, space: Space = FRAME_SPACE) =>
+  notes.map((note, i) =>
+    note.at && note.to
+      ? pinned(note, box, GUTTER, space)
+      : slotted(note, i, box, GUTTER, space)
+  )
+
+/* ---- the narrow layout: marks, and nothing else ----
+
+   No line and no card. What a phone gets is the ring on the spot and the
+   sentence in the deck under the picture (`MechFacts.tsx`), so the only
+   geometry left to work out is where the ring goes — and a ring, unlike a
+   card, has no width to be squeezed and nothing to collide with.
+
+   `atNarrow` first, then the wide `at`, then the fan's own slot. The fallbacks
+   are worth keeping even though a wide `at` was placed against a 16:9 island:
+   a tip is a fraction of the subject's box on both layouts, so a point put on
+   an eyebrow is still on that eyebrow here. It is the *card* the wide
+   coordinates could never carry across, and there is no card.
+
+   With one correction. A wide tip is routinely set a little *past* the edge of
+   the picture — 1.02 of the way across is a common one — because out there it
+   is on the frame's margin, in the air beside a 16:9 island, next to the card
+   it belongs to. On a phone the picture is the whole stage, so past its edge
+   is past the window, and a note pinned only for the desktop simply had no
+   mark at all. So a fraction that was not placed on this layout is pulled back
+   onto the picture; one that was is left exactly where it was dropped. */
+const EDGES: [number, number] = [0.04, 0.96]
+
+export const tipsFor = (notes: Note[], box: Box) =>
+  notes.map((note, i) => {
+    if (note.atNarrow) return { note, point: pointIn(box, note.atNarrow) }
+    if (note.at)
+      return {
+        note,
+        point: pointIn(box, [
+          clamp(note.at[0], ...EDGES),
+          clamp(note.at[1], ...EDGES)
+        ])
+      }
+    const slot = SLOTS[i % SLOTS.length]
+    const tier = Math.floor(i / SLOTS.length) * TIER
+    const from = pointIn(box, slot.at)
+    return { note, point: [from[0], Math.min(from[1] + tier, box.y + box.h)] }
   })
 
-  /* Narrow only. The wide frame has room either side of the subject for the
-     fan to keep its shape, and cards do not collide there; a portrait stage
-     squeezes all of them to the middle. See `spread`. */
-  return space.narrow ? spread(list, space) : list
-}
-
+export type Tip = ReturnType<typeof tipsFor>[number]

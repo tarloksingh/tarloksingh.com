@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { boxOf, leadersFor, pointIn, type Box, type Space } from './leaders'
+import { boxOf, leadersFor, pointIn, tipsFor, type Box, type Space } from './leaders'
 import { addNote, pins, type Note } from './notes'
 import { sound } from './sound'
 import type { Frame } from './model'
@@ -19,6 +19,11 @@ import type { Frame } from './model'
 
    Development only. It is imported behind `import.meta.env.DEV`, so it is not
    in the bundle a visitor downloads. */
+
+/** Where the narrow chip is parked, in frame units off its own tip: clear of
+ *  the mark and its ping, and down rather than up, because a tip near the top
+ *  of the picture has the header above it. */
+const CHIP = [16, 20]
 
 interface Props {
   frame: Frame
@@ -40,12 +45,20 @@ const fractionIn = (rect: DOMRect, box: Box, space: Space, x: number, y: number)
 export default function MechPins({ frame, notes, space, onClose }: Props) {
   const host = useRef<HTMLDivElement>(null)
   const box = boxOf(frame, space)
-  const laid = leadersFor(notes, box, space)
-  /* Which pair of points this editor writes. Below the breakpoint it places
-     `atNarrow`/`toNarrow` and leaves the desktop pair alone, so one picture
-     can be laid out twice — once for each layout. */
+  /* Wide, a note is two points — the spot and the card's corner — and the
+     editor is a pair of handles. Narrow it is one: there is no card on the
+     picture to seat, only the mark and the deck below (`MechFacts.tsx`), so
+     the chip is parked beside its own tip and only the tip is draggable. */
+  const laid = space.narrow ? [] : leadersFor(notes, box, space)
+  const tips = space.narrow ? tipsFor(notes, box) : []
+  /** Where this note's mark is right now, whichever layout is drawing it: the
+   *  narrow tip, or the wide leader's. Both already fall back to the fan for a
+   *  note nobody has placed. */
+  const tipAt = (i: number) => (space.narrow ? tips[i].point : laid[i].tip)
+  /* Which point this editor writes. Below the breakpoint it places `atNarrow`
+     and leaves the desktop pair alone, so one picture can be laid out twice —
+     once for each layout. */
   const kAt = space.narrow ? 'atNarrow' : 'at'
-  const kTo = space.narrow ? 'toNarrow' : 'to'
   // Set for the length of a drag, and read by the overlay's own click handler
   // so letting go of a handle over the picture does not also add a note.
   const dragging = useRef(false)
@@ -56,21 +69,26 @@ export default function MechPins({ frame, notes, space, onClose }: Props) {
   const edit = (index: number, change: Partial<Note>) =>
     write(notes.map((note, i) => (i === index ? { ...note, ...change } : note)))
 
-  /* A drag pins both ends at once, whichever one was grabbed. An unpinned
+  /* Wide, a drag pins both ends at once whichever one was grabbed: an unpinned
      note is sitting wherever the fan put it, and pinning only the end that
-     moved would leave the other to jump to a slot it no longer shares. */
+     moved would leave the other to jump to a slot it no longer shares. Narrow
+     there is only the one end to pin. */
   const grab = (index: number, end: 'at' | 'to') => (event: React.PointerEvent) => {
     event.preventDefault()
     event.stopPropagation()
     const rect = host.current?.getBoundingClientRect()
     if (!rect) return
 
-    const laidOut = laid[index]
-    const key = end === 'at' ? kAt : kTo
-    const seat: Partial<Note> = {
-      [kAt]: notes[index][kAt] ?? [(laidOut.tip[0] - box.x) / box.w, (laidOut.tip[1] - box.y) / box.h],
-      [kTo]: notes[index][kTo] ?? [(laidOut.anchor[0] - box.x) / box.w, (laidOut.anchor[1] - box.y) / box.h]
-    }
+    const key = end === 'at' ? kAt : 'to'
+    const tip = tipAt(index)
+    const seat: Partial<Note> = space.narrow
+      ? { atNarrow: notes[index].atNarrow ?? [(tip[0] - box.x) / box.w, (tip[1] - box.y) / box.h] }
+      : {
+          at: notes[index].at ?? [(tip[0] - box.x) / box.w, (tip[1] - box.y) / box.h],
+          to:
+            notes[index].to ??
+            [(laid[index].anchor[0] - box.x) / box.w, (laid[index].anchor[1] - box.y) / box.h]
+        }
 
     dragging.current = true
     setLive(index)
@@ -137,14 +155,20 @@ export default function MechPins({ frame, notes, space, onClose }: Props) {
         <span>click anywhere in here to add a line</span>
       </div>
 
-      {laid.map((leader, i) => {
-        const tip = notes[i][kAt] ? pointIn(box, notes[i][kAt]!) : leader.tip
-        // `to` is the corner the leader runs into, which is the corner the
-        // card grows away from — so the grip belongs on the same spot rather
-        // than out at the far end the text used to be set from.
-        const text = notes[i][kTo] ? pointIn(box, notes[i][kTo]!) : leader.anchor
+      {notes.map((note, i) => {
+        const tip = tipAt(i)
+        /* Wide, `to` is the corner the leader runs into, which is the corner
+           the card grows away from — so the grip belongs on the same spot
+           rather than out at the far end the text used to be set from. Narrow
+           there is no `to` to grip: the chip is parked a little clear of its
+           own tip, where it is a form rather than a handle. */
+        const text = space.narrow
+          ? [tip[0] + CHIP[0], tip[1] + CHIP[1]]
+          : note.to
+            ? pointIn(box, note.to)
+            : laid[i].anchor
         return (
-          <div key={i} className="mech-pin-note" data-live={live === i} data-loose={!notes[i][kAt]}>
+          <div key={i} className="mech-pin-note" data-live={live === i} data-loose={!note[kAt]}>
             <button
               className="mech-pin-tip"
               style={place(tip[0], tip[1])}
@@ -157,15 +181,20 @@ export default function MechPins({ frame, notes, space, onClose }: Props) {
                 left the rest of the label looking draggable and not being. The
                 fields and the delete key stop the event so tapping into one is
                 still tapping into one. */}
-            <div className="mech-pin-chip" style={place(text[0], text[1])} onPointerDown={grab(i, 'to')}>
-              <span className="mech-pin-grip" title="Drag the label" />
+            <div
+              className="mech-pin-chip"
+              data-fixed={space.narrow}
+              style={place(text[0], text[1])}
+              onPointerDown={space.narrow ? undefined : grab(i, 'to')}
+            >
+              {!space.narrow && <span className="mech-pin-grip" title="Drag the label" />}
               {/* The handle, which never appears on the readout — see `Note`
                   in notes.ts. Narrow on purpose: the room in this chip belongs
                   to the sentence next to it. */}
               <input
                 className="mech-pin-name"
                 onPointerDown={(event) => event.stopPropagation()}
-                value={notes[i].label}
+                value={note.label}
                 spellCheck={false}
                 onChange={(event) => edit(i, { label: event.target.value })}
                 aria-label="Name for this line"
@@ -173,7 +202,7 @@ export default function MechPins({ frame, notes, space, onClose }: Props) {
               <input
                 className="mech-pin-say"
                 onPointerDown={(event) => event.stopPropagation()}
-                value={notes[i].value}
+                value={note.value}
                 spellCheck={false}
                 placeholder="what the card says"
                 onChange={(event) => edit(i, { value: event.target.value })}
@@ -182,7 +211,7 @@ export default function MechPins({ frame, notes, space, onClose }: Props) {
               <input
                 className="mech-pin-fold"
                 onPointerDown={(event) => event.stopPropagation()}
-                value={notes[i].fold ?? ''}
+                value={note.fold ?? ''}
                 placeholder="fold"
                 spellCheck={false}
                 onChange={(event) => edit(i, { fold: event.target.value || undefined })}
