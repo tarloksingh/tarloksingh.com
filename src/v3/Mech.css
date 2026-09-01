@@ -1163,10 +1163,12 @@
    no card — those are a deck under the picture now (`MechFacts.tsx`). What is
    left to style is the pair of things a phone needs and a pointer does not.
 
-   **A target.** The ring is 6.5 units on a 500-unit frame, which is nine real
-   pixels. `.mech-mark-hit` is a transparent circle four times that, drawn last
-   so it is over the three it is standing in for, and it is the only thing in
-   the layer that takes a press. */
+   The ring is 6.5 units on a 500-unit frame, which is nine real pixels — no
+   kind of target. `.mech-mark-hit` is a transparent circle four times that,
+   drawn last so it is over the three it is standing in for, and it is the only
+   thing in the layer that takes a press. Everything else about how a mark
+   looks, lit and unlit, is the wide layout's rules above: this layer carries
+   `.mech-leaders` as well as its own class. */
 .mech-marks {
   pointer-events: none;
   touch-action: manipulation;
@@ -1176,32 +1178,6 @@
   fill: transparent;
   pointer-events: auto;
   cursor: pointer;
-}
-
-/* **A number.** It is the whole of the link between a mark and its sentence,
-   which on the wide layout is a line you can follow with your eye. Drawn in
-   user units like every other SVG label on this site, so the size is a `px`
-   multiplied by `--type-k` — see `useTypeScale`. */
-.mech-mark-no {
-  font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  font-size: calc(11px * var(--type-k, 1));
-  letter-spacing: calc(0.6px * var(--type-k, 1));
-  fill: rgba(var(--accent-rgb), 0.72);
-  opacity: 0;
-  animation: mech-fade 560ms ease calc(var(--d) + 560ms) both;
-  transition: fill 200ms linear;
-  pointer-events: none;
-}
-
-/* The one whose card is up. Nothing dims: the same rule the fold link follows
-   — the answer to "which one is this" is that one getting brighter. */
-.mech-marks g[data-on='true'] .mech-mark-no {
-  fill: var(--accent);
-  filter: drop-shadow(0 0 6px rgba(var(--accent-rgb), 0.8));
-}
-
-.mech-stage[data-covered='true'] .mech-mark-no {
-  animation: mech-out 320ms var(--ease) 170ms both;
 }
 
 /* First in, and the only one of these that is not a fade: the line is drawn

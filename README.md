@@ -3028,10 +3028,11 @@ What is there:
   the geometry now — no seat, no width, no flip, no spreading two cards off
   each other, because a ring has no width to squeeze and nothing to collide
   with. `atNarrow` first, then the wide `at`, then the fan's slot.
-- **A number beside each one**, and the same number on its card. That pair is
-  what the leader line used to be: a line is the better answer when you have
-  the room for one, and a number is the answer that survives a thumb over half
-  the picture.
+- **Nothing else on the picture.** Each mark carried its card's number for a
+  while — a line does that pairing for free on the wide layout and nothing here
+  did — but a number floating on a face is a caption on the photograph rather
+  than an instrument on the panel, and three of them is a diagram. The picture
+  is what anyone opened the page for. One lit ring and one lit card say it.
 - **The deck**, between the picture and the tile strip: one card, snapped to
   the left edge the title and the write-up already line up on, the next card's
   shoulder showing so it reads as swipeable, and the count on a five-cell
@@ -3040,9 +3041,16 @@ What is there:
   were a third readout of a position the count and the shoulder were already
   reporting, in a row of targets small enough that pressing one on glass was a
   coin toss.
-- A card is **the height of its own sentence**. Flex items in a row stretch by
-  default, so every card in a run came out as tall as the longest one in it and
-  a three-word note was drawn in a box built for a two-line one.
+- A card is **as wide as what it says**, capped at a share of the screen past
+  which the sentence wraps. Set to a fixed share instead, "Spoke in English and
+  Japanese." was a box with a hand's width of empty green after it — and the
+  shoulder of the next card, which is the thing that says the deck is
+  swipeable, is not worth faking by padding one out.
+- **The halo needs room in the scroller.** A card's glow is drawn well outside
+  its border and a scroll container clips to its padding box on both axes —
+  `overflow-y: visible` is not available, because a box that scrolls on one
+  axis computes `visible` to `auto` on the other. So the room is padding, and a
+  negative margin hands it back to the layout.
 
 The two halves are joined by an index, held in `Mech` because they sit in
 different halves of the tree. Press a mark and its card comes up; swipe to a

@@ -652,10 +652,14 @@ function Leaders({ notes, box, space, floats, lit, onLit }: LeadersProps) {
    the sentences are in the deck under the picture now (`MechFacts.tsx`), and
    why they had to leave the picture is the sum at the top of `leaders.ts`.
 
-   What holds the two halves together is a number. Each mark carries the one
-   printed on its card, so a mark and a card can be matched by eye — which a
-   leader line did for free and nothing else here does. Press the mark and its
-   card comes up; swipe to a card and its mark lights.
+   What holds the two halves together is the lighting. Press a mark and its
+   card comes up; swipe to a card and its mark lights, alone. Each mark
+   carried its card's number for a while, printed beside the ring, on the
+   argument that a line does that pairing for free on the wide layout and
+   nothing here did. But a number floating on a face is a caption on the
+   photograph rather than an instrument on the panel, and three of them is a
+   diagram — the picture is the thing anyone opened the page for, and it is
+   worth more than the shortcut. One lit ring and one lit card say it.
 
    The rings are drawn at the same radii the wide layout uses and the tap
    target is a fourth circle over them, invisible and much larger, because a
@@ -690,25 +694,6 @@ function Marks({ notes, box, space, floats, active, onPick }: MarksProps) {
             <circle className="mech-leader-ping" cx={tip.point[0]} cy={tip.point[1]} r={13} />
             <circle className="mech-leader-mark" cx={tip.point[0]} cy={tip.point[1]} r={6.5} />
             <circle className="mech-leader-core" cx={tip.point[0]} cy={tip.point[1]} r={1.9} />
-            {/* Set off the ring rather than centred on it: on the right of it
-                by default, and on the left for a mark near the right-hand edge
-                of the stage, where a number set outward is a number half off
-                the window. A tip really can land there — every note pinned for
-                the desktop and not for this layout is pulled in to the edge of
-                the picture, which on a phone is the edge of the screen. */}
-            {(() => {
-              const out = tip.point[0] > space.w - 64
-              return (
-                <text
-                  className="mech-mark-no"
-                  x={tip.point[0] + (out ? -12 : 12)}
-                  y={tip.point[1] - 9}
-                  textAnchor={out ? 'end' : 'start'}
-                >
-                  {String(i + 1).padStart(2, '0')}
-                </text>
-              )
-            })()}
             <circle className="mech-mark-hit" cx={tip.point[0]} cy={tip.point[1]} r={26} />
           </g>
         ))}

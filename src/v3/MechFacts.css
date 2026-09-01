@@ -48,12 +48,15 @@
 .mech-facts-run {
   position: relative;
   display: flex;
-  /* Each card the height of its own sentence. Stretched — a flex row's
-     default — every card in the run is as tall as the longest one in it, so a
-     three-word note was drawn in a box built for a two-line one. */
-  align-items: flex-start;
   gap: calc(12 * var(--px));
-  padding: 0 var(--gutter);
+  /* The cards' halo is drawn well outside their borders, and a scroll
+     container clips to its padding box on *both* axes — `overflow-y: visible`
+     is not available here, since a box that scrolls on one axis computes
+     `visible` to `auto` on the other. So the room the glow needs is padding,
+     and the negative margin gives it back to the layout: the deck sits where
+     it would have without it. */
+  padding: calc(22 * var(--px)) var(--gutter);
+  margin: calc(-22 * var(--px)) 0;
   overflow-x: auto;
   overflow-y: hidden;
   scroll-snap-type: x mandatory;
@@ -67,20 +70,27 @@
   display: none;
 }
 
+/* One fact is not a deck: with nothing to swipe to there is no shoulder to
+   leave, so a long sentence may have the full width to wrap in. */
 .mech-facts-run[data-one='true'] .mech-facts-card {
-  flex-basis: 100%;
+  max-width: 100%;
 }
 
 .mech-facts-card {
-  flex: 0 0 86%;
+  /* As wide as what it says, and no wider — up to a cap, past which the
+     sentence wraps instead. A fixed share of the screen made "Spoke in English
+     and Japanese." a box with a hand's width of empty green after it: the
+     shoulder of the next card is what says the deck is swipeable, and a card
+     padded out to make one is a card lying about its own length. */
+  flex: 0 0 auto;
+  width: max-content;
+  max-width: 86%;
   scroll-snap-align: start;
   display: flex;
   flex-direction: column;
-  /* No minimum: the box is the size of what it says. Every card in a run is
-     the height of the tallest anyway — they are flex items in one row — so a
-     floor on top of that only made a one-line note into a tall empty box. */
-  gap: calc(8 * var(--px));
-  padding: calc(12 * var(--px)) calc(14 * var(--px)) calc(13 * var(--px));
+  gap: calc(10 * var(--px));
+  min-height: calc(96 * var(--px));
+  padding: calc(14 * var(--px)) calc(16 * var(--px)) calc(16 * var(--px));
   border: 1px solid rgba(var(--accent-rgb), 0.5);
   border-radius: var(--round);
   background: rgba(var(--accent-rgb), 0.07);
