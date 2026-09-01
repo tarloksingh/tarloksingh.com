@@ -1157,29 +1157,6 @@
   }
 }
 
-/* ---- the marks on their own ----
-
-   The narrow readout: the rings above, a number beside each, and no line and
-   no card — those are a deck under the picture now (`MechFacts.tsx`). What is
-   left to style is the pair of things a phone needs and a pointer does not.
-
-   The ring is 6.5 units on a 500-unit frame, which is nine real pixels — no
-   kind of target. `.mech-mark-hit` is a transparent circle four times that,
-   drawn last so it is over the three it is standing in for, and it is the only
-   thing in the layer that takes a press. Everything else about how a mark
-   looks, lit and unlit, is the wide layout's rules above: this layer carries
-   `.mech-leaders` as well as its own class. */
-.mech-marks {
-  pointer-events: none;
-  touch-action: manipulation;
-}
-
-.mech-mark-hit {
-  fill: transparent;
-  pointer-events: auto;
-  cursor: pointer;
-}
-
 /* First in, and the only one of these that is not a fade: the line is drawn
    on out of nothing, which is what a leader is. */
 .mech-leader {

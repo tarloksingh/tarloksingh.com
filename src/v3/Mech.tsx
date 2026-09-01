@@ -24,7 +24,7 @@ import { drift, flinch, quarry } from './subject'
 import { findProject, thumbOf, type Entry, type Frame } from './model'
 import { focus, notesFor, pins, type Note } from './notes'
 import { useLabelTuning, type Handed } from './labelTuning'
-import { boxOf, CARD, FRAME_SPACE, leadersFor, mediaBox, meetsCard, tipsFor, type Space } from './leaders'
+import { boxOf, CARD, FRAME_SPACE, leadersFor, mediaBox, meetsCard, type Space } from './leaders'
 import './Mech.css'
 
 const MechModel = lazy(() => import('./MechModel'))
@@ -646,62 +646,6 @@ function Leaders({ notes, box, space, floats, lit, onLit }: LeadersProps) {
   )
 }
 
-/* ---- the marks, on a phone ----
-
-   The same rings on the same spots, with the lines and the cards taken off:
-   the sentences are in the deck under the picture now (`MechFacts.tsx`), and
-   why they had to leave the picture is the sum at the top of `leaders.ts`.
-
-   What holds the two halves together is the lighting. Press a mark and its
-   card comes up; swipe to a card and its mark lights, alone. Each mark
-   carried its card's number for a while, printed beside the ring, on the
-   argument that a line does that pairing for free on the wide layout and
-   nothing here did. But a number floating on a face is a caption on the
-   photograph rather than an instrument on the panel, and three of them is a
-   diagram — the picture is the thing anyone opened the page for, and it is
-   worth more than the shortcut. One lit ring and one lit card say it.
-
-   The rings are drawn at the same radii the wide layout uses and the tap
-   target is a fourth circle over them, invisible and much larger, because a
-   6.5-unit ring on a 500-unit frame is nine real pixels of target. */
-interface MarksProps {
-  notes: Note[]
-  box: ReturnType<typeof boxOf>
-  space: Space
-  floats: boolean
-  active: number
-  onPick: (index: number) => void
-}
-
-function Marks({ notes, box, space, floats, active, onPick }: MarksProps) {
-  const group = useRef<SVGGElement>(null)
-  useRide(group, floats, space)
-
-  return (
-    <svg
-      className="mech-leaders mech-marks"
-      viewBox={`0 0 ${space.w} ${space.h}`}
-      preserveAspectRatio="none"
-    >
-      <g ref={group}>
-        {tipsFor(notes, box).map((tip, i) => (
-          <g
-            key={`${i}-${tip.note.label}`}
-            data-on={i === active}
-            style={{ ['--d' as string]: `${IN_STEP.from + i * IN_STEP.by}ms` }}
-            onPointerDown={() => onPick(i)}
-          >
-            <circle className="mech-leader-ping" cx={tip.point[0]} cy={tip.point[1]} r={13} />
-            <circle className="mech-leader-mark" cx={tip.point[0]} cy={tip.point[1]} r={6.5} />
-            <circle className="mech-leader-core" cx={tip.point[0]} cy={tip.point[1]} r={1.9} />
-            <circle className="mech-mark-hit" cx={tip.point[0]} cy={tip.point[1]} r={26} />
-          </g>
-        ))}
-      </g>
-    </svg>
-  )
-}
-
 /* ---- transport icons ----
 
    Drawn rather than typed. The transport was a row of single characters —
@@ -1117,12 +1061,15 @@ export default function Mech({ id, onProject, onHome }: Props) {
   const drafts = useSyncExternalStore(pins.subscribe, pins.snapshot, pins.snapshot)
   const [pinning, setPinning] = useState(false)
   const [menu, setMenu] = useState(false)
-  /* Which note is up in the deck under the picture, narrow only — held here
-     rather than inside `MechFacts` because the marks on the picture are lit
-     off the same number and the two are in different halves of the tree. Back
-     to the first one whenever the picture changes: the deck is about *this*
-     frame, and arriving at a new one already three cards along is the readout
-     remembering something that has nothing to do with what is on screen. */
+  /* Which fact is up in the deck under the picture, narrow only. Back to the
+     first one whenever the picture changes: the deck is about *this* frame, and
+     arriving at a new one already three cards along is the readout remembering
+     something that has nothing to do with what is on screen.
+
+     Held here rather than inside `MechFacts` because the marks on the picture
+     were lit off the same number. They are gone and this could move down with
+     them — it is left here because it is one `useState` and the reset belongs
+     beside the frame it is watching. */
   const [fact, setFact] = useState(0)
 
   useEffect(() => {
@@ -1648,34 +1595,25 @@ export default function Mech({ id, onProject, onHome }: Props) {
               to the frame that is leaving — and the ones arriving mount at the
               moment the next picture starts, which is what their own draw-in
               is timed against. */}
-          {/* Two readouts, and the narrow one is not a smaller version of the
-              wide one — it is the marks alone, with the sentences in a deck
-              below the stage. See `Marks` above. */}
-          {!booting && phase !== 'hold' && current && (
-            narrow ? (
-              <Marks
-                key={`marks-${current.id}`}
-                notes={notes}
-                box={boxOf(current, space)}
-                space={space}
-                floats={current.kind !== 'flat'}
-                active={fact}
-                onPick={(at) => {
-                  sound.select()
-                  setFact(at)
-                }}
-              />
-            ) : (
-              <Leaders
-                key={`leaders-${current.id}`}
-                notes={notes}
-                box={boxOf(current, space)}
-                space={space}
-                floats={current.kind !== 'flat'}
-                lit={lit}
-                onLit={setLit}
-              />
-            )
+          {/* Wide only. Nothing at all is drawn on the picture at a phone
+              width — the readout is the deck under it, and that is the whole
+              readout. There were marks here: the ring, the dot and the ping on
+              each spot, minus the lines and the cards. They were the half of a
+              leader that survives having no room, and they still pointed at the
+              part of the picture a fact was about. What they could not do was
+              say *which* fact, once the numbers beside them came off; a ring
+              pulsing on a cheek with nothing to connect it to is an effect. So
+              the picture is a picture down there. */}
+          {!booting && phase !== 'hold' && current && !narrow && (
+            <Leaders
+              key={`leaders-${current.id}`}
+              notes={notes}
+              box={boxOf(current, space)}
+              space={space}
+              floats={current.kind !== 'flat'}
+              lit={lit}
+              onLit={setLit}
+            />
           )}
 
           {import.meta.env.DEV && pinning && current && (

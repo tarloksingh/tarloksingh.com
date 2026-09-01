@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import type { Note } from './notes'
 import Segment from './Segment'
 import './MechFacts.css'
@@ -66,6 +66,47 @@ const nearest = (run: HTMLElement) => {
   return best
 }
 
+/* ---- fitting a card to its own lines ----
+
+   A card is `max-content` capped at a share of the screen, so a sentence longer
+   than that cap wraps — and the box then stays the full width it was *allowed*
+   while the last line ends wherever it ends. The gap left on the right is the
+   thing: a card holding one sentence should be the size of that sentence, not
+   the size of the room it was offered.
+
+   No CSS keyword does this. `fit-content` and `max-content` shrink-wrap to the
+   unwrapped width or fall back to the available width; neither is "the widest
+   line the wrapping actually produced". So the lines are measured and the width
+   is written back — the same trick `fitCards` plays on the wide layout's
+   leaders, and simpler here because this card is ordinary HTML and its pixels
+   are real ones rather than units inside a `viewBox`.
+
+   Two things have to be right. The width is cleared before measuring, or each
+   pass measures the last pass's answer and the card walks itself narrower. And
+   Clash Display is `font-display: swap`, so a card measured before it arrives
+   is a card fitted to Helvetica's metrics and clipping its own last word a
+   moment later — hence the second pass off `fonts.ready`. */
+const fitAll = (run: HTMLElement | null) => {
+  if (!run) return
+  const range = document.createRange()
+  for (const card of Array.from(run.children) as HTMLElement[]) {
+    const line = card.querySelector('p')
+    if (!line) continue
+    card.style.width = ''
+    range.selectNodeContents(line)
+    const lines = Array.from(range.getClientRects())
+    // One line is already hugging its text — that is what `max-content` is for,
+    // and there is nothing to take off it.
+    if (lines.length < 2) continue
+    // Everything of the card that is not the sentence: both paddings, both
+    // borders, the number and the gap after it.
+    const chrome = card.offsetWidth - line.offsetWidth
+    // A pixel of slack: the widest line measured back to exactly its own width
+    // is a line one sub-pixel rounding away from wrapping again.
+    card.style.width = `${Math.ceil(Math.max(...lines.map((rect) => rect.width))) + 1 + chrome}px`
+  }
+}
+
 export default function MechFacts({ notes, index, onIndex }: Props) {
   const run = useRef<HTMLDivElement>(null)
   /* Set while the scroller is being driven from the outside — a tapped mark or
@@ -90,6 +131,24 @@ export default function MechFacts({ notes, index, onIndex }: Props) {
   }, [index])
 
   useEffect(() => () => window.clearTimeout(driven.current), [])
+
+  /* Measured, then fitted — see `fitAll`. Again on a resize, which is also what
+     browser zoom and a phone's own text-size control fire: the type moves, the
+     sentence re-wraps, and a width measured for the old size is a card with a
+     word hanging out of it. */
+  useLayoutEffect(() => {
+    const fit = () => fitAll(run.current)
+    fit()
+    let live = true
+    document.fonts?.ready.then(() => {
+      if (live) fit()
+    })
+    window.addEventListener('resize', fit)
+    return () => {
+      live = false
+      window.removeEventListener('resize', fit)
+    }
+  }, [notes])
 
   const settled = () => {
     const el = run.current

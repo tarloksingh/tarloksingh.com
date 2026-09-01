@@ -48,11 +48,6 @@
 .mech-facts-run {
   position: relative;
   display: flex;
-  /* Each card the height of its own sentence. A flex row stretches its items
-     by default, so the box around a one-line fact was built for whichever fact
-     in the set runs longest — half of it empty, and no more honest for being
-     tidy. */
-  align-items: flex-start;
   gap: calc(12 * var(--px));
   padding: 0 var(--gutter);
   overflow-x: auto;
@@ -76,10 +71,17 @@
 
 .mech-facts-card {
   /* As wide as what it says, and no wider — up to a cap, past which the
-     sentence wraps instead. A fixed share of the screen made "Spoke in English
-     and Japanese." a box with a hand's width of empty green after it: the
-     shoulder of the next card is what says the deck is swipeable, and a card
-     padded out to make one is a card lying about its own length. */
+     sentence wraps and `fitAll` in MechFacts.tsx measures the box back down to
+     the widest line the wrapping actually produced. A fixed share of the screen
+     made "Spoke in English and Japanese." a box with a hand's width of empty
+     green after it: the shoulder of the next card is what says the deck is
+     swipeable, and a card padded out to make one is a card lying about its own
+     length.
+
+     Every card is the same height, though — they are items of one flex row and
+     nothing overrides that. A row of boxes that step up and down as you swipe
+     is a set of different things; these are one readout showing one of its
+     entries. */
   flex: 0 0 auto;
   width: max-content;
   max-width: 86%;

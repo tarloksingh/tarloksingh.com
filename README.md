@@ -3023,16 +3023,22 @@ composition that can be tuned onto a phone. So it is not there.
 
 What is there:
 
-- **The marks.** The same three circles at the same radii, the ring, the dot
-  and the ping, on the same spots. `tipsFor` in `leaders.ts` is the whole of
-  the geometry now — no seat, no width, no flip, no spreading two cards off
-  each other, because a ring has no width to squeeze and nothing to collide
-  with. `atNarrow` first, then the wide `at`, then the fan's slot.
-- **Nothing else on the picture.** Each mark carried its card's number for a
-  while — a line does that pairing for free on the wide layout and nothing here
-  did — but a number floating on a face is a caption on the photograph rather
-  than an instrument on the panel, and three of them is a diagram. The picture
-  is what anyone opened the page for. One lit ring and one lit card say it.
+- **The picture, and nothing on it.** See below — the marks went too, in the
+  end. What is left of the geometry is `tipsFor` in `leaders.ts`: `atNarrow`
+  first, then the wide `at` pulled onto the picture, then the fan's slot.
+**And in the end, not even the marks.** They went in two steps, and the second
+follows from the first. Each mark carried its card's number, printed beside the
+ring — but a number floating on a face is a caption on the photograph rather
+than an instrument on the panel, and three of them is a diagram over the one
+thing anyone opened the page for. With the numbers off, a ring pulsing on a
+cheek pointed at *something* and could no longer say what, which is an effect
+rather than a readout. So a phone draws nothing at all on the picture. The
+readout is the deck, and the deck is the whole readout.
+
+`Marks` is gone with them; `tipsFor` is still in `leaders.ts` and the pin
+editor still places `atNarrow`, which is the one loose end here — points that
+nothing currently draws, kept because putting the marks back is one block in
+`Mech.tsx` and the placements are hand-made.
 - **The deck**, between the picture and the tile strip: one card, snapped to
   the left edge the title and the write-up already line up on, the next card's
   shoulder showing so it reads as swipeable, and the count on a five-cell
@@ -3041,8 +3047,15 @@ What is there:
   were a third readout of a position the count and the shoulder were already
   reporting, in a row of targets small enough that pressing one on glass was a
   coin toss.
+- Every card in a run is **the same height** — they are items of one flex row
+  and nothing overrides that. A row of boxes stepping up and down as you swipe
+  is a set of different things; this is one readout showing one of its entries.
 - A card is **as wide as what it says**, capped at a share of the screen past
-  which the sentence wraps. Set to a fixed share instead, "Spoke in English and
+  which the sentence wraps — and then `fitAll` measures the box back down to
+  the widest line the wrapping actually produced, the same trick `fitCards`
+  plays on the wide layout's leaders and for the same reason: no CSS keyword
+  means "the width the wrapping came to", so the box otherwise keeps the full
+  width it was *allowed* with the last line ending wherever it ends. Set to a fixed share instead, "Spoke in English and
   Japanese." was a box with a hand's width of empty green after it — and the
   shoulder of the next card, which is the thing that says the deck is
   swipeable, is not worth faking by padding one out.
