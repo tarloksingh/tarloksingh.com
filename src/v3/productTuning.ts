@@ -174,10 +174,46 @@ export const PIECE_FALLBACK: PieceTuning = {
  *  than a case in a room. */
 export const PIECE_DEFAULTS: Record<string, PieceTuning> = {
   'mecha-station': { ...PIECE_FALLBACK, size: 1.05, turn: -20, liftY: 0 },
-  openup: { ...PIECE_FALLBACK, size: 0.76, turn: 26, liftY: 0 },
-  stitchfam: { ...PIECE_FALLBACK, size: 0.82, turn: 28, liftY: 0 },
-  'red-dead-redemption-2': { ...PIECE_FALLBACK, size: 0.8, turn: 34, liftY: 0 },
-  'grand-theft-auto-v': { ...PIECE_FALLBACK, size: 0.8, turn: -34, liftY: 0 },
+  /* A modelled iPhone 17 Pro Max rather than a rounded box with a video plane
+     in front of it — `Phone17.tsx`. Its numbers are the two largest departures
+     from the fallback studio on this panel and both are the handset:
+
+     - **200mm and no turn.** Everything else here is on 60mm, which gives a
+       piece a near corner and a far one. A phone has neither: it is a flat
+       slab, its whole subject is the screen, and any perspective at all reads
+       as the picture on the glass being keystoned. Square-on and long, so it
+       is a phone rather than a photograph of one at an angle.
+     - **A fifth of the exposure, and every surface at once.** The screen is a
+       `MeshBasicMaterial` — unlit, `toneMapped: false`, printing the capture
+       at its own brightness whatever the room is doing. So the exposure is
+       free to be set for the *body* alone, and the body is polished titanium
+       and glass: gloss and metal both at 1, `reflects` at 8. At the shared
+       0.55 the chassis blew out to white around a screen that had not
+       moved. */
+  openup: {
+    ...PIECE_FALLBACK,
+    size: 0.73,
+    turn: 0.4,
+    focalLength: 200,
+    fill: 0.73,
+    exposure: 0.15,
+    gloss: 1,
+    metal: 1,
+    reflects: 8
+  },
+  /* Square on and larger in the frame, now the loop runs the whole face of the
+     frame rather than sitting in a mount — see `VideoFrame.tsx`. A picture
+     turned twenty-eight degrees is a picture in a room; a picture you are
+     meant to watch faces you. `sway` is the one place on this panel it is not
+     zero: this piece is a moving image, so the frame answering the pointer
+     reads as the one thing on the screen that is alive rather than as the
+     page being loose. */
+  stitchfam: { ...PIECE_FALLBACK, size: 0.82, turn: -0.3, liftY: -0.01, sway: 0.56, focalLength: 102, fill: 0.53 },
+  /* Red Dead Redemption 2 and Grand Theft Auto V used to be here, on the same
+     disc case at a mirrored turn. Both are `MODELS` now — a revolver and a
+     carbine — and their tuning is in `modelTuning.ts`, not this file. The
+     panel's export still lists them, because it exports whatever its
+     scratchpad holds; they are dropped on the way in. */
   'wyte-card': { ...PIECE_FALLBACK, size: 0.72, turn: 38, liftY: 0 },
   /* The one piece whose bounding box is not the piece. Block Builder's blocks
      fly apart and stack, so `Resize` normalises the volume they travel

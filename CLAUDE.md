@@ -222,6 +222,20 @@ all of them look like something other than what they are:
 
 ## Where this is up to
 
+**Four subjects changed.** Red Dead Redemption 2 and Grand Theft Auto V both
+stood on the same `DiscHolder` — one disc case, twice — and are `MODELS` now:
+`rdr2-revolver.glb` and `gta-v-rifle.glb`, the two files `PENDING_MODELS` had
+been holding names for. Plus One's rounded-box `Phone3D` is a modelled iPhone
+17 Pro Max with the app running on its glass (`src/three/Phone17.tsx`), and
+StitchFam's picture mount is gone so the loop runs the whole face of the frame.
+Three traps came with them, all written up in `README.md` — the `Plane` strip
+was a *prefix* test and hid three real parts of the revolver; the two guns are
+exported down different axes so neither `turn` transfers; and the Plus One
+capture is horizontally squeezed on purpose, so correcting its aspect breaks
+it. Every clip a piece wears is served from `public/videos/`, never resolved
+out of `src/assets/` — an asset a project quotes becomes a step in the tile
+rail, and a texture is not a frame.
+
 **A phone has no leader lines.** Below the breakpoint the picture keeps the
 marks — the ring, the dot, the ping, plus a number beside each — and every
 sentence moves into a deck under the stage: one card, swiped, with pips and a

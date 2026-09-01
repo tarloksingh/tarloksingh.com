@@ -254,6 +254,91 @@ export const MODEL_RIGS: Record<string, ModelTuning> = {
     roughnessBoost: -0.24,
     metalnessBoost: 0.24,
     watchBird: false
+  },
+
+  /* ---- the two guns ----
+
+     Both are Sketchfab exports of real objects: a Colt single-action for Red
+     Dead Redemption 2 and an M4 carbine for Grand Theft Auto V, standing where
+     the same generic disc case used to stand for *both* games.
+
+     They are the first long subjects here, and the framing is where that
+     shows. `fit` in MechModel normalises a model by its **height alone** —
+     right for a head, and the same trap Capsule C1 hit from the other side.
+     A gun is three or four times longer than it is tall, so its height is a
+     short edge and dividing by it makes the length enormous; a face's `fill`
+     of 0.56 runs both ends of either of these clean off the stage. A quarter
+     of it is what puts a whole gun inside a 16:9 frame.
+
+     **And "long" is not the same axis twice.** The revolver is exported along
+     its own X and the rifle along its own Z, so at `turn: 0` one is side-on
+     and the other is pointing down the barrel at you — which does not read as
+     a rifle, it reads as a muzzle. Worth measuring rather than guessing: the
+     world boxes are 4.73 × 1.85 × 0.58 and 0.015 × 0.052 × 0.184, and nothing
+     on either screen tells you which axis you are looking down.
+
+     Both are set by eye on the **Subject** tab from there, and the numbers
+     below are that export. Two things in it are worth not tidying:
+
+     - **The revolver is on an 18mm lens** against everything else's 200. That
+       is the one subject on the site where the perspective is the point: a
+       long lens on a gun this size is an elevation drawing, and the wide one
+       throws the barrel away from you and puts the cylinder and the hammer in
+       your hand. `distanceFor` moves the camera in to hold the framing, so
+       the focal length is doing nothing but choosing how much foreshortening
+       there is.
+     - **Neither leans.** `lean: 0`, like Capsule C1 and unlike the face. A
+       head turning to follow the pointer is a head; a gun doing it is a
+       turret tracking you, which is a much louder gesture than this page
+       wants. They drift and that is all. */
+  'red-dead-redemption-2': {
+    ...MODEL_DEFAULTS,
+    focalLength: 18,
+    fill: 0.25,
+    lean: 0,
+    turn: -127,
+    tilt: 16.5,
+    liftY: -0.015,
+    exposure: 0.1,
+    envIntensity: 2.6,
+    keyZ: -8.77,
+    fillZ: -0.37,
+    /* +1, which clamps every surface on it to fully rough. The export is a
+       Sketchfab scan-style bake: the shading is already painted into the base
+       colour map, and any gloss added on top of it reads as cling film over
+       a photograph rather than as steel. */
+    roughnessBoost: 1,
+    metalnessBoost: 0.1
+  },
+
+  'grand-theft-auto-v': {
+    ...MODEL_DEFAULTS,
+    fill: 0.27,
+    lean: 0,
+    turn: -36,
+    tilt: -1,
+    liftY: 0.035,
+    floatRange: 0.2,
+    floatRotation: 0.5,
+    /* Brighter than anything else here, because the subject is a black rifle:
+       its base colour is near enough to the page it stands on that at the
+       revolver's numbers it read as a silhouette. Almost all of the shape is
+       specular, so the lamps do the work and there is very little diffuse
+       response to fall back on — hence a key at 80 and an environment at 6.7,
+       with the metalness taken all the way up rather than the roughness taken
+       down. */
+    exposure: 0.06,
+    envIntensity: 6.7,
+    keyIntensity: 80,
+    keyX: -12,
+    keyY: -12,
+    fillIntensity: 31.5,
+    fillX: -12,
+    fillY: -0.93,
+    fillZ: 1.41,
+    roughnessBoost: -0.6,
+    metalnessBoost: 1,
+    watchBird: false
   }
 }
 

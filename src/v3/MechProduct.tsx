@@ -4,14 +4,12 @@ import { Center, Float, Resize } from '@react-three/drei'
 import { ACESFilmicToneMapping, MathUtils, PMREMGenerator, SRGBColorSpace, Vector3 } from 'three'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import BlockBuilder from '../three/BlockBuilder'
-import DiscHolder from '../three/DiscHolder'
-import Phone3D from '../three/Phone3D'
+import Phone17 from '../three/Phone17'
 import PosStation from '../three/PosStation'
 import VideoFrame from '../three/VideoFrame'
 import WyteCard from '../three/WyteCard'
 import { SpriteFlipbook } from '../three/CapsuleStage'
 import type { Mesh, MeshStandardMaterial } from 'three'
-import { resolveVideo } from '../data/media'
 import { drift, gaze } from './subject'
 import { PIECE_FALLBACK, PRODUCT_DEFAULTS, type PieceTuning, type ProductTuning } from './productTuning'
 import type { ReactNode } from 'react'
@@ -20,11 +18,22 @@ import type { Group, PerspectiveCamera } from 'three'
 /* The subject of a project screen that has no model: the piece that was
    built for it back in v2.
 
-   Eight of the ten projects on this site are here — a video-texture monitor,
-   a phone, two disc cases, a card, a stacking loop, a flipbook of fish. All
-   of them already existed, already tuned, and reusing them is the whole point
-   of this file: the alternative was a photograph of the work where the
-   subject should be, or ten new pieces nobody asked for.
+   Six projects are here — a video-texture terminal, a handset, a picture
+   frame, a card, a stacking loop, a flipbook of fish. Most of them already
+   existed, already tuned, and reusing them is the whole point of this file:
+   the alternative was a photograph of the work where the subject should be,
+   or ten new pieces nobody asked for.
+
+   It was eight, and two of the eight were the *same* disc case standing for
+   Red Dead Redemption 2 and Grand Theft Auto V. Both are `MODELS` now — a
+   revolver and a carbine — so they render through `MechModel` and not through
+   this file at all. See `model.ts`.
+
+   **Every clip in here is a texture and not a frame.** They are served from
+   `public/videos/`, deliberately, rather than resolved out of `src/assets/`:
+   anything in a project's asset folder that its `projects.ts` entry quotes
+   becomes a step in the tile rail, and the loop running on a subject's screen
+   is part of the subject rather than something to page to.
 
    **Nothing here is Mr. Takahashi's rig.** `MechModel.tsx` is built for one
    face and shares `MODEL_DEFAULTS` with Capsule C1; feeding a monitor through
@@ -184,8 +193,6 @@ const FISH_MAN_FRAMES = Array.from(
   (_, i) => `/sprites/fish-man-idle/Fish_Man_Idle_${String(i).padStart(5, '0')}.png`
 )
 
-const clipFor = (projectId: string, filename: string) => resolveVideo(projectId, filename)?.src
-
 /* ---- which piece stands for which project ----
 
    Pointed at the same components `src/site/products.tsx` mounts, rather than
@@ -209,16 +216,22 @@ const PIECES: Record<string, () => ReactNode> = {
      **Station** tab has them rather than where v2's case wanted them. See
      `stationParts.ts`. */
   'mecha-station': () => <PosStation videoUrl="/videos/mecha-station-hero.mp4" scale={1} tuned />,
-  openup: () => {
-    const src = clipFor('openup', 'One.mp4')
-    return src ? <Phone3D videoUrl={src} scale={1} /> : null
-  },
-  stitchfam: () => {
-    const src = clipFor('stitchfam', 'hero.mp4')
-    return src ? <VideoFrame videoUrl={src} scale={1} /> : null
-  },
-  'red-dead-redemption-2': () => <DiscHolder scale={1} />,
-  'grand-theft-auto-v': () => <DiscHolder scale={1} />,
+  /* A modelled handset rather than `Phone3D`'s rounded box, with the app
+     running on its glass — see `Phone17.tsx`, which is also where the reason
+     the clip must not be aspect-corrected is written down. The clip is served
+     from `public/videos/` and not resolved out of `src/assets/`: it is a
+     texture on a subject, not a frame in this project's media, and putting it
+     in the assets folder would list it in the tile rail as a thing to step
+     to. Same reason `mecha-station` reads its monitor loop from there. */
+  openup: () => <Phone17 videoUrl="/videos/plus-one-screen.mp4" scale={1} />,
+  /* `/videos/stitchfam-hero.mp4`, not `src/assets/stitchfam/hero.mp4`. Two
+     different files with the same name: the asset is a 1280×720 landscape cut
+     and the public one is the 444×532 portrait loop — which is the ratio
+     `VideoFrame` is built around and says so in a comment three lines from the
+     constant. It was being handed the landscape one, so the frame the project
+     screen showed was a picture squashed into a hole of the wrong shape.
+     `heroes.ts` already pointed at the right file. */
+  stitchfam: () => <VideoFrame videoUrl="/videos/stitchfam-hero.mp4" scale={1} />,
   'wyte-card': () => <WyteCard scale={1} />,
   'block-builder': () => <BlockBuilder scale={1} />,
   'slider-engine': () => <SpriteFlipbook frames={FISH_MAN_FRAMES} fps={12} scale={1} />

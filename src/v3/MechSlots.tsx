@@ -62,7 +62,14 @@ const DRACO_PATH = '/draco/'
 const GLBS: Record<string, string> = {
   'a-game': '/models/akira-rider.glb',
   'mr-takahashi': '/models/adam-face.glb',
-  'capsule-c1': '/models/capsule-c1.glb'
+  'capsule-c1': '/models/capsule-c1.glb',
+  /* The two games' subjects. They were pieces until the files arrived — and
+     the same piece, a `DiscHolder`, for both of them, so this bank held two
+     identical objects two rows apart. Keep these in step with `MODELS` in
+     `model.ts`: a project whose subject is a GLB on its own screen and a
+     primitive in its slot is a project that changes shape when you open it. */
+  'grand-theft-auto-v': '/models/gta-v-rifle.glb',
+  'red-dead-redemption-2': '/models/rdr2-revolver.glb'
 }
 
 /** How large a subject sits in its slot, and how it is turned to face out of

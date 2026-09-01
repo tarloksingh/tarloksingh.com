@@ -2829,6 +2829,33 @@ reason — see **the case does not move with the pointer** above. The knob
 stays on the Piece tab, because this is a judgement per piece rather than a
 law, and the next piece may well want it.
 
+**StitchFam is the piece that wanted it.** The frame is a moving image and the
+one thing on that screen genuinely alive, so `sway: 0.56` reads as the picture
+answering the pointer rather than as the layout being loose. Two other things
+about it changed at the same time and they are the same bug twice:
+
+- **The loop runs end to end now.** It used to sit in a mount — a 0.06 shell
+  border and a 0.04 mat inside that, so the picture was about eight tenths of
+  the box with two rings around it. A film in a picture mount is a still that
+  happens to move; but the real fault is arithmetic, because both borders come
+  off the width and the height by the same *absolute* amount, so the opening is
+  never the shape of the frame. 444 × 532 footage was landing in a 0.72 : 0.83
+  hole and being squashed into it — which is the exact crop the aspect constant
+  at the top of `VideoFrame.tsx` exists to prevent.
+- **And it was the wrong 444 × 532.** Two different files share the name
+  `hero.mp4`: `src/assets/stitchfam/hero.mp4` is a 1280 × 720 landscape cut and
+  `public/videos/stitchfam-hero.mp4` is the portrait loop the frame is built
+  around. `MechProduct` was resolving the asset one. `heroes.ts` already
+  pointed at the right file, which is the sort of disagreement that survives a
+  long time because each half looks correct on its own.
+
+**Every clip a piece wears is served from `public/videos/`, and that is a
+rule.** They are textures on a subject, not frames in a project's media —
+anything in `src/assets/<id>/` that the project's `projects.ts` entry quotes
+becomes a step in the tile rail, and the loop running on a phone's screen is
+part of the phone rather than something to page to. Mecha Station's monitor has
+always read from there; Plus One's and StitchFam's do now.
+
 > Changing this in source will not move anything on a machine that has a
 > scratchpad, and `sway` is per piece inside it. Rather than Reset — which
 > takes every piece's framing and lighting with it — rewrite the one field:
@@ -4816,6 +4843,55 @@ correctly whatever scale its scene happened to use. Staging geometry named
 `Plane` is stripped — along with the animation tracks addressed to it, or the
 mixer walks the hierarchy looking for a node that is no longer there and warns
 once per track.
+
+**`=== 'Plane'`, not `/^plane/i`.** That strip was a prefix test, and it is a
+trap the moment a second export arrives, because Blender names the backdrop
+`Plane` and then names the *next* eleven things `Plane.001`, `Plane.003`,
+`Plane_Material.001_0`. The revolver has three of those and every one is a real
+part of the gun: under the prefix test the grip panels and the trigger guard
+did not render, on a model that otherwise loaded, lit and framed correctly —
+which reads as a bad export rather than as a filter in our own code.
+
+### Three new subjects, and what each one cost
+
+`rdr2-revolver.glb`, `gta-v-rifle.glb` and `iphone-17-pro-max.glb` are
+Sketchfab exports rather than things modelled here, and none of them is
+Draco-compressed or WebP-textured the way the Blender exports are — 3.1MB,
+8.0MB and 5.3MB as they arrived. The rifle is the one worth revisiting if the
+bundle ever matters; it is 83k vertices of an object that is never seen closer
+than a third of the screen.
+
+- **Two guns replaced one disc case, used twice.** Red Dead Redemption 2 and
+  Grand Theft Auto V both stood on the same `DiscHolder`, so two of the twelve
+  slots on home were the identical object two rows apart with a different name
+  under each. `model.ts` had been carrying them as `PENDING_MODELS` under
+  exactly these filenames, with a note saying a `MODELS` entry pointing at a
+  file that is not there suspends `useGLTF` forever; the files are in and the
+  entries moved up, and that was the whole of it.
+- **Which axis a gun was exported down is not a thing you can see.** The
+  revolver is along its own X and the rifle along its own Z, so at `turn: 0`
+  one arrives side-on and the other arrives pointing at you — and a rifle seen
+  down its own barrel does not read as a rifle, it reads as a muzzle. Measure
+  the world box rather than reason about the render: 4.73 × 1.85 × 0.58 against
+  0.015 × 0.052 × 0.184. There is also no third rotation axis on the Subject
+  panel, and there did not need to be: `Euler(tilt, turn, 0)` composes as
+  `Rx · Ry`, which can only swing a **+Y**-aligned model into the YZ plane, and
+  neither of these is Y-aligned.
+- **A handset that is a handset.** Plus One's piece was `Phone3D`, a rounded
+  box with a video plane a millimetre off its front. It is an iPhone 17 Pro Max
+  now, with the app running on the glass — `Phone17.tsx`. The screen is one
+  mesh and the export's names are all obfuscated (`HkNSnYzBPABcqwM.001`,
+  `BsXHDwLKqtDOfrW`), so it is found by what it *is*: the only perfectly planar
+  mesh in the file carrying `emissiveFactor: [1, 1, 1]`, sized 7.28 × 15.77,
+  which is 19.5:9 to four decimal places. Its UVs run 0 → 1 across the panel,
+  so the clip needs no fitting at all.
+
+**And the Plus One capture is squeezed on purpose.** It is 1190 × 1080 — a
+1.1:1 frame holding a portrait app UI, because the recording was scaled
+sideways on the way out rather than letterboxed. Stretched back across the
+0.4617 screen it comes out at exactly the proportions it was shot at. Anyone
+who "fixes" that aspect will letterbox a phone screen or crop the tab bar off
+it; the pixels are non-square and the screen is what squares them.
 
 **Three Takahashi exports exist and only one is current.** `adam-face.glb`
 (2.3MB, no textures) is what both v2 and v3 render — same face, the filename it

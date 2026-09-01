@@ -23,36 +23,32 @@ export const MODELS: Record<string, { file: string; label: string }> = {
      kept its filename through the pivot. This is the export v2 renders (see
      `src/three/AdamFace.tsx`), a tenth the weight of the textured one and
      carrying the same morph targets, which is where all of its life is. */
-  'mr-takahashi': { file: '/models/adam-face.glb', label: 'Mr. Takahashi — character' }
-}
+  'mr-takahashi': { file: '/models/adam-face.glb', label: 'Mr. Takahashi — character' },
+  /* The two guns. They were listed here as `PENDING_MODELS` for a while —
+     named, not wired, because `useGLTF` suspends on a fetch and a 404 never
+     resolves it, so a `MODELS` entry pointing at a file that is not there is a
+     project screen stuck under its cover forever. The files are in now and the
+     entries moved up, which was the whole of what that comment said it would
+     take: the stage, the tile rail and the leaders all read this one map.
 
-/* ---- waiting on files ----
-
-   Two subjects that are wanted and do not exist yet: an AK-pattern rifle for
-   Grand Theft Auto V and a revolver for Red Dead Redemption 2, to stand where
-   those two currently show a disc case.
-
-   Listed rather than wired, deliberately. `useGLTF` suspends on a fetch and a
-   404 never resolves it, so pointing `MODELS` at a file that is not there is
-   a project screen that stays under its cover forever — a worse failure than
-   not having the model, because it looks like the page is broken rather than
-   like the model is missing.
-
-   Dropping either one in is: put the GLB in `public/models/` under the name
-   below, and move that line up into `MODELS`. Nothing else — the stage, the
-   tile rail and the leaders all read the same map. */
-export const PENDING_MODELS: Record<string, { file: string; label: string }> = {
+     Both replaced a `DiscHolder` — the same generic disc case stood for both
+     games, so two of the twelve slots on home were the identical object with a
+     different name under it. A revolver and a carbine say which game they came
+     out of without the label doing it. */
   'grand-theft-auto-v': { file: '/models/gta-v-rifle.glb', label: 'Grand Theft Auto V — the rifle' },
   'red-dead-redemption-2': { file: '/models/rdr2-revolver.glb', label: 'Red Dead Redemption 2 — the revolver' }
 }
 
 /* ---- pieces ----
 
-   Eight of the ten projects have no model and had a photograph where the
-   subject should be. What they do have — and have had since v2 — is a piece
-   built for each of them in `src/site/products.tsx`: a video-texture monitor,
-   a phone, two disc cases, a card, a stacking loop, a flipbook of fish. This
-   is the list of the ones worth standing on a project screen.
+   The projects with no model and a photograph where the subject should be.
+   What they do have — and have had since v2 — is a piece built for each of
+   them in `src/site/products.tsx`: a video-texture monitor, a handset, a
+   picture frame, a card, a stacking loop, a flipbook of fish. This is the list
+   of the ones worth standing on a project screen.
+
+   It used to hold two disc cases as well, one each for Red Dead Redemption 2
+   and Grand Theft Auto V — the *same* case, twice. Both are `MODELS` now.
 
    Not derived from `products.tsx`'s own registry, deliberately. Importing it
    here would pull three.js and a dozen components into the module every
@@ -62,8 +58,6 @@ const PIECES: Record<string, string> = {
   'mecha-station': 'Mecha Station — the terminal',
   openup: 'Plus One — the app',
   stitchfam: 'StitchFam — the loop',
-  'red-dead-redemption-2': 'Red Dead Redemption 2 — the case',
-  'grand-theft-auto-v': 'Grand Theft Auto V — the case',
   'wyte-card': 'Wyte — the card',
   'block-builder': 'Block Builder — the pieces',
   'slider-engine': 'Slider Engine — fish man'

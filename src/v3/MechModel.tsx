@@ -226,10 +226,19 @@ function Model({ src, tuning, look }: { src: string; tuning: ModelTuning; look: 
     scene.traverse((child) => {
       const mesh = child as Mesh
       if (!mesh.isMesh) return
-      // Some exports carry a backdrop plane behind the subject. Against a
-      // black page it only ever reads as a grey card, and it throws the
-      // framing off by several times the size of the thing being framed.
-      if (/^plane/i.test(mesh.name)) {
+      /* Some exports carry a backdrop plane behind the subject. Against a
+         black page it only ever reads as a grey card, and it throws the
+         framing off by several times the size of the thing being framed.
+
+         `=== 'Plane'` and not `/^plane/i`, which is what this was and which
+         is a trap the moment a second model arrives: Blender names the
+         backdrop `Plane` and then names the *next* eleven things `Plane.001`,
+         `Plane.003`, `Plane_Material.001_0` and so on. The revolver has three
+         of those and every one of them is a real part of the gun — under the
+         prefix test the grip panels and the trigger guard simply did not
+         render, on a model that otherwise loaded and lit correctly, which
+         looks like a broken export rather than a filter. Exact match only. */
+      if (mesh.name === 'Plane') {
         mesh.visible = false
         return
       }
