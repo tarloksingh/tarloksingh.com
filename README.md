@@ -2410,6 +2410,25 @@ is "branding & insights", the longest heading any project has. Fixed for the
 reason every readout here is fixed: a display is a fixed number of lamps, and
 the dark ones after "roles" are what say so.
 
+**Brightness carries the state, and the range it carries it over starts high.**
+A closed heading is `0.82`, one under the pointer `0.92`, an open one full — the
+whole `.mech-seg` fading rather than the word alone, so the display dims instead
+of going monochrome. Those numbers used to be `0.5 / 0.75 / 1`. Half brightness
+is the right resting state for a lamp that reports something occasionally, and
+the wrong one for the only list of what a project *is*: turned that far down the
+headings read as disabled, and a heading nobody can see is not a heading held in
+reserve. The three states are still three states — a range does not need to
+reach the floor to be a range.
+
+**And they are half again the size on a phone.** The cell is `* 16` there
+against the wide layout's `* 12`, which is not a contradiction: `--px` is
+re-based on the narrow layout, so a multiplier copied straight across prints
+larger than it does on the desktop and the correction was made twice, first to
+`* 7` and then to `* 9.5`. Both overshot. A phone has one column with nothing
+competing for it, so a section marker can take most of the width; what it must
+not do is reach the gutters, where it stops being a readout in a panel and
+becomes a headline.
+
 It replaced a `Typed` line, and `Segment` grew one prop to carry that arrival
 over. **`arrive`** runs the settle on the *first* word rather than only on a
 change. The default is off and the comment in `Segment.tsx` says why — a readout
