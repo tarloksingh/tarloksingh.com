@@ -3034,8 +3034,15 @@ What is there:
   the picture.
 - **The deck**, between the picture and the tile strip: one card, snapped to
   the left edge the title and the write-up already line up on, the next card's
-  shoulder showing so it reads as swipeable, a pip apiece under it, and the
-  count on a five-cell segment display beside the word `NOTES`.
+  shoulder showing so it reads as swipeable, and the count on a five-cell
+  segment display beside the word `FACTS`. Three parts and no more. There were
+  pips under it for a while — a bar per note, the current one long — and they
+  were a third readout of a position the count and the shoulder were already
+  reporting, in a row of targets small enough that pressing one on glass was a
+  coin toss.
+- A card is **the height of its own sentence**. Flex items in a row stretch by
+  default, so every card in a run came out as tall as the longest one in it and
+  a three-word note was drawn in a box built for a two-line one.
 
 The two halves are joined by an index, held in `Mech` because they sit in
 different halves of the tree. Press a mark and its card comes up; swipe to a

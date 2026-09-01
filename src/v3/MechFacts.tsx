@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { Note } from './notes'
 import Segment from './Segment'
-import { sound } from './sound'
 import './MechFacts.css'
 
 /* ---- the readout, on a phone ----
@@ -24,7 +23,14 @@ import './MechFacts.css'
    than by a line: tapping a mark brings its card up, swiping to a card lights
    its mark. The number in the corner of the card is the same number set beside
    the mark, which is what makes that link readable while your thumb is over
-   half the picture. */
+   half the picture.
+
+   Three parts and no more: the word, the count, the card. There were pips
+   under it for a while — a bar per note, the current one long — and they were a
+   third readout of a position two other things on screen were already
+   reporting, in a row small enough that pressing one on glass was a coin
+   toss. The next card's shoulder is the affordance; the count is the
+   readout. */
 
 interface Props {
   notes: Note[]
@@ -92,15 +98,10 @@ export default function MechFacts({ notes, index, onIndex }: Props) {
     if (at !== index) onIndex(at)
   }
 
-  const pick = (at: number) => {
-    sound.select()
-    onIndex(at)
-  }
-
   return (
     <section className="mech-facts" data-arrive aria-label="Notes on this picture">
       <div className="mech-facts-head">
-        <span className="mech-facts-key">notes</span>
+        <span className="mech-facts-key">facts</span>
         {/* A display and not type, like every other count on this site.
             `settle` off: it is re-set on every swipe, and a readout that
             scrambles each time your thumb moves is a slot machine. */}
@@ -126,22 +127,6 @@ export default function MechFacts({ notes, index, onIndex }: Props) {
         ))}
       </div>
 
-      {/* A bar apiece, the same furniture as the tile strip's own track under
-          it. Only worth drawing when there is more than one to move between. */}
-      {notes.length > 1 && (
-        <div className="mech-facts-pips">
-          {notes.map((note, i) => (
-            <button
-              key={`${i}-${note.label}`}
-              className="mech-facts-pip"
-              data-on={i === index}
-              onClick={() => pick(i)}
-              aria-label={`Note ${i + 1} of ${notes.length}`}
-              aria-pressed={i === index}
-            />
-          ))}
-        </div>
-      )}
     </section>
   )
 }
