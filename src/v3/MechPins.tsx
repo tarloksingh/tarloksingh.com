@@ -20,10 +20,18 @@ import type { Frame } from './model'
    Development only. It is imported behind `import.meta.env.DEV`, so it is not
    in the bundle a visitor downloads. */
 
-/** Where the narrow chip is parked, in frame units off its own tip: clear of
- *  the mark and its ping, and down rather than up, because a tip near the top
- *  of the picture has the header above it. */
-const CHIP = [16, 20]
+/** Narrow, the chips are a stack rather than a set of labels in place: the
+ *  first one sits this far off the foot of the stage and each one above it is
+ *  `STEP` higher.
+ *
+ *  Beside its own tip was the obvious answer and the wrong one. A chip is three
+ *  text fields and a delete key — about two thirds of a phone's width, authored
+ *  in real pixels because it is a form — so a tip anywhere on the right half of
+ *  the picture puts its fields off the side of a layout that cannot scroll
+ *  sideways, where they cannot be typed into. Stacked, every one of them is
+ *  reachable whatever the picture looks like, and the tips keep the geometry:
+ *  the number on the chip is the number drawn beside its own mark. */
+const STACK = { foot: 34, step: 46 }
 
 interface Props {
   frame: Frame
@@ -163,7 +171,7 @@ export default function MechPins({ frame, notes, space, onClose }: Props) {
            there is no `to` to grip: the chip is parked a little clear of its
            own tip, where it is a form rather than a handle. */
         const text = space.narrow
-          ? [tip[0] + CHIP[0], tip[1] + CHIP[1]]
+          ? [0, space.h - STACK.foot - (notes.length - 1 - i) * STACK.step]
           : note.to
             ? pointIn(box, note.to)
             : laid[i].anchor
@@ -187,7 +195,14 @@ export default function MechPins({ frame, notes, space, onClose }: Props) {
               style={place(text[0], text[1])}
               onPointerDown={space.narrow ? undefined : grab(i, 'to')}
             >
-              {!space.narrow && <span className="mech-pin-grip" title="Drag the label" />}
+              {space.narrow ? (
+                /* Which mark up on the picture this row is writing. The chips
+                   are not beside their tips down here, so nothing else says
+                   it. */
+                <span className="mech-pin-idx">{String(i + 1).padStart(2, '0')}</span>
+              ) : (
+                <span className="mech-pin-grip" title="Drag the label" />
+              )}
               {/* The handle, which never appears on the readout — see `Note`
                   in notes.ts. Narrow on purpose: the room in this chip belongs
                   to the sentence next to it. */}

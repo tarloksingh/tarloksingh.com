@@ -3224,8 +3224,13 @@ left in the table as geometry nothing reads.
 
 The editor writes whichever belongs to the width it is open at, which is the
 whole of what makes this usable: press **P** at a phone width and every drag
-lands in `atNarrow`. Narrow, the chip is parked a fixed offset from its own tip
-and only the tip is a handle — it is a form there, not a placement. `MechPins`
+lands in `atNarrow`. Narrow, only the tip is a handle and **the chips are a
+numbered stack off the foot of the stage** rather than labels sitting beside
+their own tips. Beside the tip was the obvious answer and the wrong one: a chip
+is three text fields and a delete key, authored in real pixels because it is a
+form, so a tip on the right half of the picture put its fields off the side of
+a layout that cannot scroll sideways. Stacked, every row is reachable and the
+number on it is the number drawn beside its mark. `MechPins`
 takes the stage's `Space` for this — `boxOf(frame, space)` for the subject's
 box, `space.w`/`space.h` to turn a click into a fraction — and the overlay
 itself needed nothing, because it already positions in `calc(unit *

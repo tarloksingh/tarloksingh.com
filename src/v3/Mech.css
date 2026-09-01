@@ -2475,12 +2475,34 @@
   white-space: nowrap;
 }
 
-/* Narrow, the chip is parked beside its own tip rather than dragged: a phone's
-   readout is one point per note (`CHIP` in MechPins.tsx). Nothing about it is
-   a handle, so it does not offer itself as one. */
+/* Narrow, the chips are stacked up off the foot of the stage rather than laid
+   beside their tips (`STACK` in MechPins.tsx): a phone's readout is one point
+   per note, so there is no second end to drag, and a form two thirds of the
+   screen wide has to be somewhere it can be typed into. Nothing about it is a
+   handle, so it does not offer itself as one. */
 .mech-pin-chip[data-fixed='true'] {
   transform: none;
   cursor: default;
+}
+
+.mech-pin-idx {
+  flex: none;
+  padding: 0 2px;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Stacked, a chip has the width of the window rather than whatever it wants,
+   and the sentence takes what the other three leave. The fixed 300px it is
+   set at everywhere else is most of a phone on its own. */
+.mech-pin-chip[data-fixed='true'] {
+  width: 100%;
+}
+
+.mech-pin-chip[data-fixed='true'] .mech-pin-say {
+  width: auto;
+  min-width: 0;
+  flex: 1;
 }
 
 /* A note nobody has pinned yet is sitting wherever the fan put it. Dashed,
