@@ -381,9 +381,12 @@ const keys = Object.keys(MODEL_DEFAULTS) as Array<keyof ModelTuning>
  *  value anyone chose; pasted back into source they are just noise. */
 const tidy = (value: number | boolean) => (typeof value === 'number' ? String(Number(value.toFixed(4))) : String(value))
 
+const rigLine = (id: string, rig: ModelTuning) =>
+  `  '${id}': { ${keys.map((key) => `${key}: ${tidy(rig[key])}`).join(', ')} }`
+
 const asSource = () =>
   `export const MODEL_RIGS: Record<string, ModelTuning> = {\n${Object.entries(rigs)
-    .map(([id, rig]) => `  '${id}': { ${keys.map((key) => `${key}: ${tidy(rig[key])}`).join(', ')} }`)
+    .map(([id, rig]) => rigLine(id, rig))
     .join(',\n')}\n}`
 
 /** Mr. Takahashi's rig, and its own store.
@@ -411,6 +414,17 @@ export function useModelTuning(
      arrangement as the pieces' panel. */
   const seed = rigs[projectId] ?? MODEL_DEFAULTS
   const [values, setValues] = useControls(() => ({
+    'Copy this one': button(() => {
+      // `values` rather than `rigs[projectId]`: the write-back effect below is
+      // keyed on a render after this one, so on the same tick as a drag and a
+      // click `rigs` can still hold the *previous* settle. The panel's own
+      // live values are never a beat behind what is on screen.
+      const rig = { ...MODEL_DEFAULTS, ...(values as ModelTuning) }
+      const text = `${rigLine(projectId, rig)},`
+      void copyText(text)
+      // eslint-disable-next-line no-console
+      console.log(`[model] Paste this row into MODEL_RIGS in src/v3/modelTuning.ts:\n\n${text}`)
+    }),
     'Copy for source': button(() => {
       const text = asSource()
       // Not `navigator.clipboard` directly: it does not exist on a plain

@@ -5,6 +5,7 @@ import { ACESFilmicToneMapping, PMREMGenerator, type Group, type Texture } from 
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import { Piece, hasPiece } from './MechProduct'
+import { useNarrow } from './narrow'
 
 /* ---- the subjects in the bank ----
 
@@ -313,14 +314,39 @@ export function SlotView({ id, live, arrive }: { id: string; live: boolean; arri
   )
 }
 
-/** The one canvas the whole bank draws into. Rendered once, anywhere — the
- *  views find it through the tunnel rather than through the tree. */
+/* ---- scrolling the bank on a phone ----
+
+   Twelve live subjects, one canvas, and every bay's scissor rect is
+   `getBoundingClientRect()` on the tracked `<View>` element, read once a
+   frame inside `useFrame` — see the note at the top of this file. That is
+   right when nothing on the page scrolls, which is the wide layout's whole
+   composition. Narrow, the page itself scrolls under the rail, and a touch
+   scroll on iOS runs on the *compositor* thread: the boxes move at 120Hz
+   however busy the main thread is, while the rect this canvas reads is only
+   as fresh as the last `requestAnimationFrame` the main thread got to. Twelve
+   live scenes, dpr 1.75, MSAA and a fresh environment map is enough per-frame
+   cost that a scroll gesture — which is also asking the main thread for
+   layout and paint — starts missing frames, and the subjects visibly lag a
+   beat behind their own bays: the picture "swims" against a border that is
+   not swimming at all, because the border is CSS and never left the
+   compositor.
+
+   There is no way to make a WebGL canvas move on the compositor thread the
+   way a scrolled `<div>` does — the fix is to make each dropped frame smaller,
+   not to stop dropping them. Narrower, this canvas renders at native
+   resolution with no antialiasing rather than 1.75x with MSAA: a scissored
+   view a few dozen pixels on a side does not show the jaggies, and the frame
+   it costs to draw is most of what was making the lag visible. `dpr` also
+   drops relative *device* pixels — most phones report 2 or 3 — so the
+   savings compound with the resolution cap rather than adding to it. */
 export default function MechSlots() {
+  const narrow = useNarrow()
+
   return (
     <Canvas
       className="mech-bank-gl"
-      dpr={[1, 1.75]}
-      gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
+      dpr={narrow ? 1 : [1, 1.75]}
+      gl={{ antialias: !narrow, alpha: true, powerPreference: 'high-performance' }}
       camera={{ position: [0, 0, 3.1], fov: 34 }}
       onCreated={({ gl }) => {
         gl.toneMapping = ACESFilmicToneMapping

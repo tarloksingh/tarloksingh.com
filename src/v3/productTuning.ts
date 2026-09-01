@@ -267,15 +267,15 @@ const PIECE_KEYS = Object.keys(PIECE_FALLBACK) as Array<keyof PieceTuning>
 
 const tidy = (value: number) => String(Number(value.toFixed(4)))
 
+const pieceLine = (id: string, piece: PieceTuning) =>
+  `  '${id}': { ${PIECE_KEYS.map((k) => `${k}: ${tidy(piece[k])}`).join(', ')} }`
+
 const asSource = () => {
   const studio = `export const PRODUCT_DEFAULTS: ProductTuning = {\n${keys
     .map((key) => `  ${key}: ${tidy(live.studio[key])}`)
     .join(',\n')}\n}`
   const pieces = `export const PIECE_DEFAULTS: Record<string, PieceTuning> = {\n${Object.entries(live.pieces)
-    .map(([id, piece]) => {
-      const body = PIECE_KEYS.map((k) => `${k}: ${tidy(piece[k])}`).join(', ')
-      return `  '${id}': { ${body} }`
-    })
+    .map(([id, piece]) => pieceLine(id, piece))
     .join(',\n')}\n}`
   return `${studio}\n\n${pieces}`
 }
@@ -295,6 +295,16 @@ export function useProductTuning(projectId: string) {
 
   const [values, set] = useControls(
     () => ({
+      'Copy this one': button(() => {
+        // `values`, not `live.pieces[projectId]` — the write-back effect below
+        // only lands a render after this one, so on the same tick as a drag
+        // and a click the live table can still hold the previous settle.
+        const piece = { ...PIECE_FALLBACK, ...(values as PieceTuning) }
+        const text = `${pieceLine(projectId, piece)},`
+        void copyText(text)
+        // eslint-disable-next-line no-console
+        console.log(`[pieces] Paste this row into PIECE_DEFAULTS in src/v3/productTuning.ts:\n\n${text}`)
+      }),
       'Copy for source': button(() => {
         const text = asSource()
         void copyText(text)
