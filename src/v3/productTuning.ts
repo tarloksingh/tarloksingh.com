@@ -227,7 +227,7 @@ export const PIECE_DEFAULTS: Record<string, PieceTuning> = {
      zero: this piece is a moving image, so the frame answering the pointer
      reads as the one thing on the screen that is alive rather than as the
      page being loose. */
-  stitchfam: { ...PIECE_FALLBACK, size: 0.82, turn: -0.3, liftY: -0.01, sway: 0.56, focalLength: 102, fill: 0.53 },
+  stitchfam: { ...PIECE_FALLBACK, size: 0.53, turn: -12.4, liftY: 0.02, sway: 0.14, focalLength: 75, fill: 0.63 },
   /* Red Dead Redemption 2 and Grand Theft Auto V used to be here, on the same
      disc case at a mirrored turn. Both are `MODELS` now — a revolver and a
      carbine — and their tuning is in `modelTuning.ts`, not this file. The

@@ -314,20 +314,29 @@ export const NOTES: Record<string, Note[]> = {
   'block-builder/piece': [
     { label: 'piece', value: '3D model and animation of block builder made with Claude Code in 3JS.' }
   ],
+  'stitchfam/piece': [
+    { label: 'piece', value: 'GIF made for the home screen of Stitchfam.', at: [0.8197, 0.1723], to: [0.9819, 0.044] }
+  ],
+  'stitchfam/Desktop_1.mp4': [
+    { label: 'clip', value: 'Traveling through the family tree in the desktop web  version.', at: [0.7427, 0.0786], to: [0.703, -0.1104] }
+  ],
+  'stitchfam/Desktop_2.mp4': [
+    { label: 'clip', value: ' Desktop view — adding a member.', at: [0.4834, 0.1501], to: [0.5723, -0.0666] }
+  ],
   'stitchfam/Design_3.mp4': [
-    { label: 'clip', value: 'Mobile view of a family tree.', at: [0.9732, 0.0956], to: [1.033, 0.0142] }
+    { label: 'clip', value: 'Mobile view of a family tree.', at: [0.555, 0.1381], to: [0.4837, -0.0617] }
   ],
   'stitchfam/Design_1.mp4': [
-    { label: 'clip', value: 'Adding a family member.', at: [0.9589, 0.1796], to: [1.0441, -0.0546] }
+    { label: 'clip', value: 'Adding a family member.', at: [0.5316, 0.0981], to: [0.5686, -0.0708] }
   ],
   'stitchfam/Design_2.mp4': [
-    { label: 'clip', value: 'Inviting a family member.', at: [0.9669, 0.2144], to: [1.1605, -0.0568] }
+    { label: 'clip', value: 'Inviting a family member.', at: [0.547, 0.1419], to: [0.4276, -0.0558] }
   ],
   'stitchfam/Test_1.jpg': [
-    { label: 'still', value: 'Design exploration to be more like stckers or magnets.', at: [0.952, 0.1924], to: [1.0313, 0.0232] }
+    { label: 'still', value: 'Design exploration ', at: [0.575, 0.1252], to: [0.3954, -0.0628] }
   ],
   'stitchfam/Invited.jpg': [
-    { label: 'still', value: ' Invite in iMessage.', at: [1.0189, 0.2181], to: [1.0609, 0.0823] }
+    { label: 'still', value: ' Invite in iMessage.', at: [0.5068, 0.6675], to: [0.1887, -0.0731] }
   ],
   'wyte-card/hero.mp4': [
     { label: 'clip', value: 'Promotional content of Wyte Card.', at: [0.94, 0.08], to: [1.0442, -0.1128] },
