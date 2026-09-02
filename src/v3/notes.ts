@@ -300,19 +300,19 @@ export const NOTES: Record<string, Note[]> = {
     { label: 'clip', value: 'Made in Autodesk MotionBuilder.', at: [0.9705, 0.2791], to: [1.0612, 0.119] }
   ],
   'block-builder/hero.mp4': [
-    { label: 'clip', value: 'Clip: Modular system demonstration.', at: [1.0286, 0.1002], to: [1.1605, -0.0738] }
+    { label: 'clip', value: 'Modular system demonstration.', at: [0.5666, 0.0644], to: [0.48, -0.0929] }
   ],
   'block-builder/1.mp4': [
-    { label: 'clip', value: 'Starting a build on the IPad.' }
+    { label: 'clip', value: 'Starting a build on the IPad.', at: [0.5521, 0.1439], to: [0.3981, -0.0489] }
   ],
   'block-builder/2.mp4': [
-    { label: 'clip', value: 'Building a car in Block builder.', at: [0.9774, 0.1474], to: [1.0475, -0.0031] }
+    { label: 'clip', value: 'Building a car in game on the ipad.', at: [0.4949, 0.1396], to: [0.5182, -0.041] }
   ],
   'block-builder/3.mp4': [
     { label: 'clip', value: 'Random design in Block Builder.', at: [1.0211, 0.1523], to: [1.1605, -0.0226] }
   ],
   'block-builder/piece': [
-    { label: 'piece', value: '3D model and animation of block builder made with Claude Code in 3JS.' }
+    { label: 'piece', value: 'Block builder representiation. ', at: [0.7359, 0.461], to: [0.9157, 0.2602] }
   ],
   'stitchfam/piece': [
     { label: 'piece', value: 'GIF made for the home screen of Stitchfam.', at: [0.8197, 0.1723], to: [0.9819, 0.044] }

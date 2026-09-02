@@ -238,7 +238,21 @@ export const PIECE_DEFAULTS: Record<string, PieceTuning> = {
      fly apart and stack, so `Resize` normalises the volume they travel
      through rather than any of them, and at a neutral size the blocks
      themselves come out the size of the type. */
-  'block-builder': { ...PIECE_FALLBACK, size: 2.4, turn: 131.1, liftY: 0.06 },
+  'block-builder': {
+    ...PIECE_FALLBACK,
+    size: 1.19,
+    turn: -8.5,
+    liftY: 0.045,
+    liftX: 0.01,
+    focalLength: 200,
+    exposure: 0.78,
+    envIntensity: 0.65,
+    fillIntensity: 12.6,
+    fillY: 10.9,
+    gloss: -1,
+    metal: -1,
+    reflects: 0
+  },
   /* The one piece framed on a lens of its own so far: a flipbook of fish is a
      billboard, and at the shared 60mm the sprite's own plane read as leaning
      away. 75mm flattens it back. */
