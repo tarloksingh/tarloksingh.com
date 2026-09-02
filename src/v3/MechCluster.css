@@ -955,15 +955,13 @@
 .mech-bank-col {
   position: absolute;
   right: calc(101 * var(--px));
-  /* Past the audio deck, docked to this same right edge at `top: 90` and
-     about forty units tall (`.mech-deck-slot` in Mech.css) — clearing it only
-     needed 148, but this is now the *available range* to centre the rail's
-     fixed height in, not the rail's own top edge, and 284 is what lands that
-     centre where home's own rail sits (measured off the built page: home has
-     no deck to duck under, so its own top offset comes from centring in
-     `.mech-body`, not from a number here). */
-  top: calc(284 * var(--px));
-  bottom: calc(120 * var(--px));
+  /* The available range to centre the rail's fixed height in — not its own
+     top edge. Symmetric now: the deck it used to duck under is a small pill
+     up in the corner (`.mech-deck-slot`, ~45 units at `top: 90`), so 168 of
+     clearance is plenty and an even top/bottom lands the rail on the true
+     vertical middle rather than the low reading it had at `top: 284`. */
+  top: calc(168 * var(--px));
+  bottom: calc(168 * var(--px));
   /* Centred in that range rather than stretched to fill it — `margin: auto 0`
      on an absolutely positioned box with both `top` and `bottom` set and an
      explicit height less than the gap between them centres it, with no
