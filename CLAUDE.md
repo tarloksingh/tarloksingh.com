@@ -259,6 +259,13 @@ drag and no tile is selectable. And `setPointerCapture` is taken in
 pointer retargets its own `click` to the capture element, which made tiles
 selectable with a finger and not with a mouse.
 
+**A phone is still slow to *load*, and that is open.** The boot's frame drop is
+dealt with and desktop is reported fine; what is left is bundle weight — `/v3`
+pulls a 1.6 MB (492 KB gzip) three.js chunk plus React before the boot has a
+frame to run in. Levers, and how to profile it without chasing noise, are in
+**Still slow to load on a phone** in `README.md`. Don't re-derive the frame-rate
+findings; they are written up there.
+
 **The bank's canvas does not render until the bank is up.**
 `frameloop={up ? 'always' : 'never'}` in `MechSlots.tsx`. It used to draw
 eleven views into a viewport-sized canvas for the whole boot while the bank sat

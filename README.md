@@ -2585,6 +2585,48 @@ names. `getContext` (the `WebGLRenderer` constructor, blocking, inside a React
 commit) and `PMREMGenerator.fromScene` are the other two big ones at mount;
 both now land inside the `primed` hold below rather than under the ripple.
 
+### Still slow to load on a phone
+
+Reported after all of the above, and it is worth writing down what is *not* the
+cause so the next pass does not re-derive it. The boot's frame drop is fixed —
+the bank's canvas no longer runs through it, the deck and the compass no longer
+write unchanged readings, the stage canvas no longer asks a handset for `dpr` 2
+with multisampling. Desktop is reported fine. A phone is still slow **on load**,
+which is a different complaint from the one the frame-rate work answered.
+
+The likeliest cause is simply the weight of the bundle, and the numbers are not
+subtle. `/v3` needs the three.js chunk, and every route-level chunk on the page
+imports it:
+
+| chunk | raw | gzip |
+|---|---|---|
+| `Gallery3D-*.js` (three, r3f, drei) | 1.6 MB | 492 KB |
+| `index-*.js` (React and the router) | 348 KB | 123 KB |
+| `V3-*.js` | 188 KB | 57 KB |
+
+That is around 670 KB gzipped to fetch and about 2 MB to parse and compile
+before the boot has a frame to run in. `primed` waits for it rather than
+animating over it, which is right, but waiting is not the same as not paying.
+
+Three levers, in the order they are probably worth trying:
+
+- **Split the three.js chunk by what a screen actually needs.** The home screen
+  needs the bank's eleven subjects; a project screen needs one model or one
+  piece. drei is imported broadly and pulls a great deal that no screen here
+  uses — check what `Gallery3D` actually contains before assuming it is all
+  three.js.
+- **Do not build the WebGL context inside a React commit.** The profile puts
+  `getContext` (the `WebGLRenderer` constructor) as the single largest blocking
+  call at mount, and `PMREMGenerator.fromScene` behind it. Both are synchronous
+  and both land in the commit phase. Neither has anything to do with the boot's
+  *animation* and both could happen off it.
+- **`Track`'s per-frame forced layout**, which is mobile-only — see the note
+  above and the one in `MechSlots.tsx`.
+
+None of this is guesswork about where the time goes: build with
+`--minify false` and take a CPU profile, as described above. What cannot be
+trusted from that environment is any number derived from a frame count.
+
 ### Load first, then play
 
 The boot is a dozen staggered CSS animations and a five-hundred-cell ripple,
