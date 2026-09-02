@@ -179,46 +179,46 @@ export const NOTES: Record<string, Note[]> = {
     { label: 'clip', value: 'Unfinished marketing video made in After Effects.', at: [0.9491, 0.265], to: [1.0366, -0.0568] }
   ],
   'mecha-station/piece': [
-    { label: 'piece', value: '3D interperation of the cash register, card terminal and the POS software. ', at: [0.94, 0.08], to: [1.1303, -0.1071] }
+    { label: 'piece', value: '3D interperation of the cash register, card terminal and the POS software. ', at: [0.94, 0.08], to: [0.9706, 0.0022] }
   ],
   'mecha-station/Hero.jpg': [
     { label: 'still', value: 'Still showcasing the entire pieces together.', at: [0.94, 0.08], to: [1.0205, -0.1622] }
   ],
   'mecha-station/MobileApp_1.mp4': [
-    { label: 'clip', value: 'In app showing the mobile checkout', at: [1.0103, 0.1559], to: [1.0955, -0.0679] }
+    { label: 'clip', value: 'In app showing the mobile checkout', at: [0.7589, 0.0268], to: [0.8197, -0.1027] }
   ],
   'mecha-station/MobileApp_2.mp4': [
-    { label: 'clip', value: 'In app showing the reporting section', at: [1.02, 0.0291], to: [1.0728, -0.1534] }
+    { label: 'clip', value: 'In app showing the reporting section', at: [0.4996, 0.1035], to: [0.4823, -0.0529] }
   ],
   'mecha-station/MobileApp_3.mp4': [
-    { label: 'clip', value: 'In app Updating item information', at: [1.0173, 0.1547], to: [1.0425, -0.0248] },
-    { label: 'made in', value: 'Made in Figma.', fold: 'tools' }
+    { label: 'clip', value: 'In app Updating item information', at: [0.6514, -0.0166], to: [0.7259, -0.1518] },
+    { label: 'made in', value: 'Designed in Figma', fold: 'tools', at: [0.4004, 0.0361], to: [0.3188, -0.0946] }
   ],
   'mecha-station/MobileApp_4.mp4': [
-    { label: '', value: ' Checking receipts in app', at: [1.0199, 0.1836], to: [1.0903, -0.0453] }
+    { label: '', value: ' Checking receipts in app', at: [0.501, 0.1178], to: [0.6163, -0.0766] }
   ],
   'mecha-station/MobileApp_5.mp4': [
-    { label: 'clip', value: 'Creating a supplier order in app.', at: [1.0114, 0.1893], to: [1.0591, 0.0591] }
+    { label: 'clip', value: 'Creating a supplier order in app.', at: [0.4699, 0.1162], to: [0.5154, -0.0901] }
   ],
   'mecha-station/Desktop_1.mp4': [
-    { label: 'clip', value: 'Completing an order on desktop app.', at: [1.0244, 0.1805], to: [1.0687, 0.1007] }
+    { label: 'clip', value: 'Completing an order on desktop app.', at: [0.5337, 0.1654], to: [0.5732, -0.0835] }
   ],
   'mecha-station/Desktop_2.mp4': [
-    { label: 'clip', value: ' Updating staff information in the desktop app.', at: [1.0286, 0.2125], to: [1.0806, 0.1129] }
+    { label: 'clip', value: ' Updating staff information in the desktop app.', at: [0.5327, 0.0465], to: [0.4887, -0.0792] }
   ],
   'mecha-station/Desktop_3.mp4': [
-    { label: 'clip', value: 'Updating a product in the desktop app.', at: [0.9751, 0.2473], to: [1.0434, 0.1137] },
+    { label: 'clip', value: 'Updating a product in the desktop app.', at: [0.6563, 0.2127], to: [0.555, -0.0801] },
     { label: 'made in', value: 'Made in Figma.', fold: 'tools' }
   ],
   'mecha-station/Process.png': [
-    { label: 'still', value: 'Designing multiple ads to be tested in Facebook.', at: [1.0194, 0.2081], to: [1.0454, 0.0401] },
+    { label: 'still', value: 'Designing multiple ads to be tested in Facebook.', at: [0.4405, 0.0191], to: [0.4066, -0.0696] },
     { label: 'made in', value: 'Made in Figma.', fold: 'tools' }
   ],
   'mecha-station/shelflabel0.png': [
-    { label: 'still', value: 'Design of the shelf labels that could be printed thru the product section of the app.', at: [0.9925, 0.2132], to: [1.0634, 0.0512] }
+    { label: 'still', value: 'Design of the shelf labels that could be printed thru the product section of the app.', at: [0.6402, 0.3999], to: [0.6867, -0.1043] }
   ],
   'mecha-station/shelf_label.jpg': [
-    { label: 'still', value: 'Shelf label in use at a grocery store.', at: [1.0296, 0.4148], to: [1.0935, 0.3514] }
+    { label: 'still', value: 'Shelf label in use at a grocery store.', at: [0.8248, 0.3973], to: [1.0337, 0.284] }
   ],
   'red-dead-redemption-2/Explosion.mp4': [
     { label: 'made in', value: 'Camera work done in  Autodesk MotionBuilder.', fold: 'tools', at: [0.9719, 0.4117], to: [1.0375, 0.3521] }
