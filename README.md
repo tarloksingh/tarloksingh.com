@@ -2695,6 +2695,88 @@ The lesson is the general one: the expensive thing was not the biggest thing, it
 was the most complicated thing being redone most often. Bucket the recalcs by
 element count before touching anything.
 
+#### The entrance, which is a different window again
+
+What the above left was reported precisely: the ripple still catching on a
+phone, and on a desktop *"when the main section loads in with my name and all"*.
+Two complaints about the same beat, and whole-page medians cannot see either —
+a 6500ms run that is mostly idle averages a saturated 1800ms window away to
+nothing.
+
+So the measurement was split into the boot's own phases, on marks the page
+itself sets (`.mech-tiles` appearing and going, `.mech-cluster` getting
+`data-covered="false"`), with frame gaps, long tasks and CPU samples attributed
+to each. That is `phase.mjs`'s whole job and it changed the answer immediately:
+
+```
+  phone                                          desktop
+  ripple→uncover  1235ms  36 frames  1 stall     THE ENTRANCE  1800ms  19 frames
+  THE ENTRANCE    1800ms  54 frames  0 stalls    long tasks    1904ms over 5
+```
+
+The phone's entrance was already clean. The desktop's was **1904ms of long
+tasks inside an 1800ms window** — the main thread gone for the entire length of
+the animation, with a 534ms stall in the middle of it and a 1.3 second one just
+after. Which is exactly, and only, what was reported.
+
+**It was the same `RoundedBox` geometry as before, on the layout the fix had
+skipped.** `useNear` had been made narrow-only, on the reasoning that `View`
+does its own offscreen test when the canvas is the viewport — true, but that
+test is about *drawing*, and what costs is *building*. The wide rail is
+`--panel-h` tall and on a 1512×900 window **seven of its eleven bays fall
+outside it**, built and never seen. An `IntersectionObserver` clips its
+intersection rect against every scrolling ancestor and not just the viewport, so
+one mechanism answers both layouts, and it now gates the build on each. Counted
+in the page: on a phone the first screen builds **zero** rounded boxes.
+
+That was not enough on desktop, because one of the four bays it does keep is
+the till, and the till is ten `RoundedBox`es plus a mapped keypad. Which turned
+out to be the real number: drei's `RoundedBox` is **3876 vertices whatever size
+the box is** — `smoothness: 4` and `bevelSegments: 4`, doubled on the way into
+`ExtrudeGeometry`, then `toCreasedNormals` hashing every vertex against its
+neighbours. Counted live with a patched profiling build: **15 calls, 58,140
+vertices**, for a column of seventy-five-pixel thumbnails.
+
+`src/three/detail.tsx` is the answer and it is deliberately small: a React
+context that multiplies those two segment counts, defaulting to **1 — exactly
+what every piece was authored with**. Nothing that does not opt in changes at
+all, so the project stage, the v2 gallery and the unmounted cast render the
+geometry they always did. `MechSlots` provides `0.5` around the pieces in the
+bank and nowhere else. 58,140 vertices → **17,820**; ten boxes cost 5ms instead
+of 41.
+
+The context does cross r3f's portal, which was the thing that might not have
+worked — and if it ever stops, `detail` stays 1 and the geometry is what it was.
+The failure is a saving that does not appear, never a thing that renders wrong.
+
+**Is it visible?** No, and that was checked rather than asserted: the Wyte Card
+in its bay, screenshotted from a build of the previous commit and from this one,
+is the same picture — same silhouette, same corners, same shading. Creased
+normals do the shading either way and the bevel is about five per cent of an
+object seventy-five pixels tall. If a bay ever grows large enough for four
+facets to show, `BAY_DETAIL` is one number in one file.
+
+| desktop, 1512×900 | before | after |
+|---|---|---|
+| script | 3291ms | **1579ms** |
+| main thread busy | 5129ms | **3370ms** |
+| long tasks | 2544ms over 9 | **879ms over 6** |
+| frames drawn | 112 | **166** |
+| frames over 50ms | 19 | **10** |
+| worst frame | 1367ms | **434ms** |
+
+The entrance window itself: 1904ms of long tasks down to 660ms, and the 1.3s
+stall behind it down to 233ms.
+
+**What is left, and why it was left.** The phone's ripple has one repeatable
+67ms hitch about 130ms in — the first style, layout and paint of five hundred
+cells — and the rest of that window is 40% idle with the browser's own paint,
+not script, as the largest share. `contain: layout paint` on the cells was tried
+against it and measured **identical** to three decimal places of the same
+numbers, so it is not in the file. The desktop's remaining 434ms is diffuse:
+shader compilation, texture upload and the first render of four subjects that
+have never been drawn. Both are the cost of the thing actually happening.
+
 ### Still slow to load on a phone, and the splitting that was not splitting
 
 Reported after all of the frame-rate work above, and it is a different

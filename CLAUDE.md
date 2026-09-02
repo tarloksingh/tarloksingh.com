@@ -63,6 +63,7 @@ being false (which is why `navigator.clipboard` does not exist — see
 | `MechDeck.tsx`, `sound.ts` | The music deck, and every synthesised sound |
 | `SplitReveal.tsx` | The tagline and fold titles, drawn in a character at a time |
 | `subject.ts` | Live facts shared across the Canvas boundary |
+| `../three/detail.tsx` | How finely a piece is tessellated for whoever is looking — a bay asks for less |
 | `subjects.ts` | **Which project has an object, named without loading one.** Imports nothing, and must not |
 | `Warmth.tsx` | The loader's report, and the signal that the 3D chunk has landed |
 | `modelTuning.ts`, `wallTuning.ts` | Leva panels, and the source they paste back |
@@ -281,8 +282,26 @@ that had been suspected:
   `toCreasedNormals` over every vertex, and six of the bank's eleven subjects
   are built from them — ten in the till alone. 1.26s of main thread, most of it
   for slots four screens down the rail. `useNear` gated *drawing*; it gates the
-  **build** now too (narrow only; wide is unchanged, and `mounted` only latches
-  on). Script 2395ms → 664ms.
+  **build** now too, on **both layouts** — an `IntersectionObserver` clips
+  against every scrolling ancestor, so a bay outside the wide rail (seven of
+  eleven at 1512×900) reads the same as one below the fold on a phone.
+  `mounted` only latches on. Script 2395ms → 664ms.
+
+**A bay gets less geometry than a screen does.** drei's `RoundedBox` is
+**3876 vertices whatever size the box is**, and the bank was building 58,140 of
+them for a column of seventy-five-pixel thumbnails — which was the whole of the
+desktop entrance, where the name types in. `src/three/detail.tsx` is a context
+multiplying `smoothness`/`bevelSegments`, defaulting to **1, exactly as
+authored**, so only what opts in changes: `MechSlots` passes `BAY_DETAIL` (0.5)
+around the pieces in the bank, and the project stage, the v2 gallery and the
+cast are untouched. 58,140 verts → 17,820. Verified pixel-identical in the bay.
+If the context ever stops crossing r3f's portal the geometry is simply what it
+was — the failure mode is a lost saving, never a wrong render. Desktop: long
+tasks 2544ms → 879ms, worst frame 1367ms → 434ms, frames drawn 112 → 166.
+
+**Measure the entrance, not the load.** A 6500ms median hides an 1800ms window
+where the main thread is gone. Split by the boot's own marks — `phase.mjs` in
+the write-up — or the thing being complained about averages away to nothing.
 
 **The ripple's `mask-image` is not the cost, and this has now been measured.**
 The reasoning — a masked subtree cannot composite, so 500 cells tick on the

@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
-import { Center, RoundedBox, useVideoTexture } from '@react-three/drei'
+import { Center, useVideoTexture } from '@react-three/drei'
+import { RoundedBoxLOD as RoundedBox } from './detail'
 import type { VideoTexture } from 'three'
 import { useStationParts, type StationPart } from '../v3/stationParts'
 

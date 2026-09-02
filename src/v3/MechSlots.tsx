@@ -5,6 +5,7 @@ import { ACESFilmicToneMapping, PMREMGenerator, type Group, type Texture } from 
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import { Piece } from './MechProduct'
+import { Detail } from '../three/detail'
 /* The paths only — the map itself lives in a module that imports nothing, so
    that `bank.ts` can ask which projects have a subject without pulling this
    file, and three.js behind it, into the eager chunk. See `subjects.ts`. */
@@ -58,6 +59,12 @@ import { useNarrow } from './narrow'
    scaled by its own entry below, and the camera simply looks at the origin. */
 
 const DRACO_PATH = '/draco/'
+
+/** How finely a piece is tessellated *in a bay*, as a fraction of what it was
+ *  authored with — see `src/three/detail.tsx`. Half: four facets around a
+ *  bevel instead of eight, on a corner a few pixels across in a box seventy-five
+ *  pixels tall, and an eighth of the geometry to build. */
+const BAY_DETAIL = 0.5
 
 /** How large a subject sits in its slot, and how it is turned to face out of
  *  it.
@@ -232,7 +239,18 @@ function Slot({ id, live, show }: { id: string; live: boolean; show: boolean }) 
 
       <Suspense fallback={null}>
         <Drift fit={fit} live={live} show={show}>
-          {glb ? <Gltf src={glb} /> : <Piece project={id} />}
+          {/* A bay is seventy-five pixels tall and a piece is authored for a
+              screen. `Detail` scales the two segment counts on every
+              `RoundedBox` under it, and nothing else on the site provides it —
+              so the project stage and the v2 gallery render exactly the
+              geometry they always did, and only the thumbnails come down. The
+              reason it is worth having is in `src/three/detail.tsx`: at full
+              detail the bank builds fifty-eight thousand vertices during the
+              entrance, which is a second of main thread on the one beat the
+              panel is coming up. */}
+          <Detail.Provider value={BAY_DETAIL}>
+            {glb ? <Gltf src={glb} /> : <Piece project={id} />}
+          </Detail.Provider>
         </Drift>
       </Suspense>
     </>
@@ -283,31 +301,42 @@ function Environment() {
  *  does, which is `show` — the subject shrinks back out of its bay the way it
  *  grew into it. */
 export function SlotView({ id, live, arrive }: { id: string; live: boolean; arrive: boolean }) {
-  const narrow = useNarrow()
   const box = useRef<HTMLElement>(null)
-  const near = useNear(box, narrow)
-  const [mounted, setMounted] = useState(arrive && !narrow)
+  const near = useNear(box)
+  const [mounted, setMounted] = useState(false)
 
-  /* ---- and on a phone, only the ones you could be looking at ----
+  /* ---- and only the ones you could be looking at ----
 
-     `near` gates the *build*, not just the render. Building a subject is the
-     expensive thing on this screen and it is not the GLBs: six of the eleven
-     are pieces made of drei `RoundedBox`es, and every one of those extrudes a
-     bevelled solid and then runs `toCreasedNormals` over it — a hash of every
-     vertex against its neighbours. Ten of them in the till alone. Profiled on
-     a throttled handset it came to **1.26 seconds** of main thread, the
-     largest single cost left on the page, and on a phone most of it was spent
-     on bays four screens down the rail that nobody had scrolled to.
+     `near` gates the *build*, not just the render, and it does it on both
+     layouts.
 
-     `useNear` already knew which those were; it was only being used to skip
-     drawing them. It leads by a full viewport (`rootMargin`), so a bay builds
-     a screen before it arrives rather than under the thumb.
+     Building a subject is the expensive thing on this screen and it is not the
+     GLBs: six of the eleven are pieces made of drei `RoundedBox`es, and every
+     one of those extrudes a bevelled solid and then runs `toCreasedNormals`
+     over it — a hash of every vertex against its neighbours. Ten of them in
+     the till alone. Measured during the entrance on a 4× throttled desktop,
+     `toCreasedNormals` and the `Vector3.dot` under it came to **a full second**
+     of the 1.8 the entrance lasts, which is why the name typing in and the
+     blocks coming up were arriving on a main thread that was already gone.
 
-     Wide is unchanged — `near` is always true there, so the deal mounts every
-     slot exactly as it did. And **`mounted` only ever latches on**: a subject
-     that has been built stays built, because unmounting one on the way out is
-     the cut the note above exists to avoid, and rebuilding it on the way back
-     would pay this cost twice. */
+     The deal is 55ms a slot (`BANK_IN.slotStep`) and a subject costs several
+     times that to build, so eleven of them queue up nose to tail whatever the
+     stagger says. Spacing them further apart is not available — the stagger is
+     the look. So the work has to not be there.
+
+     **Most of it never needed to be.** The rail is `--panel-h` tall and clips:
+     on a 1512×900 window, seven of the eleven bays are outside it, built and
+     never seen. `useNear` already knew that and was only being used to skip
+     *drawing* them. An `IntersectionObserver`'s intersection rect is clipped by
+     every scrolling ancestor, not just the viewport, so a bay hidden by the
+     rail reports the same as one below the fold on a phone — one mechanism,
+     both layouts.
+
+     It leads by a full viewport (`rootMargin`), so on a phone a bay builds a
+     screen before it arrives rather than under the thumb. And **`mounted` only
+     ever latches on**: a subject that has been built stays built, because
+     unmounting one on the way out is the cut the note above exists to avoid,
+     and rebuilding it on the way back would pay this cost twice. */
   useEffect(() => {
     if (arrive && near) setMounted(true)
   }, [arrive, near])
@@ -319,35 +348,38 @@ export function SlotView({ id, live, arrive }: { id: string; live: boolean; arri
   )
 }
 
-/** Whether this bay is anywhere near the window — narrow only, and it is
- *  culling rather than an effect.
+/** Whether this bay is anywhere anyone could see it. Culling, and — since it
+ *  gates `mounted` above — the reason most of the bank is never built at all.
  *
  *  `View` has an offscreen test of its own and it is the right one *when the
- *  canvas is the viewport*: a bay whose rect falls outside the canvas's own
- *  box is skipped. On the narrow layout the canvas is the bank instead (see
- *  `.mech-bank-gl` in MechCluster.css and the note below), and the bank is
- *  six rows tall — so nothing is ever outside it and all twelve subjects
- *  render every frame, including the eight nobody can see. This puts the test
- *  back, against the window, where it belongs.
+ *  canvas is the viewport*: a bay whose rect falls outside the canvas's own box
+ *  is skipped. That is true on the wide layout and false on the narrow one,
+ *  where the canvas is the bank instead (see `.mech-bank-gl` in
+ *  MechCluster.css and the note below) and the bank is six rows tall, so
+ *  nothing is ever outside it and every subject renders every frame including
+ *  the eight nobody can see.
+ *
+ *  This used to be narrow-only for that reason. It is not any more, because
+ *  what it gates is no longer only drawing: a bay clipped out of the wide
+ *  rail is a subject that gets *built* and never seen, and on a 1512×900
+ *  window that is seven of the eleven. An `IntersectionObserver` clips its
+ *  intersection rect against every scrolling ancestor and not only the
+ *  viewport, so "outside the rail" and "below the fold on a phone" are the
+ *  same question and this answers both.
  *
  *  A whole bay's height of margin either side, so a subject is already drawn
  *  by the time its box is on screen. `View` clears the region once when this
  *  goes false and stops rendering it; the scene stays mounted, so coming back
  *  is a render and not a rebuild. */
-const useNear = (box: RefObject<HTMLElement | null>, narrow: boolean) => {
-  /* False to begin with on narrow, and that matters now that this gates the
-     build as well as the render: starting true would let every slot latch
-     `mounted` on its first render, before the observer has had a chance to say
-     which of them are actually anywhere near the window. An
-     `IntersectionObserver` always reports once on observe, so nothing waits on
-     a callback that may not come. */
-  const [near, setNear] = useState(!narrow)
+const useNear = (box: RefObject<HTMLElement | null>) => {
+  /* False to begin with, and that matters now that this gates the build as
+     well as the render: starting true would let every slot latch `mounted` on
+     its first render, before the observer has had a chance to say which of
+     them anyone can actually see. An `IntersectionObserver` always reports once
+     on observe, so nothing waits on a callback that may not come. */
+  const [near, setNear] = useState(false)
 
   useEffect(() => {
-    if (!narrow) {
-      setNear(true)
-      return
-    }
     const node = box.current
     if (!node) return
     const watch = new IntersectionObserver((entries) => setNear(entries[entries.length - 1].isIntersecting), {
@@ -355,7 +387,7 @@ const useNear = (box: RefObject<HTMLElement | null>, narrow: boolean) => {
     })
     watch.observe(node)
     return () => watch.disconnect()
-  }, [box, narrow])
+  }, [box])
 
   return near
 }

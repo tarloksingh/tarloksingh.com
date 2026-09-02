@@ -1,4 +1,5 @@
-import { Center, RoundedBox, useTexture } from '@react-three/drei'
+import { Center, useTexture } from '@react-three/drei'
+import { RoundedBoxLOD as RoundedBox } from './detail'
 
 const SHELL_PROPS = { color: '#161719', roughness: 0.45, metalness: 0.1 }
 

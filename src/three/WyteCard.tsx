@@ -1,4 +1,5 @@
-import { Center, RoundedBox } from '@react-three/drei'
+import { Center } from '@react-three/drei'
+import { RoundedBoxLOD as RoundedBox } from './detail'
 
 const CARD_PROPS = { color: '#fafafa', roughness: 0.25, metalness: 0.04 }
 

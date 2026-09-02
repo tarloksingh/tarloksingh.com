@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
-import { Center, RoundedBox, useVideoTexture } from '@react-three/drei'
+import { Center, useVideoTexture } from '@react-three/drei'
+import { RoundedBoxLOD as RoundedBox } from './detail'
 import type { VideoTexture } from 'three'
 
 const FRAME_PROPS = { color: '#f1f2f4', roughness: 0.35, metalness: 0.08 }
