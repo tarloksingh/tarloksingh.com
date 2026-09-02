@@ -224,10 +224,10 @@ export const NOTES: Record<string, Note[]> = {
     { label: '', value: 'Western Gun used as a representation of Red Dead 2. ', at: [0.6002, 0.2388], to: [0.9271, 0.0122] }
   ],
   'red-dead-redemption-2/Explosion.mp4': [
-    { label: 'made in', value: 'Camera work done in  Autodesk MotionBuilder.', fold: 'tools', at: [0.9719, 0.4117], to: [1.0375, 0.3521] }
+    { label: 'made in', value: 'Camera work done in  Autodesk MotionBuilder.', fold: 'tools', at: [0.6208, 0.0179], to: [0.6807, -0.0763] }
   ],
   'red-dead-redemption-2/Guns Out.mp4': [
-    { label: 'label', value: 'Camera work done in  Autodesk MotionBuilder.', at: [1.0543, 0.2701], to: [1.0892, 0.3474] }
+    { label: 'label', value: 'Thought deeply in every scene about why it should be told in this manner. ', at: [0.4511, 0.1056], to: [0.5144, -0.0761] }
   ],
   'red-dead-redemption-2/Darkness.mp4': [
     { label: 'label', value: 'Camera work done in  Autodesk MotionBuilder.', at: [1.0633, 0.47], to: [1.1362, 0.4166] }
@@ -251,35 +251,34 @@ export const NOTES: Record<string, Note[]> = {
     { label: 'label', value: 'Camera work done in  Autodesk MotionBuilder.', at: [1.0102, 0.4287], to: [1.0607, 0.3545] }
   ],
   'openup/piece': [
-    { label: 'piece', value: 'Deisgned in Figma' },
-    { label: 'made in', value: 'Final version of plus one / openup app. ', fold: 'tools', at: [0, 0.285], to: [-0.1305, 0.2301] },
-    { label: 'label', value: 'Animations made in after effects.', at: [0.9096, 0.3825], to: [1.029, 0.2755] }
+    { label: 'piece', value: 'Deisgned in Figma', at: [0.7914, 0.1744], to: [0.9282, 0.0654] },
+    { label: 'made in', value: 'Final version of plus one / openup app. ', fold: 'tools', at: [0.1413, 0.3924], to: [-0.1305, 0.2301] }
   ],
   'openup/hero.mp4': [
-    { label: 'clip', value: 'Commercial created in After Effects and Rotato.', at: [0.94, 0.08], to: [1.0399, -0.1172] }
+    { label: 'clip', value: 'Commercial created in After Effects and Rotato.', at: [0.4927, 0.0955], to: [0.5587, -0.0964] }
   ],
   'openup/One.mp4': [
-    { label: 'clip', value: 'Quick look at the home screen.', at: [0.5055, 0.1335], to: [0.5603, -0.1431] }
+    { label: 'clip', value: 'Quick look at the home screen.', at: [0.5055, 0.1335], to: [0.5994, -0.0952] }
   ],
   'openup/Two.mp4': [
-    { label: 'clip', value: 'The messages section of Plus One.', at: [0.5071, 0.1267], to: [0.5818, -0.1239] }
+    { label: 'clip', value: 'The messaging section of Plus One.', at: [0.5071, 0.1267], to: [0.5818, -0.1239] }
   ],
   'openup/Three.mp4': [
-    { label: 'clip', value: 'Version 3 of the app called Bonjour that had a map showing you were people were somewhat located.', at: [0.9755, 0.1354], to: [1.0462, 0.1787] }
+    { label: 'clip', value: 'Version 3 of the app called Bonjour that had a map showing you were people were somewhat located.', at: [0.565, 0.0596], to: [0.631, -0.1051] }
   ],
   'openup/Four.mp4': [
-    { label: 'clip', value: 'Promotional  content made in After effects.', at: [0.9628, 0.2878], to: [1.0427, 0.0131] },
-    { label: 'label', value: ' Version 2 named bff.', at: [0.2604, 0.0462], to: [0.1955, -0.1706] }
+    { label: 'clip', value: 'Promotional  content made in After effects.', at: [0.7844, 0.0419], to: [0.7965, -0.1086] },
+    { label: 'label', value: ' Version 2 named bff.', at: [0.3359, 0.0199], to: [0.2136, -0.1293] }
   ],
   'openup/Five.mp4': [
-    { label: 'clip', value: 'OpenUp: version 2 demo.', at: [0.94, 0.08], to: [1.018, -0.1959] }
+    { label: 'clip', value: 'OpenUp: version 2 demo.', at: [0.5535, 0.083], to: [0.6104, -0.0968] }
   ],
   'openup/Six.mp4': [
-    { label: 'clip', value: 'Animations made for the first version of Openup.', at: [0.94, 0.08], to: [1.0451, -0.1945] }
+    { label: 'clip', value: 'Animations made for the first version of Openup.', at: [0.5511, 0.0689], to: [0.6088, -0.0865] }
   ],
   'openup/Seven.mp4': [
-    { label: 'clip', value: 'Designed in Figma 2019.', at: [0.94, 0.08], to: [1.0206, -0.1602] },
-    { label: 'made in', value: 'Version one (Openup).', fold: 'tools', at: [0.3553, 0.0651], to: [0.3014, -0.1647] }
+    { label: 'clip', value: 'Designed in Figma 2019.', at: [0.6177, 0.0376], to: [0.7295, -0.0997] },
+    { label: 'made in', value: 'Version one (Openup).', fold: 'tools', at: [0.4038, 0.0371], to: [0.3133, -0.0673] }
   ],
   'grand-theft-auto-v/5.2.mp4': [
     { label: 'clip', value: 'Scene I filmed for GTA DLC.', at: [0.94, 0.08], to: [1.0748, -0.1328] },
