@@ -36,7 +36,9 @@ export const MODELS: Record<string, { file: string; label: string }> = {
      different name under it. A revolver and a carbine say which game they came
      out of without the label doing it. */
   'grand-theft-auto-v': { file: '/models/gta-v-rifle.glb', label: 'Grand Theft Auto V — the rifle' },
-  'red-dead-redemption-2': { file: '/models/rdr2-revolver.glb', label: 'Red Dead Redemption 2 — the revolver' }
+  'red-dead-redemption-2': { file: '/models/rdr2-revolver.glb', label: 'Red Dead Redemption 2 — the revolver' },
+  /* A modelled card, replacing the `WyteCard` primitive. */
+  'wyte-card': { file: '/models/wyte-card.glb', label: 'Wyte — the card' }
 }
 
 /* ---- pieces ----
@@ -58,7 +60,6 @@ const PIECES: Record<string, string> = {
   'mecha-station': 'Mecha Station — the terminal',
   openup: 'Plus One — the app',
   stitchfam: 'StitchFam — the loop',
-  'wyte-card': 'Wyte — the card',
   'block-builder': 'Block Builder — the pieces',
   'slider-engine': 'Slider Engine — fish man'
 }

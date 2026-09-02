@@ -233,7 +233,6 @@ export const PIECE_DEFAULTS: Record<string, PieceTuning> = {
      carbine — and their tuning is in `modelTuning.ts`, not this file. The
      panel's export still lists them, because it exports whatever its
      scratchpad holds; they are dropped on the way in. */
-  'wyte-card': { ...PIECE_FALLBACK, size: 0.72, turn: 38, liftY: 0 },
   /* The one piece whose bounding box is not the piece. Block Builder's blocks
      fly apart and stack, so `Resize` normalises the volume they travel
      through rather than any of them, and at a neutral size the blocks

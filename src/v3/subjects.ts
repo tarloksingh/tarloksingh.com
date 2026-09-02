@@ -39,7 +39,9 @@ export const GLBS: Record<string, string> = {
      `model.ts`: a project whose subject is a GLB on its own screen and a
      primitive in its slot is a project that changes shape when you open it. */
   'grand-theft-auto-v': '/models/gta-v-rifle.glb',
-  'red-dead-redemption-2': '/models/rdr2-revolver.glb'
+  'red-dead-redemption-2': '/models/rdr2-revolver.glb',
+  /* Was a `WyteCard` piece built from primitives until the export arrived. */
+  'wyte-card': '/models/wyte-card.glb'
 }
 
 /** Every project with a piece built out of primitives, in `MechProduct.tsx`.
@@ -51,7 +53,6 @@ export const PIECE_IDS = [
   'mecha-station',
   'openup',
   'stitchfam',
-  'wyte-card',
   'block-builder',
   'slider-engine'
 ] as const

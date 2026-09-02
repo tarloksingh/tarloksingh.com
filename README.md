@@ -5863,6 +5863,14 @@ which reads as a bad export rather than as a filter in our own code.
 
 ### Three new subjects, and what each one cost
 
+**Wyte Card became the fourth.** `wyte-card.glb` (3 KB, Draco — a card mesh and
+a backdrop `Plane` the loader hides by exact name) replaces the `WyteCard`
+primitive; `src/three/WyteCard.tsx` stays for the v2 gallery. Same
+height-normalisation trap as the guns — a flat card at a face's `fill` is as
+tall as the stage — so `MODEL_RIGS['wyte-card']` ships as a starter (`fill:
+0.4`, `lean: 0`) to be set by eye. The frame id is `wyte-card/model` now.
+
+
 `rdr2-revolver.glb`, `gta-v-rifle.glb` and `iphone-17-pro-max.glb` are
 Sketchfab exports rather than things modelled here, and none of them is
 Draco-compressed or WebP-textured the way the Blender exports are — 3.1MB,

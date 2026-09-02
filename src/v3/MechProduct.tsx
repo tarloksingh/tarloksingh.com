@@ -7,7 +7,6 @@ import BlockBuilder from '../three/BlockBuilder'
 import Phone17 from '../three/Phone17'
 import PosStation from '../three/PosStation'
 import VideoFrame from '../three/VideoFrame'
-import WyteCard from '../three/WyteCard'
 import { SpriteFlipbook } from '../three/CapsuleStage'
 import type { Mesh, MeshStandardMaterial } from 'three'
 import { drift, gaze } from './subject'
@@ -239,7 +238,6 @@ const PIECES: Record<PieceId, () => ReactNode> = {
      screen showed was a picture squashed into a hole of the wrong shape.
      `heroes.ts` already pointed at the right file. */
   stitchfam: () => <VideoFrame videoUrl="/videos/stitchfam-hero.mp4" scale={1} />,
-  'wyte-card': () => <WyteCard scale={1} />,
   'block-builder': () => <BlockBuilder scale={1} />,
   'slider-engine': () => <SpriteFlipbook frames={FISH_MAN_FRAMES} fps={12} scale={1} />
 }

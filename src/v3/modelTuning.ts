@@ -339,6 +339,16 @@ export const MODEL_RIGS: Record<string, ModelTuning> = {
     roughnessBoost: -0.6,
     metalnessBoost: 1,
     watchBird: false
+  },
+
+  /* A flat card. `fit` normalises by height, so at a face's fill it comes out
+     as tall as the stage — the same trap the guns hit. Starter numbers; tune
+     on the Subject tab. */
+  'wyte-card': {
+    ...MODEL_DEFAULTS,
+    fill: 0.4,
+    lean: 0,
+    watchBird: false
   }
 }
 
