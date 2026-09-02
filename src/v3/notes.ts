@@ -94,55 +94,55 @@ export const NOTES: Record<string, Note[]> = {
     { label: '', value: 'Marketing material for the app store.', at: [1.0342, 0.2053], to: [1.0742, 0.0188] }
   ],
   'capsule-c1/model': [
-    { label: 'label', value: '3D model of the Capsule c1.', at: [0.873, 0.2717], to: [1.0547, 0.1099] },
-    { label: 'label', value: 'Designed in blender with precise sizing to fit a raspberry pi and phone.', at: [0.0565, 0.4283], to: [-0.0447, 0.3042] },
-    { label: 'label', value: 'Designed to hold your phone and raspberry pi and maintiain proper airflow. ', at: [0.9363, 0.7681], to: [1.0024, 0.8171] }
+    { label: 'label', value: '3D model of the Capsule c1.', at: [0.8248, 0.1634], to: [0.9567, 0.0471] },
+    { label: 'label', value: 'Designed in blender with precise sizing to fit a raspberry pi and phone.', at: [0.0731, 0.2371], to: [-0.0151, 0.1096] },
+    { label: 'label', value: 'Designed to hold your phone and raspberry pi and maintiain proper airflow. ', at: [0.8606, 0.7134], to: [1.0024, 0.8171] }
   ],
   'capsule-c1/Demo_Video.mp4': [
-    { label: 'label', value: 'Filmed with the Black magic ursa mini 4.6k.', at: [0.9618, 0.2654], to: [1.0405, 0.0509] },
-    { label: 'label', value: 'Video showcasing how to place a capsule call.', at: [0.4157, 0.0831], to: [0.3172, -0.2743] }
+    { label: 'label', value: 'Filmed with the Black magic ursa mini 4.6k.', at: [0.9618, 0.2654], to: [1.0262, 0.0593] },
+    { label: 'label', value: 'Video showcasing how to place a capsule call.', at: [0.4157, 0.0831], to: [0.321, -0.1095] }
   ],
   'capsule-c1/DT_Mobile_Call.mp4': [
-    { label: 'clip', value: 'Home screen of the capsule app. ', at: [0.5043, 0.0839], to: [0.5568, -0.2152] }
+    { label: 'clip', value: 'Home screen of the capsule app. ', at: [0.5043, 0.0839], to: [0.5428, -0.0871] }
   ],
   'capsule-c1/DT_Signup.mp4': [
-    { label: '', value: 'Sign-up screen. ', at: [0.5748, 0.0977], to: [0.6873, -0.226] }
+    { label: '', value: 'Sign-up screen. ', at: [0.5748, 0.0977], to: [0.6139, -0.0568] }
   ],
   'capsule-c1/Design_5.mp4': [
-    { label: 'clip', value: 'Placing a call on your TV.', at: [0.902, 0.0575], to: [1.0097, -0.166] }
+    { label: 'clip', value: 'Placing a call on your TV.', at: [0.8457, 0.0545], to: [0.9656, -0.0723] }
   ],
   'capsule-c1/Top_View.png': [
-    { label: 'made in', value: 'Printed Capsule c1 model ', fold: 'tools', at: [0.5436, 0.4213], to: [0.4397, -0.08] }
+    { label: 'made in', value: '3D Printed Capsule c1 model ', fold: 'tools', at: [0.5436, 0.4213], to: [0.4397, -0.08] }
   ],
   'capsule-c1/Phone_Insert.png': [
-    { label: 'still', value: 'Final hardware design & assembly with iPhone.', at: [0.942, 0.0838], to: [1.0286, -0.2246] }
+    { label: 'still', value: 'Final hardware design & assembly with iPhone.', at: [0.942, 0.0838], to: [0.9747, -0.1185] }
   ],
   'capsule-c1/Side_View.jpg': [
-    { label: 'still', value: 'Profile view of the Capsule C1.', at: [0.6407, 0.5774], to: [1.0402, 0.3598] }
+    { label: 'still', value: 'Profile view of the Capsule C1.', at: [0.598, 0.0538], to: [0.5717, -0.0348] }
   ],
   'capsule-c1/Challenges_1.jpeg': [
-    { label: 'still', value: 'Still: Testing designs.', at: [0.6133, 0.403], to: [1.0585, 0.3331] }
+    { label: 'still', value: 'Testing designs.', at: [0.6133, 0.403], to: [1.0585, 0.3331] }
   ],
   'capsule-c1/Challenges_2.jpeg': [
     { label: 'still', value: 'Many iterations in the trash.', at: [0.9595, 0.4463], to: [1.0585, 0.3331] }
   ],
   'capsule-c1/Challenges_3.png': [
-    { label: 'still', value: 'First design of the hardware in Figma.', at: [0.9542, 0.116], to: [1.047, -0.1395] }
+    { label: 'still', value: 'First design of the hardware in Figma.', at: [0.9542, 0.116], to: [1.0018, -0.0785] }
   ],
   'capsule-c1/printing.mp4': [
-    { label: 'clip', value: '3D printing a Capsule C1.', at: [1.0303, 0.4023], to: [1.0852, 0.3341] }
+    { label: 'clip', value: '3D printing a Capsule C1.', at: [1.0434, 0.3322], to: [1.0772, 0.3074] }
   ],
   'capsule-c1/Branding_1.mp4': [
-    { label: 'clip', value: 'Promotional content made in blender for the website.', at: [0.9482, 0.3469], to: [1.0444, 0.1908] }
+    { label: 'clip', value: 'Promotional content made in blender for the website.', at: [0.9482, 0.3469], to: [1.0259, 0.1985] }
   ],
   'capsule-c1/Branding_3.mp4': [
-    { label: 'clip', value: 'Promotional content.', at: [0.9625, 0.2568], to: [1.0441, 0.0782] }
+    { label: 'clip', value: 'Promotional content.', at: [0.5115, 0.0351], to: [0.4573, -0.057] }
   ],
   'capsule-c1/Branding_5.mp4': [
-    { label: '', value: 'Promotional content ', at: [0.8887, 0.5453], to: [1.0622, 0.2133] }
+    { label: '', value: 'Promotional content ', at: [0.9494, 0.2328], to: [1.0225, 0.1449] }
   ],
   'capsule-c1/Branding_4.mp4': [
-    { label: '', value: 'Promotional content', at: [0.8707, 0.4549], to: [1.0654, 0.3152] }
+    { label: '', value: 'Promotional content', at: [0.8707, 0.4549], to: [1.0301, 0.2406] }
   ],
   'slider-engine/piece': [
     { label: '', value: 'Breathing animation of "The Alcholic Fish"', at: [0.7921, 0.3659], to: [0.9748, 0.2633] },
