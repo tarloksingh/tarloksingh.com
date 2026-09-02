@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type RefObject } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import MechPanel, { type PanelTab } from './MechPanel'
 import Typed from './Typed'
@@ -10,6 +10,7 @@ import MechLaser from './MechLaser'
 import Alarm from './Alarm'
 import MechHud from './MechHud'
 import MechTiles from './MechTiles'
+import { useProgress } from '@react-three/drei'
 import MechBank from './MechBank'
 import { slotOf } from './bank'
 import { useModelTuning } from './modelTuning'
@@ -953,6 +954,22 @@ function Source({ handed, onClose }: { handed: Handed; onClose: () => void }) {
   )
 }
 
+/** Reports whether three's loading manager has anything in flight.
+ *
+ *  A leaf, and deliberately: drei's `useProgress` re-renders whoever subscribes
+ *  on every progress tick, and the screen is not something to re-render a few
+ *  dozen times while it is trying to boot. Nothing is rendered here — the only
+ *  output is the call upward. */
+function Warmth({ onLoading }: { onLoading: (active: boolean) => void }) {
+  const active = useProgress((state) => state.active)
+
+  useEffect(() => {
+    onLoading(active)
+  }, [active, onLoading])
+
+  return null
+}
+
 /** How long the machine takes to come up: the grid strikes on, the compass
  *  spins and settles, and only then do the leaders extend. Trimmed down from
  *  1500 — the subject (the model or the first still) uncovers at the same
@@ -961,6 +978,35 @@ function Source({ handed, onClose }: { handed: Handed; onClose: () => void }) {
  *  first mount: building the WebGL context, compiling shaders, cloning the
  *  scene graph. */
 const BOOT_MS = 1200
+
+/** The longest the machine will wait for its own weight before coming up
+ *  anyway, in milliseconds.
+ *
+ *  The boot is a dozen staggered CSS animations and a thousand-cell ripple,
+ *  and it used to start on the same frame as the WebGL context, the shader
+ *  compile, the environment map and a GLB — so the smoothest sequence on the
+ *  site was scheduled against the busiest main thread it ever has. Waiting
+ *  first costs nothing on screen (what is behind the boot is the bare grid on
+ *  black, which is what a machine that has not been switched on should look
+ *  like) and buys the whole ripple an idle thread to play on.
+ *
+ *  **It is a cap, not a wait.** Whatever has not arrived by here is not going
+ *  to hold the page: a cold cache, a slow network, a font that never resolves,
+ *  a loader that errors without telling anyone. The machine comes up. */
+const WARM_CAP = 1500
+
+/** How long to give the page to ask for anything at all before deciding there
+ *  is nothing to wait for, in milliseconds.
+ *
+ *  An idle loading manager means two opposite things — nothing requested yet,
+ *  and everything arrived — and the gate has to tell them apart or it holds
+ *  the screen for the full `WARM_CAP` every time nothing needed loading. Which
+ *  is **home**, every load: the bank's eleven subjects are not requested until
+ *  `up`, and `up` is `!booting`, so they queue up behind the boot rather than
+ *  under it and there is genuinely nothing here to wait for. Short enough that
+ *  home is not sitting on black, long enough to cover a `<Suspense>` boundary
+ *  taking a beat to mount its loader. */
+const WARM_GRACE = 350
 
 /** How long after the cover lifts the overview fold puts itself down — see
  *  *the overview puts itself down* in the component. Long enough that the side
@@ -1132,16 +1178,82 @@ export default function Mech({ id, onProject, onHome }: Props) {
      `animation-fill-mode: both` until its delay runs out, which is the flash. */
   const leaving = phase === 'out'
 
-  /* The machine coming up, once, on mount. `sound.boot()` fires into a
+  /* ---- load first, then play ----
+
+     Everything heavy about this page mounts on the same frame the boot starts
+     on, and the boot is the one sequence here whose whole job is to be smooth.
+     So it waits: `primed` gates both the ripple (`MechTiles`) and the countdown
+     below, and turns true when the fonts have resolved and three's loading
+     manager has gone quiet — or at `WARM_CAP`, whichever is sooner.
+
+     `Warmth` is what watches the loader, and it is a leaf component for a
+     reason: drei's `useProgress` re-renders its subscriber on every progress
+     tick, and this screen is not a component you want re-rendered a few dozen
+     times while it is trying to come up. It reports once, upward.
+
+     On home this settles almost immediately — the bank's eleven subjects are
+     not requested until `up`, which is `!booting`, so they queue up *behind*
+     the boot rather than under it. On a project deep link it is waiting for
+     that project's own model, which is exactly the load worth waiting for. */
+  const [primed, setPrimed] = useState(false)
+  const [quiet, setQuiet] = useState(false)
+  const [fonts, setFonts] = useState(false)
+  /** Whether anything was ever asked for — see `WARM_GRACE`. */
+  const asked = useRef(false)
+
+  const onLoading = useCallback((active: boolean) => {
+    if (active) {
+      asked.current = true
+      return
+    }
+    if (asked.current) setQuiet(true)
+  }, [])
+
+  useEffect(() => {
+    let alive = true
+    const cap = window.setTimeout(() => alive && setPrimed(true), WARM_CAP)
+    const grace = window.setTimeout(() => {
+      if (alive && !asked.current) setQuiet(true)
+    }, WARM_GRACE)
+    /* `document.fonts` is everywhere this site runs, but a promise that never
+       settles would hold the page to the cap for no reason, so a failure here
+       counts as ready rather than as waiting. */
+    const done = () => alive && setFonts(true)
+    document.fonts?.ready.then(done, done) ?? done()
+    return () => {
+      alive = false
+      window.clearTimeout(cap)
+      window.clearTimeout(grace)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!fonts || !quiet) return
+    /* Two frames, not zero. What has just finished loading has not been drawn
+       yet — the first paint of a decoded texture or a compiled program is
+       itself a frame of work, and starting the ripple on the same one puts it
+       straight back into the traffic this whole gate exists to get out of. */
+    let second = 0
+    const first = requestAnimationFrame(() => {
+      second = requestAnimationFrame(() => setPrimed(true))
+    })
+    return () => {
+      cancelAnimationFrame(first)
+      cancelAnimationFrame(second)
+    }
+  }, [fonts, quiet])
+
+  /* The machine coming up, once the page is primed. `sound.boot()` fires into a
      suspended `AudioContext` on a fresh load — nothing plays until the
      visitor's first real gesture elsewhere resumes it (see `audio()` in
      `sound.ts`, which resumes on every call) — but the visual boot runs
      regardless. */
   useEffect(() => {
+    if (!primed) return
     sound.boot()
     const timer = window.setTimeout(() => setBooting(false), BOOT_MS)
     return () => window.clearTimeout(timer)
-  }, [])
+  }, [primed])
 
   /* The subject's canvas learns its size from a ResizeObserver, and a tab that
      is still in the background when the page loads throttles that observer's
@@ -1597,7 +1709,8 @@ export default function Mech({ id, onProject, onHome }: Props) {
           is a little shorter than the furthest cell needs — see `LIFE` in
           `MechTiles.tsx`. It has no exit to miss — every cell animates to
           nothing and the layer removes itself. */}
-      <MechTiles />
+      {primed && <MechTiles />}
+      <Warmth onLoading={onLoading} />
       <MechCursor />
       <MechBird />
       <MechMoth />

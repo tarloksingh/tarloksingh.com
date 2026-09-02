@@ -29,20 +29,31 @@ import { useEffect, useRef, useState, memo } from 'react'
  *  these are that grid's cells. */
 const CELL = 46
 
-/** Milliseconds a ring out from the middle.
+/** How long the front takes to travel from the middle of the window to its
+ *  furthest corner, in milliseconds.
  *
- *  It is set against how long a cell stays lit, not against how long the
- *  whole thing should take, and that ratio is the entire difference between a
- *  ring travelling out and the window simply filling in. A cell is visible for
- *  `mech-tile`'s 420ms; at this spacing that is a band about a dozen cells
- *  deep, with a bright core two or three cells thick at the front of it and
- *  the rest a tail. At 19 — where this started — the band was twenty-two
- *  cells and there is no window wide enough for that to read as anything but
- *  a grid coming on all at once.
+ *  **This is quoted as a crossing, not as a speed, and that is the whole
+ *  point.** It used to be milliseconds *per ring* (34), which is a speed — and
+ *  a speed means the effect is a different effect on every window, because a
+ *  wider one has more of the grid's cells between the middle and the corner.
+ *  A phone has about seventeen rings and crossed in 570ms; a 2560-wide desktop
+ *  has twenty-seven and took 920ms. What actually changes is not the duration,
+ *  it is the *shape*: a cell is lit for `mech-tile`'s 420ms, so the band on
+ *  screen at any moment was 71% of a phone's radius and 46% of that desktop's.
+ *  One reads as the panel coming up all at once, the other as a thin ring
+ *  crawling out. Same code, two effects, and only one of them was ever looked
+ *  at while it was being tuned.
  *
- *  The furthest corner of a wide window is around twenty-three rings, so this
- *  plus that 420 lands just inside `LIFE`. */
-const RING = 34
+ *  Normalised against the window's own corner, the band is 420/570 of the
+ *  radius everywhere and the ripple is the same gesture at every size. 570
+ *  because that is what a handset was already doing, which is the one this was
+ *  tuned on and the one that reads right.
+ *
+ *  It also makes the pitch loop below irrelevant to timing — the delay is a
+ *  *ratio* of cells to cells, so opening the pitch up to come in under `MOST`
+ *  can no longer speed the wave up as a side effect. That used to need a
+ *  correction factor and now needs nothing. */
+const SPAN = 570
 
 /** How much of a cell's delay is thrown away, so the ring has a ragged edge
  *  rather than arriving as a perfect circle. */
@@ -64,17 +75,20 @@ const SCATTER = 60
 const MOST = 1600
 
 /** How long the layer stays in the document, in milliseconds. It takes itself
- *  down rather than being unmounted with the boot flag: the furthest cell is
- *  around twenty-five rings out, so the last of them is still decaying a
- *  little past `BOOT_MS`, and cutting the layer at the boot took the outer
- *  edge of the ripple off mid-flash. Comfortably longer than the ripple can
- *  be, and nothing depends on the exact number — by then every cell has
- *  animated to nothing and the layer is invisible either way. */
+ *  down rather than being unmounted with the boot flag: cutting the layer at
+ *  the boot took the outer edge of the ripple off mid-flash.
+ *
+ *  The ripple now has a known ceiling on any window — `SPAN` to the corner,
+ *  plus `SCATTER` of jitter, plus the 420ms a cell is lit, so a shade over a
+ *  second — where it used to depend on how many of the grid's cells the window
+ *  happened to be wide. This is comfortably past that and nothing depends on
+ *  the exact number: by then every cell has animated to nothing and the layer
+ *  is invisible either way. */
 const LIFE = 1900
 
 function MechTiles() {
   const box = useRef<HTMLDivElement>(null)
-  const [grid, setGrid] = useState<{ cols: number; rows: number; cell: number; zoom: number } | null>(null)
+  const [grid, setGrid] = useState<{ cols: number; rows: number; cell: number } | null>(null)
   const [done, setDone] = useState(false)
 
   useEffect(() => {
@@ -101,21 +115,12 @@ function MechTiles() {
 
     let cols = Math.ceil(el.clientWidth / cell) + 1
     let rows = Math.ceil(el.clientHeight / cell) + 1
-    /* How far the pitch had to be opened up to come in under the budget, so
-       `RING` can be scaled by it below. Without that the ring is quoted in
-       *cells* and a coarser grid has fewer of them across the same window —
-       the wave crosses in half the time and what is left is the grid flashing
-       on, which is precisely the thing `RING`'s note says it must not be. At
-       double pitch the delays double and the front travels the same number of
-       pixels a second as it does everywhere else. */
-    let zoom = 1
     while (cols * rows > MOST) {
       cell *= 2
-      zoom *= 2
       cols = Math.ceil(cols / 2) + 1
       rows = Math.ceil(rows / 2) + 1
     }
-    setGrid({ cols, rows, cell, zoom })
+    setGrid({ cols, rows, cell })
   }, [])
 
   if (done) return null
@@ -132,17 +137,26 @@ function MechTiles() {
       style={grid ? { ['--cols' as string]: grid.cols, ['--cell' as string]: `${grid.cell}px` } : undefined}
     >
       {grid &&
-        Array.from({ length: grid.cols * grid.rows }, (_, i) => {
-          const x = i % grid.cols
-          const y = Math.floor(i / grid.cols)
-          /* Rings out from the middle of the window rather than rows down it.
-             A sweep across a grid reads as a wipe — a thing passing over the
-             panel; a ring out from the centre reads as the panel itself
-             coming up, which is what the rest of the boot is doing. */
-          const away = Math.hypot(x - (grid.cols - 1) / 2, y - (grid.rows - 1) / 2)
-          const delay = away * RING * grid.zoom + Math.random() * SCATTER
-          return <i key={i} style={{ animationDelay: `${Math.round(delay)}ms` }} />
-        })}
+        (() => {
+          /* The corner, in cells. Every delay below is a fraction of this, so
+             the front reaches the furthest cell at `SPAN` on any window — see
+             the note on it. Measured from the same centre the cells are, which
+             is the middle of the grid rather than the middle of the viewport;
+             the two differ by up to half a cell and the grid is what is being
+             lit. */
+          const reach = Math.hypot((grid.cols - 1) / 2, (grid.rows - 1) / 2) || 1
+          return Array.from({ length: grid.cols * grid.rows }, (_, i) => {
+            const x = i % grid.cols
+            const y = Math.floor(i / grid.cols)
+            /* Rings out from the middle of the window rather than rows down
+               it. A sweep across a grid reads as a wipe — a thing passing over
+               the panel; a ring out from the centre reads as the panel itself
+               coming up, which is what the rest of the boot is doing. */
+            const away = Math.hypot(x - (grid.cols - 1) / 2, y - (grid.rows - 1) / 2)
+            const delay = (away / reach) * SPAN + Math.random() * SCATTER
+            return <i key={i} style={{ animationDelay: `${Math.round(delay)}ms` }} />
+          })
+        })()}
     </div>
   )
 }

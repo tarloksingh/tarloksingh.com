@@ -259,6 +259,20 @@ drag and no tile is selectable. And `setPointerCapture` is taken in
 pointer retargets its own `click` to the capture element, which made tiles
 selectable with a finger and not with a mouse.
 
+**The boot waits for its own weight.** `primed` in `Mech.tsx` gates the ripple
+and the `BOOT_MS` countdown until the fonts have resolved and three's loading
+manager has gone quiet, capped by `WARM_CAP`. `WARM_GRACE` is what stops home
+sitting on that cap — an idle loader means both "nothing asked for yet" and
+"everything arrived", and on home nothing loads during the boot at all. See
+**Load first, then play** in `README.md`.
+
+**The ripple is quoted as a crossing, not a speed.** `SPAN` in `MechTiles.tsx`
+is how long the front takes to reach the window's furthest corner, so the band
+is the same fraction of the radius at every size. It used to be ms-per-cell,
+which made it a visibly different effect on a phone and on a desktop. Note that
+`--px` has a `rem` term, so two machines at the same pixel width can get
+different cell counts.
+
 **Per-frame cost is a standing concern, not a one-off.** A property written to
 a node invalidates style whether or not the value changed, so a loop that
 reports an unchanged reading is a full recalc a frame for nothing — the deck's

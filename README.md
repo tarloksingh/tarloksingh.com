@@ -2511,15 +2511,74 @@ distance from centre is already computed for the delay) would drop the mask
 without changing what is on screen. Untried, and it is a real change with real
 visual risk — measure before spending it.
 
-**One thing from the attempt is kept**, because it is a latent bug rather than
-a trade. `RING` is quoted in *cells*, so whenever the pitch loop does open the
-pitch up — which it still does above `MOST`, on a very large window at a small
-`--px` — there are fewer rings between the middle and the edge and the wave
-crosses in proportionally less time. That turns it back into the grid flashing
-on, the exact failure `RING`'s own note is written against. The loop now
-reports how far it opened the pitch (`zoom`) and the delays are scaled by it,
-so the front travels the same number of pixels a second at any pitch. On a
-phone nothing reaches `MOST` and `zoom` is 1.
+**What the attempt did leave behind is a real bug in the timing, and it is
+fixed.** `RING` was milliseconds *per ring* — a speed — and a speed makes this
+a different effect on every window, because a wider one has more of the grid's
+cells between the middle and the corner. What varies is not the duration, it is
+the **shape**: a cell is lit for `mech-tile`'s fixed 420ms, so the band on
+screen at any moment was 71% of a phone's radius and 46% of a 2560-wide
+desktop's at a default font size. One reads as the panel coming up; the other
+as a thin ring crawling out. Same code, two effects, and only one of them was
+ever looked at while it was being tuned.
+
+`SPAN` replaces it: 570ms for the front to reach the furthest **corner**,
+whatever that corner is. The delay is a ratio of cells to cells, so the band is
+420/570 of the radius on every window and the ripple is the same gesture at
+every size. 570 because it is what a handset was already doing, and the handset
+is the one that reads right.
+
+Two things fall out of it. The pitch loop can no longer affect timing as a side
+effect — a ratio does not care what a cell is worth — so the correction factor
+that halving used to need is gone rather than kept. And `LIFE` now covers a
+known ceiling (`SPAN` + `SCATTER` + 420, a shade over a second) instead of one
+that depended on how many cells wide the window happened to be.
+
+**Worth knowing before reading a difference into it:** how many cells a window
+gets is `--px`, and `--px` has a `rem` term in its `min()`. A browser with a
+larger default font size or a zoom level lands on a completely different cell
+count for the same pixel width — a 2560-wide window at a 16px root gets 48
+columns and at a 25.6px root gets 31. Two machines at the same resolution do
+not necessarily see the same grid, which is worth remembering before concluding
+that a change did something.
+
+### Load first, then play
+
+The boot is a dozen staggered CSS animations and a five-hundred-cell ripple,
+and it used to start on the same frame as the WebGL context, the shader
+compile, the environment map and, on a project deep link, a GLB. The smoothest
+sequence on the site was scheduled against the busiest main thread it ever has,
+which is most of why it read as sluggish on a phone.
+
+So it waits. `primed` in `Mech.tsx` gates both `MechTiles` and the `BOOT_MS`
+countdown, and turns true when the fonts have resolved and three's loading
+manager has gone quiet — or at `WARM_CAP`, whichever is sooner. Nothing is lost
+on screen: what is behind the boot is the bare grid on black, which is what a
+machine that has not been switched on should look like.
+
+Three parts of it are load-bearing.
+
+**`Warmth` is a leaf component.** drei's `useProgress` re-renders whoever
+subscribes on every progress tick, and the screen is not something to re-render
+a few dozen times while it is trying to come up. It renders nothing; the only
+output is one call upward.
+
+**An idle loading manager means two opposite things** — nothing requested yet,
+and everything arrived — and the gate has to tell them apart or it sits on the
+cap every time there was nothing to load. Which is **home**, every single load:
+the bank's eleven subjects are not requested until `up`, and `up` is
+`!booting`, so they queue up *behind* the boot rather than under it. Hence
+`WARM_GRACE`: nothing asked for in the first 350ms is nothing to wait for. A
+project deep link is the case that actually waits, and what it waits for is
+that project's own model, which is exactly the load worth waiting for.
+
+**Two frames after, not zero.** What has just finished loading has not been
+*drawn* yet — the first paint of a decoded texture or a compiled program is
+itself a frame of work — and starting the ripple on that frame puts it straight
+back into the traffic the gate exists to get out of.
+
+`WARM_CAP` is a cap and not a wait. A cold cache, a slow network, a font that
+never resolves, a loader that errors without telling anyone: none of them hold
+the page. The machine comes up.
 
 **On measuring this.** Don't trust a headless run for it. Software WebGL
 (`--use-angle=swiftshader`, which the recipe in the memory note needs to keep
