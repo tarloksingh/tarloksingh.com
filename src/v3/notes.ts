@@ -145,15 +145,15 @@ export const NOTES: Record<string, Note[]> = {
     { label: '', value: 'Promotional content', at: [0.8707, 0.4549], to: [1.0301, 0.2406] }
   ],
   'slider-engine/piece': [
-    { label: '', value: 'Breathing animation of "The Alcholic Fish"', at: [0.7921, 0.3659], to: [0.9748, 0.2633] },
-    { label: 'label', value: 'Designed in Figma, animated in After effects. ', at: [0.27, 0.5066], to: [-0.0342, 0.3887] }
+    { label: '', value: 'Breathing animation of "The Alcholic Fish"', at: [0.7921, 0.3659], to: [0.8984, 0.2735] },
+    { label: 'label', value: 'Designed in Figma, animated in After effects. ', at: [0.27, 0.5066], to: [0.075, 0.411] }
   ],
   'slider-engine/hero.mp4': [
-    { label: 'clip', value: 'Unreleased promo video made by me in After Effects.', at: [0.9355, 0.1134], to: [1.0396, -0.1975] }
+    { label: 'clip', value: 'Unreleased promo video made by me in After Effects.', at: [0.5727, 0.0466], to: [0.6277, -0.0993] }
   ],
   'slider-engine/Design_1.mp4': [
-    { label: 'clip', value: 'Adjusting settings in Slider Engine.', at: [0.8549, 0.4618], to: [1.0187, 0.1753] },
-    { label: 'label', value: 'Slider Engine was designed to be only used for web based 2D games. ', at: [0.847, 0.6286], to: [1.018, 0.6964] }
+    { label: 'clip', value: 'Adjusting settings in Slider Engine.', at: [0.8549, 0.4618], to: [1.0019, 0.1335] },
+    { label: 'label', value: 'Slider Engine was designed to be only used for web based 2D games. ', at: [0.4936, 0.1896], to: [0.3167, -0.0772] }
   ],
   'slider-engine/Design_5.mp4': [
     { label: 'clip', value: 'Creating a new game.', at: [0.9271, 0.3643], to: [1.0506, 0.2395] }
@@ -162,21 +162,21 @@ export const NOTES: Record<string, Note[]> = {
     { label: 'clip', value: 'Clip: Creating game objects.', at: [0.9638, 0.3338], to: [1.0661, 0.2184] }
   ],
   'slider-engine/Design_4.mp4': [
-    { label: 'clip', value: 'Reversing & object trails.', at: [0.9125, 0.2937], to: [1.0901, 0.1039] },
-    { label: 'made in', value: 'Inspired by Brett Victor and Figma.', fold: 'tools', at: [0.8496, 0.5747], to: [1.0657, 0.3883] }
+    { label: 'clip', value: 'Reversing & object trails.', at: [0.3273, 0.1828], to: [0.2214, -0.0846] },
+    { label: 'made in', value: 'Inspired by Brett Victor and Figma.', fold: 'tools', at: [0.6511, 0.1572], to: [0.7845, -0.1073] }
   ],
   'slider-engine/Game_0.mp4': [
-    { label: 'clip', value: 'A scene from the unfinished game "The Alcholic Fish.', at: [0.94, 0.08], to: [1.0376, -0.0207] }
+    { label: 'clip', value: 'A scene from the unfinished game "The Alcholic Fish.', at: [0.7561, 0.0428], to: [0.9604, -0.1007] }
   ],
   'slider-engine/Game_1.mp4': [
-    { label: 'clip', value: 'Early test of Solomon game.', at: [0.9582, 0.3244], to: [1.1356, -0.0479] },
+    { label: 'clip', value: 'Early test of Solomon game.', at: [0.5024, 0.1679], to: [0.612, -0.1332] },
     { label: 'made in', value: 'Made in Figma.', fold: 'tools' }
   ],
   'slider-engine/Game_2.mp4': [
-    { label: 'clip', value: 'Clip: Frogman vs the Giant Toad.', at: [0.9602, 0.1358], to: [1.0825, -0.05] }
+    { label: 'clip', value: 'Game design test.', at: [0.7257, 0.1123], to: [0.6586, -0.0851] }
   ],
   'slider-engine/marketing2.mp4': [
-    { label: 'clip', value: 'Unfinished marketing video made in After Effects.', at: [0.9491, 0.265], to: [1.0366, -0.0568] }
+    { label: 'clip', value: 'Unfinished marketing video made in After Effects.', at: [0.5833, 0.1749], to: [0.4244, -0.0886] }
   ],
   'mecha-station/piece': [
     { label: 'piece', value: '3D interperation of the cash register, card terminal and the POS software. ', at: [0.94, 0.08], to: [0.9706, 0.0022] }
