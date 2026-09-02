@@ -10,24 +10,12 @@
    but mostly because sound arriving unasked on someone's speakers at work is
    a hostile thing for a page to do. */
 
-const STORE_KEY = 'v3.sound.v1'
-
 /** Well under the music. These are punctuation, not a soundtrack. */
 const MASTER = 0.3
 
 let ctx: AudioContext | null = null
 let master: GainNode | null = null
 let noise: AudioBuffer | null = null
-
-const stored = () => {
-  try {
-    return window.localStorage.getItem(STORE_KEY) !== 'off'
-  } catch {
-    return true
-  }
-}
-
-let on = typeof window === 'undefined' ? false : stored()
 
 /** Built on first use and resumed on every one after: a context created
  *  before a gesture starts suspended, and stays that way until something
@@ -64,7 +52,7 @@ function tone(options: {
   delay?: number
 }) {
   const context = audio()
-  if (!context || !master || !on) return
+  if (!context || !master) return
   const at = context.currentTime + (options.delay ?? 0)
   const osc = context.createOscillator()
   const level = context.createGain()
@@ -86,7 +74,7 @@ function tone(options: {
 /** Filtered noise. `from`/`to` sweep the filter rather than the pitch. */
 function air(options: { from: number; to: number; gain: number; length: number; q?: number; delay?: number }) {
   const context = audio()
-  if (!context || !master || !noise || !on) return
+  if (!context || !master || !noise) return
   const at = context.currentTime + (options.delay ?? 0)
   const source = context.createBufferSource()
   const filter = context.createBiquadFilter()
@@ -109,23 +97,6 @@ function air(options: { from: number; to: number; gain: number; length: number; 
 }
 
 export const sound = {
-  get on() {
-    return on
-  },
-
-  toggle() {
-    on = !on
-    try {
-      window.localStorage.setItem(STORE_KEY, on ? 'on' : 'off')
-    } catch {
-      /* private mode — losing the preference is fine */
-    }
-    // Its own confirmation, so switching it on is audible immediately rather
-    // than only on the next thing you happen to touch.
-    if (on) tone({ type: 'triangle', from: 880, to: 1320, gain: 0.1, length: 0.09 })
-    return on
-  },
-
   /** Woken on the first real gesture: the context cannot start before one. */
   wake() {
     audio()

@@ -4620,6 +4620,11 @@ is a target is a button.
 beside a pair of them, and a shot that leaves from somewhere different every
 time reads as coming from the page rather than from you.
 
+**Nothing on the readout selects.** `user-select: none` on `.mech`, because a
+press-and-drag is how you aim, and every one of those was leaving a blue
+highlight smear across whatever text it crossed. The dev panel's `<textarea>`
+turns selection back on for itself and is the only thing that does.
+
 **And it goes away from you.** The bolt is longest and thickest leaving the
 muzzle and shrinks the whole way out, on a travel eased so it covers less
 screen the further it gets — which is the whole of the depth, and why there is
@@ -4870,8 +4875,15 @@ page to do.
 
 The reticle sounds on *acquiring* a target and not on losing one, which covers
 every `a` and `button` on the page — anything that also ticked on its own hover
-was firing the same event twice. One switch on the deck covers the music and
-the chatter both.
+was firing the same event twice.
+
+There is no on/off switch. There was one — `sound.toggle()`, a persisted
+`v3.sound.v1` key — but nothing on the page ever called it, so the only way it
+could flip was a stale scratchpad from an older build, and a browser that had
+picked up `off` had no way back: every effect silently gone with no control to
+restore it. The whole mechanism is deleted. The effects are on once the first
+gesture has woken the context; the mute control on a clip is only ever that
+clip's own audio track (see below).
 
 ### Adding music
 

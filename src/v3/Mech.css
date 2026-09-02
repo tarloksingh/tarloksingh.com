@@ -42,6 +42,13 @@
   overflow: hidden;
   background: #000;
 
+  /* No text selection anywhere on the readout. A drag on the page is a shot
+     being aimed, never a paragraph being highlighted -- the blue smear that
+     came of the latter fights the gun. The dev panel's textarea turns it
+     back on for itself. */
+  user-select: none;
+  -webkit-user-select: none;
+
   /* One Figma pixel, in real ones. Three terms, and whichever is smallest
      wins: a rem so browser zoom actually enlarges the readout (rem is a fixed
      count of CSS pixels, and zoom magnifies those), and the two viewport
