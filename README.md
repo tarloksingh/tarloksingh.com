@@ -4852,6 +4852,16 @@ what is missing or older than its master.
 
 ### Sound
 
+**The deck is a play/pause key and a scrolling credit.** One song, on loop,
+so there is nothing to choose — the track list, the scrubber and the skip
+buttons are gone. What is left is a round lamp with the level meter faint
+across it, `MUSIC BY TARLOK SINGH ·` sliding left forever in the panel's own
+fourteen-segment readout (`Segment`, `settle={false}`, the string doubled so
+`translateX(-50%)` has no seam), and the one mute switch that still covers the
+effects too. `<audio loop>`; volume is a constant now, not a slider. It renders
+on the wide layout only, as it did before.
+
+
 Everything is synthesised in `sound.ts` — oscillators, one noise buffer, a
 filter. No files, so a hover tick is not a network request and every sound can
 be tuned by reading it. Nothing plays before a gesture: browsers refuse, and

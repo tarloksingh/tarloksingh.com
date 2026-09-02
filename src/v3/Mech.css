@@ -2907,7 +2907,7 @@
   display: flex;
   align-items: center;
   gap: calc(10 * var(--px));
-  padding: calc(6 * var(--px)) calc(12 * var(--px));
+  padding: calc(5 * var(--px)) calc(9 * var(--px));
   border: 1px solid var(--warn);
   /* `--level` is the average of the band, written on `.mech-deck` every frame
      — so the housing breathes with whatever is actually playing rather than
@@ -2916,6 +2916,84 @@
   box-shadow:
     0 0 calc((10 + var(--level, 0) * 26) * var(--px)) rgba(var(--warn-rgb), calc(0.35 + var(--level, 0) * 0.35)),
     inset 0 0 calc(var(--level, 0) * 20 * var(--px)) rgba(var(--shot-rgb), calc(var(--level, 0) * 0.18));
+}
+
+/* ---- the credit, scrolling ----
+
+   `MUSIC BY TARLOK SINGH ·` in the panel's own fourteen-segment readout — the
+   display `INTRO` and the role reel use — sliding left forever. The string
+   inside is doubled, so `translateX(-50%)` lands the second copy exactly where
+   the first began and the loop has no seam. The mask feathers both ends so a
+   letter arrives and leaves rather than popping. */
+.mech-deck-ticker {
+  overflow: hidden;
+  width: calc(148 * var(--px));
+  flex: none;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent);
+}
+
+.mech-deck-scroll {
+  width: calc(430 * var(--px));
+  will-change: transform;
+  animation: mech-deck-ticker 15s linear infinite;
+}
+
+@keyframes mech-deck-ticker {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mech-deck-scroll {
+    animation: none;
+  }
+}
+
+/* The play/pause key. On the wide strip it is a small round lamp with the
+   level meter faint across it; the narrow layout blows the same element up
+   into the whole deck (`.mech-deck-float .mech-deck-disc` below). */
+.mech-deck-disc {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: calc(30 * var(--px));
+  height: calc(30 * var(--px));
+  padding: 0;
+  border: 1px solid var(--warn);
+  border-radius: 50%;
+  background: rgba(10, 5, 3, 0.7);
+  overflow: hidden;
+  transition: border-color 180ms linear, box-shadow 180ms linear;
+}
+
+.mech-deck-disc:disabled {
+  opacity: 0.5;
+}
+
+.mech-deck-disc .mech-meter {
+  position: absolute;
+  left: 14%;
+  right: 14%;
+  bottom: 12%;
+  width: auto;
+  height: 34%;
+  opacity: 0.7;
+}
+
+.mech-deck[data-playing='true'] .mech-deck-disc {
+  border-color: var(--accent);
+  box-shadow: 0 0 calc(12 * var(--px) * var(--g, 1)) rgba(var(--accent-rgb), 0.45);
+}
+
+.mech-deck-glyph {
+  position: relative;
+  font-size: calc(10 * var(--type));
+  line-height: 1;
+  color: var(--accent);
+  text-shadow: 0 0 calc(8 * var(--px)) rgba(var(--accent-rgb), 0.7);
 }
 
 .mech-deck-tag {
@@ -4088,50 +4166,39 @@
 
 .mech-deck-float {
   position: relative;
-  display: block;
-}
-
-/* One round key, and the level meter drawn faintly across the bottom of it —
-   the same live analyser signal the strip has, in the one place on this
-   layout where there is room for it. */
-.mech-deck-disc {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: max(62px, calc(74 * var(--px)));
-  height: max(62px, calc(74 * var(--px)));
-  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: calc(9 * var(--px));
+  padding: calc(6 * var(--px)) calc(10 * var(--px)) calc(6 * var(--px)) calc(6 * var(--px));
   border: 1px solid var(--warn);
-  border-radius: 50%;
+  border-radius: calc(40 * var(--px));
+  background: rgba(8, 4, 3, 0.9);
+  box-shadow: 0 0 calc((16 + var(--level, 0) * 24) * var(--px)) rgba(var(--warn-rgb), calc(0.4 + var(--level, 0) * 0.3));
+}
+
+/* On the narrow layout the play/pause key is the deck — the small wide lamp
+   blown up. */
+.mech-deck-float .mech-deck-disc {
+  width: max(50px, calc(58 * var(--px)));
+  height: max(50px, calc(58 * var(--px)));
   background: rgba(10, 5, 3, 0.86);
-  /* The same live level the strip's housing uses. On a phone the key *is*
-     the deck, so it is the thing that has to look like it is playing. */
-  box-shadow:
-    0 0 calc((24 + var(--level, 0) * 30) * var(--px)) rgba(var(--warn-rgb), calc(0.45 + var(--level, 0) * 0.35)),
-    inset 0 0 calc(22 * var(--px)) rgba(var(--warn-rgb), calc(0.16 + var(--level, 0) * 0.22));
-  overflow: hidden;
+  box-shadow: inset 0 0 calc(18 * var(--px)) rgba(var(--warn-rgb), calc(0.16 + var(--level, 0) * 0.22));
 }
 
-.mech-deck-disc:disabled {
-  opacity: 0.5;
-}
-
-.mech-deck-disc .mech-meter {
-  position: absolute;
+.mech-deck-float .mech-deck-disc .mech-meter {
   left: 16%;
   right: 16%;
   bottom: 14%;
-  width: auto;
   height: 30%;
   opacity: 0.75;
 }
 
-.mech-deck-glyph {
-  position: relative;
-  font-size: calc(19 * var(--type));
-  line-height: 1;
-  color: var(--accent);
-  text-shadow: 0 0 calc(12 * var(--px)) rgba(var(--accent-rgb), 0.7);
+.mech-deck-float .mech-deck-glyph {
+  font-size: calc(16 * var(--type));
+}
+
+.mech-deck-float .mech-deck-ticker {
+  width: calc(112 * var(--px));
 }
 
 .mech-deck-float[data-playing='true'] .mech-deck-disc {
@@ -4139,25 +4206,6 @@
   box-shadow:
     0 0 calc(26 * var(--px)) rgba(var(--accent-rgb), 0.4),
     inset 0 0 calc(22 * var(--px)) rgba(var(--accent-rgb), 0.14);
-}
-
-/* Attached to the key rather than sitting beside it: one floating control
-   with a way into the rest of itself, not two floating controls. */
-.mech-deck-more {
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% - 3 * var(--px));
-  transform: translateX(-50%);
-  width: calc(46 * var(--px));
-  padding: calc(2 * var(--px)) 0 calc(5 * var(--px));
-  border: 1px solid var(--warn);
-  border-bottom: 0;
-  border-radius: calc(6 * var(--px)) calc(6 * var(--px)) 0 0;
-  background: rgba(10, 5, 3, 0.86);
-  font: inherit;
-  font-size: calc(13 * var(--type));
-  line-height: 1;
-  color: #f28a63;
 }
 
 .mech-deck-sheet {
