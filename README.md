@@ -4423,6 +4423,13 @@ stacked under the subject's, because lighting and labels have nothing to do
 with each other and a folder buried inside someone else's panel is a folder
 nobody finds. The source itself opens in a dialog portalled to `body` too.
 
+**Three scopes, not two.** "Copy this frame" is one picture; "Copy every
+frame" is every frame of every project you have pinned this session — which,
+after a run through several projects, is a wall of other work to scroll past to
+find the one you just did. "Copy this project" sits between them: `focus.id` is
+`<project>/<file>`, and the slash with nothing after it is the prefix
+`pins.source` filters the draft on. It is almost always the one you want.
+
 **Copying works on a plain http origin.** `navigator.clipboard` only exists in
 a secure context — HTTPS, or localhost — and the dev server here is reached
 over the tailnet by IP or MagicDNS name, which is neither. Written the obvious

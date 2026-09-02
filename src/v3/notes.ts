@@ -460,11 +460,15 @@ export const pins = {
     changed()
   },
 
-  /** Every frame pinned in this browser, as the source of the table above.
-   *  One frame if `id` is given, the lot if not — pinning three pictures in a
-   *  sitting and pasting once is the normal way this gets used. */
+  /** Frames pinned in this browser, as the source of the table above. One
+   *  frame if `id` is given; every frame of one project if `id` ends in `/`
+   *  (a prefix — `focus.id` split on its slash); the lot if nothing. Pinning a
+   *  project's pictures in a sitting and pasting once is the normal way this
+   *  gets used, and "every frame" pulls in every *other* project you have
+   *  touched too — which is what the per-project form is for. */
   source(id?: string) {
-    const ids = id ? [id] : Object.keys(draft)
+    const all = Object.keys(draft)
+    const ids = !id ? all : id.endsWith('/') ? all.filter((key) => key.startsWith(id)) : [id]
     const body = ids
       .filter((key) => draft[key]?.length)
       .map((key) => asSource(key, draft[key]))

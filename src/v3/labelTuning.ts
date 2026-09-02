@@ -60,6 +60,16 @@ export function useLabelTuning(onHanded: (handed: Handed) => void) {
         addNote(focus.id, [0.5, 0.3 + (notes.length % 4) * 0.14], notes)
       }),
       'Copy this frame': button(() => hand(pins.source(focus.id))),
+      /* Every frame of the project on screen, and nothing from the others.
+         `focus.id` is `<project>/<file>`; the slash plus nothing after it is
+         the prefix `pins.source` filters on. This is almost always the one
+         you want — "every frame" is for when you have pinned across several
+         projects and are pasting the whole table back. */
+      'Copy this project': button(() => {
+        const slash = focus.id.indexOf('/')
+        if (slash < 0) return
+        hand(pins.source(focus.id.slice(0, slash + 1)))
+      }),
       'Copy every frame': button(() => hand(pins.source())),
       'Revert this frame': button(() => {
         if (focus.id) pins.clear(focus.id)
