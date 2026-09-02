@@ -315,7 +315,7 @@ export const MODEL_RIGS: Record<string, ModelTuning> = {
     ...MODEL_DEFAULTS,
     fill: 0.27,
     lean: 0,
-    turn: -36,
+    turn: 35,
     tilt: -1,
     liftY: 0.035,
     floatRange: 0.2,
@@ -324,19 +324,18 @@ export const MODEL_RIGS: Record<string, ModelTuning> = {
        its base colour is near enough to the page it stands on that at the
        revolver's numbers it read as a silhouette. Almost all of the shape is
        specular, so the lamps do the work and there is very little diffuse
-       response to fall back on — hence a key at 80 and an environment at 6.7,
-       with the metalness taken all the way up rather than the roughness taken
-       down. */
-    exposure: 0.06,
-    envIntensity: 6.7,
+       response to fall back on — hence a key at 80, with the metalness taken
+       all the way up rather than the roughness taken down. */
+    exposure: 0.07,
+    envIntensity: 2.1,
     keyIntensity: 80,
-    keyX: -12,
-    keyY: -12,
+    keyX: 12,
+    keyY: -11.15,
     fillIntensity: 31.5,
     fillX: -12,
     fillY: -0.93,
     fillZ: 1.41,
-    roughnessBoost: -0.6,
+    roughnessBoost: -0.68,
     metalnessBoost: 1,
     watchBird: false
   },
