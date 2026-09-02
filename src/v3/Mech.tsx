@@ -1914,6 +1914,15 @@ export default function Mech({ id, onProject, onHome }: Props) {
                     about `MODEL_DEFAULTS` moves; the multiplier is narrow's
                     own, on its own panel. */}
                 <MechModel
+                  /* Keyed on the file, so each subject builds its scene in a
+                     canvas of its own. Project to project this is a fresh
+                     mount either way; the key is what stops a subject that
+                     fails to frame — a gun down the wrong axis, a piece whose
+                     animation fights its `Resize` — from leaving the shared
+                     canvas in a state the next project inherits. Within a
+                     project `modelFrame` does not change, so stepping the tile
+                     rail still keeps the context. */
+                  key={modelFrame.src}
                   src={modelFrame.src}
                   tuning={narrow ? { ...tuning, fill: tuning.fill * narrowScale.model } : tuning}
                   live={current?.kind === 'model'}
@@ -1931,6 +1940,11 @@ export default function Mech({ id, onProject, onHome }: Props) {
             <div className="mech-model-layer" data-on={current?.kind === 'piece'}>
               <Suspense fallback={null}>
                 <MechProduct
+                  /* See the note on `MechModel` above. Block Builder in
+                     particular renders nothing until its own bug is fixed, and
+                     without this key that broken canvas was the one the next
+                     piece project opened into. */
+                  key={pieceFrame.project}
                   project={pieceFrame.project}
                   tuning={pieces.studio}
                   piece={narrow ? { ...pieces.piece, size: pieces.piece.size * narrowScale.model } : pieces.piece}
