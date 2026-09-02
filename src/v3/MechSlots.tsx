@@ -424,12 +424,34 @@ function Track({ on }: { on: boolean }) {
   return null
 }
 
-export default function MechSlots() {
+/** @param up The cover being off — the same flag the bank's own deal runs on.
+ *  See `frameloop` below, which is the whole reason this is a prop. */
+export default function MechSlots({ up }: { up: boolean }) {
   const narrow = useNarrow()
 
   return (
     <Canvas
       className="mech-bank-gl"
+      /* **Nothing is rendered until the bank is up.** This canvas covers the
+         viewport and draws eleven views into it, and it used to do that from
+         the frame it mounted — which is the middle of the boot, when the bank
+         is at `opacity: 0` behind the cover and not one of those views is on
+         screen. So the most expensive loop on the page ran flat out for a
+         second and a half to produce nothing, in exact competition with the
+         one sequence here whose whole job is to be smooth.
+
+         On a phone it was worse than that, because `Track` below is inside
+         this loop and reads `getBoundingClientRect()` off the canvas every
+         frame — a forced layout flush, per frame, against a document that at
+         that moment is carrying five hundred animating ripple cells. That is
+         the boot's frame drop on a handset, and it was being paid for a bank
+         nobody could see.
+
+         There is no race with the bank appearing: the rail's own entrance is
+         a 700ms fade starting 380ms after this flips, and the slots do not
+         begin dealing until 620ms, so the first rendered frame lands long
+         before anything is transparent enough to show it missing. */
+      frameloop={up ? 'always' : 'never'}
       /* Down on a phone, and it stays down. This is not what fixed the
          scrolling — see above — but twelve subjects on a handset is still
          twelve subjects, and a bank of hundred-and-fifty-unit bays behind a

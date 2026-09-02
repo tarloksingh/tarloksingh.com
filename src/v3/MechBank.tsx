@@ -365,7 +365,7 @@ export default function MechBank({
               bank so it stacks with them — on the wide layout it covers the
               whole viewport and paints only in the rectangles the views give
               it; narrow it is sized to the bank and scrolls with it. */}
-          <MechSlots />
+          <MechSlots up={up} />
 
           {/* The scan lines and the accent that turn eleven full-colour
               renders into the panel's own phosphor. A grid of its own,

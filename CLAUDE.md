@@ -259,6 +259,15 @@ drag and no tile is selectable. And `setPointerCapture` is taken in
 pointer retargets its own `click` to the capture element, which made tiles
 selectable with a finger and not with a mouse.
 
+**The bank's canvas does not render until the bank is up.**
+`frameloop={up ? 'always' : 'never'}` in `MechSlots.tsx`. It used to draw
+eleven views into a viewport-sized canvas for the whole boot while the bank sat
+at `opacity: 0`, and on narrow that dragged `Track`'s per-frame
+`getBoundingClientRect()` — a forced layout every frame — along with it. That
+was the frame drop on a phone. `Track` still costs one per frame *after* the
+boot and that is deliberate; read the note in `MechSlots.tsx` before trying to
+gate it on scroll, because the narrow reveal moves the canvas without one.
+
 **The boot waits for its own weight.** `primed` in `Mech.tsx` gates the ripple
 and the `BOOT_MS` countdown until the fonts have resolved and three's loading
 manager has gone quiet, capped by `WARM_CAP`. `WARM_GRACE` is what stops home

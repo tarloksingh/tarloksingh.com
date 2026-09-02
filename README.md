@@ -2541,6 +2541,50 @@ columns and at a 25.6px root gets 31. Two machines at the same resolution do
 not necessarily see the same grid, which is worth remembering before concluding
 that a change did something.
 
+**The bank's canvas ran flat out through the boot, drawing nothing.** This is
+the one that was actually costing the frame rate on a phone, and a CPU profile
+found it in about a minute after several rounds of reasoning did not.
+
+`MechSlots` covers the viewport and renders eleven views into it, and it did
+that from the frame it mounted — which is the middle of the boot, when the bank
+is at `opacity: 0` behind the cover and not one of those views is on screen. So
+the most expensive loop on the page ran for the whole boot to produce nothing,
+in exact competition with the one sequence here whose entire job is to be
+smooth.
+
+On a phone it is worse than wasted work, because `Track` is inside that loop.
+`Track` reads `getBoundingClientRect()` off the canvas every frame — a forced
+layout flush, per frame — and it is gated on `narrow`, so it is a mobile-only
+cost by construction. During the boot that flush is against a document carrying
+five hundred animating ripple cells.
+
+`frameloop={up ? 'always' : 'never'}` on that Canvas, `up` being the same flag
+the bank's own deal already runs on. Counted off the built page at 430×900:
+**27 and 32 forced layouts against the canvas during the boot before, 0 after**,
+with the loop resuming normally once the bank is up. There is no race with the
+bank appearing — the rail's entrance is a 700ms fade starting 380ms after the
+flip, and the slots do not begin dealing until 620ms.
+
+**`Track` still costs a forced layout per frame once the bank is up, and that
+is untouched.** It is not waste there: the canvas is `position: absolute` over
+the bank on the narrow layout and genuinely moves under a fling, and r3f's own
+50ms debounce never fires during a continuous scroll — the note in
+`MechSlots.tsx` is the full argument. The obvious economy is to read the rect
+only while something could have moved, but "something" is not only scrolling:
+the narrow reveal (`[data-arrive]`) animates a `translateY`, so a scroll-gated
+version would hold a stale scissor box for the length of every block's
+entrance. Worth doing, not worth doing carelessly.
+
+**On profiling this.** The frame-rate numbers out of a headless run are
+worthless — swiftshader varies the boot between nine and fifty-four frames
+across identical runs, so anything derived from a frame count varies with it.
+What *is* worth having from that environment is a **CPU profile**, which is
+GPU-independent, and a **count of the specific call** you think you removed.
+Build with `--minify false` first or the profile is a list of two-letter
+names. `getContext` (the `WebGLRenderer` constructor, blocking, inside a React
+commit) and `PMREMGenerator.fromScene` are the other two big ones at mount;
+both now land inside the `primed` hold below rather than under the ripple.
+
 ### Load first, then play
 
 The boot is a dozen staggered CSS animations and a five-hundred-cell ripple,
