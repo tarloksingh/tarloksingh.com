@@ -338,24 +338,26 @@ export const NOTES: Record<string, Note[]> = {
   'stitchfam/Invited.jpg': [
     { label: 'still', value: ' Invite in iMessage.', at: [0.5068, 0.6675], to: [0.1887, -0.0731] }
   ],
+  'wyte-card/model': [
+    { label: 'model', value: ' Wyte card', at: [0.6868, 0.1089], to: [0.7137, -0.0426] }
+  ],
   'wyte-card/hero.mp4': [
-    { label: 'clip', value: 'Promotional content of Wyte Card.', at: [0.94, 0.08], to: [1.0442, -0.1128] },
-    { label: 'label', value: 'Made in Blender.', at: [0.9619, 0.2323], to: [1.0638, 0.1778] }
+    { label: 'clip', value: 'Promotional content of Wyte Card.', at: [0.5119, 0.0886], to: [0.5562, -0.1293] }
   ],
   'wyte-card/Wyte_1.png': [
-    { label: 'still', value: 'How it looks after an NFC is tapped.', at: [0.9347, 0.2248], to: [1.0306, 0.0138] }
+    { label: 'still', value: 'How it looks in the app clip for a user.', at: [0.5186, 0.074], to: [0.5083, -0.0843] }
   ],
   'wyte-card/Wyte_2.png': [
-    { label: 'still', value: 'Close ups of Social media links.', at: [1.0182, 0.1325], to: [1.106, -0.0706] }
+    { label: 'still', value: 'Close ups of Social media links.', at: [0.5377, 0.259], to: [0.6268, -0.1085] }
   ],
   'wyte-card/Wyte_3.png': [
-    { label: 'still', value: 'Creating your profile in Wyte Card.', at: [0.9516, 0.1109], to: [1.0976, -0.0561] }
+    { label: 'still', value: 'Creating your profile in Wyte Card.', at: [0.5546, 0.2178], to: [0.6128, -0.0651] }
   ],
   'wyte-card/Gala_Reel.jpg': [
-    { label: 'still', value: 'Early version we called Gala Reel. Gala Reel was a photo capturing appclip launched with custom NFC cards for events.', at: [1.0345, 0.1822], to: [1.0706, 0.1621] }
+    { label: 'still', value: 'Early version we called Gala Reel. Gala Reel was a photo capturing appclip launched with custom NFC cards for events.', at: [0.5504, 0.1841], to: [0.6092, -0.0928] }
   ],
   'wyte-card/Video1.mp4': [
-    { label: 'clip', value: 'NFC card & app clip.', at: [0.9751, 0.2713], to: [1.1605, -0.0568] }
+    { label: 'clip', value: 'NFC card & app clip.', at: [0.5349, 0.2326], to: [0.5786, -0.0774] }
   ]
 }
 

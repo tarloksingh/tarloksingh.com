@@ -346,8 +346,27 @@ export const MODEL_RIGS: Record<string, ModelTuning> = {
      on the Subject tab. */
   'wyte-card': {
     ...MODEL_DEFAULTS,
-    fill: 0.4,
-    lean: 0,
+    fill: 0.37,
+    lean: 8.5,
+    turn: 79.5,
+    tilt: -18.5,
+    liftY: 0.03,
+    floatSpeed: 4,
+    floatRange: 0.065,
+    floatRotation: 0,
+    exposure: 0.34,
+    envIntensity: 5.4,
+    keyIntensity: 80,
+    keyX: 12,
+    keyY: -7.59,
+    keyZ: 12,
+    fillIntensity: 70.8,
+    fillX: 12,
+    fillY: 12,
+    fillZ: -7.69,
+    envMapIntensity: 0,
+    roughnessBoost: -0.39,
+    metalnessBoost: -1,
     watchBird: false
   }
 }
