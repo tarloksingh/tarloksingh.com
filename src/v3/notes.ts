@@ -220,6 +220,9 @@ export const NOTES: Record<string, Note[]> = {
   'mecha-station/shelf_label.jpg': [
     { label: 'still', value: 'Shelf label in use at a grocery store.', at: [0.8248, 0.3973], to: [1.0337, 0.284] }
   ],
+  'red-dead-redemption-2/model': [
+    { label: '', value: 'Western Gun used as a representation of Red Dead 2. ', at: [0.6002, 0.2388], to: [0.9271, 0.0122] }
+  ],
   'red-dead-redemption-2/Explosion.mp4': [
     { label: 'made in', value: 'Camera work done in  Autodesk MotionBuilder.', fold: 'tools', at: [0.9719, 0.4117], to: [1.0375, 0.3521] }
   ],
