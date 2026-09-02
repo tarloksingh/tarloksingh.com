@@ -816,7 +816,7 @@
   display: flex;
   flex-direction: column-reverse;
   gap: calc(2.5 * var(--px));
-  width: calc(26 * var(--px));
+  width: calc(46 * var(--px));
   /* The tachometer's face, plus whatever the graph carries above it that these
      do not.
 
@@ -840,8 +840,11 @@
 
 .mech-gauge-label {
   font-size: calc(10 * var(--type));
-  letter-spacing: calc(1.8 * var(--type));
+  /* Tighter than the other panel labels: "MILEAGE" is seven characters and
+     these three sit close together under bars the width of the word. */
+  letter-spacing: calc(1 * var(--type));
   text-transform: uppercase;
+  white-space: nowrap;
   color: rgba(var(--accent-rgb), 0.8);
 }
 

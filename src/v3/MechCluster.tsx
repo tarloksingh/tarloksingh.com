@@ -188,12 +188,12 @@ const countsFor = (fields: Field[]) => {
   const roles = new Set(rows.flatMap((slot) => slot.roles))
   const latest = Math.max(...years)
   return [
-    { label: 'yrs', value: latest - Math.min(...years) + 1, of: SPAN, reads: 'years spanned' },
-    { label: 'roles', value: roles.size, of: ALL_ROLES, reads: 'roles worn' },
+    { label: 'mileage', value: latest - Math.min(...years) + 1, of: SPAN, reads: 'years spanned' },
+    { label: 'range', value: roles.size, of: ALL_ROLES, reads: 'roles worn' },
     /* Not a count of anything. `latest` against the first year of the whole
        roster: a full bar is work finished this year, an empty one is work that
        stopped at the beginning. */
-    { label: 'recent', value: latest - FIRST + 1, of: SPAN, reads: 'how recent' }
+    { label: 'pulse', value: latest - FIRST + 1, of: SPAN, reads: 'how recent' }
   ]
 }
 
