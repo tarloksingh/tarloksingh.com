@@ -2482,32 +2482,44 @@ backing store; it is 645×677 now, which is 44% of the fragment work, and MSAA
 is off. They take `useNarrow()` for it, the same store everything else on this
 site branches on.
 
-**The boot ripple is the one that was named.** `MechTiles` lays out a cell per
-grid square of the window and animates all of them; a phone asked for about
-five hundred, each carrying a blurred outer shadow, inside a container with a
-`mask-image`. That last detail is the whole problem and it is easy to miss: a
-masked layer is re-rastered **as a whole** whenever anything inside it changes,
-so those are not five hundred independently composited elements — they are
-five hundred boxes repainting into one bitmap, on the exact beat the main
-thread is compiling shaders and parsing a GLB.
+**The boot ripple was the one that was named, and it is the one this pass got
+wrong.** `MechTiles` lays out a cell per grid square of the window and animates
+all of them; a phone asks for about five hundred, each carrying a blurred outer
+shadow, inside a container with a `mask-image`. That is real work on the exact
+beat the main thread is compiling shaders and parsing a GLB, and it was cut two
+ways: the blur came off the cells on narrow, and `MOST` dropped to 200, which
+buys one halving out of the pitch loop — a hundred and fifty cells at double
+pitch instead of five hundred at the grid's own.
 
-Two changes, both narrow-only. The blur comes off the shadow, leaving the inset
-ring that was carrying the effect anyway (see the note under *the panel coming
-alive* — an outline lighting up reads as the cell being found; the wash was
-never the point, and it is most of what a cell costs to raster). And `MOST`
-drops to 200, which buys exactly one halving out of the pitch loop: 153 cells
-at double pitch, the same wave over the same grid with every other line taken
-out, which the original note already sanctions. **Not lower.** At 120 it takes
-two halvings, and three and a half cells across a phone is not a ripple over a
-grid, it is a handful of big squares.
+**Both are reverted.** The verdict on it was "slow and not as nice", and that
+is the correct reading of what those two numbers do. Neither is about the
+count; both are about the *cell*:
 
-Halving the pitch needed one thing that was not obvious. `RING` is quoted in
-*cells*, so a coarser grid has fewer of them between the middle and the edge
-and the wave crosses in half the time — which turns it back into the grid
-flashing on, the exact failure `RING`'s own note is written against. The
-layout loop reports how far it opened the pitch up (`zoom`) and the delays are
-scaled by it, so the front travels the same number of pixels a second at any
-pitch.
+- A 63-unit box scaling from 0.2 to 1.04 travels twice as far as a 31-unit one
+  over the same fixed 420ms. The ripple takes exactly as long as it did and
+  reads as slower, because what you actually watch is a box moving.
+- The front advances in nine steps across a phone instead of seventeen. Nine
+  steps is a sequence of things lighting up. Seventeen is a wave.
+
+The pitch *is* the effect — the whole premise of the file is that these are
+`.mech-grid`'s own cells — so it is not a knob with a cheap end. If the boot
+needs milliseconds back, the lever that does not touch the look is the
+`mask-image`: a masked layer is re-rastered as a whole whenever anything inside
+it changes, so those five hundred boxes repaint into one bitmap rather than
+compositing independently. Folding that falloff into a per-cell opacity (the
+distance from centre is already computed for the delay) would drop the mask
+without changing what is on screen. Untried, and it is a real change with real
+visual risk — measure before spending it.
+
+**One thing from the attempt is kept**, because it is a latent bug rather than
+a trade. `RING` is quoted in *cells*, so whenever the pitch loop does open the
+pitch up — which it still does above `MOST`, on a very large window at a small
+`--px` — there are fewer rings between the middle and the edge and the wave
+crosses in proportionally less time. That turns it back into the grid flashing
+on, the exact failure `RING`'s own note is written against. The loop now
+reports how far it opened the pitch (`zoom`) and the delays are scaled by it,
+so the front travels the same number of pixels a second at any pitch. On a
+phone nothing reaches `MOST` and `zoom` is 1.
 
 **On measuring this.** Don't trust a headless run for it. Software WebGL
 (`--use-angle=swiftshader`, which the recipe in the memory note needs to keep

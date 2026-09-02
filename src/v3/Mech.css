@@ -1992,19 +1992,6 @@
   }
 }
 
-/* No blur on a handset. The cells sit inside a masked layer, which is
-   re-rastered whole whenever anything in it changes — so every cell's outer
-   shadow is being re-blurred into one bitmap for the length of the ripple,
-   over a boot that is already compiling shaders. The inset ring is what
-   carries the effect (see the note above); the wash outside it is what a
-   90-unit cell on a 400-point window is least able to show and most expensive
-   to draw. `MechTiles.tsx` cuts the cell count on the same breakpoint. */
-@media (max-width: 700px) {
-  .mech-tiles i {
-    box-shadow: inset 0 0 0 1px var(--accent);
-  }
-}
-
 /* The front of the ring, drawn once as one element rather than inferred from
    a thousand. It is what makes the cells read as being *struck* by something
    travelling outwards instead of merely taking their turn. */

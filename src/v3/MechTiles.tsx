@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, memo } from 'react'
-import { NARROW_QUERY } from './narrow'
 
 /* ---- the panel coming alive ----
 
@@ -53,22 +52,16 @@ const SCATTER = 60
  *  small `--px` can ask for a few thousand cells; past this the ripple is
  *  drawn at double pitch instead, which nobody can tell apart at that size.
  *
- *  **A phone gets a much lower one, and it is not about the DOM.** The layer
- *  these sit in carries a `mask-image`, and a masked layer is re-rastered as
- *  a whole whenever anything inside it changes — so the cells are not the
- *  independently composited elements the note above assumes, they are a few
- *  hundred boxes repainting into one bitmap sixty times a second. On the
- *  exact beat the main thread is compiling shaders and parsing a GLB. A
- *  handset window asks for about five hundred cells at the grid's own pitch;
- *  200 buys exactly one halving out of the loop below — a 92-unit pitch and
- *  about a hundred and fifty of them, which is the same wave over the same
- *  grid with every other line taken out, and is the trade the paragraph above
- *  already sanctions. Not lower: two halvings is a 184-unit cell, three and a
- *  half of them across a phone, and what is left is not a ripple over a grid
- *  but a handful of big squares. The narrow rules in Mech.css take the
- *  shadow's blur off them as well, which is the other half of this — a
- *  blurred shadow is most of what a cell costs to raster. */
-const MOST = matchMedia(NARROW_QUERY).matches ? 200 : 1600
+ *  **A phone is not one of those windows and must not be treated as one.**
+ *  This briefly dropped to 200 on narrow, to cut the boot's paint — a handset
+ *  asks for about five hundred cells and got a hundred and fifty. It reads
+ *  worse in two ways that are worth writing down, because both are about the
+ *  *cell*, not the count. A 63-unit box scaling from 0.2 to 1.04 travels twice
+ *  as far as a 31-unit one over the same 420ms, so the ripple reads as slower
+ *  while taking exactly as long. And the front advances in nine steps across a
+ *  phone instead of seventeen, which reads as chunky rather than as a wave.
+ *  The pitch is the effect. Find the milliseconds somewhere else. */
+const MOST = 1600
 
 /** How long the layer stays in the document, in milliseconds. It takes itself
  *  down rather than being unmounted with the boot flag: the furthest cell is

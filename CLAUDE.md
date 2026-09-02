@@ -265,9 +265,11 @@ reports an unchanged reading is a full recalc a frame for nothing — the deck's
 meter and the compass both did. Guard sentinels must not be `NaN` (every
 comparison against it is false, so the first write never happens either). The
 stage canvases take `useNarrow()` for their `dpr`/antialias the way the bank's
-always has. And the boot ripple's cells sit inside a `mask-image`, which means
-the layer re-rasters whole on any change — hence no blur and half the pitch on
-narrow. Full account in **What the page pays for every frame** in `README.md`.
+always has. **The boot ripple is not a place to find milliseconds**: cutting
+its cell count on narrow was tried and reverted — the pitch is the effect, and
+a bigger cell reads as slower while taking exactly as long. Full account,
+including the one lever that would not change the look, in **What the page pays
+for every frame** in `README.md`.
 
 **The overview puts itself down.** A project arrives with its first fold
 opening 900ms after the cover lifts — not open on arrival, which is the whole
