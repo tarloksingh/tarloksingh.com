@@ -317,7 +317,7 @@ export default function MechBank({
           project screen, and on a phone, it is a **sign** — there is nothing
           to select, so it reads `PROJECTS` and labels the grid under it, which
           is why the narrow rules set it left rather than centred. */}
-      <div className="mech-work-rail-head">
+      <div className="mech-work-rail-head" style={{ ['--head-cells' as string]: CELLS }}>
         {/* Always the warm channel — this is what has been picked, and the
             rail and the scale under it are the two things on the panel that
             report a *pick* rather than a *reading*. It does not drop back to

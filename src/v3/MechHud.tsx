@@ -163,6 +163,14 @@ function MechHud({ gridOn = true }: { gridOn?: boolean }) {
     const at = { ...to }
     const started = performance.now()
     let raf = 0
+    /* What was last put on screen, so a frame that would write the same thing
+       writes nothing at all — see the note beside the strip below. */
+    // Infinity, not NaN: every comparison against NaN is false, which would
+    // make the guard below reject the *first* write and then every one after
+    // it — the strip never moves at all.
+    let lastSlide = Number.POSITIVE_INFINITY
+    let lastX = ''
+    let lastY = ''
 
     const onMove = (event: PointerEvent) => {
       to.x = event.clientX
@@ -187,9 +195,19 @@ function MechHud({ gridOn = true }: { gridOn?: boolean }) {
       const spinning = since < SPIN
       const settle = spinning ? Math.pow(1 - since / SPIN, 3) : 0
 
+      /* Written only when it has actually moved. This loop runs for the life
+         of the page and the pointer is still for most of it — the eased
+         position converges to within a pixel of the target in a few frames
+         and then reports the same number forever, and an attribute set on an
+         SVG node invalidates its style whether or not the value changed. A
+         tenth of a user unit is well under the width of the strip's finest
+         tick, so nothing that could be seen is being skipped. */
       if (strip.current) {
         const slide = -across * window.innerWidth * TRAVEL - settle * window.innerWidth * 2.2
-        strip.current.setAttribute('transform', `translate(${slide} 0)`)
+        if (Math.abs(slide - lastSlide) > 0.1) {
+          lastSlide = slide
+          strip.current.setAttribute('transform', `translate(${slide} 0)`)
+        }
       }
       const value = spinning ? Math.random() * 360 : (degrees + 360) % 360
       const text = pad(value, 3)
@@ -203,8 +221,16 @@ function MechHud({ gridOn = true }: { gridOn?: boolean }) {
           }
         }
       }
-      if (readX.current) readX.current.textContent = pad(spinning ? Math.random() * 4000 : at.x)
-      if (readY.current) readY.current.textContent = pad(spinning ? Math.random() * 4000 : at.y)
+      const x = pad(spinning ? Math.random() * 4000 : at.x)
+      const y = pad(spinning ? Math.random() * 4000 : at.y)
+      if (readX.current && x !== lastX) {
+        lastX = x
+        readX.current.textContent = x
+      }
+      if (readY.current && y !== lastY) {
+        lastY = y
+        readY.current.textContent = y
+      }
 
     }
 

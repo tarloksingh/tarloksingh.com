@@ -1725,6 +1725,86 @@ gutters). The scrubber in `Mech.tsx` lost its branch with them: it measured
 other, writing a different pair of custom properties for each, and there is one
 axis now.
 
+**The strip is draggable, and the drag nearly cost the click.** `overflow-x:
+auto` alone answers a trackpad's own sideways gesture and a shift-scroll, and
+neither is the reach a wide window's mouse makes first — so there is a
+press-and-drag on `.mech-rail` and a plain wheel turned sideways, both
+mouse-only (`pointerType` gates every listener, so a finger is left to the
+browser's own momentum scrolling rather than fighting a second one built by
+hand on top of it). A press that turned into a drag must not also select the
+tile it was let go over, which is a `click` listener in the capture phase
+rather than a check inside each tile.
+
+Two things went wrong there and both are worth keeping.
+
+**The threshold has to clear a human hand, not a still one.** At four pixels
+every ordinary press read as a drag and got suppressed, so no tile was
+selectable at all. Ten.
+
+**And the pointer capture cannot be taken on the press.** A captured pointer
+retargets its own `click` to the capture element — so `setPointerCapture` on
+`pointerdown` delivered every click on the strip to the strip, and no tile
+ever saw one. The symptom was exact and misleading: selection worked perfectly
+on a phone and not at all with a mouse, because `pointerType` never lets a
+touch into this code and a touch therefore never took the capture. It is taken
+in `pointermove`, once the drag has passed the threshold — at which point the
+retarget is what you want, because that click was going to be suppressed
+anyway.
+
+**It stands the same height in the same place on both screens, and it does
+not fade.** The first extraction gave the project screen's `.mech-bank-col` a
+column to fill — `top: 148`, `bottom: 120`, `--panel-h: 100%` — so the rail
+was as tall as whatever margin it landed in, which on a project screen is
+taller than home's instrument. Pressing a project made the one block that is
+supposed to be permanent visibly grow. It is a fixed height now, centred in
+the range it is given: `--panel-h` is the same `(281 + 172)` the cluster
+computes, `284`/`120` are the range, and `margin: auto 0` does the centring —
+never a `transform`, for the reason the cluster's own note gives (a
+transformed ancestor becomes the containing block for `position: fixed`, and
+`.mech-bank-gl` would quietly stop being the viewport). Measured off the built
+page the two rails now sit within a tenth of a pixel of each other.
+
+`--panel-h` is duplicated rather than plumbed across because `--face` is only
+ever written by `MechCluster.tsx`, which is not mounted on a project screen —
+and the value is a fixed ladder sum over a fixed row count, not something Leva
+or a visitor can move.
+
+The fade went with it. `.mech-bank-col` carried the cluster's `1200ms`
+entrance delay, which is the boot's number; on a project screen this component
+mounts on every arrival from home, so that delay played out as the rail
+blinking out and coming back a beat and a bit later, every time.
+
+**Project to project: it hands over the way home does.** This component is
+mounted once for the whole life of the project screen — picking another
+project re-picks a slot, it does not remount — so the block naming the thing
+you just changed was the one block on the page that did not move. Home has a
+whole choreography for this (`data-leaving`: the rail unfades, the slots
+undeal from the bottom up, the displays take their words off) and a project
+screen had none of it.
+
+It has home's rules now, in `MechCluster.css`, keyed on `data-transiting` —
+the flag `Mech.tsx` already leaves on for the length of a retarget, the same
+one the wordmark and the stage take — and hung on a much shorter `--out`
+(300ms against home's 560ms), because the first beat here is one display
+backspacing a word off rather than a name, an intro paragraph and three
+gauges running down.
+
+Two things about it are not optional. The delays match `BANK_IN` in
+`MechBank.tsx` cell for cell, because the *subjects* in the bays are dealt by
+a timer over there and a slot's CSS cannot carry a WebGL view with it — the
+two staggers have to be the same stagger, which is why `up` is
+`!booting && !transiting` rather than just `!booting`. And the exit has its
+own keyframes: `mech-cluster-out` leaving, `mech-cluster-in` arriving, never
+the entrance with `animation-direction: reverse`. An animation restarts only
+when its `animation-name` changes, so reusing the name leaves the finished
+entrance held and plays nothing — the same rule as the frame swap, and it
+catches everybody once.
+
+The entrance side of that is also the entrance the bank never had. On the
+first mount of a project screen `data-transiting` is already `false`, so
+arriving from home the eleven rows now deal themselves in instead of being
+found sitting there while everything around them comes up.
+
 ### The bank, on a phone
 
 Two problems in one place, and only the second one is interesting.
@@ -2314,102 +2394,128 @@ time now and it is as wide as its own name, so the gauge went with the row.
 was a square in each box for `public/portraits/<project-id>.png`, and none of
 those files were ever made.
 
-### The note before the boot
+### The note before the boot, and why it is gone
 
 There is a bird crossing every screen on this site and a moth sitting on it,
 both shootable, with a reticle following the pointer and a gun under it, and
-nothing on the page said so. Somebody who never happens to click empty space
+nothing on the page says so. Somebody who never happens to click empty space
 never finds out. Somebody who does finds out by accident — a laser bolt leaves
 the cursor on what they took for a portfolio, and the reasonable first reading
 is that something broke. The warning pair reports on the birds and has done
 since the third pass, but a lamp that is already lit when you arrive explains
 nothing about what it is a lamp *for*.
 
-So the page says it once, in one line, and then gets out of the way.
-`MechGreeting.tsx`: two typed lines in a readout housing, and one button.
+So for a while the page said it once, in one line, and then got out of the way:
+`MechGreeting.tsx`, two typed lines in a readout housing and one button, held
+in front of the boot with `booting` true until it was dismissed. It was also
+where `sound.boot()` moved to, because a press is the gesture a browser will
+open an `AudioContext` on and before that the boot chime fired into a suspended
+context on every load and was never once heard.
 
-**It is before the boot, not during it.** `Mech.tsx` holds `booting` true
-until it is dismissed — `greeted` — so the grid's cells have not been dealt,
-the compass has not spun and the cluster has not come up. Running it over the
-top of the boot would be two entrances at once, with the note competing with
-the exact thing it is introducing. What is behind it is the bare grid on
-black, which is what a machine that has not been switched on yet should look
-like. `MechTiles` is mounted on the press for the same reason: its ripple is
-the first beat of the boot and starting it behind a card spends the whole
-thing where nobody sees it.
+**It is out, and the removal is the decision, not a regression.** The verdict
+on it was that it did not earn the screen it took: a card between the reader
+and the site, every ten minutes, explaining a toy. The argument above is still
+true — the gun really is undiscoverable — but the answer to an undiscoverable
+toy is not a modal in front of the work. `MechGreeting.tsx` and `TextType.tsx`
+(React Bits' typing reel, ported to TS, and used nowhere else) are **deleted**,
+not unmounted; `git log` has them if the note is ever wanted back, and the
+paragraphs below on `TextType`'s cost are kept because they are the reason
+`Typed.tsx` is still what every readout uses.
 
-**And the button is where the sound starts.** A browser will not open an
-`AudioContext` before a real gesture, so every page with synthesised noise has
-to find one somewhere — usually by waiting for whatever the visitor happens to
-touch first, which means the first thing they touch is silent and everything
-after it is not. This is that gesture taken honestly. `sound.wake()`,
-`sound.toggle()` if a previous visit had turned it off, and `sound.select()`
-all run inside the click handler itself: a context opened from a `setTimeout`
-is not opened from a gesture as far as the browser is concerned, and it starts
-suspended exactly as it would have without the press. The boot chime moved
-with it — `sound.boot()` used to fire on mount into a suspended context on
-every load and was simply never heard, and it now runs on the same beat the
-context opens.
+`sound.boot()` went back onto the load with it. It is once again firing into a
+context that may be suspended — which is the browser's rule, not a bug here,
+and the first click anywhere on the page opens it (`sound.wake`, bound once in
+`MechCursor.tsx`).
 
-The button is in the tree from the first frame and only *arrives* once the
-typing is done (`ready`, worked out from the text's own length rather than
-picked, so editing the lines cannot leave it turning up over a half-typed
-sentence). A note that grows a button pushes its own text up the screen half a
-second after you have started reading it.
+**What `TextType` cost, and why `Typed` is still what readouts use.** A reel
+that deletes one line and types the next re-renders its component once per
+character. Over a page that has not booted, behind a card, that is affordable
+and nowhere else is: `Typed.tsx` writes into a node it owns rather than
+re-rendering, which is why it is what the title, the wordmark, the fold
+headings and every `Segment` are drawn with.
 
-The exit is `mech-greet-out` and not `mech-greet-in` reversed, the same rule
-as every other exit here: an animation only restarts when its
-`animation-name` changes, so reusing the name leaves the finished entrance
-running and the exit never plays. The boot starts on the same beat the exit
-does rather than after it, so the grid is already striking behind the note as
-it clears — which is what keeps the press from feeling like it bought a pause.
+### What the page pays for every frame
 
-**Once, and then not again for a while.** It showed on every load to begin
-with, which is right for the one visitor who has never seen it and wrong for
-everybody else — including me, reloading it forty times an afternoon.
-`shouldGreet` is a **timestamp**, not a flag: show it if there is nothing
-stored, or if what is stored is older than ten minutes. A first visit gets the
-note, a reload five minutes later does not, and coming back tomorrow does — by
-which point the reticle *is* worth explaining again, because nobody remembers
-a modal from yesterday. `localStorage` and not `sessionStorage`: a session
-ends when the tab does, which would put the note back in front of anyone who
-keeps one window open all day and never in front of anyone who closed the tab
-and came back in a minute. The read is wrapped, because private mode throws on
-read as well as write, and the fallback is to *show* it — a visitor who sees
-it twice is a much smaller failure than one who never learns the page can be
-shot at. `Mech` seeds `greeted` from it in a lazy initialiser rather than an
-effect, because a note that mounts and removes itself on the next commit is a
-flash.
+This screen is a dozen independent `requestAnimationFrame` loops — the
+compass, the reticle, the aim, the tachometer, the alarm, the bird, the gun,
+the deck's meter — plus two WebGL canvases, and each of the loops writes into
+the DOM. Nothing about that is wrong; the readout *is* a set of instruments
+reporting continuously. What was wrong is how much of it was being paid for
+readings that had not changed.
 
-**The note is a reel, and it is the one place `TextType` is used.** React
-Bits' component, ported to TypeScript in `TextType.tsx`: it types a line, holds
-it, takes it back off a character at a time, and types the next one into the
-space. `Typed.tsx` cannot do that — it knows one line and how to unwrite it,
-not a *set* — and both are staying, because they buy different things. `Typed`
-writes straight to a DOM node, so a hundred and twenty characters is a hundred
-and twenty text writes and no renders, which is what makes it safe on the name
-and the profile while a WebGL context is compiling shaders on the same beat.
-`TextType` costs a render per character. That is the right trade in exactly one
-place: a modal over a page that has not booted yet, where nothing is competing
-for the main thread. Do not reach for it on the readout.
+**A property written to a node invalidates that subtree's style whether or not
+the value is different.** The browser does not diff for you. So a loop that
+writes the same number sixty times a second is buying a full style recalc
+sixty times a second for a picture of nothing happening. Three of them were
+doing exactly that.
 
-Two things changed on the way in. The cursor's blink is a GSAP tween in the
-original and stays one — `cursorBlinkDuration` is a prop, and a number handed
-to a CSS keyframe means either a hard-coded duration or a custom property per
-instance — but it is **killed on unmount**, which the original does not do: the
-card is removed the instant it is dismissed, and a tween on a detached node is
-a tween GSAP ticks forever. And `.mech-greet-line` carries a `min-height` for
-the longest line's fully wrapped height, because one box cycling two sentences
-of different lengths otherwise grows as the greeting wraps and collapses to a
-single line on "bye...", which is a modal changing size twice while you read
-it.
+**The deck's meter, on every screen and every device.** `MechDeck.tsx` wrote a
+`transform` and a `--v` onto each of sixteen bars and a `--level` onto the
+housing, every frame, for the life of the page — and with nothing playing every
+one of those thirty-three writes was the value the bar already held. It rests
+in one pass now and then writes nothing until something is playing. The rest
+state it writes is also exactly what `.mech-meter i` already declares in CSS
+(`scaleY(0.06)`, `--v` defaulting to 0), so nothing about the idle deck looks
+different — it was redundant, not load-bearing. The one-shot rest is keyed on
+the *node* rather than a flag, because the narrow deck's meter unmounts and
+comes back with the sheet and a fresh one has no inline styles to have been
+rested.
 
-It has no `loop`, so the reel stops on the sign-off rather than starting the
-greeting over behind a button that is by then asking to be pressed. `BUTTON_MS`
-is worked out from the text's own length rather than picked — editing the lines
-cannot leave the button arriving over a half-typed sentence — and off the
-*maximum* of the variable-speed range, because the button turning up early is
-the only failure that matters.
+**The compass, on the wide layout.** `MechHud.tsx` set a `transform` on the
+strip and two `textContent`s every frame. The eased position converges within
+a few frames of the pointer stopping and then reports the same number
+indefinitely, which is most of the time a page is open. All three are written
+only when they differ now — a tenth of a user unit on the strip, well under
+the width of its finest tick.
+
+A trap in that, which cost a round: the "what did I last write" sentinel
+**cannot be `NaN`**. Every comparison against `NaN` is false, so the guard
+rejects the first write and then every one after it, and the strip never moves
+at all. `Infinity`.
+
+**The stage canvas did not know it was on a phone.** `MechSlots` has made this
+trade for the bank since it was written (`dpr={narrow ? 1 : [1, 1.75]}`, no
+antialias); `MechModel` and `MechProduct` — the full-window canvas that is the
+actual subject of a project screen — were still asking for `devicePixelRatio`
+2 with multisampling on. On a 430-point handset at `dpr` 3 that is an 860×903
+backing store; it is 645×677 now, which is 44% of the fragment work, and MSAA
+is off. They take `useNarrow()` for it, the same store everything else on this
+site branches on.
+
+**The boot ripple is the one that was named.** `MechTiles` lays out a cell per
+grid square of the window and animates all of them; a phone asked for about
+five hundred, each carrying a blurred outer shadow, inside a container with a
+`mask-image`. That last detail is the whole problem and it is easy to miss: a
+masked layer is re-rastered **as a whole** whenever anything inside it changes,
+so those are not five hundred independently composited elements — they are
+five hundred boxes repainting into one bitmap, on the exact beat the main
+thread is compiling shaders and parsing a GLB.
+
+Two changes, both narrow-only. The blur comes off the shadow, leaving the inset
+ring that was carrying the effect anyway (see the note under *the panel coming
+alive* — an outline lighting up reads as the cell being found; the wash was
+never the point, and it is most of what a cell costs to raster). And `MOST`
+drops to 200, which buys exactly one halving out of the pitch loop: 153 cells
+at double pitch, the same wave over the same grid with every other line taken
+out, which the original note already sanctions. **Not lower.** At 120 it takes
+two halvings, and three and a half cells across a phone is not a ripple over a
+grid, it is a handful of big squares.
+
+Halving the pitch needed one thing that was not obvious. `RING` is quoted in
+*cells*, so a coarser grid has fewer of them between the middle and the edge
+and the wave crosses in half the time — which turns it back into the grid
+flashing on, the exact failure `RING`'s own note is written against. The
+layout loop reports how far it opened the pitch up (`zoom`) and the delays are
+scaled by it, so the front travels the same number of pixels a second at any
+pitch.
+
+**On measuring this.** Don't trust a headless run for it. Software WebGL
+(`--use-angle=swiftshader`, which the recipe in the memory note needs to keep
+the app from unmounting) is slow enough that it swamps everything else: boot
+frame rates land between 0.9 and 3.1 fps and the run-to-run spread is larger
+than anything you are trying to see. What *is* trustworthy there is state you
+can read at a moment — cell counts, canvas backing stores, the inline styles a
+loop left behind — and that is what the numbers above were taken from.
 
 ### The panel coming alive
 

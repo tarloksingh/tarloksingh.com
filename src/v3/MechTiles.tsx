@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, memo } from 'react'
+import { NARROW_QUERY } from './narrow'
 
 /* ---- the panel coming alive ----
 
@@ -50,8 +51,24 @@ const SCATTER = 60
 
 /** A ceiling on the DOM this is allowed to cost. A very large window at a
  *  small `--px` can ask for a few thousand cells; past this the ripple is
- *  drawn at double pitch instead, which nobody can tell apart at that size. */
-const MOST = 1600
+ *  drawn at double pitch instead, which nobody can tell apart at that size.
+ *
+ *  **A phone gets a much lower one, and it is not about the DOM.** The layer
+ *  these sit in carries a `mask-image`, and a masked layer is re-rastered as
+ *  a whole whenever anything inside it changes — so the cells are not the
+ *  independently composited elements the note above assumes, they are a few
+ *  hundred boxes repainting into one bitmap sixty times a second. On the
+ *  exact beat the main thread is compiling shaders and parsing a GLB. A
+ *  handset window asks for about five hundred cells at the grid's own pitch;
+ *  200 buys exactly one halving out of the loop below — a 92-unit pitch and
+ *  about a hundred and fifty of them, which is the same wave over the same
+ *  grid with every other line taken out, and is the trade the paragraph above
+ *  already sanctions. Not lower: two halvings is a 184-unit cell, three and a
+ *  half of them across a phone, and what is left is not a ripple over a grid
+ *  but a handful of big squares. The narrow rules in Mech.css take the
+ *  shadow's blur off them as well, which is the other half of this — a
+ *  blurred shadow is most of what a cell costs to raster. */
+const MOST = matchMedia(NARROW_QUERY).matches ? 200 : 1600
 
 /** How long the layer stays in the document, in milliseconds. It takes itself
  *  down rather than being unmounted with the boot flag: the furthest cell is
@@ -64,7 +81,7 @@ const LIFE = 1900
 
 function MechTiles() {
   const box = useRef<HTMLDivElement>(null)
-  const [grid, setGrid] = useState<{ cols: number; rows: number; cell: number } | null>(null)
+  const [grid, setGrid] = useState<{ cols: number; rows: number; cell: number; zoom: number } | null>(null)
   const [done, setDone] = useState(false)
 
   useEffect(() => {
@@ -91,12 +108,21 @@ function MechTiles() {
 
     let cols = Math.ceil(el.clientWidth / cell) + 1
     let rows = Math.ceil(el.clientHeight / cell) + 1
+    /* How far the pitch had to be opened up to come in under the budget, so
+       `RING` can be scaled by it below. Without that the ring is quoted in
+       *cells* and a coarser grid has fewer of them across the same window —
+       the wave crosses in half the time and what is left is the grid flashing
+       on, which is precisely the thing `RING`'s note says it must not be. At
+       double pitch the delays double and the front travels the same number of
+       pixels a second as it does everywhere else. */
+    let zoom = 1
     while (cols * rows > MOST) {
       cell *= 2
+      zoom *= 2
       cols = Math.ceil(cols / 2) + 1
       rows = Math.ceil(rows / 2) + 1
     }
-    setGrid({ cols, rows, cell })
+    setGrid({ cols, rows, cell, zoom })
   }, [])
 
   if (done) return null
@@ -121,7 +147,7 @@ function MechTiles() {
              panel; a ring out from the centre reads as the panel itself
              coming up, which is what the rest of the boot is doing. */
           const away = Math.hypot(x - (grid.cols - 1) / 2, y - (grid.rows - 1) / 2)
-          const delay = away * RING + Math.random() * SCATTER
+          const delay = away * RING * grid.zoom + Math.random() * SCATTER
           return <i key={i} style={{ animationDelay: `${Math.round(delay)}ms` }} />
         })}
     </div>

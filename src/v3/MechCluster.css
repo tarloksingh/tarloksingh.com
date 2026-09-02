@@ -862,41 +862,41 @@
 .mech-bank-col {
   position: absolute;
   right: calc(101 * var(--px));
-  /* Clear of the audio deck, which is docked to this same right edge at
-     `top: 90` and stands about forty units tall — see `.mech-deck-slot` in
-     Mech.css. Home has no deck in its right flank to duck under, which is why
-     its rail starts higher. */
-  top: calc(148 * var(--px));
+  /* Past the audio deck, docked to this same right edge at `top: 90` and
+     about forty units tall (`.mech-deck-slot` in Mech.css) — clearing it only
+     needed 148, but this is now the *available range* to centre the rail's
+     fixed height in, not the rail's own top edge, and 284 is what lands that
+     centre where home's own rail sits (measured off the built page: home has
+     no deck to duck under, so its own top offset comes from centring in
+     `.mech-body`, not from a number here). */
+  top: calc(284 * var(--px));
   bottom: calc(120 * var(--px));
+  /* Centred in that range rather than stretched to fill it — `margin: auto 0`
+     on an absolutely positioned box with both `top` and `bottom` set and an
+     explicit height less than the gap between them centres it, with no
+     `transform`. That matters here for the same reason it does on
+     `.mech-cluster`: a transformed ancestor becomes the containing block for
+     a `position: fixed` descendant, and `.mech-bank-gl` — the canvas every
+     bay is scissored into — would quietly stop being the viewport. */
+  height: var(--panel-h);
+  margin: auto 0;
   width: calc(253 * var(--px));
   z-index: 3;
   display: flex;
   flex-direction: column;
 
-  /* The panel's tokens, matching `.mech-cluster`'s. `--panel-h` is the one
-     that differs on purpose: on home the rail is sized to end level with the
-     tachometer beside it, and there is no tachometer here — it fills the
-     column it has been given instead. */
+  /* The panel's tokens, matching `.mech-cluster`'s exactly — including
+     `--panel-h` now, so this rail stands the same height as home's rather
+     than filling whatever column it happens to be given. `--face` is never
+     set on a project screen — only `MechCluster.tsx` writes it, from
+     `TACH_FACE` — so this hardcodes the same value: a fixed ladder sum over
+     a fixed row count, not a number Leva or a visitor can move, so it is
+     safe to duplicate rather than plumb across the screens. */
   --count-w: calc(253 * var(--px));
   --flank-w: var(--count-w);
-  --panel-h: 100%;
+  --panel-h: calc((281 + 172) * var(--px));
   --accent: #a2e0cc;
   --accent-rgb: 162, 224, 204;
-}
-
-/* No transform, for the same reason `.mech-cluster` and `.mech-body` carry
-   none: a transformed ancestor becomes the containing block for a
-   `position: fixed` descendant, and `.mech-bank-gl` — the canvas every bay is
-   scissored into — would quietly stop being the viewport. Its entrance is an
-   opacity fade for exactly that reason. */
-.mech-bank-col {
-  animation: mech-bank-col-in 500ms var(--ease) 1200ms both;
-}
-
-@keyframes mech-bank-col-in {
-  from {
-    opacity: 0;
-  }
 }
 
 /* The project's own title, above the bank. Pressing a slot changes what this
@@ -954,6 +954,58 @@
     #000 calc(100% - var(--bay-fade, 30) * var(--px)),
     transparent 100%
   );
+}
+
+/* ---- the bank's own handover, on a project screen ----
+
+   Home's bank leaves with the cluster: `data-leaving` runs the rail's fade
+   and undeals the slots from the bottom up, and the fresh `.mech-bank-col`
+   on the other side deals itself back in. Going from one project to another
+   had none of that. This component is mounted once for the whole life of the
+   project screen — picking a different project never remounts it, only
+   re-picks a slot — so the one block that never moved was the one naming the
+   thing you had just changed.
+
+   These are home's rules again, keyed on `data-transiting` (the flag the
+   stage and the wordmark already leave on for the length of a retarget — see
+   `transiting` in Mech.tsx) instead of `data-leaving`, and hung on a much
+   shorter `--out`: the first beat here is one display backspacing its word
+   off, not a name, an intro paragraph and three gauges running down.
+
+   The delays match `BANK_IN` in MechBank.tsx cell for cell, because the
+   subjects in the bays are dealt by a timer over there and a slot's CSS
+   cannot carry a WebGL view with it — the two staggers have to be the same
+   stagger. `up` is what tells that timer to run, and it is false for exactly
+   this window. */
+.mech-bank-col {
+  --out: 300ms;
+}
+
+.mech-bank-col[data-transiting='true'] .mech-work-rail {
+  animation: mech-cluster-unfade 240ms calc(var(--out) + 30ms) linear both;
+}
+
+.mech-bank-col[data-transiting='true'] .mech-slot {
+  animation: mech-cluster-out 190ms var(--ease) both;
+  animation-delay: calc(var(--out) + (11 - var(--i, 0)) * 10ms);
+}
+
+/* And back in. On the first mount of a project screen `data-transiting` is
+   already false, so this is also the entrance the bank never had when it
+   arrived from home — it used to be simply *there*, eleven rows at rest,
+   while everything around it came up.
+
+   It is a separate keyframe set from the exit above and has to stay that
+   way: an animation only restarts when its `animation-name` changes, so
+   reusing the entrance with `animation-direction: reverse` would leave the
+   finished exit held and play nothing. Same rule as the frame swap. */
+.mech-bank-col[data-transiting='false'] .mech-work-rail {
+  animation: mech-cluster-fade 700ms 380ms var(--ease) both;
+}
+
+.mech-bank-col[data-transiting='false'] .mech-slot {
+  animation: mech-cluster-in 420ms var(--ease) both;
+  animation-delay: calc(620ms + var(--i, 0) * 55ms);
 }
 
 /* ---- the bank ----
@@ -1824,22 +1876,42 @@
    then here is everything else. `.mech-frame` is a flex column at this width
    and `order: 7` puts it past the footer's own 6.
 
-   Absolutely positioned up there and static down here, which also means the
-   entrance has to be re-declared: the wide rule's `mech-bank-col-in` counts
-   1200ms off page load, and this block is a screen and a half below the fold
-   where nobody sees it happen. `data-arrive` — the shared narrow reveal in
-   Mech.css — draws it as it is reached instead. */
+   Absolutely positioned up there and static down here, and the wide layout's
+   `margin: auto 0` — which centres the rail in its available range — has to
+   be undone too: on a static box in a column flex container that margin
+   would auto-distribute vertical space instead, and shove this block away
+   from where `order: 6` put it. `data-arrive` — the shared narrow reveal in
+   Mech.css — draws it in as it is reached. */
 .mech[data-narrow='true'] .mech-bank-col {
   position: static;
   order: 6;
   width: 100%;
   height: auto;
-  animation: none;
-  padding: calc(26 * var(--px)) var(--gutter) calc(30 * var(--px));
+  margin: 0;
+  /* Clear air off the last fold above it — this is the top of a whole new
+     section (the way into every other project), not one more row under
+     "Challenges", and `border-top` on `.mech-fold` reads as the boundary of
+     the write-up rather than of what follows it. */
+  padding: calc(56 * var(--px)) var(--gutter) calc(30 * var(--px));
+  border-top: 1px solid rgba(var(--accent-rgb), 0.16);
 }
 
-.mech[data-narrow='true'] .mech-work-rail-head .mech-display {
+/* Home only: the reel, `INTRO` and `PROJECTS` are three signs sharing one
+   box (`--sign`, a percentage of the narrow column) so they print at one
+   size — see `roleSize` and the note in the README, "Home, on a phone". */
+.mech[data-narrow='true'] .mech-cluster .mech-work-rail-head .mech-display {
   width: var(--sign);
+}
+
+/* A project screen's own copy of this head has no such row to match — it
+   sits alone above the bank, under the folds. Sized to the same cell pitch
+   as `.mech-fold > button .mech-seg` below (16 units a cell) rather than
+   `--sign`, which is a percentage of the full-width column here and printed
+   "PROJECTS" far larger than "Challenges" above it. `--head-cells` is
+   `CELLS` from `MechBank.tsx`, handed in the same way `--fold-cells` is. */
+.mech[data-narrow='true'] .mech-bank-col .mech-work-rail-head .mech-display {
+  width: calc(var(--head-cells, 21) * 16 * var(--px));
+  max-width: 100%;
 }
 
 /* No inner scroll on a phone — the page itself scrolls, and a scroll region

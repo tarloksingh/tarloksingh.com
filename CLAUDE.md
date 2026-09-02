@@ -58,7 +58,6 @@ being false (which is why `navigator.clipboard` does not exist — see
 | `MechModel.tsx` | The subject: one GLB, lit, drifting, watching, shootable |
 | `MechHud.tsx`, `MechCursor.tsx` | The dashboard, and the reticle |
 | `MechBank.tsx`, `bank.ts` | **The rail of work, on every screen** — the slots, and the roster they are built from |
-| `MechGreeting.tsx`, `TextType.tsx` | The note before the boot, the press that starts the sound, and the reel it is typed with |
 | `MechTiles.tsx` | The boot: the grid's cells struck in a ring from the middle |
 | `MechBird.tsx`, `MechLaser.tsx` | The bird, and the gun |
 | `MechDeck.tsx`, `sound.ts` | The music deck, and every synthesised sound |
@@ -244,18 +243,37 @@ scroll-the-lit-slot-into-view. `.mech-bank-col` has to re-declare the cluster's
 tokens *and its `--accent`*, and take `--cluster-slot` from JS. See **The bank
 is on every screen** in `README.md`.
 
+**The bank hands over on a project screen too.** `.mech-bank-col` stands at a
+fixed `--panel-h` centred with `margin: auto 0` (never a transform — the
+canvas has to stay the viewport), so it is the same size and place as home's,
+and its boot-length entrance delay is gone. Project to project it plays home's
+own exit and entrance, keyed on `data-transiting` with a shorter `--out`, and
+`up` is `!booting && !transiting` so the WebGL subjects undeal on the same
+beats the boxes do. Exits have their own keyframes. See **The bank is on every
+screen** in `README.md`.
+
+**The media strip drags, and two things about that bite.** The click/drag
+threshold is ten pixels, not four — under that an ordinary press reads as a
+drag and no tile is selectable. And `setPointerCapture` is taken in
+`pointermove` once the drag is real, **never on `pointerdown`**: a captured
+pointer retargets its own `click` to the capture element, which made tiles
+selectable with a finger and not with a mouse.
+
+**Per-frame cost is a standing concern, not a one-off.** A property written to
+a node invalidates style whether or not the value changed, so a loop that
+reports an unchanged reading is a full recalc a frame for nothing — the deck's
+meter and the compass both did. Guard sentinels must not be `NaN` (every
+comparison against it is false, so the first write never happens either). The
+stage canvases take `useNarrow()` for their `dpr`/antialias the way the bank's
+always has. And the boot ripple's cells sit inside a `mask-image`, which means
+the layer re-rasters whole on any change — hence no blur and half the pitch on
+narrow. Full account in **What the page pays for every frame** in `README.md`.
+
 **The overview puts itself down.** A project arrives with its first fold
 opening 900ms after the cover lifts — not open on arrival, which is the whole
 distinction: `setOpen(null)` still runs under the cover and `OVERVIEW_MS` puts
 it down where it can be seen. Once per project, on a ref, because `covered` is
 also true for a tile-rail step.
-
-**The greeting is once every ten minutes, and it is a reel.** `shouldGreet` is
-a timestamp in `localStorage`, not a flag. The note types one line, deletes it
-and types the next — `TextType.tsx`, React Bits' component ported to TS, and
-the *only* place it is used. `Typed.tsx` is still what the readout uses:
-`TextType` costs a render per character, which is affordable over a page that
-has not booted and nowhere else.
 
 **The bank's canvas scrolls with the bank on a phone.** `.mech-bank-gl` is
 `position: absolute` over `.mech-bank` on narrow rather than fixed over the
@@ -270,11 +288,13 @@ history and both are written up: cutting per-frame cost (helps, cannot fix it)
 and hiding the canvas while scrolling (fixes it, reads badly). Full account in
 **The bank, on a phone** in `README.md`.
 
-**A note comes up before the boot.** `MechGreeting.tsx` — two typed lines
-about the birds and one button, with `booting` in `Mech.tsx` held true until
-it is dismissed. The press is also the gesture that opens the AudioContext, so
-`sound.boot()` moved onto it (before this it fired into a suspended context on
-every load and was never heard). Every load, including a project deep link.
+**The note before the boot is gone, and the files with it.**
+`MechGreeting.tsx`, `TextType.tsx` and `TextType.css` are **deleted**, not
+unmounted — the card between the reader and the site did not earn the screen
+it took. `sound.boot()` went back onto the load; `Typed.tsx` is what every
+readout is drawn with, as it always was. The argument the note was answering
+(the gun is undiscoverable) is still open and is written up in **The note
+before the boot, and why it is gone** in `README.md`.
 
 **Home's narrow layout is reordered around the name.** One tap opens a project
 instead of two, and the field dials are hidden (they reported on a selection

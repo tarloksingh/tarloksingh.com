@@ -343,155 +343,6 @@
   border-top: 0;
 }
 
-/* ---- the note before the boot ----
-
-   One line about the birds, and a button that starts the machine and the
-   sound with it. See `MechGreeting.tsx` for what it is for; this is only how
-   it sits.
-
-   Over everything, including the dev panel's own layer: nothing behind it is
-   meant to be reachable, and the boot has not run, so there is nothing behind
-   it worth reaching. No scrim of its own beyond a wash — the page under it is
-   the bare grid on black, which is already most of a backdrop. */
-.mech-greet {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--gutter);
-  background: radial-gradient(ellipse at 50% 50%, rgba(var(--accent-rgb), 0.05), rgba(0, 0, 0, 0.72) 70%);
-  /* It comes up on its own rather than being there on the first painted
-     frame, which would be a modal that was already open before the page
-     existed. */
-  animation: mech-greet-in 420ms var(--ease) both;
-}
-
-/* Its own keyframes for the exit, never the entrance reversed — same rule as
-   every other exit on this site: an animation only restarts when its
-   `animation-name` changes, so reusing the name leaves the finished entrance
-   running and the exit never plays. */
-.mech-greet[data-going='true'] {
-  animation: mech-greet-out 420ms var(--ease) both;
-  pointer-events: none;
-}
-
-@keyframes mech-greet-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes mech-greet-out {
-  to {
-    opacity: 0;
-  }
-}
-
-/* A readout box, not a dialog. The same border, radius and phosphor fill
-   every housing on this panel wears — the note is the machine talking, so it
-   is printed on the machine's own furniture rather than in a card borrowed
-   from an operating system. */
-.mech-greet-card {
-  width: calc(720 * var(--px));
-  max-width: 100%;
-  padding: calc(34 * var(--px)) calc(34 * var(--px)) calc(26 * var(--px));
-  border: 1px solid rgba(var(--accent-rgb), 0.3);
-  border-radius: var(--round);
-  background: rgba(5, 8, 6, 0.86);
-  box-shadow: 0 0 calc(60 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.12 * var(--g)));
-}
-
-/* Two classes deep on purpose: `TextType.css` sets `display: inline-block` on
-   `.text-type`, and this element carries both classes at equal specificity —
-   which one wins would then come down to the order two stylesheets happened
-   to land in the bundle. A block is what the paragraph wants: an inline-block
-   is shrink-to-fit, and the reel's width would follow whatever it had typed
-   so far. */
-.mech-greet .mech-greet-line {
-  display: block;
-  margin: 0;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: calc(15 * var(--type));
-  line-height: 1.6;
-  color: rgba(var(--accent-rgb), 0.92);
-  text-shadow: 0 0 calc(10 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.4 * var(--g)));
-  /* Room for the longest line's fully wrapped height, held from the first
-     frame. It is one reel now rather than two stacked paragraphs — the note
-     is typed, taken back off and replaced by the sign-off in the same box —
-     so without a floor the card would grow as the greeting wraps and then
-     collapse to a single line on "bye...", which is a modal changing size
-     twice while you read it. */
-  min-height: calc(48 * var(--type));
-}
-
-/* Three wrapped lines rather than two: the card is the full width of a phone
-   less its gutter, and the greeting takes one more row at that measure. */
-.mech[data-narrow='true'] .mech-greet .mech-greet-line {
-  min-height: calc(77 * var(--type));
-}
-
-/* The block cursor sits on the text's own baseline rather than a quarter-em
-   off it — the default margin is built for a thin `|`, and a `▎` at that
-   distance reads as a separate mark rather than the caret at the end of the
-   line. */
-.mech-greet .text-type__cursor {
-  margin-left: calc(2 * var(--type));
-  color: var(--warn);
-  text-shadow: 0 0 calc(10 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.5 * var(--g)));
-}
-
-/* Warm, like every other thing on this site that answers a press. It is in
-   the tree from the start and only *arrives* once the typing has finished —
-   see `ready` in MechGreeting.tsx — so the card's height is settled before
-   anybody reads a word of it. */
-.mech-greet-ok {
-  display: block;
-  margin: calc(26 * var(--px)) 0 0 auto;
-  padding: calc(9 * var(--px)) calc(26 * var(--px));
-  border: 1px solid rgba(var(--warn-rgb), 0.45);
-  border-radius: calc(4 * var(--px));
-  background: rgba(var(--warn-rgb), 0.1);
-  color: var(--warn);
-  font: inherit;
-  font-size: calc(12 * var(--type));
-  letter-spacing: calc(1.6 * var(--type));
-  text-transform: uppercase;
-  cursor: pointer;
-  opacity: 0;
-  transform: translateY(calc(6 * var(--px)));
-  pointer-events: none;
-  transition: opacity 260ms var(--ease), transform 260ms var(--ease), background-color 160ms linear,
-    box-shadow 160ms linear;
-}
-
-.mech-greet-ok[data-ready='true'] {
-  opacity: 1;
-  transform: none;
-  pointer-events: auto;
-}
-
-.mech-greet-ok[data-ready='true']:hover,
-.mech-greet-ok[data-ready='true']:focus-visible {
-  background: rgba(var(--warn-rgb), 0.24);
-  box-shadow: 0 0 calc(18 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.3 * var(--g)));
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .mech-greet,
-  .mech-greet[data-going='true'] {
-    animation: none;
-  }
-
-  .mech-greet[data-going='true'] {
-    opacity: 0;
-  }
-}
-
 /* ---- boot ----
 
    The machine comes up rather than simply being on. The chrome holds off,
@@ -1866,7 +1717,12 @@
 .mech-rail-wrap {
   position: absolute;
   left: 50%;
-  bottom: calc(78 * var(--px));
+  /* Clear of the compass (`.mech-strip`, bottom 74 to 118) and the X/Y
+     readout under it — the strip runs the full width of the frame, and at
+     78 the rail's frame and thumb landed inside that same band, printing the
+     heading's own readout box over a tile. 132 puts the rail's bottom edge
+     above the strip's top with a little air to spare. */
+  bottom: calc(132 * var(--px));
   transform: translateX(-50%);
   z-index: 3;
   display: flex;
@@ -1886,6 +1742,11 @@
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
+  /* Click-and-drag on a mouse (`Mech.tsx` does the actual scrolling); a
+     touch or pen never sees this, `touch-action: pan-x` leaves the browser's
+     own momentum scroll alone for those. */
+  cursor: grab;
+  touch-action: pan-x;
   padding: calc(14 * var(--px)) calc(12 * var(--px));
   border: 1px solid rgba(var(--accent-rgb), 0.16);
   border-radius: var(--round);
@@ -1895,6 +1756,10 @@
      in Mech.tsx, plus enough of a tail for a full tile strip's own stagger
      to clear before the frame around it appears. */
   animation: mech-rail-frame-in 420ms var(--ease) calc(1200ms + 760ms) both;
+}
+
+.mech-rail:active {
+  cursor: grabbing;
 }
 
 @keyframes mech-rail-frame-in {
@@ -2124,6 +1989,19 @@
   100% {
     opacity: 0;
     transform: scale(1);
+  }
+}
+
+/* No blur on a handset. The cells sit inside a masked layer, which is
+   re-rastered whole whenever anything in it changes — so every cell's outer
+   shadow is being re-blurred into one bitmap for the length of the ripple,
+   over a boot that is already compiling shaders. The inset ring is what
+   carries the effect (see the note above); the wash outside it is what a
+   90-unit cell on a 400-point window is least able to show and most expensive
+   to draw. `MechTiles.tsx` cuts the cell count on the same breakpoint. */
+@media (max-width: 700px) {
+  .mech-tiles i {
+    box-shadow: inset 0 0 0 1px var(--accent);
   }
 }
 
@@ -3991,7 +3869,7 @@
 }
 
 .mech[data-narrow='true'] .mech-lede {
-  padding: calc(20 * var(--px)) var(--gutter) calc(14 * var(--px));
+  padding: calc(36 * var(--px)) var(--gutter) calc(14 * var(--px));
 }
 
 /* `display: contents` generates no box, so an animation on `.mech-side` itself
@@ -4023,8 +3901,13 @@
    for the title to reach out of, and 620 frame units on a phone is the display
    running off the right edge. Nothing to *cap*, though — the size formula that
    used to live here, and its twin above, are what `TITLE_CELLS` replaced. */
+/* Same cell-to-pixel ratio as `.mech-fold > button .mech-seg` below, so the
+   title prints at the same size as "Challenges" and every other fold heading
+   under it rather than filling the window at whatever size that cell count
+   happens to stretch to. */
 .mech[data-narrow='true'] .mech-title {
-  width: 100%;
+  width: calc(var(--title-cells, 21) * 16 * var(--px));
+  max-width: 100%;
 }
 
 .mech[data-narrow='true'] .mech-tagline {

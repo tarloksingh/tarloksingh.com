@@ -108,11 +108,34 @@ function MechDeck({ narrow = false }: Props) {
 
   useEffect(() => {
     let raf = 0
+    /* **The bars are only written while something is playing.** This loop used
+       to write a `transform` and a `--v` onto every bar and a `--level` onto
+       the housing on every frame for the life of the page, whatever the deck
+       was doing — and with nothing playing every one of those writes was the
+       same value it already held. A custom property written to a node
+       invalidates that subtree's style whether or not the value changed, so an
+       idle deck was buying a full style recalc a frame for a picture of
+       silence, on every screen and on a phone. It settles to rest in one pass
+       now and then writes nothing.
+
+       The loop itself is left running rather than torn down and rebuilt on
+       `playing`: `meter` is a ref into markup that mounts and unmounts under
+       it (the narrow deck only draws the meter while the sheet is open), and a
+       rAF callback that does two null checks is not what was costing
+       anything. */
+    /* The node it was last put to rest on, rather than a flag: the meter
+       unmounts and comes back with the narrow sheet, and a fresh one has no
+       inline styles to have been rested. */
+    let rested: HTMLElement | null = null
     const tick = () => {
       raf = requestAnimationFrame(tick)
       const node = meter.current
       const tap = graph.current
       if (!node) return
+      if (!(tap && playing)) {
+        if (rested === node) return
+        rested = node
+      } else rested = null
       let sum = 0
       if (tap && playing) {
         tap.analyser.getByteFrequencyData(tap.data)

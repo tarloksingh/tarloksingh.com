@@ -52,9 +52,9 @@ export interface Note {
 
 export const NOTES: Record<string, Note[]> = {
   'mr-takahashi/model': [
-    { label: 'Name', value: 'Spoke in English and Japanese. ', at: [-0.0519, 0.5049], to: [-0.2072, 0.458], atNarrow: [0.6692, 0.0453] },
-    { label: '', value: 'Sculpted and animated in Blender.e', at: [0.9534, 0.1661], to: [1.0561, 0.0889], atNarrow: [0.3093, 0.8346] },
-    { label: '', value: 'We used whisper voice to text to get the input, and Llama 3 as the intellegence. ', at: [0.0132, 0.8611], to: [-0.0976, 0.9056], atNarrow: [0.4776, 0.9247] }
+    { label: 'Name', value: 'Spoke in English and Japanese. ', at: [-0.0519, 0.5049], to: [-0.067, 0.429], atNarrow: [0.6692, 0.0453] },
+    { label: '', value: 'Sculpted and animated in Blender.e', at: [0.922, 0.1615], to: [1.0561, 0.0889], atNarrow: [0.3093, 0.8346] },
+    { label: '', value: 'We used whisper voice to text to get the input, and Llama 3 as the intellegence. ', at: [0.109, 0.8357], to: [0.0326, 0.8549], atNarrow: [0.4776, 0.9247] }
   ],
   'mr-takahashi/MrTakahashi_Demo.mp4': [
     { label: 'made in', value: 'I used the Black Magic Ursa Mini 4.6k to film the demo video. ', fold: 'tools', at: [0.9331, 0.5969], to: [1.0562, 0.6823] },

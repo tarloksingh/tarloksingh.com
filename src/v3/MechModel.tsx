@@ -5,6 +5,7 @@ import { ACESFilmicToneMapping, Box3, MathUtils, PMREMGenerator, SRGBColorSpace,
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import { drift, flinch, gaze } from './subject'
 import { MODEL_DEFAULTS, type ModelTuning } from './modelTuning'
+import { useNarrow } from './narrow'
 import type { Group, Mesh, MeshStandardMaterial, PerspectiveCamera } from 'three'
 
 /* The subject of the project screen: the model itself, lit and drifting, with
@@ -529,15 +530,24 @@ export default function MechModel({
      too, and the renderer's default of 1 against this page's 0.6 is a
      visibly brighter frame. Both are now right before anything is drawn. */
   const distance = distanceFor(tuning.focalLength, tuning.fill)
+  const narrow = useNarrow()
 
   return (
     <Canvas
-      dpr={[1, 2]}
+      /* **A phone does not get the desktop's sample count.** This is the one
+         full-window canvas on the screen, and at `devicePixelRatio` 2 with
+         multisampling on a handset it is several times the pixel work of
+         anything else the page does — paid every frame, behind a subject that
+         is drifting a few degrees. `MechSlots` already makes exactly this
+         trade for the bank (`dpr={narrow ? 1 : [1, 1.75]}`, no antialias); the
+         stage was the piece that never had it. 1.5 rather than 1 because
+         unlike a bay this is the thing being looked at. */
+      dpr={narrow ? [1, 1.5] : [1, 2]}
       frameloop={live ? 'always' : 'never'}
       camera={{ fov: fovForFocalLength(tuning.focalLength), position: [0, 0, distance] }}
       gl={{
         alpha: true,
-        antialias: true,
+        antialias: !narrow,
         toneMapping: ACESFilmicToneMapping,
         toneMappingExposure: tuning.exposure,
         outputColorSpace: SRGBColorSpace

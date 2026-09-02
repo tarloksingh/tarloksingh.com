@@ -11,6 +11,7 @@ import WyteCard from '../three/WyteCard'
 import { SpriteFlipbook } from '../three/CapsuleStage'
 import type { Mesh, MeshStandardMaterial } from 'three'
 import { drift, gaze } from './subject'
+import { useNarrow } from './narrow'
 import { PIECE_FALLBACK, PRODUCT_DEFAULTS, type PieceTuning, type ProductTuning } from './productTuning'
 import type { ReactNode } from 'react'
 import type { Group, PerspectiveCamera } from 'three'
@@ -338,17 +339,26 @@ export default function MechProduct({
 }) {
   const fill = piece.fill * piece.size
   const distance = distanceFor(piece.focalLength, fill)
+  const narrow = useNarrow()
 
   return (
     <Canvas
-      dpr={[1, 2]}
+      /* **A phone does not get the desktop's sample count.** This is the one
+         full-window canvas on the screen, and at `devicePixelRatio` 2 with
+         multisampling on a handset it is several times the pixel work of
+         anything else the page does — paid every frame, behind a subject that
+         is drifting a few degrees. `MechSlots` already makes exactly this
+         trade for the bank (`dpr={narrow ? 1 : [1, 1.75]}`, no antialias); the
+         stage was the piece that never had it. 1.5 rather than 1 because
+         unlike a bay this is the thing being looked at. */
+      dpr={narrow ? [1, 1.5] : [1, 2]}
       /* Stopped rather than unmounted while a still is on the stage — the
          same trade `MechModel` makes, and for the same reason: tearing down a
          WebGL context, a compiled shader set and a generated environment map
          costs most of a hundred milliseconds to build again. */
       frameloop={live ? 'always' : 'never'}
       camera={{ fov: fovForFocalLength(piece.focalLength), position: [0, 0, distance] }}
-      gl={{ alpha: true, antialias: true, toneMapping: ACESFilmicToneMapping, outputColorSpace: SRGBColorSpace }}
+      gl={{ alpha: true, antialias: !narrow, toneMapping: ACESFilmicToneMapping, outputColorSpace: SRGBColorSpace }}
       style={{ background: 'transparent' }}
     >
       {/* All of this is the *piece's*, not the studio's. One exposure and two

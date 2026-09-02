@@ -10,7 +10,6 @@ import MechLaser from './MechLaser'
 import Alarm from './Alarm'
 import MechHud from './MechHud'
 import MechTiles from './MechTiles'
-import MechGreeting, { shouldGreet } from './MechGreeting'
 import MechBank from './MechBank'
 import { slotOf } from './bank'
 import { useModelTuning } from './modelTuning'
@@ -1048,16 +1047,6 @@ export default function Mech({ id, onProject, onHome }: Props) {
      Name) went with the line-up they described. See `clusterTuning.ts`. */
   const cluster = useClusterTuning()
   const [booting, setBooting] = useState(true)
-  /* The note about the birds, and the press that dismisses it. It gates the
-     boot rather than running alongside it — see `MechGreeting.tsx` — so
-     `booting` stays true, and every entrance on the page stays held, until
-     this is true. It is also where the AudioContext gets its gesture.
-
-     Seeded from `shouldGreet`, so a visitor who saw the note in the last ten
-     minutes starts already past it and the boot runs on mount as it always
-     did. Read once in a lazy initialiser rather than in an effect: a note
-     that mounts and then removes itself on the next commit is a flash. */
-  const [greeted, setGreeted] = useState(() => !shouldGreet())
   const [lit, setLit] = useState<string | null>(null)
   /* `home` is the whole difference between the two states, and it is read
      off what is on screen rather than off the prop — during a retarget the
@@ -1143,18 +1132,16 @@ export default function Mech({ id, onProject, onHome }: Props) {
      `animation-fill-mode: both` until its delay runs out, which is the flash. */
   const leaving = phase === 'out'
 
-  /* The machine coming up, once — on the press that clears the note rather
-     than on arrival. Two things follow from waiting: the chime is audible,
-     because the context has just been opened by the same gesture (before
-     this, `sound.boot()` fired into a suspended context on every load and
-     was simply never heard), and the boot is watched rather than missed,
-     because nobody arrives mid-sequence with the page already half up. */
+  /* The machine coming up, once, on mount. `sound.boot()` fires into a
+     suspended `AudioContext` on a fresh load — nothing plays until the
+     visitor's first real gesture elsewhere resumes it (see `audio()` in
+     `sound.ts`, which resumes on every call) — but the visual boot runs
+     regardless. */
   useEffect(() => {
-    if (!greeted) return
     sound.boot()
     const timer = window.setTimeout(() => setBooting(false), BOOT_MS)
     return () => window.clearTimeout(timer)
-  }, [greeted])
+  }, [])
 
   /* The subject's canvas learns its size from a ResizeObserver, and a tab that
      is still in the background when the page loads throttles that observer's
@@ -1381,6 +1368,84 @@ export default function Mech({ id, onProject, onHome }: Props) {
     }
   }, [frames, narrow])
 
+  // Click-and-drag on the strip, and a plain mouse wheel turned sideways —
+  // `overflow-x: auto` alone only answers a trackpad's own horizontal
+  // gesture or a shift-scroll, which is not the reach a wide window's mouse
+  // makes first. Mouse only: `pointerType` gates every listener here, so a
+  // touch or pen leaves the browser's own momentum scroll alone rather than
+  // fighting a second one built by hand on top of it.
+  useEffect(() => {
+    const el = rail.current
+    if (!el) return
+
+    let dragging = false
+    let dragged = false
+    let startX = 0
+    let startScroll = 0
+
+    const onDown = (event: PointerEvent) => {
+      if (event.pointerType !== 'mouse') return
+      dragging = true
+      dragged = false
+      startX = event.clientX
+      startScroll = el.scrollLeft
+    }
+    const onMove = (event: PointerEvent) => {
+      if (!dragging) return
+      const dx = event.clientX - startX
+      // A real press is never pixel-still — the threshold has to clear
+      // ordinary mouse and trackpad wobble on a click, not just a
+      // deliberate drag, or every press reads as one and no tile is ever
+      // reachable by clicking.
+      if (!dragged && Math.abs(dx) > 10) {
+        dragged = true
+        /* **The capture is taken here and not on the press.** A captured
+           pointer retargets its own `click` to the capture element, so
+           taking it on `pointerdown` meant every click on the strip was
+           delivered to the strip rather than to the tile under the cursor
+           — which is exactly one tile-selection bug with a mouse and none
+           at all with a finger, because `pointerType` never lets a touch
+           in here. Taken once the drag is real, the retarget is what we
+           want: that click is one we were going to suppress anyway. */
+        el.setPointerCapture(event.pointerId)
+      }
+      el.scrollLeft = startScroll - dx
+    }
+    const onUp = (event: PointerEvent) => {
+      if (!dragging) return
+      dragging = false
+      if (el.hasPointerCapture(event.pointerId)) el.releasePointerCapture(event.pointerId)
+    }
+    // A press that turned into a drag should not also select the tile it
+    // let go over — captured ahead of the tile buttons' own click handlers
+    // rather than checked inside each of them.
+    const onClickCapture = (event: MouseEvent) => {
+      if (!dragged) return
+      event.stopPropagation()
+      event.preventDefault()
+    }
+    const onWheel = (event: WheelEvent) => {
+      if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return
+      el.scrollLeft += event.deltaY
+      event.preventDefault()
+    }
+
+    el.addEventListener('pointerdown', onDown)
+    el.addEventListener('pointermove', onMove)
+    el.addEventListener('pointerup', onUp)
+    el.addEventListener('pointercancel', onUp)
+    el.addEventListener('click', onClickCapture, true)
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => {
+      el.removeEventListener('pointerdown', onDown)
+      el.removeEventListener('pointermove', onMove)
+      el.removeEventListener('pointerup', onUp)
+      el.removeEventListener('pointercancel', onUp)
+      el.removeEventListener('click', onClickCapture, true)
+      el.removeEventListener('wheel', onWheel)
+    }
+  }, [frames])
+
   // The arrow keys step the rail, the same as clicking it.
   useEffect(() => {
     if (frames.length < 2) return
@@ -1525,22 +1590,14 @@ export default function Mech({ id, onProject, onHome }: Props) {
           What is left under the readout is the flat phosphor grid, which is
           the surface this panel is printed on and the one the reference has. */}
       <MechHud />
-      {/* The note about the birds, first, and the machine held down behind
-          it — see `greeted` above. */}
-      {!greeted && <MechGreeting onDone={() => setGreeted(true)} />}
 
       {/* The grid's cells dealt in from the middle of the window, once, while
           the rest of the machine comes up. It takes itself down when its own
           ripple is over rather than being cut off with the boot flag, which
           is a little shorter than the furthest cell needs — see `LIFE` in
-          `MechTiles.tsx`.
-
-          Mounted on the press rather than plainly: it runs once per page
-          load and its ripple is the first beat of the boot, so starting it
-          while the note is still up would spend the whole thing behind a
-          card. It has no exit to miss — every cell animates to nothing and
-          the layer removes itself. */}
-      {greeted && <MechTiles />}
+          `MechTiles.tsx`. It has no exit to miss — every cell animates to
+          nothing and the layer removes itself. */}
+      <MechTiles />
       <MechCursor />
       <MechBird />
       <MechMoth />
@@ -1849,11 +1906,19 @@ export default function Mech({ id, onProject, onHome }: Props) {
                to an ellipsis. One knob, both screens. */
             style={{ ['--cluster-slot' as string]: cluster.values.slot }}
             data-arrive
+            data-transiting={transiting}
           >
             <MechBank
               picked={slotOf(shownId)}
               onOpen={onProject}
-              up={!booting}
+              /* Down for the length of a retarget, not just the boot. `up` is
+                 what runs the deal — the timer that walks the subjects into
+                 their bays and, on the way out, back out of them — and the
+                 CSS beside it in MechCluster.css undeals the boxes on the
+                 same beats. Without this the bays kept their pictures while
+                 the boxes around them left, which is the one part of the
+                 handover a stylesheet cannot do. */
+              up={!booting && !transiting}
               covered={covered && transiting}
               narrow={narrow}
             />
@@ -1901,7 +1966,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
                 on it, which is exactly the change the scramble is for. */}
             {lede && (
               <>
-                <h1 className="mech-title">
+                <h1 className="mech-title" style={{ ['--title-cells' as string]: TITLE_CELLS }}>
                   <Segment text={lede.title} cells={TITLE_CELLS} align="left" warn back={transiting} label={lede.title} />
                 </h1>
                 {lede.tagline && (
