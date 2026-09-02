@@ -280,9 +280,12 @@ export const NOTES: Record<string, Note[]> = {
     { label: 'clip', value: 'Designed in Figma 2019.', at: [0.6177, 0.0376], to: [0.7295, -0.0997] },
     { label: 'made in', value: 'Version one (Openup).', fold: 'tools', at: [0.4038, 0.0371], to: [0.3133, -0.0673] }
   ],
+  'grand-theft-auto-v/model': [
+    { label: 'model', value: 'A modern weapon to represent GTA V', at: [0.6377, 0.2168], to: [0.7516, -0.0066] }
+  ],
   'grand-theft-auto-v/5.2.mp4': [
-    { label: 'clip', value: 'Scene I filmed for GTA DLC.', at: [0.94, 0.08], to: [1.0748, -0.1328] },
-    { label: 'made in', value: 'Made in Autodesk MotionBuilder.', fold: 'tools', at: [0.9702, 0.3417], to: [1.0771, 0.2368] }
+    { label: 'clip', value: 'Scene I filmed for GTA DLC.', at: [0.3469, 0.0257], to: [0.274, -0.1452] },
+    { label: 'made in', value: 'Made in Autodesk MotionBuilder.', fold: 'tools', at: [0.7568, 0.0294], to: [0.8172, -0.1316] }
   ],
   'grand-theft-auto-v/1.2.mp4': [
     { label: 'clip', value: 'Made in Autodesk MotionBuilder.', at: [0.9729, 0.2831], to: [1.0455, 0.127] }
