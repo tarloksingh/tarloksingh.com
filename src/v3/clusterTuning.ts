@@ -76,9 +76,9 @@ export interface ClusterTuning {
 }
 
 export const CLUSTER_DEFAULTS: ClusterTuning = {
-  y: -29,
+  y: 0,
   name: 1.56,
-  glow: 4.1,
+  glow: 5,
   slot: 80,
   tach: 1030,
   introY: 0,
