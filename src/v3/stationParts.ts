@@ -44,9 +44,9 @@ export interface StationParts {
  *  its corner and stood back, the monitor further back again and larger, so
  *  the three read as a counter rather than as a pile. */
 export const STATION_DEFAULTS: StationParts = {
-  register: { x: -0.39, y: -0.535, z: -0.325, scale: 0.74, turn: 54.5 },
-  reader: { x: 0.3, y: -0.525, z: 0.1, scale: 0.95, turn: -26.65 },
-  monitor: { x: 0.015, y: 0.05, z: -0.64, scale: 1.14, turn: -5 }
+  register: { x: -0.295, y: -0.35, z: -0.41, scale: 0.66, turn: 23 },
+  reader: { x: 0.17, y: -0.3, z: 0.1, scale: 0.67, turn: -26.65 },
+  monitor: { x: 0.015, y: 0.16, z: -0.64, scale: 0.85, turn: -5 }
 }
 
 let current: StationParts = STATION_DEFAULTS
