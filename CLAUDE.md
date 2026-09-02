@@ -63,7 +63,10 @@ being false (which is why `navigator.clipboard` does not exist — see
 | `MechDeck.tsx`, `sound.ts` | The music deck, and every synthesised sound |
 | `SplitReveal.tsx` | The tagline and fold titles, drawn in a character at a time |
 | `subject.ts` | Live facts shared across the Canvas boundary |
+| `subjects.ts` | **Which project has an object, named without loading one.** Imports nothing, and must not |
+| `Warmth.tsx` | The loader's report, and the signal that the 3D chunk has landed |
 | `modelTuning.ts`, `wallTuning.ts` | Leva panels, and the source they paste back |
+| `leva-prod.tsx` | Leva's stand-in in a build — see the alias in `vite.config.ts` |
 | `clipboard.ts` | Copying that works off localhost |
 
 **Still here, not mounted.** `MechCast.tsx`, `MechWave.tsx`,
@@ -259,12 +262,33 @@ drag and no tile is selectable. And `setPointerCapture` is taken in
 pointer retargets its own `click` to the capture element, which made tiles
 selectable with a finger and not with a mouse.
 
-**A phone is still slow to *load*, and that is open.** The boot's frame drop is
-dealt with and desktop is reported fine; what is left is bundle weight — `/v3`
-pulls a 1.6 MB (492 KB gzip) three.js chunk plus React before the boot has a
-frame to run in. Levers, and how to profile it without chasing noise, are in
-**Still slow to load on a phone** in `README.md`. Don't re-derive the frame-rate
-findings; they are written up there.
+**The splitting was not splitting, and now it is.** Opening `/v3` cost 692 KB
+gzipped (2.27 MB raw) of JavaScript before the boot had a frame to run in; it
+costs 103 KB (386 KB) now. Every `lazy()` on the page was decorative, because
+three, drei, leva and postprocessing were all reachable by *static* import from
+`Mech.tsx` — through `useProgress`, through `MechBank`, and through the tuning
+hooks — and **a dependency already in the eager chunk is not deferred by being
+imported again behind a boundary**. Five things changed and each is a trap on
+its own:
+
+- `Warmth.tsx` is a file of its own and lazy. `useProgress` is a drei export,
+  so importing it was importing three.
+- `MechBank` is lazy in `Mech.tsx` (`MechCluster` already carried it on home).
+- `bank.ts` gets `hasSubject` from **`subjects.ts`**, which imports nothing.
+  It used to take it from `MechSlots.tsx`. One predicate, the whole 3D stack.
+  Keep that file importing nothing.
+- `App.tsx` lazies the v2 `Site` — a `/v3` visitor was parsing all of v2.
+- `vite.config.ts` aliases `leva` to `src/v3/leva-prod.tsx` **in a build only**.
+  Not a hidden panel: the hooks' values *are* the layout, so the stub is a real
+  store with a working `set()`. `tsc` never checks it, so a divergence shows up
+  only in a build — read the note at the top of that file first.
+
+`primed` now waits for the chunk too (`heavy` / `CHUNK_CAP`), or the parse would
+simply land under the ripple instead of in front of it. Full account in **Still
+slow to load on a phone, and the splitting that was not splitting** and **Load
+first, then play** in `README.md`. Don't re-derive the frame-rate findings;
+they are written up there. The ~18 MB of GLBs home fetches is a real number and
+untouched — it is not what the stutter was.
 
 **The bank's canvas does not render until the bank is up.**
 `frameloop={up ? 'always' : 'never'}` in `MechSlots.tsx`. It used to draw

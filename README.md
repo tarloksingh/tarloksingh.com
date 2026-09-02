@@ -2585,47 +2585,105 @@ names. `getContext` (the `WebGLRenderer` constructor, blocking, inside a React
 commit) and `PMREMGenerator.fromScene` are the other two big ones at mount;
 both now land inside the `primed` hold below rather than under the ripple.
 
-### Still slow to load on a phone
+### Still slow to load on a phone, and the splitting that was not splitting
 
-Reported after all of the above, and it is worth writing down what is *not* the
-cause so the next pass does not re-derive it. The boot's frame drop is fixed —
-the bank's canvas no longer runs through it, the deck and the compass no longer
-write unchanged readings, the stage canvas no longer asks a handset for `dpr` 2
-with multisampling. Desktop is reported fine. A phone is still slow **on load**,
-which is a different complaint from the one the frame-rate work answered.
+Reported after all of the frame-rate work above, and it is a different
+complaint from the one that work answered: the boot's *frame drop* was fixed —
+the bank's canvas no longer runs through the boot, the deck and the compass no
+longer write unchanged readings, the stage canvas no longer asks a handset for
+`dpr` 2 with multisampling — and desktop was reported fine. A phone was still
+slow **on load**, and stuttered right at the start.
 
-The likeliest cause is simply the weight of the bundle, and the numbers are not
-subtle. `/v3` needs the three.js chunk, and every route-level chunk on the page
-imports it:
+It was the bundle, and the reason it was the bundle is worth reading carefully,
+because the code was already written as though this had been dealt with.
 
-| chunk | raw | gzip |
+**Every `lazy()` boundary on this page was decorative.** `MechCluster`,
+`MechModel`, `MechProduct`, `MechRider` are all behind `React.lazy`, and the
+comments beside them say what that is for: a visitor who lands straight on a
+project URL should never fetch home's eleven subjects, and nobody should fetch
+three.js before the page has painted. None of it worked. Three static imports
+put the whole 3D stack into the chunk that has to arrive before `Mech` renders
+at all, and **a dependency already in the eager chunk is not deferred by being
+imported a second time behind a boundary** — the boundary splits the module,
+not the module's dependencies.
+
+The three were:
+
+| where | what it dragged in |
+|---|---|
+| `Mech.tsx` — `useProgress` from `@react-three/drei` | all of drei, and three behind it |
+| `Mech.tsx` → `MechBank` → `MechSlots` / `MechRider` | three, drei **and** postprocessing |
+| `MechPanel.tsx` and ten `*Tuning.ts` hooks — `leva` | 211 kB of development panel |
+
+And a fourth, one level up: `App.tsx` imported the v2 `Site` **statically**, so
+a `/v3` visitor downloaded and parsed the whole of the old site inside the entry
+chunk before the router had decided not to render any of it.
+
+There was also a fifth path that looked like nothing at all. `bank.ts` — which
+`Mech.tsx` reaches on the first render of every screen — imported `hasSubject`
+from `MechSlots.tsx`, to answer one question: does this project have an object
+to stand in its bay, or does the slot read "no signal"? A one-line predicate,
+living in the file that imports three, drei and every piece. That is now
+`subjects.ts`, which **imports nothing** and holds both registries as plain
+data, and the heavy files read *it*. Keep it importing nothing: a single import
+of anything under `three/`, `@react-three/*` or `./MechProduct` reopens the trap
+and nothing on the page looks different when it does — the only symptom is half
+a megabyte arriving before first paint. `MechProduct`'s `PIECES` is keyed on
+`PieceId` from that file so the two registries cannot drift.
+
+What it costs to open `/v3`, before and after:
+
+| | raw | gzip |
 |---|---|---|
-| `Gallery3D-*.js` (three, r3f, drei) | 1.6 MB | 492 KB |
-| `index-*.js` (React and the router) | 348 KB | 123 KB |
-| `V3-*.js` | 188 KB | 57 KB |
+| before — `index` + `V3` + `Gallery3D` | 2.27 MB | 692 KB |
+| after — `index` + `V3` + `tracks` | 386 KB | 103 KB |
 
-That is around 670 KB gzipped to fetch and about 2 MB to parse and compile
-before the boot has a frame to run in. `primed` waits for it rather than
-animating over it, which is right, but waiting is not the same as not paying.
+Three, drei, leva and postprocessing are now genuinely on the far side of a
+boundary, fetched beside the boot instead of in front of it. The render-blocking
+stylesheet went from 8.4 kB gzipped to 0.6 kB with the same change, because v2's
+CSS left the entry chunk along with v2.
 
-Three levers, in the order they are probably worth trying:
+**Leva is aliased away in a build.** `vite.config.ts` points `leva` at
+`src/v3/leva-prod.tsx` when `command === 'build'`, and `npm run dev` gets the
+real package untouched. This is not a case of hiding a panel: every tuning hook
+calls `useControls`, and the values it returns *are* the layout, so leva was a
+static import of ten modules that run on a visitor's screen. The stub is the
+schema's own defaults, flattened out of its folders and held in state — a real
+store and not a constant, because `useProductTuning` and `useModelTuning`
+reseed their per-item folder with `set()` when the readout swings to another
+project, and a `set()` that did nothing would render every piece with the first
+project's tuning. It is the *panel* that is missing in production, not the
+values behind it. `MechPanel.tsx` is the only importer of leva's panel rather
+than its hooks, and it is lazy now for that reason.
 
-- **Split the three.js chunk by what a screen actually needs.** The home screen
-  needs the bank's eleven subjects; a project screen needs one model or one
-  piece. drei is imported broadly and pulls a great deal that no screen here
-  uses — check what `Gallery3D` actually contains before assuming it is all
-  three.js.
-- **Do not build the WebGL context inside a React commit.** The profile puts
-  `getContext` (the `WebGLRenderer` constructor) as the single largest blocking
-  call at mount, and `PMREMGenerator.fromScene` behind it. Both are synchronous
-  and both land in the commit phase. Neither has anything to do with the boot's
-  *animation* and both could happen off it.
+The trap in that alias is the usual one for a stub: `tsc` always resolves `leva`
+to the real package, so nothing in `leva-prod.tsx` is type-checked against its
+call sites, and a divergence appears in a production build and nowhere else.
+The whole surface is six exports. Read the note at the top of the file before
+using a leva API that is not already there.
+
+**What is left in the critical path**, in case the next pass wants it: the
+`tracks` chunk, 24 kB gzipped, which is the media glob — every asset URL for
+every project, reached through `MechDeck` and `model.ts`. It is real data the
+page uses. Beyond that the levers are the ones the profile named and neither is
+about bytes:
+
+- **Do not build the WebGL context inside a React commit.** `getContext` (the
+  `WebGLRenderer` constructor) is the single largest blocking call at mount and
+  `PMREMGenerator.fromScene` is behind it. Both are synchronous, both land in
+  the commit phase, and neither has anything to do with the boot's *animation*.
 - **`Track`'s per-frame forced layout**, which is mobile-only — see the note
   above and the one in `MechSlots.tsx`.
 
 None of this is guesswork about where the time goes: build with
 `--minify false` and take a CPU profile, as described above. What cannot be
 trusted from that environment is any number derived from a frame count.
+
+**Not the models.** Home's bank fetches about 18 MB of GLB — `gta-v-rifle.glb`
+alone is 8 MB with no geometry compression at all, and four of the seven models
+have none. That is a real number and it will matter on a connection rather than
+on a tailnet, but it is not what this pass was about and it is not the stutter:
+the stutter was reported before those files existed.
 
 ### Load first, then play
 
@@ -2636,12 +2694,32 @@ sequence on the site was scheduled against the busiest main thread it ever has,
 which is most of why it read as sluggish on a phone.
 
 So it waits. `primed` in `Mech.tsx` gates both `MechTiles` and the `BOOT_MS`
-countdown, and turns true when the fonts have resolved and three's loading
-manager has gone quiet — or at `WARM_CAP`, whichever is sooner. Nothing is lost
-on screen: what is behind the boot is the bare grid on black, which is what a
+countdown, and turns true when three things have happened — the 3D chunk has
+arrived, the fonts have resolved, and three's loading manager has gone quiet —
+each with a cap so none of them can hold the page for ever. Nothing is lost on
+screen: what is behind the boot is the bare grid on black, which is what a
 machine that has not been switched on should look like.
 
-Three parts of it are load-bearing.
+**The chunk is the newest of the three, and it is there because of the split.**
+Three, drei and leva used to be *static* imports of `Mech.tsx`, so that parse
+happened before this component existed and the boot never had to think about
+it — the page was simply blank for all of it. Now it lands beside the boot
+instead, which is the whole point, and so the boot has to decline to start
+underneath it or the ripple plays against exactly the traffic this gate exists
+to get out of. `heavy` is that wait, resolved by the same dynamic import
+`Warmth` is behind: importing that module is what fetches the chunk, and its
+promise resolving is what says the chunk is parsed. `CHUNK_CAP` is longer than
+`WARM_CAP` — it is a fetch of a known, large thing rather than a wait on
+something that may never come, and there is nothing to show until it lands in
+any case, because the bank and the subject are both inside it. See *the
+splitting that was not splitting* above.
+
+Four parts of it are load-bearing.
+
+**`Warmth` is a file of its own.** `useProgress` is a drei export, so a static
+import of it is a static import of three — twelve lines of subscription were
+what put half a megabyte in front of first paint. It is lazy now, and doubles
+as the signal that the chunk has landed.
 
 **`Warmth` is a leaf component.** drei's `useProgress` re-renders whoever
 subscribes on every progress tick, and the screen is not something to re-render

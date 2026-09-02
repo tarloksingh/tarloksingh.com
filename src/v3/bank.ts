@@ -1,5 +1,9 @@
 import { MENU } from './model'
-import { hasSubject } from './MechSlots'
+/* From `subjects.ts`, which imports nothing, and not from `MechSlots.tsx`,
+   which draws the subjects. This module is reached from `Mech.tsx` on the
+   first render of every screen; taking one predicate off the file that imports
+   three and drei put the whole 3D stack in front of first paint. */
+import { hasSubject } from './subjects'
 import type { Tag } from '../data/projects'
 
 /* ---- what the bank is made of ----

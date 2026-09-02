@@ -13,6 +13,7 @@ import type { Mesh, MeshStandardMaterial } from 'three'
 import { drift, gaze } from './subject'
 import { useNarrow } from './narrow'
 import { PIECE_FALLBACK, PRODUCT_DEFAULTS, type PieceTuning, type ProductTuning } from './productTuning'
+import type { PieceId } from './subjects'
 import type { ReactNode } from 'react'
 import type { Group, PerspectiveCamera } from 'three'
 
@@ -212,7 +213,12 @@ const FISH_MAN_FRAMES = Array.from(
    below), lights it in its own studio and takes its turn off a panel. What
    was actually wanted from that file is the eight components, and this is
    the shortest way to name them. */
-const PIECES: Record<string, () => ReactNode> = {
+/* Keyed on `PieceId` rather than on `string`, so this registry and the list of
+   ids in `subjects.ts` cannot drift: the bank asks that list whether a project
+   has anything to stand in its bay, and it has to be able to answer without
+   loading this file. A piece added on one side and not the other is a build
+   error rather than a slot that quietly reads "no signal". */
+const PIECES: Record<PieceId, () => ReactNode> = {
   /* `tuned` puts its three parts — register, reader, monitor — where the
      **Station** tab has them rather than where v2's case wanted them. See
      `stationParts.ts`. */
@@ -238,10 +244,6 @@ const PIECES: Record<string, () => ReactNode> = {
   'slider-engine': () => <SpriteFlipbook frames={FISH_MAN_FRAMES} fps={12} scale={1} />
 }
 
-/** Whether a project has a piece built for it at all. Read by the home
- *  screen's bank, which puts every project's own subject in its slot. */
-export const hasPiece = (project: string) => project in PIECES
-
 /** Held still across a re-render. Building one of these is where a glTF gets
  *  requested and a video element gets made, and rebuilding it on every tick
  *  of a Leva slider is a fetch per frame.
@@ -251,7 +253,7 @@ export const hasPiece = (project: string) => project in PIECES
  *  one world unit, and nothing else: no studio, no camera, no surface tuning.
  *  Whatever mounts it lights it. */
 export function Piece({ project }: { project: string }) {
-  const node = useMemo(() => PIECES[project]?.() ?? null, [project])
+  const node = useMemo(() => PIECES[project as PieceId]?.() ?? null, [project])
   if (!node) return null
 
   /* Centred and normalised rather than placed. Every piece was built at

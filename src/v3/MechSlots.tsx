@@ -4,7 +4,11 @@ import { Center, Resize, useGLTF, View } from '@react-three/drei'
 import { ACESFilmicToneMapping, PMREMGenerator, type Group, type Texture } from 'three'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js'
-import { Piece, hasPiece } from './MechProduct'
+import { Piece } from './MechProduct'
+/* The paths only — the map itself lives in a module that imports nothing, so
+   that `bank.ts` can ask which projects have a subject without pulling this
+   file, and three.js behind it, into the eager chunk. See `subjects.ts`. */
+import { GLBS } from './subjects'
 import { useNarrow } from './narrow'
 
 /* ---- the subjects in the bank ----
@@ -55,24 +59,6 @@ import { useNarrow } from './narrow'
 
 const DRACO_PATH = '/draco/'
 
-/** Which projects have a GLB rather than a piece built out of primitives.
- *
- *  Solomon's rider is here rather than in `model.ts`'s `MODELS` because it is
- *  not a subject of the case study — the game is a sibling checkout and the
- *  file is copied in. `heroes.ts` had the same three, for the same reason. */
-const GLBS: Record<string, string> = {
-  'a-game': '/models/akira-rider.glb',
-  'mr-takahashi': '/models/adam-face.glb',
-  'capsule-c1': '/models/capsule-c1.glb',
-  /* The two games' subjects. They were pieces until the files arrived — and
-     the same piece, a `DiscHolder`, for both of them, so this bank held two
-     identical objects two rows apart. Keep these in step with `MODELS` in
-     `model.ts`: a project whose subject is a GLB on its own screen and a
-     primitive in its slot is a project that changes shape when you open it. */
-  'grand-theft-auto-v': '/models/gta-v-rifle.glb',
-  'red-dead-redemption-2': '/models/rdr2-revolver.glb'
-}
-
 /** How large a subject sits in its slot, and how it is turned to face out of
  *  it.
  *
@@ -97,11 +83,6 @@ const FIT: Record<string, { scale: number; turn: number; tilt: number; lift: num
 }
 
 const FALLBACK = { scale: 1, turn: 0.3, tilt: 0.05, lift: 0 }
-
-/** Whether a project has anything at all to stand in its slot. Visa is the
- *  only one that does not, and its slot says "no signal" rather than being
- *  left out of the bank — see `SlotBox` in MechCluster.tsx. */
-export const hasSubject = (id: string) => Boolean(GLBS[id]) || hasPiece(id)
 
 /** A GLB, centred and normalised to one world unit.
  *

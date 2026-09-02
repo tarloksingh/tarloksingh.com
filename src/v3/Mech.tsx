@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
-import MechPanel, { type PanelTab } from './MechPanel'
+import type { PanelTab } from './MechPanel'
 import Typed from './Typed'
 import Segment from './Segment'
 import MechBird from './MechBird'
@@ -10,8 +10,6 @@ import MechLaser from './MechLaser'
 import Alarm from './Alarm'
 import MechHud from './MechHud'
 import MechTiles from './MechTiles'
-import { useProgress } from '@react-three/drei'
-import MechBank from './MechBank'
 import { slotOf } from './bank'
 import { useModelTuning } from './modelTuning'
 import { useProductTuning } from './productTuning'
@@ -38,6 +36,12 @@ const RiderStage = lazy(() => import('./MechRider').then((m) => ({ default: m.Ri
 /* Development only — the render is behind `import.meta.env.DEV`, so a visitor
    never fetches this chunk. See `MechPins.tsx`. */
 const MechPins = lazy(() => import('./MechPins'))
+/* Development only, for the same reason and with a second one: it is the only
+   thing on the site that imports leva's *panel* rather than its hooks, and a
+   static import would put that in the production graph whatever the render
+   condition says. The tuning hooks reach leva through the alias in
+   `vite.config.ts` instead. See `MechPanel.tsx`. */
+const MechPanel = lazy(() => import('./MechPanel'))
 /* Narrow only, and a phone is the one place a chunk it never needs is worth
    not sending. See `MechFacts.tsx`. */
 const MechFacts = lazy(() => import('./MechFacts'))
@@ -46,6 +50,16 @@ const MechFacts = lazy(() => import('./MechFacts'))
    it — a visitor who lands straight on a project URL should never fetch any of
    that. See `MechSlots.tsx`. */
 const MechCluster = lazy(() => import('./MechCluster'))
+/* The rail of work down a project's right-hand margin. Lazy for the same
+   reason `MechCluster` is, and it has to be: `MechSlots` is inside it and
+   `MechRider` beside that, so a static import here put three, drei *and*
+   postprocessing in the chunk that has to arrive before anything paints —
+   which is what made every other `lazy()` on this page decorative. Home does
+   not render this one; it gets its bank from inside `MechCluster`. */
+const MechBank = lazy(() => import('./MechBank'))
+/* The loading manager's report, and the arrival of the 3D chunk itself — see
+   `Warmth.tsx` and *load first, then play* below. */
+const Warmth = lazy(() => import('./Warmth'))
 
 /* ---- what home used to be ----
 
@@ -954,22 +968,6 @@ function Source({ handed, onClose }: { handed: Handed; onClose: () => void }) {
   )
 }
 
-/** Reports whether three's loading manager has anything in flight.
- *
- *  A leaf, and deliberately: drei's `useProgress` re-renders whoever subscribes
- *  on every progress tick, and the screen is not something to re-render a few
- *  dozen times while it is trying to boot. Nothing is rendered here — the only
- *  output is the call upward. */
-function Warmth({ onLoading }: { onLoading: (active: boolean) => void }) {
-  const active = useProgress((state) => state.active)
-
-  useEffect(() => {
-    onLoading(active)
-  }, [active, onLoading])
-
-  return null
-}
-
 /** How long the machine takes to come up: the grid strikes on, the compass
  *  spins and settles, and only then do the leaders extend. Trimmed down from
  *  1500 — the subject (the model or the first still) uncovers at the same
@@ -994,6 +992,24 @@ const BOOT_MS = 1200
  *  to hold the page: a cold cache, a slow network, a font that never resolves,
  *  a loader that errors without telling anyone. The machine comes up. */
 const WARM_CAP = 1500
+
+/** And the same cap for the 3D chunk, which is a longer job than the rest of
+ *  the warm-up and is allowed to be.
+ *
+ *  Three, drei and everything under them are half a megabyte gzipped and a
+ *  couple of megabytes to parse, and that parse is synchronous main-thread
+ *  work. It used to happen *before* this component existed — it was a static
+ *  import — which is why the boot never had to think about it and why nothing
+ *  at all was on screen until it finished. Now it lands beside the boot
+ *  instead, so the boot has to decline to start under it, or the ripple plays
+ *  against exactly the traffic `primed` was written to get out of.
+ *
+ *  Longer than `WARM_CAP` because it is a fetch of a known, large thing rather
+ *  than a wait on something that may never come, and because there is nothing
+ *  to show until it arrives regardless — the bank and the subject are both
+ *  inside it. Still a cap: a chunk that never lands does not hold the grid on
+ *  black for ever. */
+const CHUNK_CAP = 4000
 
 /** How long to give the page to ask for anything at all before deciding there
  *  is nothing to wait for, in milliseconds.
@@ -1183,21 +1199,38 @@ export default function Mech({ id, onProject, onHome }: Props) {
      Everything heavy about this page mounts on the same frame the boot starts
      on, and the boot is the one sequence here whose whole job is to be smooth.
      So it waits: `primed` gates both the ripple (`MechTiles`) and the countdown
-     below, and turns true when the fonts have resolved and three's loading
-     manager has gone quiet — or at `WARM_CAP`, whichever is sooner.
+     below, and turns true when three things have happened — the 3D chunk has
+     arrived, the fonts have resolved, and three's loading manager has gone
+     quiet — each with a cap so that none of them can hold the page for ever.
 
-     `Warmth` is what watches the loader, and it is a leaf component for a
-     reason: drei's `useProgress` re-renders its subscriber on every progress
-     tick, and this screen is not a component you want re-rendered a few dozen
-     times while it is trying to come up. It reports once, upward.
+     **The chunk is the newest of the three and the one that matters most on a
+     phone.** Three, drei, leva and postprocessing used to be *static* imports
+     of this file, by way of `useProgress` and `MechBank`, so half a megabyte
+     gzipped was fetched and parsed before `Mech` existed and the page was
+     blank for all of it. It is behind `lazy()` now — which is what the
+     boundaries around `MechCluster` and `MechModel` always claimed to be doing
+     and could not, because a dependency already in the eager chunk is not
+     deferred by being imported again behind one. The grid paints as soon as
+     React does. The cost of that is that the parse now lands beside the boot
+     rather than in front of it, so the boot has to wait for it explicitly:
+     `heavy`, resolved by the same dynamic import `Warmth` is behind.
 
-     On home this settles almost immediately — the bank's eleven subjects are
-     not requested until `up`, which is `!booting`, so they queue up *behind*
-     the boot rather than under it. On a project deep link it is waiting for
-     that project's own model, which is exactly the load worth waiting for. */
+     `Warmth` is what watches the loader, and it is a leaf component in a file
+     of its own for a reason: drei's `useProgress` re-renders its subscriber on
+     every progress tick, and this screen is not a component you want
+     re-rendered a few dozen times while it is trying to come up. It reports
+     once, upward.
+
+     On home the loader settles almost immediately — the bank's eleven subjects
+     are not requested until `up`, which is `!booting`, so they queue up
+     *behind* the boot rather than under it. On a project deep link it is
+     waiting for that project's own model, which is exactly the load worth
+     waiting for. */
   const [primed, setPrimed] = useState(false)
   const [quiet, setQuiet] = useState(false)
   const [fonts, setFonts] = useState(false)
+  /** Whether the 3D chunk has been fetched and parsed — see `CHUNK_CAP`. */
+  const [heavy, setHeavy] = useState(false)
   /** Whether anything was ever asked for — see `WARM_GRACE`. */
   const asked = useRef(false)
 
@@ -1209,9 +1242,35 @@ export default function Mech({ id, onProject, onHome }: Props) {
     if (asked.current) setQuiet(true)
   }, [])
 
+  /* The 3D chunk, started on mount rather than left to whichever `lazy()`
+     renders first, so the fetch is under way from the first frame and the boot
+     has something definite to wait on. `import()` is memoised by the module
+     registry, so this and the `lazy()` boundaries above share one request. A
+     rejection counts as arrived: a chunk that failed to load is not going to
+     start loading again because the boot held out for it. */
   useEffect(() => {
     let alive = true
-    const cap = window.setTimeout(() => alive && setPrimed(true), WARM_CAP)
+    const done = () => {
+      if (alive) setHeavy(true)
+    }
+    void import('./Warmth').then(done, done)
+    const cap = window.setTimeout(done, CHUNK_CAP)
+    return () => {
+      alive = false
+      window.clearTimeout(cap)
+    }
+  }, [])
+
+  useEffect(() => {
+    let alive = true
+    /* The cap stops waiting for the two it covers rather than priming
+       outright, so it cannot start the ripple underneath a chunk that is still
+       parsing — that one has `CHUNK_CAP` of its own. */
+    const cap = window.setTimeout(() => {
+      if (!alive) return
+      setQuiet(true)
+      setFonts(true)
+    }, WARM_CAP)
     const grace = window.setTimeout(() => {
       if (alive && !asked.current) setQuiet(true)
     }, WARM_GRACE)
@@ -1228,7 +1287,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
   }, [])
 
   useEffect(() => {
-    if (!fonts || !quiet) return
+    if (!fonts || !quiet || !heavy) return
     /* Two frames, not zero. What has just finished loading has not been drawn
        yet — the first paint of a decoded texture or a compiled program is
        itself a frame of work, and starting the ripple on the same one puts it
@@ -1241,7 +1300,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
       cancelAnimationFrame(first)
       cancelAnimationFrame(second)
     }
-  }, [fonts, quiet])
+  }, [fonts, quiet, heavy])
 
   /* The machine coming up, once the page is primed. `sound.boot()` fires into a
      suspended `AudioContext` on a fresh load — nothing plays until the
@@ -1692,7 +1751,12 @@ export default function Mech({ id, onProject, onHome }: Props) {
           390-point window, and the one adjustment the narrow layout needs is
           the only tab left. */}
       {typeof document !== 'undefined' && import.meta.env.DEV
-        ? createPortal(<MechPanel tabs={panels} />, document.body)
+        ? createPortal(
+            <Suspense fallback={null}>
+              <MechPanel tabs={panels} />
+            </Suspense>,
+            document.body
+          )
         : null}
 
       <Source handed={handed} onClose={() => setHanded(null)} />
@@ -1710,7 +1774,11 @@ export default function Mech({ id, onProject, onHome }: Props) {
           `MechTiles.tsx`. It has no exit to miss — every cell animates to
           nothing and the layer removes itself. */}
       {primed && <MechTiles />}
-      <Warmth onLoading={onLoading} />
+      {/* Renders nothing and suspends until the 3D chunk lands, so a `null`
+          fallback is the whole of what it looks like either way. */}
+      <Suspense fallback={null}>
+        <Warmth onLoading={onLoading} />
+      </Suspense>
       <MechCursor />
       <MechBird />
       <MechMoth />
@@ -2021,20 +2089,26 @@ export default function Mech({ id, onProject, onHome }: Props) {
             data-arrive
             data-transiting={transiting}
           >
-            <MechBank
-              picked={slotOf(shownId)}
-              onOpen={onProject}
-              /* Down for the length of a retarget, not just the boot. `up` is
-                 what runs the deal — the timer that walks the subjects into
-                 their bays and, on the way out, back out of them — and the
-                 CSS beside it in MechCluster.css undeals the boxes on the
-                 same beats. Without this the bays kept their pictures while
-                 the boxes around them left, which is the one part of the
-                 handover a stylesheet cannot do. */
-              up={!booting && !transiting}
-              covered={covered && transiting}
-              narrow={narrow}
-            />
+            {/* The column keeps its own entrance either way, so the fallback
+                is the empty column rather than a placeholder — and by the time
+                the boot is over the chunk has landed, because `primed` waited
+                for it. See *load first, then play* above. */}
+            <Suspense fallback={null}>
+              <MechBank
+                picked={slotOf(shownId)}
+                onOpen={onProject}
+                /* Down for the length of a retarget, not just the boot. `up` is
+                   what runs the deal — the timer that walks the subjects into
+                   their bays and, on the way out, back out of them — and the
+                   CSS beside it in MechCluster.css undeals the boxes on the
+                   same beats. Without this the bays kept their pictures while
+                   the boxes around them left, which is the one part of the
+                   handover a stylesheet cannot do. */
+                up={!booting && !transiting}
+                covered={covered && transiting}
+                narrow={narrow}
+              />
+            </Suspense>
           </div>
         )}
 
