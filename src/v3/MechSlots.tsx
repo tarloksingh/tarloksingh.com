@@ -75,7 +75,10 @@ const BAY_DETAIL = 0.5
  *  disc case is mostly flat, so the same scale reads as two very different
  *  sizes on screen. Turned so the readable face of each one is toward the
  *  camera; a disc case seen edge-on is a line. */
-const FIT: Record<string, { scale: number; turn: number; tilt: number; lift: number }> = {
+const FIT: Record<
+  string,
+  { scale: number; turn: number; tilt: number; lift: number; flat?: boolean }
+> = {
   'a-game': { scale: 1.15, turn: -0.6, tilt: 0.06, lift: 0 },
   'mr-takahashi': { scale: 1.05, turn: 0, tilt: 0.02, lift: 0 },
   'capsule-c1': { scale: 1.05, turn: 0.5, tilt: 0.1, lift: 0 },
@@ -84,7 +87,9 @@ const FIT: Record<string, { scale: number; turn: number; tilt: number; lift: num
   stitchfam: { scale: 1.15, turn: 0.18, tilt: 0.02, lift: 0 },
   'red-dead-redemption-2': { scale: 1, turn: 0.42, tilt: 0.06, lift: 0 },
   'grand-theft-auto-v': { scale: 1, turn: -0.42, tilt: 0.06, lift: 0 },
-  'wyte-card': { scale: 1.1, turn: 0.5, tilt: 0.22, lift: 0 },
+  /* `flat`: a card is a plane, and a plane on a turntable is a line for half
+     of every revolution. It holds face-on and only breathes. */
+  'wyte-card': { scale: 1.15, turn: 0, tilt: 0.05, lift: 0, flat: true },
   'block-builder': { scale: 1, turn: 0.4, tilt: 0.1, lift: 0 },
   'slider-engine': { scale: 1.05, turn: 0, tilt: 0, lift: 0 }
 }
@@ -127,10 +132,12 @@ function Gltf({ src }: { src: string }) {
 const STEP_HZ = 12
 const STEP = 1 / STEP_HZ
 
-/** Radians a subject turns per second, constant and unrelated to selection —
- *  a full turn every fourteen seconds or so, slow enough to read as a subject
- *  on a turntable rather than a spinner. */
-const SPIN_RATE = 0.45
+/** Radians a subject turns per second, constant and unrelated to selection.
+ *  Driven off the shared clock rather than accumulated per subject — a
+ *  dropped frame on the boot used to make one slot's `+= RATE * STEP` fall
+ *  behind another's, so eleven subjects that should have been locked together
+ *  visibly slid apart. A full turn every ~5.5s. */
+const SPIN_RATE = 1.15
 
 function Drift({
   fit,
@@ -155,7 +162,7 @@ function Drift({
      a hard cut, because a WebGL view has no opacity for the slot's own CSS
      entrance to carry it on. It grows into the bay instead, on the same eased
      chase the selection uses — one mechanism, two jobs. */
-  const at = useRef({ spin: 0, scale: 0 })
+  const at = useRef({ scale: 0 })
   const nextTick = useRef(0)
 
   useFrame((state) => {
@@ -172,14 +179,16 @@ function Drift({
     // frame — the same shape at 12Hz as it was at 60.
     const k = 1 - Math.pow(0.001, STEP)
 
-    // The turn accumulates at a fixed rate, always — selection only grows
-    // the subject and brings it forward a little.
-    at.current.spin += SPIN_RATE * STEP
     at.current.scale += ((show ? (live ? fit.scale * 1.12 : fit.scale) : 0) - at.current.scale) * k
 
-    node.rotation.y = fit.turn + at.current.spin + Math.sin(t * 0.42 + fit.turn * 4) * 0.06
-    node.rotation.x = fit.tilt + Math.sin(t * 0.31 + fit.turn * 7) * 0.02
-    node.position.y = fit.lift + Math.sin(t * 0.53 + fit.turn * 9) * 0.022
+    // The pose is a pure function of the clock, quantised to the tick — every
+    // subject at exactly the same phase whatever the framerate, and a card
+    // (`flat`) simply does not accumulate the turn.
+    const q = Math.floor(t * STEP_HZ) / STEP_HZ
+    const spin = fit.flat ? 0 : SPIN_RATE * q
+    node.rotation.y = fit.turn + spin + Math.sin(q * 0.42 + fit.turn * 4) * 0.06
+    node.rotation.x = fit.tilt + Math.sin(q * 0.31 + fit.turn * 7) * 0.02
+    node.position.y = fit.lift + Math.sin(q * 0.53 + fit.turn * 9) * 0.022
     node.scale.setScalar(at.current.scale)
   })
 
