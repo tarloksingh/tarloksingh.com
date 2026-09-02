@@ -76,18 +76,18 @@ export interface ClusterTuning {
 }
 
 export const CLUSTER_DEFAULTS: ClusterTuning = {
-  y: 0,
+  y: -29,
   name: 1.56,
-  glow: 4.93,
+  glow: 4.1,
   slot: 80,
   tach: 1030,
   introY: 0,
-  profileSize: 12.5,
+  profileSize: 11,
   profileInk: 0.58,
-  bayFade: 12,
-  bayBlur: 0,
+  bayFade: 30,
+  bayBlur: 3,
   roleSize: 0.8,
-  roleTop: -1,
+  roleTop: 10,
   roleGap: 0
 }
 
