@@ -173,7 +173,26 @@ export const PIECE_FALLBACK: PieceTuning = {
  *  own composition, which is a readout with leader lines coming off it rather
  *  than a case in a room. */
 export const PIECE_DEFAULTS: Record<string, PieceTuning> = {
-  'mecha-station': { ...PIECE_FALLBACK, size: 1.05, turn: -20, liftY: 0 },
+  'mecha-station': {
+    ...PIECE_FALLBACK,
+    size: 0.92,
+    turn: 5.1,
+    liftY: 0.04,
+    focalLength: 85,
+    fill: 0.64,
+    exposure: 0.29,
+    envIntensity: 0,
+    keyIntensity: 40,
+    keyX: -7,
+    keyY: 7,
+    keyZ: -7.6,
+    fillIntensity: 40,
+    fillX: 5.5,
+    fillY: 0.9,
+    gloss: -0.36,
+    metal: -1,
+    reflects: 0
+  },
   /* A modelled iPhone 17 Pro Max rather than a rounded box with a video plane
      in front of it — `Phone17.tsx`. Its numbers are the two largest departures
      from the fallback studio on this panel and both are the handset:
@@ -260,7 +279,7 @@ const mergedPieces = Object.fromEntries(
     { ...PIECE_FALLBACK, ...PIECE_DEFAULTS[id], ...savedPieces[id] }
   ])
 )
-const live = { studio: { ...start }, pieces: mergedPieces, id: '' }
+const live = { studio: { ...start }, pieces: mergedPieces, id: '', current: { ...PIECE_FALLBACK } as PieceTuning }
 
 const keys = Object.keys(PRODUCT_DEFAULTS) as Array<keyof ProductTuning>
 const PIECE_KEYS = Object.keys(PIECE_FALLBACK) as Array<keyof PieceTuning>
@@ -296,11 +315,13 @@ export function useProductTuning(projectId: string) {
   const [values, set] = useControls(
     () => ({
       'Copy this one': button(() => {
-        // `values`, not `live.pieces[projectId]` — the write-back effect below
-        // only lands a render after this one, so on the same tick as a drag
-        // and a click the live table can still hold the previous settle.
-        const piece = { ...PIECE_FALLBACK, ...(values as PieceTuning) }
-        const text = `${pieceLine(projectId, piece)},`
+        /* `live`, never `projectId` / `values` straight: Leva reads this
+           schema once, so a raw closure here is frozen to whichever project
+           the panel first mounted under — home, or a deep link. That is how
+           "Copy this one" on Mecha Station was pasting
+           `'capsule-c1': { <fallback> }`. `live.id` and `live.current` are
+           re-pointed every render in the hook body below. */
+        const text = `${pieceLine(live.id, { ...PIECE_FALLBACK, ...live.current })},`
         void copyText(text)
         // eslint-disable-next-line no-console
         console.log(`[pieces] Paste this row into PIECE_DEFAULTS in src/v3/productTuning.ts:\n\n${text}`)
@@ -383,6 +404,13 @@ export function useProductTuning(projectId: string) {
     }),
     { store }
   ) as unknown as [ProductTuning & PieceTuning, (values: Partial<PieceTuning>) => void]
+
+  /* The copy button above closes over this file's schema, which Leva reads
+     once — so `live` is what stays current across a navigation, not a closure.
+     Set here in render, not in an effect, so a click on the same commit the
+     project changed still copies the right one. */
+  live.id = projectId
+  live.current = { ...PIECE_FALLBACK, ...(values as PieceTuning) }
 
   /* Which keys this panel actually declares — read off Leva's own values so
      it cannot drift out of step with the schema. `set()` throws on a key with

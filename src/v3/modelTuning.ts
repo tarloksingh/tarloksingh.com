@@ -357,6 +357,11 @@ const savedRigs = ((): Record<string, ModelTuning> => {
  *  the copy button reads these rather than closing over state a render
  *  behind. */
 const live: ModelTuning = { ...start }
+/* Which rig the panel is currently showing, and its live values — the copy
+   button closes over this file's schema, which Leva reads once, so a raw
+   `projectId` / `values` in the button is frozen to whichever model the panel
+   first mounted under. Re-pointed every render in the hook body. */
+const shown: { id: string; rig: ModelTuning } = { id: 'mr-takahashi', rig: { ...MODEL_DEFAULTS } }
 /* Every key filled from `MODEL_DEFAULTS` first, then the shipped rig, then
    whatever was last saved. A saved rig from before a field existed — `Place`
    was added to the schema after these scratchpads were first written — is a
@@ -415,12 +420,13 @@ export function useModelTuning(
   const seed = rigs[projectId] ?? MODEL_DEFAULTS
   const [values, setValues] = useControls(() => ({
     'Copy this one': button(() => {
-      // `values` rather than `rigs[projectId]`: the write-back effect below is
-      // keyed on a render after this one, so on the same tick as a drag and a
-      // click `rigs` can still hold the *previous* settle. The panel's own
-      // live values are never a beat behind what is on screen.
-      const rig = { ...MODEL_DEFAULTS, ...(values as ModelTuning) }
-      const text = `${rigLine(projectId, rig)},`
+      /* `shown`, not `projectId` / `values` — Leva reads this schema once, so
+         a raw closure is frozen to whichever model the panel first mounted
+         under. That is how the Subject tab handed back
+         `'capsule-c1': { <MODEL_DEFAULTS> }` after a navigation. `shown` is
+         re-pointed every render below. */
+      const rig = { ...MODEL_DEFAULTS, ...shown.rig }
+      const text = `${rigLine(shown.id, rig)},`
       void copyText(text)
       // eslint-disable-next-line no-console
       console.log(`[model] Paste this row into MODEL_RIGS in src/v3/modelTuning.ts:\n\n${text}`)
@@ -640,5 +646,11 @@ export function useModelTuning(
      Merging over the rig and then the defaults means an undeclared key falls
      back to a real number instead of `undefined`, whatever order the two
      models are opened in. */
-  return { ...MODEL_DEFAULTS, ...(rigs[projectId] ?? {}), ...values, store }
+  const merged = { ...MODEL_DEFAULTS, ...(rigs[projectId] ?? {}), ...values }
+  /* Set in render, not an effect, so a copy click on the same commit the model
+     changed still reads the one on screen. */
+  shown.id = projectId
+  shown.rig = merged as ModelTuning
+
+  return { ...merged, store }
 }
