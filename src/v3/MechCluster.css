@@ -818,7 +818,10 @@
      order (bar then label) still reads bottom-to-top / right-to-left. */
   flex-direction: row-reverse;
   align-items: center;
-  gap: calc(12 * var(--px));
+  gap: calc(14 * var(--px));
+  /* The row is exactly the dial's height, so the three stack on an even
+     rhythm whatever the label does. */
+  height: calc(92 * var(--px));
 }
 
 .mech-gauge-bar {
@@ -892,15 +895,18 @@
 }
 
 .mech-gauge-label {
-  font-size: calc(10 * var(--type));
-  letter-spacing: calc(1 * var(--type));
+  /* Same type as a project name in the bank (`.mech-slot-name`) — these read
+     as the same class of label and should be the same size. */
+  font-size: calc(11 * var(--type));
+  letter-spacing: calc(0.5 * var(--type));
+  line-height: 1;
   text-transform: uppercase;
   white-space: nowrap;
-  /* Left-set in a fixed box, so MILEAGE / RANGE / PULSE start on one edge
-     rather than ending flush against their dials. */
-  width: calc(96 * var(--px));
+  /* Left-set in a fixed box wide enough for the longest word, so MILEAGE /
+     RANGE / PULSE share a left edge and the dials share a right one. */
+  width: calc(116 * var(--px));
   text-align: left;
-  color: rgba(var(--accent-rgb), 0.8);
+  color: var(--accent);
 }
 
 /* ---- the rail ----
@@ -2027,6 +2033,12 @@
 .mech[data-narrow='true'] .mech-gauge {
   flex-direction: column;
   gap: calc(11 * var(--px));
+  height: auto;
+}
+
+.mech[data-narrow='true'] .mech-gauge-label {
+  width: auto;
+  text-align: center;
 }
 
 .mech[data-narrow='true'] .mech-display {
