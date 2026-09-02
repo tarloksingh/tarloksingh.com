@@ -2811,6 +2811,30 @@ And a fourth, one level up: `App.tsx` imported the v2 `Site` **statically**, so
 a `/v3` visitor downloaded and parsed the whole of the old site inside the entry
 chunk before the router had decided not to render any of it.
 
+**And v3 was standing on v2's reset without knowing it.** That fourth one was
+right, and it broke the project screen: `src/site/base.css` carries the global
+`*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box }`, and
+because `Site` was an eager import that rule reached `/v3` too. `src/v3/` has
+no `box-sizing` of its own anywhere — it never needed one, so nobody ever wrote
+one. Lazy-loading v2 took the reset off v3 along with it, and every box on the
+page silently became `content-box`.
+
+The symptom was the leaders, and it did not look like a reset at all: cards cut
+off mid-word at the right edge of their box, second lines sliced away, text
+sitting outside the frame that draws it. `.mech-leader-card` is
+`width: max-content; max-width: 100%` with 28 units of horizontal padding and a
+1.3 border, and under `content-box` that padding lands *outside* the cap — so
+the card grows past the seat and the `foreignObject` clips whatever sticks out.
+Measured on a 1379×841 window, the first card's content box went 204 → 250 and
+the third's 274 → 325, which also dropped it from three lines to two. Nothing in
+`leaders.ts`, `Mech.css` or the placement had changed by a character.
+
+The reset is declared in `V3.css` now, identical to `base.css`'s so the two
+agree wherever both are loaded. **The two versions are strangers and neither
+may depend on the other's stylesheet** — that is the rule the bug was breaking
+before anyone moved anything. If a v3 box ever starts measuring its padding on
+the outside, this is the first thing to check.
+
 There was also a fifth path that looked like nothing at all. `bank.ts` — which
 `Mech.tsx` reaches on the first render of every screen — imported `hasSubject`
 from `MechSlots.tsx`, to answer one question: does this project have an object

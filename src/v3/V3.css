@@ -5,6 +5,28 @@
    places that can overflow — the timeline and the open fold — scroll inside
    themselves instead of pushing the layout around. */
 
+/* ---- the reset ----
+
+   v3 had no reset of its own and never needed one: `App.tsx` imported `Site`
+   statically, so `src/site/base.css` was in the entry chunk and its global
+   `box-sizing: border-box` applied to this screen as much as to v2's. Making
+   `Site` lazy took v2 out of a v3 visitor's download — which is right — and
+   took the reset with it, which was not. Every box on the page silently became
+   `content-box`, so padding and borders started adding to widths instead of
+   fitting inside them, and the leader cards outgrew the `foreignObject` that
+   clips them.
+
+   Declared here rather than borrowed again, because the two versions are
+   strangers: v3 should not break when v2 moves. Identical to `base.css`'s, so
+   the two agree wherever both are loaded. */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
 .v3 {
   --bg: #000000;
   --white: #ffffff;
