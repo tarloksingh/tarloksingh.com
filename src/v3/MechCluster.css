@@ -787,64 +787,119 @@
    the three gauges a third of the frame away from the instrument they are read
    against, with nothing in between. Pulled in against the middle column
    instead, which is where a comparison belongs. */
+/* ---- the three gauges, as reactor dials ----
+
+   They were vertical cell strips — honest, and a straight rhyme with the
+   tachometer columns beside them, which was also the problem: two instruments
+   built out of the same part read as one instrument. These are arcs now, each
+   a 264-degree sweep of sixteen segments opening at the foot, a faint full
+   ring around it and a core in the middle that charges with the reading.
+
+   The drive signal did not change. `--lit` is still a segment count 0..16
+   written onto `.mech-gauge-bar` by the one rAF loop in `Counts`, and each
+   `<i>` still decides for itself whether it is under the level — the segments
+   are just placed on a circle now instead of a stack. `RISE`, `FALL` and the
+   settle `SWAY` are all as they were; so is the reduced-motion path. */
 .mech-counts {
   position: relative;
   flex: none;
-  width: var(--count-w);
   display: flex;
+  /* Stacked down the flank, hard against the instrument (the flank is
+     `align-items: flex-end`) — three concentric-looking dials rather than a
+     row of ticks. */
+  flex-direction: column;
   align-items: flex-end;
-  justify-content: space-between;
   gap: calc(20 * var(--px));
 }
 
 .mech-gauge {
   display: flex;
-  flex-direction: column;
+  /* Dial on the right, its word to the left of it — reversed so the markup
+     order (bar then label) still reads bottom-to-top / right-to-left. */
+  flex-direction: row-reverse;
   align-items: center;
-  gap: calc(9 * var(--px));
+  gap: calc(12 * var(--px));
 }
 
-/* Filled from the foot up — `column-reverse`, so the first cell in the markup
-   is the bottom one.
-
-   Which cells are lit is `--lit`, a cell count written onto this element from
-   the one loop that moves all three gauges. Each cell compares its own index
-   against it, so a reading that has moved costs one property write rather than
-   sixteen, and a reading that has not costs nothing at all. */
 .mech-gauge-bar {
   --lit: 0;
-  display: flex;
-  flex-direction: column-reverse;
-  gap: calc(2.5 * var(--px));
-  width: calc(46 * var(--px));
-  /* The tachometer's face, plus whatever the graph carries above it that these
-     do not.
+  /* Sixteen segments over this arc, opening at the bottom. `--step` is the
+     sweep divided by the fifteen gaps between them. */
+  --sweep: 264deg;
+  --seg0: -132deg;
+  --step: 17.6deg;
+  --dial: calc(92 * var(--px));
+  --radius: calc(38 * var(--px));
+  position: relative;
+  width: var(--dial);
+  height: var(--dial);
+}
 
-     The two blocks are aligned at the *top* — the reel of what I do sits level
-     with `INTRO` across the panel, which is the line the eye actually reads
-     along — so the bars have to be taller than the face to come down onto the
-     same floor as its columns. `--face` is the cell ladder (see `TACH_FACE` in
-     MechCluster.tsx); the constant is the head row the graph has and the reel
-     does not, measured off the built page because it is type and type does not
-     answer to `--px`. Both edges land on one line either way. */
-  height: calc((var(--face, 240) + 58) * var(--px));
+/* The faint ring the segments sit inside. */
+.mech-gauge-bar::before {
+  content: '';
+  position: absolute;
+  inset: calc(-4 * var(--px));
+  border-radius: 50%;
+  border: calc(1.4 * var(--px)) solid rgba(var(--accent-rgb), 0.14);
+}
+
+/* The core. Dim at rest, brighter the higher the reading — the dial charging
+   rather than a fixed dot. */
+.mech-gauge-bar::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(16 * var(--px));
+  height: calc(16 * var(--px));
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(
+    circle,
+    rgba(var(--accent-rgb), calc(0.18 + 0.035 * var(--lit))) 0%,
+    rgba(var(--accent-rgb), 0) 72%
+  );
+  box-shadow: 0 0 calc(11 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.06 * var(--g) * var(--lit)));
 }
 
 .mech-gauge-bar i {
+  /* The colour a segment burns — accent by default, warn for the redline
+     below. Set here so the two `background`/`box-shadow` lines are written
+     once. */
+  --seg-rgb: var(--accent-rgb);
   --on: clamp(0, calc(var(--lit) - var(--n)), 1);
-  flex: 1;
-  min-height: 0;
-  background: rgba(var(--accent-rgb), calc(0.11 + 0.89 * var(--on)));
-  box-shadow: 0 0 calc(5 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.55 * var(--g) * var(--on)));
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(5.5 * var(--px));
+  height: calc(13 * var(--px));
+  border-radius: calc(2.5 * var(--px));
+  transform: translate(-50%, -50%) rotate(calc(var(--seg0) + var(--n) * var(--step)))
+    translateY(calc(-1 * var(--radius)));
+  /* Unlit is a faint real tick so the empty arc still reads as an instrument;
+     lit is the full colour plus a hard glow. */
+  background: rgba(var(--seg-rgb), calc(0.13 + 0.87 * var(--on)));
+  box-shadow: 0 0 calc(7 * var(--px) * var(--g)) rgba(var(--seg-rgb), calc(0.72 * var(--g) * var(--on)));
+}
+
+/* The redline. The top four segments of every dial are the over-limit zone —
+   the same idea as the tachometer's red band, painted on the face whether the
+   needle is up there or not. `nth-last-child` because the segments are a fixed
+   sixteen and the last four are always the top of the arc. */
+.mech-gauge-bar i:nth-last-child(-n + 4) {
+  --seg-rgb: var(--warn-rgb);
 }
 
 .mech-gauge-label {
   font-size: calc(10 * var(--type));
-  /* Tighter than the other panel labels: "MILEAGE" is seven characters and
-     these three sit close together under bars the width of the word. */
   letter-spacing: calc(1 * var(--type));
   text-transform: uppercase;
   white-space: nowrap;
+  /* Left-set in a fixed box, so MILEAGE / RANGE / PULSE start on one edge
+     rather than ending flush against their dials. */
+  width: calc(96 * var(--px));
+  text-align: left;
   color: rgba(var(--accent-rgb), 0.8);
 }
 
@@ -1962,6 +2017,16 @@
   border-left: 0;
   border-right: 0;
   background: none;
+  /* A row across the layout down here, not a stack — and the word goes back
+     under the dial. */
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.mech[data-narrow='true'] .mech-gauge {
+  flex-direction: column;
+  gap: calc(11 * var(--px));
 }
 
 .mech[data-narrow='true'] .mech-display {
@@ -1983,10 +2048,11 @@
   gap: calc(3 * var(--px));
 }
 
-/* The counts' bars follow the face rather than the ladder down here, for the
-   same reason — see the note on the face above. */
+/* A touch larger on a phone, where there is width to spare and three of them
+   in a row. */
 .mech[data-narrow='true'] .mech-gauge-bar {
-  height: calc(200 * var(--px));
+  --dial: calc(104 * var(--px));
+  --radius: calc(44 * var(--px));
 }
 
 /* Gone on a phone. Product / Code / Brand are three dials reporting on the

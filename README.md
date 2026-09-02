@@ -391,6 +391,16 @@ rule is worth generalising on this screen: anything typed, scrambled or
 counted up wants its space reserved, because all three finish at a different
 size from where they start.
 
+**The counts are reactor dials now.** They were vertical cell strips, which
+rhymed a little too well with the tachometer columns beside them — two
+instruments built from the same part. Each is a 264° arc of sixteen segments
+opening at the foot, a faint ring around it, and a core that brightens with the
+reading. The top four segments burn `--warn` whatever the level: an over-limit
+band painted on the face, the same idea as the tach's red zone. The drive
+signal did not change — `--lit` is still a 0–16 count from the one rAF loop in
+`Counts`, each `<i>` still decides for itself, `RISE`/`FALL`/`SWAY` are as they
+were. `yrs / roles / recent` also became `mileage / range / pulse`.
+
 **The counts lost `PROJ LISTED`.** It was counting the list that is on the
 same screen — the rail's own head says "12 entries · pick one" a few hundred
 units to the right of it. `ROLES WORN` took the slot because it is the one
