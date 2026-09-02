@@ -384,33 +384,61 @@ const CURVE = Array.from({ length: TACH_COLS }, (_, i) => {
 /** A column's cells, as one gradient rather than twenty-six elements.
  *
  *  Two of these exist, one per colour, built once on the module and handed to
- *  every column as an inline `background-image`. The colour is left as a live
- *  `calc()` over `--on` — the column's own "has the sweep reached me" — so the
- *  string is the same for all twenty-two of them and only the custom property
- *  the rAF writes decides how bright any of it burns.
+ *  every column as an inline `background-image`. The colour is a live reading
+ *  of `--on` — the column's own "has the sweep reached me" — so the string is
+ *  the same for all thirty-four of them and only the custom property the rAF
+ *  writes decides how bright any of it burns.
  *
  *  Anchored to the foot of the column and never repeated: the stops are the
  *  ladder above, so cell three is the same height on a column of four as on a
- *  column of twenty-six. */
-const cellStack = (colour: string) => {
+ *  column of twenty-six.
+ *
+ *  ---- and why every stop in here is a plain token ----
+ *
+ *  **This string is resolved from scratch every time the column restyles, and
+ *  the column restyles every time the needle moves.** `--rev` is written on
+ *  the face, `--on` is derived from it per column, and thirty-four columns
+ *  then re-resolve whatever this expands to. It used to expand to a hundred
+ *  and four positions of `calc(N * var(--px))` and fifty-two colours of
+ *  `rgba(var(--accent-rgb), calc(...))` — call it three and a half thousand
+ *  calc-bearing tokens for one frame of a gauge sweeping.
+ *
+ *  Measured on a throttled handset, that made the tachometer the most
+ *  expensive thing on the page by a distance: fifty-seven style recalculations
+ *  touching under a hundred elements each, at **15.6ms apiece** — twelve times
+ *  the per-element cost of the passes that restyle the whole document — for
+ *  887ms of the six seconds it takes this page to come up.
+ *
+ *  Two things fix it and neither is visible:
+ *
+ *  **Positions are percentages.** `background-size` already declares the box
+ *  as `--face` frame units tall (`TACH_FACE`, which is what the ladder sums
+ *  to), so a stop at `at` frame units *is* `at / TACH_FACE` of the box. Same
+ *  pixels, no `calc()`, no `--px`.
+ *
+ *  **The colour is one registered custom property.** `--cell-ink` and
+ *  `--cell-warn` are declared with `@property … syntax: '<color>'` in
+ *  MechCluster.css, which is what makes the difference: a *registered*
+ *  property computes to a resolved colour once per element, and `var()`
+ *  substitutes that value. Unregistered, `var()` substitutes the token stream
+ *  instead and the `calc()` inside it is re-evaluated at all fifty-two stops.
+ *  A browser without `@property` falls back to exactly the old behaviour —
+ *  correct, and as slow as it was before. */
+const cellStack = (ink: string) => {
   const stops: string[] = []
   let at = 0
+  const pc = (units: number) => `${((units / TACH_FACE) * 100).toFixed(4)}%`
   for (let n = 0; n < TACH_ROWS; n += 1) {
     if (n) at += CELL_GAP
     const top = at + cellH(n)
-    stops.push(
-      `transparent calc(${at} * var(--px))`,
-      `${colour} calc(${at} * var(--px))`,
-      `${colour} calc(${top} * var(--px))`,
-      `transparent calc(${top} * var(--px))`
-    )
+    stops.push(`transparent ${pc(at)}`, `${ink} ${pc(at)}`, `${ink} ${pc(top)}`, `transparent ${pc(top)}`)
     at = top
   }
   return `linear-gradient(to top, ${stops.join(', ')})`
 }
 
-const CELLS_LIT = cellStack('rgba(var(--accent-rgb), calc(0.07 + 0.93 * var(--on)))')
-const CELLS_RED = cellStack('rgba(var(--warn-rgb), calc(0.09 + 0.91 * var(--on)))')
+const CELLS_LIT = cellStack('var(--cell-ink)')
+const CELLS_RED = cellStack('var(--cell-warn)')
 
 /** Where the needle idles, and the range it is blipped to. It spends longer
  *  wound up than resting on purpose: an instrument sitting at its stop is an

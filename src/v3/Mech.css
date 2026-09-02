@@ -1951,7 +1951,21 @@
   align-content: center;
   /* The same falloff `.mech-grid` has, for the same reason: an effect that
      reaches the corners of the window is a background, and this is a panel
-     lit from behind. */
+     lit from behind.
+
+     **This mask has been suspected twice and measured once. It is not the
+     cost.** The reasoning against it is sound as far as it goes — a mask makes
+     its subtree one rasterised layer, so five hundred cells animating
+     `opacity` and `transform` cannot be composited and are ticked on the main
+     thread instead, which a trace confirms: twelve thousand nine hundred style
+     invalidations on `<i>` attributed to `Animation`. It was replaced with a
+     per-cell alpha computed from the same offsets the delay uses, which drew
+     the same picture and halved that count. Over five runs on a 4× throttled
+     handset it changed the medians by about three per cent — inside the run to
+     run spread — because a style invalidation on a leaf `<i>` with four
+     declarations is cheap, and *how many* of them there are was never the
+     problem. See **what the boot actually costs** in README.md for what was.
+     Don't spend it again. */
   mask-image: radial-gradient(ellipse 82% 78% at 50% 50%, #000 25%, transparent 82%);
 }
 

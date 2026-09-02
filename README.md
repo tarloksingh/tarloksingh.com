@@ -2585,6 +2585,116 @@ names. `getContext` (the `WebGLRenderer` constructor, blocking, inside a React
 commit) and `PMREMGenerator.fromScene` are the other two big ones at mount;
 both now land inside the `primed` hold below rather than under the ripple.
 
+### What the boot actually costs
+
+The bundle work below cut what a phone has to *fetch*. It did not fix the
+stutter, and the reason is worth keeping: the two are different problems and
+only one of them was ever measured.
+
+**How this was measured, because none of it was guessable.** A real Chrome over
+CDP with `Emulation.setCPUThrottlingRate: 4` and a 430×900 device — a real GPU,
+so frame numbers mean something, unlike the headless runs warned about above —
+and every figure below is the median of six loads. Three instruments, in the
+order they were useful:
+
+- `Performance.getMetrics` for `RecalcStyleDuration` / `LayoutDuration`. This is
+  what pointed at style rather than layout, and it took one run.
+- `Tracing` with `disabled-by-default-devtools.timeline.invalidationTracking`,
+  which names the node and the reason for **every** style invalidation.
+- `Profiler` over a `--minify false` build, for self time by function.
+
+What came back, before anything was changed:
+
+| | |
+|---|---|
+| style recalculation | **1121ms** over 193 passes |
+| layout | 68ms |
+| script | 2395ms |
+| main thread busy | 4651ms of 6500 |
+| long tasks | 1853ms over 9 |
+| frames over 50ms | 21 |
+| worst frame | **1333ms** |
+
+Layout was already cheap. The cost was style recalculation and script, and the
+single most useful number in the whole exercise was this one, from bucketing
+recalc passes by how many elements they touched:
+
+```
+  <=  100 els:  57 passes   887ms  (15.6ms each)
+  <= 1200 els:   8 passes    62ms  ( 7.8ms each)
+  >  1200 els:   3 passes   146ms  (48.5ms each)
+```
+
+Fifty-odd elements costing **fifteen milliseconds** to restyle, when nineteen
+hundred cost forty-eight. Twelve times the per-element cost. That is not "the
+page is big", it is a handful of specific elements being pathological, and it
+narrows the search to almost nothing.
+
+**It was the tachometer, and it was one string.** A column's twenty-six cells
+are one `background-image` of a hundred and four gradient stops (`cellStack`).
+Every stop was `calc(N * var(--px))` for its position and every other one was
+`rgba(var(--accent-rgb), calc(0.07 + 0.93 * var(--on)))` for its colour. `--on`
+is derived per column from `--rev`, and `--rev` is written on the face by a rAF
+whenever the needle moves a whole column — so a sweeping gauge re-resolved
+about **three and a half thousand calc-bearing tokens per frame**, across
+thirty-four columns, and none of it changed anything but a brightness.
+
+Two changes, neither visible:
+
+- **Positions are percentages.** `background-size` already declares the box as
+  `--face` frame units tall, so a stop at `at` units *is* `at / TACH_FACE` of
+  the box. Same pixels, no `calc()`, no `--px`.
+- **The colour is a registered custom property.** `@property --cell-ink { syntax:
+  '<color>' }` in MechCluster.css. A *registered* property computes to one
+  resolved colour per element and `var()` substitutes the value; unregistered,
+  `var()` substitutes the token stream and the `calc()` inside is re-run at all
+  fifty-two stops. A browser without `@property` falls back to exactly the old
+  behaviour — correct, and as slow.
+
+Style recalculation: **1121ms → 516ms**. Frames over 50ms halved.
+
+**Then it was geometry, and it was being built for bays nobody could see.**
+With style out of the way the profile was clear: `toCreasedNormals` (594ms) plus
+`Vector3.dot` (666ms) — **1.26 seconds**, the largest single cost left. That is
+drei's `RoundedBox`, which extrudes a bevelled solid and then hashes every
+vertex against its neighbours to crease the corners. Six of the bank's eleven
+subjects are pieces built out of them and the till (`PosStation`) alone has ten.
+
+`useNear` already knew which bays were anywhere near the window — it was only
+being used to skip *drawing* them. It gates the build now as well, so on a
+phone a subject is made a screen before you reach it instead of eleven of them
+being made at once behind the boot. Wide is untouched: `near` is always true
+there. `mounted` only ever latches on, so nothing is rebuilt on the way back.
+
+Script: **2395ms → 664ms**. And the whole picture, six runs each:
+
+| | before | after |
+|---|---|---|
+| style recalculation | 1121ms | **511ms** |
+| script | 2395ms | **664ms** |
+| main thread busy | 4651ms | **2202ms** |
+| long tasks | 1853ms over 9 | **201ms over 3** |
+| frames drawn | 126 | **188** |
+| frames over 50ms | 21 | **5** |
+| p95 frame gap | 100ms | **34ms** |
+| worst frame | 1333ms | **101ms** |
+
+**And one thing that was tried, measured, and reverted.** The note above about
+the ripple's `mask-image` — that a masked subtree cannot have composited
+animations, so five hundred cells animating `opacity` and `transform` are ticked
+on the main thread — is *true*. The trace confirms it: 12,997 style
+invalidations on `<i>` attributed to `Animation`. It was replaced with a
+per-cell alpha computed from the offsets the delay already uses, which drew the
+same picture and halved that count. It changed the medians by about three per
+cent, inside the run-to-run spread. A style invalidation on a leaf `<i>` with
+four declarations is *cheap*; how many of them there are was never the problem.
+The mask is back, with the measurement written beside it in Mech.css. Don't
+spend it again.
+
+The lesson is the general one: the expensive thing was not the biggest thing, it
+was the most complicated thing being redone most often. Bucket the recalcs by
+element count before touching anything.
+
 ### Still slow to load on a phone, and the splitting that was not splitting
 
 Reported after all of the frame-rate work above, and it is a different

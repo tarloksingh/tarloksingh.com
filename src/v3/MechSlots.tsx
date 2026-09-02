@@ -283,13 +283,34 @@ function Environment() {
  *  does, which is `show` — the subject shrinks back out of its bay the way it
  *  grew into it. */
 export function SlotView({ id, live, arrive }: { id: string; live: boolean; arrive: boolean }) {
-  const [mounted, setMounted] = useState(arrive)
+  const narrow = useNarrow()
   const box = useRef<HTMLElement>(null)
-  const near = useNear(box, useNarrow())
+  const near = useNear(box, narrow)
+  const [mounted, setMounted] = useState(arrive && !narrow)
 
+  /* ---- and on a phone, only the ones you could be looking at ----
+
+     `near` gates the *build*, not just the render. Building a subject is the
+     expensive thing on this screen and it is not the GLBs: six of the eleven
+     are pieces made of drei `RoundedBox`es, and every one of those extrudes a
+     bevelled solid and then runs `toCreasedNormals` over it — a hash of every
+     vertex against its neighbours. Ten of them in the till alone. Profiled on
+     a throttled handset it came to **1.26 seconds** of main thread, the
+     largest single cost left on the page, and on a phone most of it was spent
+     on bays four screens down the rail that nobody had scrolled to.
+
+     `useNear` already knew which those were; it was only being used to skip
+     drawing them. It leads by a full viewport (`rootMargin`), so a bay builds
+     a screen before it arrives rather than under the thumb.
+
+     Wide is unchanged — `near` is always true there, so the deal mounts every
+     slot exactly as it did. And **`mounted` only ever latches on**: a subject
+     that has been built stays built, because unmounting one on the way out is
+     the cut the note above exists to avoid, and rebuilding it on the way back
+     would pay this cost twice. */
   useEffect(() => {
-    if (arrive) setMounted(true)
-  }, [arrive])
+    if (arrive && near) setMounted(true)
+  }, [arrive, near])
 
   return (
     <View ref={box} className="mech-slot-shot" index={1} visible={near}>
@@ -314,7 +335,13 @@ export function SlotView({ id, live, arrive }: { id: string; live: boolean; arri
  *  goes false and stops rendering it; the scene stays mounted, so coming back
  *  is a render and not a rebuild. */
 const useNear = (box: RefObject<HTMLElement | null>, narrow: boolean) => {
-  const [near, setNear] = useState(true)
+  /* False to begin with on narrow, and that matters now that this gates the
+     build as well as the render: starting true would let every slot latch
+     `mounted` on its first render, before the observer has had a chance to say
+     which of them are actually anywhere near the window. An
+     `IntersectionObserver` always reports once on observe, so nothing waits on
+     a callback that may not come. */
+  const [near, setNear] = useState(!narrow)
 
   useEffect(() => {
     if (!narrow) {

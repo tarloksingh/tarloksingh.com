@@ -262,6 +262,35 @@ drag and no tile is selectable. And `setPointerCapture` is taken in
 pointer retargets its own `click` to the capture element, which made tiles
 selectable with a finger and not with a mouse.
 
+**The boot's stutter was style, not bytes, and it is measured.** Cutting the
+bundle (below) fixed what a phone *fetches*; it did not fix the stutter. On a
+4× throttled 430×900 Chrome over CDP, median of six loads: main thread busy
+4651ms → **2202ms**, long tasks 1853ms → **201ms**, worst frame 1333ms →
+**101ms**, frames over 50ms 21 → **5**. Two causes, and neither was the one
+that had been suspected:
+
+- **The tachometer.** A column's cells are one `background-image` of 104
+  gradient stops, every position a `calc(N * var(--px))` and every colour an
+  `rgba(…, calc(… var(--on)))`. `--rev` moves, 34 columns restyle, ~3500
+  calc-bearing tokens are re-resolved per frame. Positions are percentages now
+  (`background-size` already declares the box) and the colours are **registered**
+  custom properties (`@property … syntax: '<color>'` in MechCluster.css) so
+  `var()` substitutes a resolved colour instead of a token stream. Style
+  recalculation 1121ms → 516ms.
+- **Geometry for bays nobody can see.** drei's `RoundedBox` runs
+  `toCreasedNormals` over every vertex, and six of the bank's eleven subjects
+  are built from them — ten in the till alone. 1.26s of main thread, most of it
+  for slots four screens down the rail. `useNear` gated *drawing*; it gates the
+  **build** now too (narrow only; wide is unchanged, and `mounted` only latches
+  on). Script 2395ms → 664ms.
+
+**The ripple's `mask-image` is not the cost, and this has now been measured.**
+The reasoning — a masked subtree cannot composite, so 500 cells tick on the
+main thread — is true, and worth about 3% (inside the noise). It was replaced
+with a per-cell alpha, measured, and reverted. The note is in `Mech.css`. Don't
+spend it again. Full account, including how to run the measurement, in **What
+the boot actually costs** in `README.md`.
+
 **The splitting was not splitting, and now it is.** Opening `/v3` cost 692 KB
 gzipped (2.27 MB raw) of JavaScript before the boot had a frame to run in; it
 costs 103 KB (386 KB) now. Every `lazy()` on the page was decorative, because

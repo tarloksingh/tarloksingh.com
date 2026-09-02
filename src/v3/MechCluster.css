@@ -676,8 +676,37 @@
    foot of the column, and exactly the face's own height, so cell three is the
    same height on a column of four as on a column of twenty-six and the grading
    reads across the graph rather than per bar. */
+/* ---- the two colours a cell can burn, resolved once each ----
+
+   `@property` is the whole point of these, and the reason is measured rather
+   than stylistic. A column's cells are one `background-image` of a hundred and
+   four stops (`cellStack` in MechCluster.tsx), and the column restyles every
+   time the needle moves. An *unregistered* custom property substitutes its
+   token stream, so `var(--cell-ink)` at fifty-two stops re-evaluated the
+   `calc()` fifty-two times, and thirty-four columns of that made the
+   tachometer 15.6ms of style recalculation per update — the single most
+   expensive thing on the page. Registered with a `<color>` syntax, each
+   computes to one resolved colour per element and `var()` substitutes the
+   value.
+
+   A browser with no `@property` falls back to the old behaviour: correct, and
+   as slow as it was. Nothing here changes what is on screen. */
+@property --cell-ink {
+  syntax: '<color>';
+  inherits: false;
+  initial-value: transparent;
+}
+
+@property --cell-warn {
+  syntax: '<color>';
+  inherits: false;
+  initial-value: transparent;
+}
+
 .mech-tach-col {
   --on: clamp(0, calc(var(--rev) * var(--cols, 22) - var(--i)), 1);
+  --cell-ink: rgba(var(--accent-rgb), calc(0.07 + 0.93 * var(--on)));
+  --cell-warn: rgba(var(--warn-rgb), calc(0.09 + 0.91 * var(--on)));
   flex: 1;
   min-width: 0;
   height: calc(var(--h, 0.5) * 100%);
