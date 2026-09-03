@@ -1179,8 +1179,7 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
         ['--role-size' as string]: tuning.roleSize,
         ['--role-top' as string]: tuning.roleTop,
         ['--role-gap' as string]: tuning.roleGap,
-        ['--profile-size' as string]: tuning.profileSize,
-        ['--profile-ink' as string]: tuning.profileInk
+        ['--profile-size' as string]: tuning.profileSize
       }}
     >
       {/* The name and the panel below it, as one group that centres in

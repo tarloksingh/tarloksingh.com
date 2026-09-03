@@ -47,11 +47,6 @@ export interface ClusterTuning {
   introY: number
   /** The intro paragraph's (`.mech-profile`) size, in `--type` units. */
   profileSize: number
-  /** The intro paragraph's ink: alpha on the phosphor accent. Its hue rides
-   *  `--accent` with everything else on the panel, so this is the only part of
-   *  its colour that is a matter of taste — 0.62 sits it behind the readings,
-   *  1 brings it level with them. */
-  profileInk: number
   /** How deep the soft edge on each bay runs, in frame units — the strip at
    *  the top and bottom of a slot where the subject fades and blurs into the
    *  panel instead of ending on the border. 0 is a hard cut. */
@@ -84,7 +79,6 @@ export const CLUSTER_DEFAULTS: ClusterTuning = {
   tach: 1030,
   introY: 0,
   profileSize: 11,
-  profileInk: 1,
   bayFade: 30,
   bayBlur: 3,
   roleSize: 0.8,
@@ -126,7 +120,6 @@ export function useClusterTuning() {
       tach: { value: start.tach, min: 500, max: 1190, step: 5, label: 'Instrument width' },
       introY: { value: start.introY, min: -40, max: 120, step: 1, label: 'Intro drop' },
       profileSize: { value: start.profileSize, min: 8, max: 18, step: 0.5, label: 'Intro size' },
-      profileInk: { value: start.profileInk, min: 0.2, max: 1, step: 0.01, label: 'Intro ink' },
       bayFade: { value: start.bayFade, min: 0, max: 80, step: 1, label: 'Bay edge fade' },
       bayBlur: { value: start.bayBlur, min: 0, max: 12, step: 0.5, label: 'Bay edge blur' },
       /* Narrow only, and labelled so — the same panel is open on both

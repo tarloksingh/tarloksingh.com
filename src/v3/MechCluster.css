@@ -439,10 +439,15 @@
      like `GAL. UNLEADED FUEL ONLY`, then at a bespoke cooler green — both
      read as a dull grey-green next to the lit readings. This is the only
      prose on the site, the one block that says what I actually do, and it
-     should burn exactly as bright as the words beside it. `--profile-ink`
-     still pulls it back and rides the `--g` bleed, but idles at 1. */
-  color: rgba(var(--accent-rgb), var(--profile-ink, 1));
-  text-shadow: 0 0 calc(12 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.4 * var(--profile-ink, 1) * var(--g)));
+     burns exactly as bright as the words beside it: solid `--accent`, the
+     same as `.mech-gauge-label`, with a lit-readout glow over it. No ink
+     knob any more — every value it ever had dimmed this below the gauges,
+     and a stale one in localStorage is why "make it brighter" kept not
+     taking. */
+  color: var(--accent);
+  text-shadow:
+    0 0 calc(6 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.55 * var(--g))),
+    0 0 calc(20 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.3 * var(--g)));
   font-size: calc(var(--profile-size, 11) * var(--type));
   line-height: 1.6;
 }
