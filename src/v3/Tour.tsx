@@ -84,16 +84,21 @@ export default function Tour({ flow, onClose }: { flow: Flow; onClose: () => voi
   stepRef.current = step
   const lastRef = useRef(last)
   lastRef.current = last
+  const boxRef = useRef(box)
+  boxRef.current = box
 
   useEffect(() => {
     if (steps.length === 0) finish()
   }, [steps, finish])
 
-  /* Each label starts in `enter` with nothing on screen — the mark, the line
-     and the word are all mounted in their folded state and only unfold once
-     the target's rect has arrived and painted for a frame. Flipping to `show`
-     before that (the bug in the first cut) mounted everything already open,
-     so it popped instead of animating. */
+  /* One effect drives a label's whole life. Splitting `hold → leave → next`
+     into a separate `vis`-keyed effect meant the advance timer was torn down
+     the instant `vis` flipped to `leave` and never re-armed — so the run
+     stuck on the first label. It all lives here now, on `[i]` alone.
+
+     `show` is held back until the target's rect has arrived (the mark, the
+     line and the word are mounted folded and only unfold then); flipping
+     early mounted everything already open and it popped. */
   useEffect(() => {
     if (!step) return
     setBox(null)
@@ -101,29 +106,39 @@ export default function Tour({ flow, onClose }: { flow: Flow; onClose: () => voi
     document
       .querySelector<HTMLElement>(step.target)
       ?.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' })
-  }, [i, step])
 
-  // The rect has landed and painted folded — now unfold.
-  useEffect(() => {
-    if (!step || !box || vis !== 'enter') return
-    const raf = requestAnimationFrame(() => setVis('show'))
-    return () => cancelAnimationFrame(raf)
-  }, [step, box, vis])
-
-  // Hold once it is open, then fold away and hand over.
-  useEffect(() => {
-    if (vis !== 'show' || !step) return
+    let raf = 0
+    let toLeave = 0
+    let toNext = 0
+    let done = false
     const hold = step.demo ? HOLD_DEMO : HOLD
-    const toLeave = window.setTimeout(() => setVis('leave'), hold)
-    const toNext = window.setTimeout(() => {
-      if (lastRef.current) finishRef.current()
-      else setI((n) => n + 1)
-    }, hold + LEAVE)
+
+    const waitForRect = () => {
+      if (done) return
+      if (!boxRef.current) {
+        raf = requestAnimationFrame(waitForRect)
+        return
+      }
+      // A frame in `enter` first, so the unfold actually transitions.
+      raf = requestAnimationFrame(() => {
+        if (done) return
+        setVis('show')
+        toLeave = window.setTimeout(() => setVis('leave'), hold)
+        toNext = window.setTimeout(() => {
+          if (lastRef.current) finishRef.current()
+          else setI((n) => n + 1)
+        }, hold + LEAVE)
+      })
+    }
+    raf = requestAnimationFrame(waitForRect)
+
     return () => {
+      done = true
+      cancelAnimationFrame(raf)
       window.clearTimeout(toLeave)
       window.clearTimeout(toNext)
     }
-  }, [vis, step])
+  }, [i, step])
 
   /* One rAF loop for the run, following the current target's rect — `Mech`
      re-renders often enough that a per-label effect was torn down before its

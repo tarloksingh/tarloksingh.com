@@ -4847,10 +4847,13 @@ puts the mark on it, and computes the anchor a short way out *and* along the
 edge so the connector runs at an angle; the line is one `<span>` rotated by
 that angle with `scaleX` for the draw-in, and the chip's word is split to one
 `<span>` per glyph, each folded flat and swung up on a staggered delay
-(reversed on the way out). The sequence is three effects — one arms `enter`,
-one flips to `show` **only once the target's rect has arrived and painted a
-frame folded** (flipping early was the pop in the first cut), one holds then
-leaves. A separate rAF loop follows the current target's rect, because a
+(reversed on the way out). One effect on `[i]` drives a label's whole life:
+arm `enter`, wait for the target's rect to arrive (everything is mounted
+folded and only unfolds then — flipping to `show` early was the pop in the
+first cut), `show`, hold, `leave`, hand over. It was briefly split so that
+`hold → leave → next` sat in its own `vis`-keyed effect, and the advance
+timer got torn down the instant `vis` flipped to `leave` — the run stuck on
+label one. A separate rAF loop follows the current target's rect, because a
 per-label follow was torn down by `Mech`'s re-renders before its frame landed.
 
 **Home's second label shoots for you, with the real gun.** `Demo` in
