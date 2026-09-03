@@ -19,14 +19,14 @@
 
 .mech-tour-dot {
   position: fixed;
-  width: 8px;
-  height: 8px;
-  margin: -4px 0 0 -4px;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
   border-radius: 50%;
-  background: #ff7a4d;
-  box-shadow: 0 0 9px 1px rgba(var(--tour-rgb), 0.85);
+  background: #ff8158;
+  box-shadow: 0 0 11px 2px rgba(var(--tour-rgb), 0.85);
   transform: scale(0);
-  transition: transform 380ms cubic-bezier(0.16, 0.84, 0.36, 1);
+  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* The ping — a ring that opens out of the dot and goes, the same read the
@@ -36,7 +36,7 @@
   position: absolute;
   inset: -3px;
   border-radius: 50%;
-  border: 1px solid rgba(var(--tour-rgb), 0.9);
+  border: 1.5px solid rgba(var(--tour-rgb), 0.9);
   opacity: 0;
 }
 
@@ -44,33 +44,33 @@
 
 .mech-tour-line {
   position: fixed;
-  height: 1.5px;
-  margin-top: -0.75px;
+  height: 2px;
+  margin-top: -1px;
   transform-origin: left center;
   transform: rotate(var(--a)) scaleX(0);
   background: linear-gradient(
     to right,
     rgba(var(--tour-rgb), 0) 0%,
-    rgba(var(--tour-rgb), 0.55) 22%,
+    rgba(var(--tour-rgb), 0.5) 20%,
     rgba(var(--tour-rgb), 1) 100%
   );
-  box-shadow: 0 0 7px rgba(var(--tour-rgb), 0.5);
-  transition: transform 420ms cubic-bezier(0.16, 0.84, 0.36, 1);
+  box-shadow: 0 0 8px rgba(var(--tour-rgb), 0.5);
+  transition: transform 520ms cubic-bezier(0.16, 0.84, 0.32, 1);
 }
 
-/* A bright head that runs along as the line draws in. */
+/* A bright head at the end of the line. */
 .mech-tour-line::after {
   content: '';
   position: absolute;
   right: -1px;
-  top: -1.75px;
-  width: 5px;
-  height: 5px;
+  top: -2px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background: #ffd9c8;
-  box-shadow: 0 0 8px 1px rgba(var(--tour-rgb), 0.9);
+  background: #ffe0d2;
+  box-shadow: 0 0 9px 1px rgba(var(--tour-rgb), 0.9);
   opacity: 0;
-  transition: opacity 160ms linear;
+  transition: opacity 200ms linear;
 }
 
 /* ---- the chip ---- */
@@ -78,23 +78,23 @@
 .mech-tour-chip {
   position: fixed;
   white-space: nowrap;
-  padding: 5px 10px 4px;
-  font-size: 10.5px;
+  padding: 7px 13px 6px;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.13em;
   text-transform: uppercase;
-  color: #ffe4d7;
-  background: rgba(14, 6, 3, 0.94);
-  border: 1px solid rgba(var(--tour-rgb), 0.75);
+  color: #ffe7dc;
+  background: rgba(16, 7, 4, 0.95);
+  border: 1px solid rgba(var(--tour-rgb), 0.78);
   border-radius: 3px;
   box-shadow:
-    0 6px 22px rgba(0, 0, 0, 0.55),
-    0 0 16px rgba(var(--tour-rgb), 0.22);
+    0 8px 26px rgba(0, 0, 0, 0.55),
+    0 0 18px rgba(var(--tour-rgb), 0.22);
   opacity: 0;
-  perspective: 320px;
+  perspective: 460px;
   transition:
-    opacity 260ms linear,
-    transform 380ms cubic-bezier(0.16, 0.84, 0.36, 1);
+    opacity 300ms ease-out,
+    transform 460ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .mech-tour-chip::before {
@@ -111,51 +111,52 @@
   );
 }
 
-/* Fold text — every glyph hangs down from its top edge and swings up into
-   place, one after the next; on the way out it swings the other way. */
+/* Fold text — each glyph is laid flat pointing away and swings up to face
+   you, one after the next; on the way out it folds the other way. */
 .mech-tour-glyph {
   display: inline-block;
-  transform-origin: 50% 0;
-  transform: rotateX(-92deg);
+  transform-origin: 50% 100%;
+  transform: rotateX(-90deg);
   opacity: 0;
   transition:
-    transform 360ms cubic-bezier(0.2, 0.75, 0.3, 1),
-    opacity 220ms linear;
+    transform 440ms cubic-bezier(0.2, 0.72, 0.24, 1),
+    opacity 260ms ease-out;
 }
 
-/* Anchor the chip by the corner the line meets, per edge. */
+/* Anchor the chip by the corner the line meets, per edge, and start it a
+   touch back toward the mark so it settles forward. */
 .mech-tour-chip[data-side='left'] {
-  transform: translate(-100%, -50%) scale(0.96);
+  transform: translate(-100%, -50%) translateX(10px) scale(0.92);
 }
 .mech-tour-chip[data-side='right'] {
-  transform: translate(0, -50%) scale(0.96);
+  transform: translate(0, -50%) translateX(-10px) scale(0.92);
 }
 .mech-tour-chip[data-side='top'] {
-  transform: translate(-50%, -100%) scale(0.96);
+  transform: translate(-50%, -100%) translateY(10px) scale(0.92);
 }
 .mech-tour-chip[data-side='bottom'] {
-  transform: translate(-50%, 0) scale(0.96);
+  transform: translate(-50%, 0) translateY(-10px) scale(0.92);
 }
 
-/* ---- entering ---- */
+/* ---- entering: dot, then line, then the box, then the word unfolds ---- */
 
 .mech-tour[data-anim='show'] .mech-tour-dot {
   transform: scale(1);
 }
 .mech-tour[data-anim='show'] .mech-tour-dot::after {
-  animation: mech-tour-ping 2s cubic-bezier(0.2, 0.7, 0.35, 1) 320ms infinite;
+  animation: mech-tour-ping 2s cubic-bezier(0.2, 0.7, 0.35, 1) 520ms infinite;
 }
 .mech-tour[data-anim='show'] .mech-tour-line {
   transform: rotate(var(--a)) scaleX(1);
-  transition-delay: 90ms;
+  transition-delay: 140ms;
 }
 .mech-tour[data-anim='show'] .mech-tour-line::after {
   opacity: 1;
-  transition-delay: 90ms, 420ms;
+  transition-delay: 620ms;
 }
 .mech-tour[data-anim='show'] .mech-tour-chip {
   opacity: 1;
-  transition-delay: 300ms;
+  transition-delay: 380ms;
 }
 .mech-tour[data-anim='show'] .mech-tour-chip[data-side='left'] {
   transform: translate(-100%, -50%) scale(1);
@@ -172,32 +173,32 @@
 .mech-tour[data-anim='show'] .mech-tour-glyph {
   transform: rotateX(0deg);
   opacity: 1;
-  transition-delay: calc(360ms + var(--gi) * 26ms);
+  transition-delay: calc(560ms + var(--gi) * 32ms);
 }
 
-/* ---- leaving: quicker, and reversed — the word folds away last-first, then
-   the line, then the dot ---- */
+/* ---- leaving: the word folds away last-first, then the box, the line, the
+   dot ---- */
 
 .mech-tour[data-anim='leave'] .mech-tour-glyph {
-  transform: rotateX(88deg);
+  transform: rotateX(90deg);
   opacity: 0;
-  transition-duration: 200ms;
-  transition-delay: calc((var(--n) - var(--gi)) * 16ms);
+  transition-duration: 240ms;
+  transition-delay: calc((var(--n) - var(--gi)) * 18ms);
 }
 .mech-tour[data-anim='leave'] .mech-tour-chip {
   opacity: 0;
-  transition-delay: 150ms;
-  transition-duration: 180ms;
+  transition-delay: 170ms;
+  transition-duration: 220ms;
 }
 .mech-tour[data-anim='leave'] .mech-tour-line {
   transform: rotate(var(--a)) scaleX(0);
-  transition-delay: 130ms;
-  transition-duration: 220ms;
+  transition-delay: 240ms;
+  transition-duration: 260ms;
 }
 .mech-tour[data-anim='leave'] .mech-tour-dot {
   transform: scale(0);
-  transition-delay: 220ms;
-  transition-duration: 180ms;
+  transition-delay: 360ms;
+  transition-duration: 200ms;
 }
 
 @keyframes mech-tour-ping {
@@ -223,9 +224,9 @@
   position: fixed;
   left: 0;
   top: 0;
-  width: 46px;
-  height: 31px;
-  margin: -15px 0 0 -23px;
+  width: 48px;
+  height: 33px;
+  margin: -16px 0 0 -24px;
   color: #e0562b;
   will-change: transform;
 }
@@ -250,12 +251,10 @@
   stroke-linejoin: round;
 }
 
-.mech-tour-bird[data-stage='fly'] .mech-wing-up,
-.mech-tour-bird[data-stage='brace'] .mech-wing-up {
+.mech-tour-bird[data-stage='fly'] .mech-wing-up {
   animation: mech-beat 0.1666s steps(1, end) infinite;
 }
-.mech-tour-bird[data-stage='fly'] .mech-wing-down,
-.mech-tour-bird[data-stage='brace'] .mech-wing-down {
+.mech-tour-bird[data-stage='fly'] .mech-wing-down {
   animation: mech-beat-alt 0.1666s steps(1, end) infinite;
 }
 
@@ -280,7 +279,8 @@
   .mech-tour-line,
   .mech-tour-chip,
   .mech-tour-glyph {
-    transition-duration: 1ms;
+    transition-duration: 1ms !important;
+    transition-delay: 0ms !important;
   }
   .mech-tour[data-anim='show'] .mech-tour-dot::after {
     animation: none;

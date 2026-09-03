@@ -4846,22 +4846,25 @@ panel, with its own colours. `Tour` picks the target edge with the most room,
 puts the mark on it, and computes the anchor a short way out *and* along the
 edge so the connector runs at an angle; the line is one `<span>` rotated by
 that angle with `scaleX` for the draw-in, and the chip's word is split to one
-`<span>` per glyph, each folded up from its top edge on a staggered delay
-(reversed on the way out). A per-label effect steps `enter → show → leave` on
-timers; one rAF loop follows the current target's rect, because a per-label
-follow was torn down by `Mech`'s re-renders before its frame landed.
+`<span>` per glyph, each folded flat and swung up on a staggered delay
+(reversed on the way out). The sequence is three effects — one arms `enter`,
+one flips to `show` **only once the target's rect has arrived and painted a
+frame folded** (flipping early was the pop in the first cut), one holds then
+leaves. A separate rAF loop follows the current target's rect, because a
+per-label follow was torn down by `Mech`'s re-renders before its frame landed.
 
 **Home's second label shoots for you, with the real gun.** `Demo` in
-`Tour.tsx` flies a bird across the top of the window under its own frame loop
-and registers it with `quarry` like any other creature. At the halfway mark
-the bird stalls and the demo dispatches a real `pointerdown` on `.mech` at its
-position — so `MechLaser` fires *its* bolt and *its* hit test brings the bird
-down. The bolt that kills it is the one the visitor would fire, not a
-lookalike drawn here; `kills.add()` / `sound.hit()` run from the creature's
-`hit`, exactly as `MechBird` does it, and the tally in the header ticks over
-while the "shoot anything" label is up. The stall is what makes it land: a
-demo cannot lead a target the way a player does, so the bird holds still for
-the third of a second the bolt is in the air.
+`Tour.tsx` flies a bird across the window at a steady pace under its own frame
+loop and registers it with `quarry` like any other creature. A third of the
+way across it dispatches a real `pointerdown` on `.mech` — not at the bird but
+*ahead* of it, where the bird will be once a bolt from the muzzle arrives
+(same flight-time easing `MechLaser` uses) — so `MechLaser` fires *its* bolt
+and *its* hit test catches the bird in the air. The bolt that kills it is the
+one the visitor would fire, not a lookalike drawn here; `kills.add()` /
+`sound.hit()` run from the creature's `hit`, exactly as `MechBird` does it,
+and the tally ticks over while the "shoot anything" label is up. A 0.55s
+backstop drops the bird regardless, so a near-miss on the hit test still lands
+the demonstration.
 
 ### Nothing stutters on a swap
 

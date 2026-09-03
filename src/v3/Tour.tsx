@@ -44,15 +44,15 @@ const STEPS: Record<Flow, Step[]> = {
   ]
 }
 
-const HOLD = 1900
-const HOLD_DEMO = 3000
-const ENTER = 460
-const LEAVE = 320
+const HOLD = 2000
+const HOLD_DEMO = 3200
+/** Time from `leave` starting to the next label — covers the fold-out. */
+const LEAVE = 620
 
 /** How far the line runs out from the mark, and how far it leans along the
  *  edge — the lean is what keeps it from being a plain perpendicular tick. */
-const OUT = 40
-const LEAN = 24
+const OUT = 54
+const LEAN = 32
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
 const near = (a: number, b: number) => Math.abs(a - b) < 0.5
@@ -89,7 +89,11 @@ export default function Tour({ flow, onClose }: { flow: Flow; onClose: () => voi
     if (steps.length === 0) finish()
   }, [steps, finish])
 
-  /* Each label: settle onto its mark, draw in, hold, fold out, hand over. */
+  /* Each label starts in `enter` with nothing on screen — the mark, the line
+     and the word are all mounted in their folded state and only unfold once
+     the target's rect has arrived and painted for a frame. Flipping to `show`
+     before that (the bug in the first cut) mounted everything already open,
+     so it popped instead of animating. */
   useEffect(() => {
     if (!step) return
     setBox(null)
@@ -97,21 +101,29 @@ export default function Tour({ flow, onClose }: { flow: Flow; onClose: () => voi
     document
       .querySelector<HTMLElement>(step.target)
       ?.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' })
+  }, [i, step])
 
-    const hold = step.demo ? HOLD_DEMO : HOLD
+  // The rect has landed and painted folded — now unfold.
+  useEffect(() => {
+    if (!step || !box || vis !== 'enter') return
     const raf = requestAnimationFrame(() => setVis('show'))
-    const toLeave = window.setTimeout(() => setVis('leave'), ENTER + hold)
+    return () => cancelAnimationFrame(raf)
+  }, [step, box, vis])
+
+  // Hold once it is open, then fold away and hand over.
+  useEffect(() => {
+    if (vis !== 'show' || !step) return
+    const hold = step.demo ? HOLD_DEMO : HOLD
+    const toLeave = window.setTimeout(() => setVis('leave'), hold)
     const toNext = window.setTimeout(() => {
       if (lastRef.current) finishRef.current()
       else setI((n) => n + 1)
-    }, ENTER + hold + LEAVE)
-
+    }, hold + LEAVE)
     return () => {
-      cancelAnimationFrame(raf)
       window.clearTimeout(toLeave)
       window.clearTimeout(toNext)
     }
-  }, [i, step])
+  }, [vis, step])
 
   /* One rAF loop for the run, following the current target's rect — `Mech`
      re-renders often enough that a per-label effect was torn down before its
@@ -186,8 +198,8 @@ export default function Tour({ flow, onClose }: { flow: Flow; onClose: () => voi
             ? { x: LEAN, y: -OUT }
             : { x: LEAN, y: OUT }
     const anchor = {
-      x: clamp(dot.x + offset.x, 140, vw - 140),
-      y: clamp(dot.y + offset.y, 58, vh - 58)
+      x: clamp(dot.x + offset.x, 160, vw - 160),
+      y: clamp(dot.y + offset.y, 66, vh - 66)
     }
     const len = Math.hypot(anchor.x - dot.x, anchor.y - dot.y)
     const angle = (Math.atan2(anchor.y - dot.y, anchor.x - dot.x) * 180) / Math.PI
@@ -239,13 +251,21 @@ function Demo() {
     const vw = window.innerWidth
     const vh = window.innerHeight
 
-    const pos = { x: -vw * 0.12, y: vh * 0.17 }
-    const aimAt = vw * 0.6
-    const cruise = (aimAt - pos.x) / (calm ? 0.5 : 1.35) // px/s to reach the stall point
-    let vx = cruise
+    // A steady crossing, left to right, never stopping — the shot is led, the
+    // way a real one has to be, so the bird keeps flying and the bolt catches
+    // it in the air rather than the bird waiting to be hit.
+    const rightward = true
+    const dir = rightward ? 1 : -1
+    const speed = (calm ? 900 : 430) * Math.max(0.5, Math.min(1.4, vw / 1600))
+    const flyY = vh * (calm ? 0.22 : 0.18)
+    const pos = { x: rightward ? -70 : vw + 70, y: flyY }
+    const fireX = rightward ? vw * 0.34 : vw * 0.66
+    const muzzle = { x: vw / 2, y: vh }
+
+    let vx = speed * dir
     let vy = 0
     let spin = 0
-    let stage: 'fly' | 'brace' | 'fall' = 'fly'
+    let stage: 'fly' | 'fall' = 'fly'
     let shot = false
     let shotAt = 0
     let alive = true
@@ -260,8 +280,8 @@ function Demo() {
         sound.hit()
         kills.add()
         stage = 'fall'
-        vx = (Math.random() - 0.3) * 120
-        vy = -60
+        vx = dir * 90 + (Math.random() - 0.5) * 80
+        vy = -70
         return true
       }
     }
@@ -271,7 +291,7 @@ function Demo() {
       const el = wrap.current
       if (el) {
         el.dataset.stage = stage
-        el.style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0) rotate(${spin}deg)`
+        el.style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0) rotate(${spin}deg) scaleX(${dir})`
       }
     }
 
@@ -284,33 +304,33 @@ function Demo() {
 
       if (stage === 'fly') {
         pos.x += vx * dt
-        pos.y = vh * 0.17 + Math.sin(elapsed * 3) * 10
-        if (!shot && pos.x >= aimAt) {
+        pos.y = flyY + Math.sin(elapsed * 2.6) * 12
+
+        if (!shot && dir * (pos.x - fireX) >= 0) {
           shot = true
           shotAt = elapsed
-          stage = 'brace'
-          vx = 0
+          // Lead it: where the bird will be when a bolt from the muzzle
+          // reaches it. Flight time is the same easing `MechLaser` uses.
+          const rough = Math.hypot(pos.x - muzzle.x, pos.y - muzzle.y)
+          const flight = Math.max(0.09, Math.min(0.34, rough / 3200))
+          const leadX = pos.x + vx * flight
           document.querySelector('.mech')?.dispatchEvent(
             new PointerEvent('pointerdown', {
               pointerType: 'mouse',
               button: 0,
-              clientX: pos.x,
+              clientX: leadX,
               clientY: pos.y,
               bubbles: true
             })
           )
         }
-      } else if (stage === 'brace') {
-        pos.y = vh * 0.17 + Math.sin(elapsed * 3) * 10
-        // If the real bolt has not connected by the time it would have
-        // crossed the screen, bring the bird down anyway — the point is the
-        // demonstration, not the ballistics.
-        if (elapsed - shotAt > 0.6) self.hit()
+        // Backstop, in case the bolt's own hit test just misses.
+        if (shot && elapsed - shotAt > 0.55) self.hit()
       } else {
         vy += 1500 * dt
         pos.x += vx * dt
         pos.y += vy * dt
-        spin += 520 * dt
+        spin += 560 * dt
       }
       draw()
     }
