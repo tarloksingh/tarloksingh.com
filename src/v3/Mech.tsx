@@ -1332,12 +1332,13 @@ export default function Mech({ id, onProject, onHome }: Props) {
 
   /* ---- the tour ----
 
-     Two guided runs, one per screen kind, each shown once per browser and
-     then only on request. A wife opened this and did not know there was
-     anything to do — the rail is pressable, the range is shootable, and
-     neither says so. `Tour` (portalled, `Tour.css`) dims the screen and
-     opens a hole over one thing at a time. `tour` is which run is live;
-     it is cleared on every navigation so a run never outlives its screen. */
+     Two runs, one per screen kind, each shown once per browser and then only
+     on request. Someone opened this and did not know there was anything to do
+     — the rail is pressable, the range is shootable, and neither says so.
+     `Tour` (portalled, `Tour.css`) points a short transient label at one
+     thing at a time, leader-line style, and never blocks the pointer. `tour`
+     is which run is live; it is cleared on every navigation so a run never
+     outlives its screen. */
   const [tour, setTour] = useState<Flow | null>(null)
   const closeTour = useCallback(() => setTour(null), [])
   const homeTourFired = useRef(false)
@@ -1351,14 +1352,17 @@ export default function Mech({ id, onProject, onHome }: Props) {
   useEffect(() => {
     if (!home || booting || !primed || homeTourFired.current || tourSeen('home')) return
     homeTourFired.current = true
-    const t = window.setTimeout(() => setTour('home'), 750)
+    // After the boot and the cluster's own arrival — the labels are a second
+    // layer of motion and land once the first has finished.
+    const t = window.setTimeout(() => setTour('home'), 1600)
     return () => window.clearTimeout(t)
   }, [home, booting, primed])
 
   useEffect(() => {
     if (home || booting || phase !== 'in' || projectTourFired.current || tourSeen('project')) return
     projectTourFired.current = true
-    const t = window.setTimeout(() => setTour('project'), 1100)
+    // Past the cover lift and the first fold opening itself (`OVERVIEW_MS`).
+    const t = window.setTimeout(() => setTour('project'), 1700)
     return () => window.clearTimeout(t)
   }, [home, booting, phase])
 

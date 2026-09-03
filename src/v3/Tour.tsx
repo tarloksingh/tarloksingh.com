@@ -6,77 +6,64 @@ import { kills } from './kills'
 import { markTourSeen, type Flow } from './tourState'
 import './Tour.css'
 
-/* ---- showing a visitor around ----
+/* ---- pointing a few things out ----
 
-   A short spotlight run: the rest of the screen dims, a rounded hole opens
-   over one thing at a time, and a card beside it says what that thing is.
-   Two runs — `home` points at the rail of work and at the range; `project`
-   points at the write-up and at the media strip — one card each on home's
-   second step doubles as a demonstration: a bird flies in and the panel
-   shoots it down on its own, so "click anything to fire" is shown rather
-   than only said.
+   Not a modal and nothing to click through — the same idea as the subject's
+   leader labels, one at a time: a dot lands on a thing, a short line draws out
+   to a word, it holds for a breath, and it leaves. The whole layer is
+   `pointer-events: none`, so a visitor is never boxed in; if they ignore it
+   and start pressing things, that is the point.
 
-   Portalled to `body`, above the readout and below the dev panel, with its
-   own colours — the accent tokens live on `.mech` and this is not inside it,
-   the same reason `.mech-source` carries its own. Every target is found by
-   selector at the moment its step opens; one missing (a project with no
-   media) is skipped rather than fatal. */
+   Two runs. `home` points at the rail of work and then at the range — where a
+   bird flies in and the panel shoots it down on its own, so "shoot anything"
+   is shown rather than only said. `project` points at the write-up and then
+   at the media strip. Each label's target is found by selector when its turn
+   comes; a missing one (a locked project with no strip) is skipped, and a run
+   with nothing left to point at marks itself seen and ends.
+
+   Portalled to `body` with its own colours — the accent tokens live on
+   `.mech` and none of this is inside it, the same reason `.mech-source`
+   carries its own. It starts only once `Mech.tsx` says the boot and the
+   opening animations are done. */
 
 type Step = {
   target: string
-  title: string
-  body: string
-  /** Home's range step: run the scripted bird. */
+  label: string
+  /** Home's range label: run the scripted bird alongside it. */
   demo?: boolean
 }
 
 const STEPS: Record<Flow, Step[]> = {
   home: [
-    {
-      target: '.mech-work-rail',
-      title: 'The work',
-      body: 'Every project on this site is a slot on this rail — on every screen, not just here. Press one to open it.'
-    },
-    {
-      target: '.mech-alarm',
-      title: 'The range',
-      body: 'There is always a bird or a moth crossing the panel. Click it — or anywhere on the screen — to shoot. This counter keeps the tally. Watch:',
-      demo: true
-    }
+    { target: '.mech-work-rail', label: 'Projects — press one' },
+    { target: '.mech-alarm', label: 'Shoot anything', demo: true }
   ],
   project: [
-    {
-      target: '.mech-folds',
-      title: 'The details',
-      body: 'What the project is, the part I played, and the stack it was built on. Press a heading to open it.'
-    },
-    {
-      target: '.mech-rail-wrap',
-      title: 'The material',
-      body: 'Stills and video from the project. Drag along the strip to move through them; press one to bring it onto the stage.'
-    }
+    { target: '.mech-folds', label: 'Project details' },
+    { target: '.mech-rail-wrap', label: 'Stills & video' }
   ]
 }
 
-const PAD = 12
-const CARD_W = 320
-const GAP = 18
+const HOLD = 1650
+const HOLD_DEMO = 2800
+const ENTER = 340
+const LEAVE = 240
 
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
 const near = (a: number, b: number) => Math.abs(a - b) < 0.5
 
 export default function Tour({ flow, onClose }: { flow: Flow; onClose: () => void }) {
-  /* Only the steps whose target is actually on the screen when the run
-     starts — a locked project has no media strip and sometimes no folds, and
-     a card that points at nothing is worse than one step fewer. The run
-     starts after the screen has settled, so a missing target here is a
-     genuinely absent one. */
+  /* Only the labels whose target is on the screen when the run starts. It
+     starts after everything has settled, so a missing target here is a
+     genuinely absent one — a locked project with no folds and no strip. */
   const [steps] = useState(() =>
     STEPS[flow].filter((s) => {
       const el = document.querySelector<HTMLElement>(s.target)
-      return el !== null && el.getBoundingClientRect().height > 20
+      return el !== null && el.getBoundingClientRect().height > 12
     })
   )
   const [i, setI] = useState(0)
+  const [vis, setVis] = useState<'enter' | 'show' | 'leave'>('enter')
   const [box, setBox] = useState<DOMRect | null>(null)
   const step = steps[i]
   const last = i >= steps.length - 1
@@ -86,52 +73,63 @@ export default function Tour({ flow, onClose }: { flow: Flow; onClose: () => voi
     onClose()
   }, [flow, onClose])
 
-  /* Nothing on this screen to point at — a locked project with no folds and
-     no strip. Mark it seen and get out rather than sit on an empty card. */
-  useEffect(() => {
-    if (steps.length === 0) finish()
-  }, [steps, finish])
-
-  /* One rAF loop for the whole run rather than one per step: `Mech` above
-     re-renders often enough that a per-step effect kept being torn down before
-     its frame landed, and the hole never opened. It reads the current step
-     off a ref, brings a fresh target into view once, then follows its rect —
-     a cheap read a frame, affordable for something this short-lived and
-     modal. A target that never resolves is a step with nothing to point at,
-     so move past it. */
+  const finishRef = useRef(finish)
+  finishRef.current = finish
   const stepRef = useRef(step)
   stepRef.current = step
   const lastRef = useRef(last)
   lastRef.current = last
-  const finishRef = useRef(finish)
-  finishRef.current = finish
 
   useEffect(() => {
+    if (steps.length === 0) finish()
+  }, [steps, finish])
+
+  /* Each label: settle onto its mark, draw in, hold, draw out, hand over. No
+     buttons — the sequence runs itself. */
+  useEffect(() => {
+    if (!step) return
+    setBox(null)
+    setVis('enter')
+    document
+      .querySelector<HTMLElement>(step.target)
+      ?.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' })
+
+    const hold = step.demo ? HOLD_DEMO : HOLD
+    const raf = requestAnimationFrame(() => setVis('show'))
+    const toLeave = window.setTimeout(() => setVis('leave'), ENTER + hold)
+    const toNext = window.setTimeout(() => {
+      if (lastRef.current) finishRef.current()
+      else setI((n) => n + 1)
+    }, ENTER + hold + LEAVE)
+
+    return () => {
+      cancelAnimationFrame(raf)
+      window.clearTimeout(toLeave)
+      window.clearTimeout(toNext)
+    }
+  }, [i, step])
+
+  /* One rAF loop for the run, following the current target's rect — `Mech`
+     re-renders often enough that a per-label effect was torn down before its
+     frame landed. A target that vanishes mid-label is dropped. */
+  useEffect(() => {
     let raf = 0
-    let tries = 0
-    let shown = ''
+    let misses = 0
     const loop = () => {
       raf = requestAnimationFrame(loop)
-      if (!stepRef.current) return
-      const target = stepRef.current.target
-      if (target !== shown) {
-        shown = target
-        tries = 0
-        document
-          .querySelector<HTMLElement>(target)
-          ?.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' })
-      }
-      const node = document.querySelector<HTMLElement>(target)
+      const current = stepRef.current
+      if (!current) return
+      const node = document.querySelector<HTMLElement>(current.target)
       if (!node) {
-        tries += 1
-        if (tries > 40) {
-          tries = 0
+        misses += 1
+        if (misses > 30) {
+          misses = 0
           if (lastRef.current) finishRef.current()
           else setI((n) => n + 1)
         }
         return
       }
-      tries = 0
+      misses = 0
       const r = node.getBoundingClientRect()
       setBox((was) =>
         was && near(was.left, r.left) && near(was.top, r.top) && near(was.width, r.width) && near(was.height, r.height)
@@ -146,80 +144,51 @@ export default function Tour({ flow, onClose }: { flow: Flow; onClose: () => voi
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') finish()
-      if (e.key === 'Enter' || e.key === 'ArrowRight') last ? finish() : setI((n) => n + 1)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [last, finish])
+  }, [finish])
 
-  const hole = box
-    ? {
-        left: box.left - PAD,
-        top: box.top - PAD,
-        width: box.width + PAD * 2,
-        height: box.height + PAD * 2
-      }
-    : null
-
-  /* Card below the hole if it fits, otherwise above; clamped to the window
-     with a small margin and centred on the target. */
-  const card = useMemo(() => {
+  /* Which edge of the target the label hangs off — whichever side has the
+     most room — and the point the line runs out from. */
+  const pointer = useMemo(() => {
+    if (!box) return null
     const vw = window.innerWidth
     const vh = window.innerHeight
-    if (!hole) return { left: vw / 2 - CARD_W / 2, top: vh / 2, place: 'below' as const }
-    const below = hole.top + hole.height + GAP
-    const fitsBelow = below + 150 < vh
-    const cx = hole.left + hole.width / 2
-    let left = cx - CARD_W / 2
-    left = Math.max(GAP, Math.min(left, vw - CARD_W - GAP))
-    return {
-      left,
-      top: fitsBelow ? below : Math.max(GAP, hole.top - GAP - 150),
-      place: fitsBelow ? ('below' as const) : ('above' as const)
+    const room: Record<'left' | 'right' | 'top' | 'bottom', number> = {
+      left: box.left,
+      right: vw - box.right,
+      top: box.top,
+      bottom: vh - box.bottom
     }
-  }, [hole])
+    const side = (['left', 'right', 'top', 'bottom'] as const).reduce((best, s) =>
+      room[s] > room[best] ? s : best
+    )
+    let x = box.left + box.width / 2
+    let y = box.top + box.height / 2
+    if (side === 'left') x = box.left
+    if (side === 'right') x = box.right
+    if (side === 'top') y = box.top
+    if (side === 'bottom') y = box.bottom
+    return { side, x: clamp(x, 26, vw - 26), y: clamp(y, 48, vh - 48) }
+  }, [box])
 
   if (!step) return null
 
   return createPortal(
-    <div className="mech-tour" role="dialog" aria-label="A quick tour">
-      <div className="mech-tour-veil" onClick={(e) => e.stopPropagation()} />
-
-      {hole && (
-        <div
-          className="mech-tour-hole"
-          style={{ left: hole.left, top: hole.top, width: hole.width, height: hole.height }}
-        />
-      )}
-
+    <div className="mech-tour" data-anim={vis} aria-hidden>
       {step.demo && <Demo />}
-
-      <div
-        className="mech-tour-card"
-        data-place={card.place}
-        style={{ left: card.left, top: card.top, width: CARD_W }}
-      >
-        <span className="mech-tour-count">
-          {i + 1} / {steps.length}
-        </span>
-        <h2>{step.title}</h2>
-        <p>{step.body}</p>
-        <div className="mech-tour-row">
-          <button className="mech-tour-skip" onClick={finish}>
-            {last ? 'Close' : 'Skip'}
-          </button>
-          {!last && (
-            <button className="mech-tour-next" onClick={() => setI((n) => n + 1)}>
-              Next
-            </button>
-          )}
-          {last && (
-            <button className="mech-tour-next" onClick={finish}>
-              Got it
-            </button>
-          )}
+      {pointer && (
+        <div
+          className="mech-tour-tag"
+          data-side={pointer.side}
+          style={{ left: pointer.x, top: pointer.y }}
+        >
+          <span className="mech-tour-dot" />
+          <span className="mech-tour-line" />
+          <span className="mech-tour-chip">{step.label}</span>
         </div>
-      </div>
+      )}
     </div>,
     document.body
   )
@@ -241,15 +210,12 @@ function Demo() {
     t.push(
       window.setTimeout(
         () => {
-          // Bolt from the muzzle to roughly where the bird is now.
           const host = layer.current
           if (host) {
             const from = { x: window.innerWidth / 2, y: window.innerHeight - 2 }
             const to = { x: window.innerWidth * 0.5, y: window.innerHeight * 0.2 }
-            const dx = to.x - from.x
-            const dy = to.y - from.y
-            const len = Math.hypot(dx, dy)
-            const angle = (Math.atan2(dy, dx) * 180) / Math.PI
+            const len = Math.hypot(to.x - from.x, to.y - from.y)
+            const angle = (Math.atan2(to.y - from.y, to.x - from.x) * 180) / Math.PI
             const bolt = document.createElement('i')
             bolt.className = 'mech-tour-bolt'
             bolt.style.left = `${from.x}px`
