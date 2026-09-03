@@ -1,8 +1,7 @@
-import { Suspense, useEffect, useMemo, useRef } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Center, Float, Resize } from '@react-three/drei'
 import { MathUtils, Vector3 } from 'three'
-import BlockBuilder from '../three/BlockBuilder'
 import Phone17 from '../three/Phone17'
 import PosStation from '../three/PosStation'
 import VideoFrame from '../three/VideoFrame'
@@ -208,6 +207,22 @@ const FISH_MAN_FRAMES = Array.from(
    has anything to stand in its bay, and it has to be able to answer without
    loading this file. A piece added on one side and not the other is a build
    error rather than a slot that quietly reads "no signal". */
+/** The stacking loop, and the only piece here worth a chunk of its own: 65 KB
+ *  for one project, where every other piece is a few hundred lines.
+ *
+ *  It used to get that chunk by accident. It was one of two importers of a
+ *  module `src/site/products.tsx` also used, so Rollup split the shared
+ *  dependency out and named the chunk after this; when v2 came out of the
+ *  build the coincidence went with it and this was inlined straight into a file
+ *  that `MechSlots` imports for every bay in the bank. A chunk boundary that
+ *  exists only because two screens happened to share a module is not a
+ *  boundary. `lazy()` makes it deliberate.
+ *
+ *  It suspends, and there is already a `Suspense` around every piece — see
+ *  `PieceStage` below and `Slot` in `MechSlots.tsx`. A bay shows nothing until
+ *  it lands, which is what a bay does for a GLB as well. */
+const BlockBuilder = lazy(() => import('../three/BlockBuilder'))
+
 const PIECES: Record<PieceId, () => ReactNode> = {
   /* `tuned` puts its three parts — register, reader, monitor — where the
      **Station** tab has them rather than where v2's case wanted them. See

@@ -6251,6 +6251,59 @@ degrade the layout when there is no connection.
 
 ---
 
+## v3 is the site
+
+`/` is home, `/index` is the browse view, `/p/<project>` is a project. It was
+`/v3/...` while it was being built alongside v2; `parse` in `V3.tsx` still
+accepts that prefix so a link from those months lands on the right screen, and
+`href` only ever writes the root form, so the URL corrects itself on the first
+navigation.
+
+**`src/site/` and `src/archive/` are out of the build and still on disk.**
+`App.tsx` renders `V3` and nothing else, so no entry can reach them and Rollup
+emits no chunk — the previous arrangement still shipped a 139 KB `Site` chunk
+and a 33 KB stylesheet that a visitor at `/` would never fetch. Two small
+modules are genuinely shared and still imported: `src/site/frames.ts` (the
+bird's three SVG paths) and, through `src/three/`, the pieces v2 built for its
+gallery. Those arrive as the modules they are, not as v2. Nothing was deleted.
+
+`vercel.json` rewrites every path to `index.html`. Without it the URLs above
+work in the app and 404 on a hard load, which is the one way a real-URL SPA
+breaks that never shows up in development.
+
+### What came off the boot with it
+
+Taking v2 out uncovered two things that had been hiding behind it, and both
+were on **home's** critical path. Measured off the built page, JavaScript for
+one load of home: **1.84 MB → 1.27 MB** over 18 → 14 requests.
+
+**`hls.js`, 500 KB of HTTP Live Streaming.** Four pieces put a clip on a
+surface and all four use drei's `useVideoTexture`, which loads the HLS class
+with `await import('hls.js')` only when the source ends in `.m3u8` — correct —
+and then also does `import { Events } from 'hls.js'` at the top of the module
+for one enum member. A static import of a constant defeats the dynamic import
+beside it, so the whole library lands in whichever chunk `useVideoTexture`
+lands in. That chunk is `MechProduct`, which `MechSlots` imports for every bay
+in the bank, so home's boot was carrying a streaming library for a format this
+site never serves. `src/v3/hls-stub.ts` is aliased over it in
+`vite.config.ts` — in dev *and* build, unlike the leva alias, because nothing
+here ever wants the real one. `MechProduct`: **608 KB → 21 KB**.
+
+**`@fontsource-variable/inter`.** v2's UI face, imported in `main.tsx`, seven
+woff2 subsets and a stylesheet. v3 uses Clash Display, Audiowide and the system
+sans, and declares both of its own faces in `Mech.css`. It cost more than its
+bytes: `primed` in `Mech.tsx` holds the boot on `document.fonts.ready`, so a
+face nobody uses was delaying the opening. `index.html` preloads the two faces
+that *are* on screen instead of v2's display serif, and the `theme-color` is
+black rather than v2's paper cream.
+
+**And one chunk boundary that turned out to be a coincidence.** `BlockBuilder`
+had a chunk of its own only because `src/site/products.tsx` imported it too;
+with one importer left it was inlined into `MechProduct`, which the bank needs.
+It is `lazy()` now, which is what it should always have been — 65 KB for one
+project. A boundary that exists because two screens happened to share a module
+is not a boundary.
+
 ## What is in the bundle
 
 | Chunk | gzip | When |

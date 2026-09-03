@@ -5,10 +5,16 @@ import './V3.css'
 
 /* Two screens, and fifty lines of routing between them.
 
-   `/v3` is home, `/v3/index` is the browse view, and `/v3/p/<project>` is a
-   project. Real URLs rather than component state, for the same reason the
-   current site bothers: a portfolio is made to be linked to, and the back
-   button has to work.
+   `/` is home, `/index` is the browse view, and `/p/<project>` is a project.
+   Real URLs rather than component state, for the same reason the previous site
+   bothered: a portfolio is made to be linked to, and the back button has to
+   work.
+
+   **These were under `/v3` until v3 became the site.** `parse` still accepts
+   the old prefix so a bookmark or a pasted link from while it was being built
+   still lands on the right screen; `href` only ever writes the root form, so
+   the URL corrects itself on the first navigation. Four characters of
+   compatibility against a dead link, and it costs one `replace`.
 
    Home and a project are the *same component* — `Mech`, with `id` either a
    project or `null`. They used to be two, and the seam showed: opening a
@@ -25,16 +31,17 @@ type Screen =
   | { name: 'project'; project: string }
 
 const parse = (pathname: string): Screen => {
-  const project = /^\/v3\/p\/([a-z0-9-]+)\/?$/i.exec(pathname)
+  const path = pathname.replace(/^\/v3(?=\/|$)/i, '') || '/'
+  const project = /^\/p\/([a-z0-9-]+)\/?$/i.exec(path)
   if (project) return { name: 'project', project: project[1] }
-  const browse = /^\/v3\/index(?:\/([a-z0-9-]+))?\/?$/i.exec(pathname)
+  const browse = /^\/index(?:\/([a-z0-9-]+))?\/?$/i.exec(path)
   return browse ? { name: 'browse', project: browse[1] ?? null } : { name: 'home' }
 }
 
 const href = (screen: Screen) => {
-  if (screen.name === 'home') return '/v3'
-  if (screen.name === 'project') return `/v3/p/${screen.project}`
-  return screen.project ? `/v3/index/${screen.project}` : '/v3/index'
+  if (screen.name === 'home') return '/'
+  if (screen.name === 'project') return `/p/${screen.project}`
+  return screen.project ? `/index/${screen.project}` : '/index'
 }
 
 export default function V3() {

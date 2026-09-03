@@ -19,7 +19,18 @@ export default defineConfig(({ command }) => ({
     // type-checked by `tsconfig.node.json`, which has neither the DOM lib nor
     // `@types/node`, so `URL` and `fileURLToPath` are both out of reach and
     // pulling either in for one path would be the larger change.
-    alias: (command === 'build' ? { leva: '/src/v3/leva-prod.tsx' } : {}) as Record<string, string>
+    //
+    // `hls.js` is the second alias and it works the other way round: it is
+    // applied in *both* dev and build, because nothing here ever wants the
+    // real thing. drei's `useVideoTexture` imports one enum member from it
+    // statically, which drags 500 KB of HTTP Live Streaming into the chunk
+    // that every piece with a clip on it lands in — and that chunk is the one
+    // the bank imports, so it was on home's boot. See the note at the top of
+    // `src/v3/hls-stub.ts`; every clip on this site is a local mp4.
+    alias: {
+      ...(command === 'build' ? { leva: '/src/v3/leva-prod.tsx' } : {}),
+      'hls.js': '/src/v3/hls-stub.ts'
+    } as Record<string, string>
   },
 
   server: {

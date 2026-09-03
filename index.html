@@ -9,22 +9,31 @@
       name="description"
       content="Product design, 3D, motion, film, music and AI engineering. Selected work by Tarlok Singh."
     />
-    <meta name="theme-color" content="#f4f2ec" />
+    <!-- Black, matching `.mech`'s own background. It was `#f4f2ec` — v2's
+         paper — which on a phone painted the browser chrome above a black
+         readout in a light cream. -->
+    <meta name="theme-color" content="#000000" />
 
-    <!-- The loading screen sets the name in the display serif and is the very
-         first thing painted, so the font is fetched alongside the JS rather
-         than being discovered once the stylesheet has parsed. Only the two
-         latin subsets: latin-ext carries accents that no chrome uses. -->
+    <!-- The two faces the readout is drawn in, fetched alongside the JS rather
+         than discovered once `Mech.css` has parsed. They were v2's display
+         serif until v3 became the site; these are the ones actually on screen
+         — Clash Display for the name, a project's title and the wordmark,
+         Audiowide for the segment displays.
+
+         It is worth more here than a preload usually is: `primed` in
+         `Mech.tsx` holds the boot on `document.fonts.ready`, so a face
+         discovered late does not just swap in late, it delays the whole
+         opening. Both are one file and 43 KB together. -->
     <link
       rel="preload"
-      href="/fonts/instrument-serif/instrument-serif-latin.woff2"
+      href="/fonts/clash-display/ClashDisplay-Variable.woff2"
       as="font"
       type="font/woff2"
       crossorigin
     />
     <link
       rel="preload"
-      href="/fonts/instrument-serif/instrument-serif-italic-latin.woff2"
+      href="/fonts/audiowide/Audiowide-Regular.woff2"
       as="font"
       type="font/woff2"
       crossorigin
