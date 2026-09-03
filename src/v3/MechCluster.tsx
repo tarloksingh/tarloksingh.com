@@ -99,7 +99,7 @@ const TITLE_MS = 2600
 const NAME = 'Tarlok Singh'
 
 const PROFILE =
-  'Designer, engineer, and filmmaker. I’ve taken 12 products from zero to shipped — consumer, B2B, AI, hardware — designing, building, and deploying each one. Ten years in, still building.'
+  'Designer, engineer, and artist. I build across multiple platforms like software, hardware, film, motion, and sound. I love creating, solving hard problems, and making things more efficient.'
 
 /** Cells in the role reel over the counts, and in the `INTRO` cap beside it.
  *  It is the bank head's own count (`CELLS` in `MechBank.tsx`) rather than a

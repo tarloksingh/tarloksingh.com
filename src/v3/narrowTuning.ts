@@ -66,9 +66,32 @@ export const NARROW_FALLBACK: NarrowTuning = {
   lens: 1
 }
 
-/** Per-project overrides, pasted back from the panel's copy button. */
+/** Per-project overrides, pasted back from the panel's copy button.
+ *
+ *  The export emits every project the panel has ever opened, defaults filled
+ *  in, so several of these are `NARROW_FALLBACK` written out longhand. They
+ *  stay: an explicit entry pins a project's framing against a future change to
+ *  the fallback, which is the whole reason the fallback and the table are two
+ *  different things.
+ *
+ *  The panel's export also emits an `'undefined'` key when it has been opened
+ *  with no project on screen — `useNarrowTuning(shownId ?? '')` on home. That
+ *  one is dropped rather than pasted; it is a record of the panel's own state,
+ *  not of a project. */
 export const NARROW_TUNING: Record<string, Partial<NarrowTuning>> = {
-  'mr-takahashi': { model: 1.2, media: 1 }
+  'mr-takahashi': { model: 1.65, offsetX: 0, offsetY: 0, media: 1, spin: 2, tilt: 0, lens: 2.55 },
+  'capsule-c1': { model: 1.15, offsetX: 0, offsetY: -0.04, media: 1, spin: 0, tilt: 0, lens: 1 },
+  'mecha-station': { model: 1.25, offsetX: 0, offsetY: 0, media: 1, spin: 0, tilt: 0, lens: 1 },
+  'grand-theft-auto-v': { model: 1.35, offsetX: 0, offsetY: 0, media: 1, spin: 0, tilt: 0, lens: 1 },
+  'red-dead-redemption-2': { model: 1.45, offsetX: 0, offsetY: 0, media: 1, spin: -9, tilt: 0, lens: 1 },
+  openup: { model: 1.5, offsetX: 0, offsetY: 0, media: 1, spin: 0, tilt: 0, lens: 1 },
+  'block-builder': { model: 3.4, offsetX: 0, offsetY: 0, media: 1, spin: 0, tilt: 0, lens: 1.2 },
+  'slider-engine': { model: 1.5, offsetX: 0, offsetY: 0, media: 1, spin: 0, tilt: 0, lens: 1 },
+  stitchfam: { model: 1.5, offsetX: 0, offsetY: 0, media: 1, spin: 0, tilt: 0, lens: 1 },
+  'wyte-card': { model: 1.5, offsetX: 0, offsetY: 0, media: 1, spin: 0, tilt: 0, lens: 1 },
+  visa: { model: 1.5, offsetX: 0, offsetY: 0, media: 1, spin: 0, tilt: 0, lens: 1 },
+  'web-crawler': { model: 1.5, offsetX: 0, offsetY: 0, media: 1, spin: 0, tilt: 0, lens: 1 },
+  'a-game': { model: 1.5, offsetX: 0, offsetY: 0, media: 1, spin: 0, tilt: 0, lens: 1 }
 }
 
 const STORE_KEY = 'v3.narrow.tuning.v2'
