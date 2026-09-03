@@ -6280,6 +6280,65 @@ have a real modelled asset; the rest are hand-built from primitives in
 `src/three/`, because showing every project as the same borrowed capsule says
 nothing about any of them.
 
+### Two things the compression did, and only one is fixed
+
+Reported as the models having "a jagged edge sometimes, on some of the models,
+like the edges look crisp not smooth". They do, it is not aliasing, and the
+files themselves say why. Reading the GLB's JSON chunk and listing what each
+vertex attribute is actually *stored* as:
+
+```
+adam-face.glb      EXT_meshopt_compression, KHR_mesh_quantization
+                   113502 verts   NORMAL i8 normalized   POSITION i16 normalized
+                                  47x morph NORMAL i8 normalized
+capsule-c1.glb     KHR_draco_mesh_compression      NORMAL f32   POSITION f32
+wyte-card.glb      KHR_draco_mesh_compression      NORMAL f32   POSITION f32
+rdr2-revolver.glb  (none)                          NORMAL f32   POSITION f32
+gta-v-rifle.glb    (none)                          NORMAL f32   POSITION f32
+```
+
+**Mr. Takahashi's face is the only model with quantised normals**, base and all
+forty-seven morph targets: `i8 normalized`, which is 256 levels per axis. That
+is why it is "some of the models" — everything else is `f32`. A specular
+highlight is the most normal-sensitive thing on screen, so on the hair it
+breaks into blocky stair-stepped patches while the silhouette stays perfectly
+clean. Antialiasing and `devicePixelRatio` have nothing to do with it and
+changing either does nothing.
+
+It is `gltfpack`'s default (`-vn 8`), and **the precision is already gone from
+the file** — re-encoding to `f32` preserves the eight-bit steps. The fix is a
+re-export with more normal bits (`gltfpack -vn 16`, or no normal quantisation
+at all). `mr-takahashi.glb` is *not* the answer, tempting as it looks sitting
+there uncompressed: it is a 2,781-vertex version of the same head against
+113,502, and its morph targets are named differently (`LookUp` / `LookDown`
+where the code writes `HorizontalLook` / `VerticalLook`, and no
+`EmotionSearching` or `EmotionListening` at all), so it is not a drop-in for
+anything `MechModel` drives.
+
+**Recomputing the normals in-engine was tried and is not in the file.**
+`deleteAttribute('normal')` plus `computeVertexNormals()` on the face's meshes
+does fix the hair — the highlight goes back to smooth streaks — and then puts
+visible facets across the cheeks and forehead instead, because the positions
+those normals are rebuilt from are themselves 16-bit quantised, and three only
+averages across shared indices so every UV seam becomes a hard edge. One
+artefact for another. Screenshotted both ways at 1:1 before deciding.
+
+### The Draco decoder was being fetched from Google
+
+Found while looking at the above, unrelated to it, and fixed. `useGLTF(src)`
+with no second argument leaves drei's default decoder path in place —
+`https://www.gstatic.com/draco/versioned/decoders/1.5.5/` — so opening Capsule
+C1 or Wyte Card fetched `draco_wasm_wrapper.js` and `draco_decoder.wasm` from
+Google's CDN before the subject could be decoded. Counted off the built page:
+two off-origin requests on those two project screens, none anywhere else.
+
+`public/draco/` has been there all along and `MechSlots`, `MechRider`,
+`MechCast` and `CapsuleStage` all pass it; `MechModel` and `ModelFrame` were
+the two that did not. This site makes no third-party requests — the
+environment map is built inside three for exactly that reason — and a subject
+that cannot draw until a round trip to another origin completes is the slowest
+thing on a project screen on a phone. Off-origin requests: **2 → 0**.
+
 Three things about glTF that look like rendering bugs and are not:
 
 - **Nothing about lighting survives the export** — no lights, no world, no HDRI,

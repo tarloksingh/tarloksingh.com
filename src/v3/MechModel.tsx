@@ -15,6 +15,24 @@ import type { Group, Mesh, MeshStandardMaterial, PerspectiveCamera } from 'three
    same 1920×1080 frame, and they only touch the model if the model does not
    move between projects. So the model is normalised to the camera instead. */
 
+/** The Draco decoder, served from `public/draco/`.
+ *
+ *  Not optional and not cosmetic. `useGLTF(src)` with no path leaves drei's
+ *  default in place, which is
+ *  `https://www.gstatic.com/draco/versioned/decoders/1.5.5/` — so opening a
+ *  project whose GLB is Draco-compressed (Capsule C1 and Wyte Card are)
+ *  fetched a wrapper and a WASM binary from Google's CDN before the subject
+ *  could be decoded. Verified off the built page: two off-origin requests,
+ *  gone once this is passed. This site makes no third-party requests — the
+ *  environment map is built inside three for the same reason — and a model
+ *  that cannot draw until a round trip to another origin finishes is the
+ *  slowest thing on a project screen on a phone.
+ *
+ *  Declared locally, as it is in `MechSlots`, `MechRider`, `MechCast` and
+ *  `CapsuleStage`: one string beside the call that needs it, rather than a
+ *  module for a constant. */
+const DRACO_PATH = '/draco/'
+
 /** World units the model's height is normalised to before framing. */
 const TARGET_HEIGHT = 1
 
@@ -198,7 +216,7 @@ function useGaze(watchBird: boolean, catchSeconds: number) {
 type Look = () => { x: number; y: number }
 
 function Model({ src, tuning, look }: { src: string; tuning: ModelTuning; look: Look }) {
-  const { scene: source, animations } = useGLTF(src)
+  const { scene: source, animations } = useGLTF(src, DRACO_PATH)
   const group = useRef<Group>(null)
   const { actions } = useAnimations(animations, group)
 
