@@ -4109,6 +4109,13 @@
   );
 }
 
+/* The mixer opens upward here — below the pill would run it off the bottom
+   of the window. */
+.mech[data-narrow='true'] .mech-deck-mix {
+  top: auto;
+  bottom: calc(100% + 10 * var(--px));
+}
+
 /* ---- the dashboard, quieted ---- */
 
 /* The compass and its coordinate readout only ever say anything with a fine

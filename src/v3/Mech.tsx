@@ -1848,15 +1848,12 @@ export default function Mech({ id, onProject, onHome }: Props) {
           </button>
         </header>
 
-        {/* Docked between the header and the rail rather than down in the
-            footer — the same right edge as the tile strip below it. Narrow,
-            there is no room for a transport nobody asked for, so it drops
-            off the frame entirely rather than floating over the page. */}
-        {!narrow && (
-          <div className="mech-deck-slot">
-            <MechDeck />
-          </div>
-        )}
+        {/* Docked between the header and the rail on wide; narrow, it floats
+            fixed at the bottom of the window (see `.mech-deck-slot` in the
+            CSS) so the song is reachable on a phone too. */}
+        <div className="mech-deck-slot">
+          <MechDeck />
+        </div>
 
         {/* Home: the whole screen, as one instrument cluster. The lamps, the
             name, the display that reads out either a title or whatever project

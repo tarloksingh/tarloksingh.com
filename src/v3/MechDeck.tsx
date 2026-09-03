@@ -20,7 +20,9 @@ import { sound, levels, type Levels } from './sound'
    where it left off, because a paused `<audio>` keeps its `currentTime`.
 
    It never plays uninvited. With no file in `src/assets/audio/` the pill says
-   `no signal` rather than vanishing. Wide layout only, as before. */
+   `no signal` rather than vanishing. Docked top-right on wide; on a phone it
+   floats fixed at the bottom of the window (`.mech-deck-slot` narrow rules in
+   `Mech.css`), where the compass would be if a phone drew one. */
 
 const MIX_ROWS: [keyof Levels, string][] = [
   ['music', 'Music'],

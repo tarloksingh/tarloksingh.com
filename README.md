@@ -4863,8 +4863,10 @@ narrow sheet are all gone. What is left is the track's name in Audiowide (the
 display face `INTRO` and the role reel use) over "Tarlok Singh" in Clash
 Display Light, and a play / pause triangle — `clip-path` for the wedge, a pair
 of gradients for the two bars. Green, not the warm channel the old strip used:
-it is a readout, not a warning. `<audio loop>`, wide layout only. Geometry is
-the Figma frame's, in `--px`.
+it is a readout, not a warning. `<audio loop>`. On wide it is docked top-right
+between the header and the rail; on a phone it floats fixed at the bottom of
+the window — where the compass sits on wide, which a phone does not draw — so
+the song is reachable there too. Geometry is the Figma frame's, in `--px`.
 
 **One scale for the three things that make noise, and a panel to set it.**
 `levels` in `sound.ts` is a small persisted store — music, effects, clip — read
