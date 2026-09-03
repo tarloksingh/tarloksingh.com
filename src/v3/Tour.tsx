@@ -26,21 +26,28 @@ import './Tour.css'
    carries its own. It starts four seconds after the boot, so it lands well
    clear of the opening animations. */
 
+type Side = 'left' | 'right' | 'top' | 'bottom'
+
 type Step = {
   target: string
   label: string
   /** Home's range label: run the scripted bird alongside it. */
   demo?: boolean
+  /** Override how long the label holds before it leaves, in ms. */
+  hold?: number
+  /** Force which edge of the target the mark sits on, rather than picking
+   *  the roomiest one. */
+  side?: Side
 }
 
 const STEPS: Record<Flow, Step[]> = {
   home: [
-    { target: '.mech-work-rail', label: 'Projects I worked on' },
+    { target: '.mech-work-rail', label: 'Projects I worked on', hold: 3600 },
     { target: '.mech-alarm', label: 'Feel free to shoot the animals', demo: true }
   ],
   project: [
-    { target: '.mech-folds', label: 'Project details' },
-    { target: '.mech-rail-wrap', label: 'Stills & video' }
+    { target: '.mech-folds', label: 'Project Facts', hold: 3400, side: 'left' },
+    { target: '.mech-rail-wrap', label: 'Product Images & Videos', hold: 3400 }
   ]
 }
 
@@ -111,7 +118,7 @@ export default function Tour({ flow, onClose }: { flow: Flow; onClose: () => voi
     let toLeave = 0
     let toNext = 0
     let done = false
-    const hold = step.demo ? HOLD_DEMO : HOLD
+    const hold = step.hold ?? (step.demo ? HOLD_DEMO : HOLD)
 
     const waitForRect = () => {
       if (done) return
@@ -192,9 +199,9 @@ export default function Tour({ flow, onClose }: { flow: Flow; onClose: () => voi
       top: box.top,
       bottom: vh - box.bottom
     }
-    const side = (['left', 'right', 'top', 'bottom'] as const).reduce((best, s) =>
-      room[s] > room[best] ? s : best
-    )
+    const side =
+      stepRef.current?.side ??
+      (['left', 'right', 'top', 'bottom'] as const).reduce((best, s) => (room[s] > room[best] ? s : best))
 
     let x = box.left + box.width / 2
     let y = box.top + box.height / 2
