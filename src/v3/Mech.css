@@ -3644,6 +3644,45 @@
   width: calc(34 * var(--px));
 }
 
+/* The way back into the tour — a plain query key in the bottom-right corner,
+   clear of the compass on wide and the deck pill on narrow. Same phosphor as
+   the rest of the machine's own readings; it reports nothing, it is a
+   control, but a warm one here would read as an alert. */
+.mech-tour-key {
+  position: fixed;
+  right: calc(24 * var(--px));
+  bottom: calc(24 * var(--px));
+  z-index: 31;
+  display: grid;
+  place-items: center;
+  width: calc(30 * var(--px));
+  height: calc(30 * var(--px));
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0;
+  border: 1px solid rgba(var(--accent-rgb), 0.55);
+  border-radius: 50%;
+  background: rgba(var(--accent-rgb), 0.06);
+  color: var(--accent);
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: calc(15 * var(--px));
+  line-height: 1;
+  cursor: pointer;
+  transition: box-shadow 160ms linear, border-color 160ms linear;
+}
+
+.mech-tour-key:hover {
+  border-color: rgba(var(--accent-rgb), 0.9);
+  box-shadow:
+    0 0 calc(10 * var(--px)) rgba(var(--accent-rgb), 0.45),
+    inset 0 0 calc(10 * var(--px)) rgba(var(--accent-rgb), 0.12);
+}
+
+.mech[data-boot='true'] .mech-tour-key {
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* ---- the sheet ---- */
 
 .mech-menu {

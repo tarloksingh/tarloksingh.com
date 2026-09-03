@@ -8,6 +8,8 @@ import MechMoth from './MechMoth'
 import MechCursor from './MechCursor'
 import MechLaser from './MechLaser'
 import Alarm from './Alarm'
+import Tour from './Tour'
+import { tourSeen, takeReplay, useReplaySignal, replayTour, type Flow } from './tourState'
 import MechHud from './MechHud'
 import MechTiles from './MechTiles'
 import { slotOf } from './bank'
@@ -1328,6 +1330,49 @@ export default function Mech({ id, onProject, onHome }: Props) {
     return () => window.clearTimeout(timer)
   }, [primed])
 
+  /* ---- the tour ----
+
+     Two guided runs, one per screen kind, each shown once per browser and
+     then only on request. A wife opened this and did not know there was
+     anything to do — the rail is pressable, the range is shootable, and
+     neither says so. `Tour` (portalled, `Tour.css`) dims the screen and
+     opens a hole over one thing at a time. `tour` is which run is live;
+     it is cleared on every navigation so a run never outlives its screen. */
+  const [tour, setTour] = useState<Flow | null>(null)
+  const closeTour = useCallback(() => setTour(null), [])
+  const homeTourFired = useRef(false)
+  const projectTourFired = useRef(false)
+  const replaySignal = useReplaySignal()
+
+  useEffect(() => {
+    setTour(null)
+  }, [shownId])
+
+  useEffect(() => {
+    if (!home || booting || !primed || homeTourFired.current || tourSeen('home')) return
+    homeTourFired.current = true
+    const t = window.setTimeout(() => setTour('home'), 750)
+    return () => window.clearTimeout(t)
+  }, [home, booting, primed])
+
+  useEffect(() => {
+    if (home || booting || phase !== 'in' || projectTourFired.current || tourSeen('project')) return
+    projectTourFired.current = true
+    const t = window.setTimeout(() => setTour('project'), 1100)
+    return () => window.clearTimeout(t)
+  }, [home, booting, phase])
+
+  /* The "?" key cleared a flag and bumped the signal — start the run that
+     fits the screen we are on. */
+  useEffect(() => {
+    if (replaySignal === 0) return
+    const asked = takeReplay()
+    if (!asked) return
+    homeTourFired.current = true
+    projectTourFired.current = true
+    setTour(asked)
+  }, [replaySignal])
+
   /* The subject's canvas learns its size from a ResizeObserver, and a tab that
      is still in the background when the page loads throttles that observer's
      first callback away entirely — so a project opened in a tab you have not
@@ -1802,6 +1847,27 @@ export default function Mech({ id, onProject, onHome }: Props) {
           number have nothing to spell, so the row simply comes up with the
           rest of the chrome on `[data-boot]`'s own fade. */}
       <Alarm />
+
+      {/* Shown around, once per browser — see *the tour* above. Gated on the
+          screen so a run never draws over the wrong one. */}
+      {tour && (home ? tour === 'home' : tour === 'project') && (
+        <Tour flow={tour} onClose={closeTour} />
+      )}
+
+      {/* The way back into the tour. Off during the boot, like the rest of the
+          chrome; a press starts the run that fits the screen. */}
+      {!booting && (
+        <button
+          className="mech-tour-key"
+          aria-label="Show me around"
+          onClick={() => {
+            sound.select()
+            replayTour(home ? 'home' : 'project')
+          }}
+        >
+          ?
+        </button>
+      )}
 
       {menu && (
         <MechMenu shownId={shownId} onProject={onProject} onHome={onHome} onClose={() => setMenu(false)} />

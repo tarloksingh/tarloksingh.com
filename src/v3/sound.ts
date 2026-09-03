@@ -181,8 +181,12 @@ export const sound = {
 
 export type Levels = { music: number; effects: number; clip: number }
 
-export const LEVELS_DEFAULT: Levels = { music: 0.6, effects: 0.3, clip: 0.72 }
-const LEVELS_KEY = 'v3.levels.v1'
+/* `effects` sits level with `music`, not under it: the boot sweep and every
+   crack after it are the page's punctuation and were being lost beneath the
+   loop. The key is bumped so a browser that stored the old `0.3` under `v1`
+   picks the new balance up. */
+export const LEVELS_DEFAULT: Levels = { music: 0.6, effects: 0.6, clip: 0.72 }
+const LEVELS_KEY = 'v3.levels.v2'
 
 const clampLevel = (value: unknown, fallback: number): number =>
   typeof value === 'number' && value >= 0 && value <= 1 ? value : fallback

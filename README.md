@@ -4806,6 +4806,55 @@ screen, not just home — but `.mech-tally` takes it out of that flex line with
 `position: fixed`, centred, so it reads next to the thing it is counting
 regardless of where the footer itself sits at any width.
 
+### The tour
+
+Someone opened the page and did not know there was anything to do. The rail of
+work is pressable, the range is shootable, the reticle is a real reticle — and
+none of it says so. `Tour.tsx` (`Tour.css`, and `tourState.ts` for the flags)
+is a short spotlight run that says so once.
+
+**Two runs, one per screen kind.** `home` points at the rail of work and then
+at the range; `project` points at the write-up and then at the media strip.
+Each is a list of `{ target, title, body }` in `STEPS`, found by selector when
+its step opens — `.mech-work-rail`, `.mech-alarm`, `.mech-folds`,
+`.mech-rail-wrap`. A step whose target is missing or collapsed when the run
+starts is dropped (`useState` initialiser filters on `getBoundingClientRect`),
+so a locked project with no folds and no strip gets a shorter run or none —
+an empty run marks itself seen and closes rather than sitting on a blank card.
+
+**Once per browser.** `tourSeen` / `markTourSeen` in `tourState.ts` keep a
+`done` flag per run in `localStorage`, next to `v3.kills.v1`. `Mech.tsx` starts
+`home` 750ms after `!booting`, and `project` 1100ms after `phase === 'in'`,
+each behind a `useRef` latch and the flag. `tour` is the live run and is
+cleared on every navigation (`[shownId]`) so a run never outlives its screen.
+The `?` key in the bottom-right corner (`.mech-tour-key`, off during the boot
+like the rest of the chrome) clears the flag for the screen you are on and
+starts that run again — `replayTour` bumps a signal `Mech.tsx` watches.
+
+**It is portalled to `body`,** above the readout (z 20–30) and below the dev
+panel, with its own colours and type — the accent tokens live on `.mech` and
+none of this is inside it, the same reason `.mech-source` carries its own. The
+dim-and-cutout is one div: `box-shadow: 0 0 0 100vmax` of the scrim colour, a
+green ring, a pulse, and a 260ms transition on `left/top/width/height` so the
+hole slides between targets. A transparent `.mech-tour-veil` under it swallows
+clicks so a press outside the card does not fire the gun. The card places
+itself below the hole, or above when there is no room.
+
+**The rect is followed by one rAF loop for the whole run, not one effect per
+step.** `Mech` re-renders often enough that a per-step effect kept being torn
+down before its frame landed and the hole never opened; the loop reads the
+current step off a ref instead, brings a fresh target into view once, then
+tracks its box a frame at a time — cheap, and this thing is modal and
+short-lived.
+
+**Home's second step shoots for you.** `Demo` in `Tour.tsx` flies a bird
+across the top of the window on a CSS transform and sends a bolt up from the
+muzzle to meet it — the real `sound.shot()` / `sound.hit()` and a real
+`kills.add()`, so the tally in the header actually ticks over inside the lit
+hole. It is self-contained: none of `MechBird` / `MechLaser` / `quarry` is
+touched, because a scripted kill wants timing a registered creature cannot
+give it.
+
 ### Nothing stutters on a swap
 
 Four things were doing work at the exact moment the frame changed, which is the
@@ -4891,9 +4940,12 @@ the song is reachable there too. Geometry is the Figma frame's, in `--px`.
 `levels` in `sound.ts` is a small persisted store — music, effects, clip — read
 by the deck (`<audio>` volume), by `audio()` (the effects master gain, live)
 and by every clip (`<video>` volume, live via `levels.subscribe`). The synth
-effects start at `0.3`, the music at `0.6`, and a clip's own audio track at
-`0.72` — tamed off the raw `1.0` a `<video>` plays at, a shade above the music
-so speech stays over it.
+effects and the music both start at `0.6` — the boot sweep and every crack
+after it are the page's punctuation and were being lost under the loop at the
+old `0.3` — and a clip's own audio track at `0.72`, tamed off the raw `1.0` a
+`<video>` plays at, a shade above the music so speech stays over it. The
+`localStorage` key is `v3.levels.v2`; the bump is what lets a browser that
+stored the old balance under `v1` pick the new default up.
 
 **The music wants to be on.** `wantPlay` in `MechDeck.tsx` starts false only
 because a browser will not let audio play before the first interaction — an
@@ -4913,7 +4965,7 @@ visitor never asked it to stop. A silent screen capture, which is most of them,
 never touches any of this.
 
 The panel is the three-bar toggle next to the deck pill (`MechDeck.tsx`,
-`.mech-deck-mix` in `Mech.css`) — three sliders and a Reset, `v3.levels.v1` in
+`.mech-deck-mix` in `Mech.css`) — three sliders and a Reset, `v3.levels.v2` in
 `localStorage`. **Wide only** (`useNarrow()` in `MechDeck`): the sliders want a
 pointer and the panel wants room the phone layout has not got, and on a phone
 the deck is one tap to start the song and one to stop it, nothing else. It is

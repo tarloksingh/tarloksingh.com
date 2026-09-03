@@ -61,6 +61,7 @@ being false (which is why `navigator.clipboard` does not exist — see
 | `MechTiles.tsx` | The boot: the grid's cells struck in a ring from the middle |
 | `MechBird.tsx`, `MechLaser.tsx` | The bird, and the gun |
 | `MechDeck.tsx`, `sound.ts` | The music deck, and every synthesised sound |
+| `Tour.tsx`, `Tour.css`, `tourState.ts` | **The spotlight tour** — one run on home, one on a project, once per browser; the `?` key replays it. See **The tour** in `README.md` |
 | `SplitReveal.tsx` | The tagline and fold titles, drawn in a character at a time |
 | `subject.ts` | Live facts shared across the Canvas boundary |
 | `../three/detail.tsx` | How finely a piece is tessellated for whoever is looking — a bay asks for less |
