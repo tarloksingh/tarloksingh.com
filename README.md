@@ -4991,10 +4991,13 @@ From then on the pill is a normal toggle. There is no autoplay attribute doing
 this and there cannot be; it is a deferred start, not a played-on-load.
 
 **A clip and the music are never heard together.** Not a duck — the deck
-pauses. A reconcile effect plays the `<audio>` element only when `wantPlay` is
-set *and* `levels.clipAudible()` is false. `claimAudio()` is ref-counted (several
-clips, one hold), `Flat` in `Mech.tsx` and `Video` in `Stage.tsx` each hold one
-while they are audible, and every hold and release runs the reconcile through
+stops, but on a ramp: a reconcile effect eases the `<audio>` element's own
+`volume` to zero over half a second and *then* pauses it, and eases it back up
+from zero when the clip ends, so a clip with sound coming up does not chop the
+song off mid-bar. It plays only when `wantPlay` is set *and*
+`levels.clipAudible()` is false. `claimAudio()` is ref-counted (several clips,
+one hold), `Flat` in `Mech.tsx` and `Video` in `Stage.tsx` each hold one while
+they are audible, and every hold and release runs the reconcile through
 `levels.subscribe`. A paused `<audio>` keeps its `currentTime`, so the song
 resumes where it left off; the pill keeps showing pause throughout, because the
 visitor never asked it to stop. A silent screen capture, which is most of them,

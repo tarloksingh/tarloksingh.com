@@ -17,8 +17,8 @@ import { useNarrow } from './narrow'
 
    The deck and a clip are never heard together. The reconcile effect plays
    the element only when `wantPlay` is set *and* no clip with sound is up
-   (`clipAudible` in `sound.ts`); a clip starting pauses the deck, the clip
-   ending resumes it where it left off.
+   (`clipAudible` in `sound.ts`); a clip starting fades the music out and then
+   pauses the deck, the clip ending fades it back in where it left off.
 
    On wide there is also a small mixer — music / effects / clips sliders
    behind a toggle, persisted per browser (see `levels`). It is off on a
@@ -64,18 +64,47 @@ function MechDeck() {
 
   // One reconcile: run on mount, on intent changes, and on every `levels`
   // change (a slider, or a clip starting / stopping).
+  const fade = useRef<number>(0)
   useEffect(() => {
     const el = audio.current
     if (!el) return
+
+    // Ramp the element's own volume, then optionally pause. A clip with sound
+    // coming up should not chop the music off — it eases out under the first
+    // second of speech and eases back when the clip ends.
+    const ramp = (to: number, ms: number, then?: () => void) => {
+      cancelAnimationFrame(fade.current)
+      const from = el.volume
+      const start = performance.now()
+      const step = (now: number) => {
+        const t = ms <= 0 ? 1 : Math.min(1, (now - start) / ms)
+        el.volume = from + (to - from) * t
+        if (t < 1) fade.current = requestAnimationFrame(step)
+        else then?.()
+      }
+      fade.current = requestAnimationFrame(step)
+    }
+
     const sync = () => {
       setMix(levels.get())
-      el.volume = levels.get().music
+      const target = levels.get().music
       const shouldPlay = wantPlay && !levels.clipAudible()
-      if (shouldPlay && el.paused) void el.play().catch(() => {})
-      if (!shouldPlay && !el.paused) el.pause()
+      if (shouldPlay) {
+        if (el.paused) {
+          el.volume = 0
+          void el.play().catch(() => {})
+        }
+        ramp(target, 600)
+      } else if (!el.paused) {
+        ramp(0, 500, () => el.pause())
+      }
     }
     sync()
-    return levels.subscribe(sync)
+    const off = levels.subscribe(sync)
+    return () => {
+      off()
+      cancelAnimationFrame(fade.current)
+    }
   }, [wantPlay])
 
   const toggle = () => {
