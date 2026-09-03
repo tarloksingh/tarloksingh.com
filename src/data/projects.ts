@@ -157,9 +157,9 @@ const drafts: Draft[] = [
     locked: true,
     lockNote: 'in development',
     restricted:
-      'A boss-rush game that runs at a URL — no engine, no download. You ride a motorcycle down a rain-soaked Akira avenue toward one giant god-beast and learn its attacks: nine patterns, one hit, instant restart. Hand-written WebGL, procedural art, a cinematic post stack — all black and white with a single red accent, the bike’s taillight. Every parameter tunes live on a phone, and a simulation harness proves each attack is fully dodgeable before it ships. Built solo. The write-up lands when the game does.',
+      'Currently in development. Solo-developed, launching soon on iOS and Android. Email me to play the demo.\n\nA boss-rush game: ride a motorcycle down an Akira-style avenue toward a giant god-beast and dodge its attacks. One hit, instant restart. Black and white, one red accent.\n\nBuilt with Three.js and hand-written WebGL — procedural art, a cinematic post-processing stack, and a live tuning console that balances the whole game from a phone.',
     intro:
-      'A boss-rush game that runs at a URL: ride an Akira avenue toward a giant god-beast, read nine attack patterns, die in one hit, restart instantly. Hand-written WebGL, procedural art, black and white with one red accent. Built solo — design, code, art direction, and a live console that balances the whole game from a phone.',
+      'A boss-rush game — ride down an Akira-style avenue toward a giant god-beast and dodge its attacks. One hit, instant restart. Currently in development, solo, launching soon on iOS and Android.',
     sections: []
   },
   {
