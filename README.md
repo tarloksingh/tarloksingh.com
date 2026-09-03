@@ -4927,7 +4927,9 @@ one moment there is none to spare:
   shaders, cloned the scene graph and generated an environment map again. It is
   now mounted for as long as the project has a model and *stopped* while a
   still is up — `frameloop="never"`, which costs nothing per frame and keeps
-  all of it warm.
+  all of it warm. The same argument applied to *moving between projects* and
+  was not made there for another year — see **One canvas for the stage** below,
+  which is the same paragraph with a bigger number attached.
 - **The pictures were being decoded.** Several are multi-megabyte webp, and
   `load` only means the bytes arrived. The cover now waits on `decode()`, and
   the frames either side of the one on the stage are fetched and decoded on an
@@ -4956,6 +4958,126 @@ one moment there is none to spare:
 - **Hovering a tile now starts its fetch.** It is the earliest honest signal
   that a frame is about to be wanted, and it is a few hundred milliseconds of
   head start for nothing.
+
+### One canvas for the stage
+
+Reported as the site being "janky when pages load up". It was, and it was one
+thing: **every navigation threw away a WebGL context and built another.**
+
+The bullet above got the argument right for a tile-rail step and then stopped
+there. `MechModel` and `MechProduct` each owned a `<Canvas>` of their own, and
+each was keyed on its subject — `key={modelFrame.src}` and
+`key={pieceFrame.project}` — so project to project was a fresh
+`WebGLRenderer` every time. The key was doing something real, which is why it
+survived so long: a subject that fails to frame should not leave state behind
+for the next project to inherit. But it was buying that isolation with the
+whole renderer.
+
+**How this was counted, because it is the useful instrument.** Wrap
+`getContext`, `linkProgram`, `compileShader` and
+`getExtension('WEBGL_lose_context')` in `Page.addScriptToEvaluateOnNewDocument`
+so the counters are in place before any app code runs, then navigate the built
+page and read them off per window. A count does not vary run to run, it is
+GPU-independent, and it says plainly whether the thing is gone — which
+milliseconds out of a headless Chrome do not. Before:
+
+```
+boot + entrance            ctx= 1 lose= 0 link= 10 shader= 20
+open mr-takahashi          ctx= 2 lose= 1 link= 19 shader= 38
+open capsule-c1            ctx= 1 lose= 1 link=  7 shader= 14
+open red-dead-redemption-2 ctx= 1 lose= 1 link= 29 shader= 58
+open wyte-card             ctx= 1 lose= 1 link=  9 shader= 18
+back home                  ctx= 1 lose= 2 link= 10 shader= 20
+```
+
+Tagging each new context with the element it was created under says which
+canvas it was, and that is what turned one finding into two:
+
+```
+open mr-takahashi  new context in: DIV < mech-model-layer < mech-stage
+                   new context in: DIV < mech-bank-gl < mech-bank
+open capsule-c1    new context in: DIV < mech-model-layer < mech-stage
+back home          new context in: DIV < mech-bank-gl < mech-bank
+```
+
+Three things were being paid for on every move, and only the first is the one
+anybody would have guessed:
+
+- **`getContext` and the extension sweep.** three queries a few dozen
+  extensions when a renderer is constructed, synchronously, inside a React
+  commit.
+- **The environment map.** `PMREMGenerator.fromScene` renders a cube and links
+  its own shaders — 95ms of `getProgramInfoLog` in the profile — for a room
+  that is *identical for every subject on this site*. There were two copies of
+  it, one in each `Studio`, each regenerating on every open. It is `StageRoom`
+  in `MechStage.tsx` now, built once per canvas.
+- **The face's morph-target texture.** This is the one worth knowing about.
+  three caches that in a `WeakMap` keyed on the geometry, so `MechModel`
+  cloning the scene per project was already free — but a new *renderer* is a
+  new `WeakMap`. 81ms of `WebGLMorphtargets.update` plus 220ms of
+  `getX`/`getY`/`getZ`/`fromBufferAttribute` to fill a texture that had not
+  changed. It is why Mr. Takahashi was the most expensive project to open, and
+  why it read as a problem with the model rather than with the canvas.
+
+`MechStage.tsx` is the answer and it is small, because the files were already
+in the right shape: `MechModel` exported `FaceScene` and `MechProduct` exported
+`Piece` so the bank could render both inside *its* canvas. They now export
+`ModelStage` and `PieceStage` — literally everything that used to be inside
+their own `<Canvas>` — and `MechStage` is the canvas, mounted by `Mech.tsx` for
+the whole of a project screen. **The key moved rather than went away**: keying
+the *scene* on the subject is exactly the isolation the note described, at none
+of the cost.
+
+It is mounted even when there is nothing to draw. A project with no 3D subject
+at all would otherwise unmount the canvas and make the next solid project pay
+the rebuild — and an idle stage costs nothing, because an empty scene compiles
+nothing and `frameloop="never"` draws nothing. What an idle stage holds is the
+context and the room.
+
+Two things fell out of it that are not obvious:
+
+- **`Studio` shrank to two writes.** `environmentIntensity` is the scene's and
+  `toneMappingExposure` is the canvas's, and both are simply set when they
+  change. The old note about a brand-new renderer starting at exposure 1
+  against this page's 0.6 and flashing white does not apply any more — there is
+  no brand-new renderer, so what the effect corrects is the *previous*
+  project's number, which is a much shorter distance to travel.
+- **`antialias` is a context creation attribute and `dpr` is not.** Crossing
+  the narrow breakpoint leaves the sample count as it was until a reload. That
+  was already true of both canvases this replaces, and it is not worth a
+  context rebuild to fix.
+
+Counted after, at 1512×900:
+
+```
+open capsule-c1            ctx= 0 lose= 0 link=  1 shader=  2
+open red-dead-redemption-2 ctx= 0 lose= 0 link= 25 shader= 50
+open wyte-card             ctx= 0 lose= 0 link=  3 shader=  6
+```
+
+Project to project: **one context created and one destroyed → zero.** Shader
+links fall with it except where they are real first-time work — the revolver
+still links twenty-five programs the first time you meet it, because it is a
+model nobody has drawn yet, and that is the correct number.
+
+What it is worth on the clock, 1728×1117, medians of three loads:
+
+| opening a project | before | after |
+|---|---|---|
+| long tasks | 140ms over 2 | **0** |
+| frames over 50ms | 2 | **0** |
+| worst frame | 100ms | **33ms** |
+| script (project → project) | 395ms | **232ms** |
+| main thread busy | 710ms | **546ms** |
+
+**A warning about verifying this by screenshot.** Two shots of the same project
+in the same build differ by more than the change does: `Float` gives every
+subject a random phase per mount, so the revolver is 590px wide and blued at
+one moment and 435px wide and bright silver at another — a long barrel turned
+toward the camera is foreshortened *and* catches the key light face-on. A
+before/after pair caught at different phases reads exactly like a broken rig.
+Shoot the same project three times before concluding anything about framing or
+exposure.
 
 ### Nothing shows a master
 

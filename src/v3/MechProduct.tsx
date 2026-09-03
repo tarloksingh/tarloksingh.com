@@ -1,8 +1,7 @@
 import { Suspense, useEffect, useMemo, useRef } from 'react'
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import { Center, Float, Resize } from '@react-three/drei'
-import { ACESFilmicToneMapping, MathUtils, PMREMGenerator, SRGBColorSpace, Vector3 } from 'three'
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
+import { MathUtils, Vector3 } from 'three'
 import BlockBuilder from '../three/BlockBuilder'
 import Phone17 from '../three/Phone17'
 import PosStation from '../three/PosStation'
@@ -10,7 +9,6 @@ import VideoFrame from '../three/VideoFrame'
 import { SpriteFlipbook } from '../three/CapsuleStage'
 import type { Mesh, MeshStandardMaterial } from 'three'
 import { drift, gaze } from './subject'
-import { useNarrow } from './narrow'
 import { PIECE_FALLBACK, PRODUCT_DEFAULTS, type PieceTuning, type ProductTuning } from './productTuning'
 import type { PieceId } from './subjects'
 import type { ReactNode } from 'react'
@@ -126,24 +124,17 @@ function Swing({ turn, tilt, sway, children }: { turn: number; tilt: number; swa
   return <group ref={ref}>{children}</group>
 }
 
-/** Built inside three rather than fetched, so the page still makes no
- *  third-party request for an HDRI. The same room v2's gallery lit these
- *  pieces in — see `ROOM_LIGHT` in products.tsx — at this file's own
- *  exposure rather than the face's. */
+/** How brightly the room falls on this piece, and how hot the whole canvas is.
+ *
+ *  **The room is not built here any more** — it is one PMREM per renderer and
+ *  the renderer outlives the project now. See `StageRoom` in `MechStage.tsx`,
+ *  and the note on `PieceStage` below for what that was costing. The two
+ *  numbers left really are the piece's: v2's gallery lit these in the same
+ *  room (`ROOM_LIGHT` in products.tsx) and this file's exposure was always its
+ *  own rather than the face's. */
 function Studio({ intensity, exposure }: { intensity: number; exposure: number }) {
   const gl = useThree((state) => state.gl)
   const scene = useThree((state) => state.scene)
-
-  useEffect(() => {
-    const pmrem = new PMREMGenerator(gl)
-    const target = pmrem.fromScene(new RoomEnvironment(), 0.04)
-    scene.environment = target.texture
-    return () => {
-      scene.environment = null
-      target.dispose()
-      pmrem.dispose()
-    }
-  }, [gl, scene])
 
   useEffect(() => {
     scene.environmentIntensity = intensity
@@ -326,18 +317,28 @@ function Sheen({ piece, children }: { piece: PieceTuning; children: React.ReactN
   return <group ref={ref}>{children}</group>
 }
 
-export default function MechProduct({
+/** The piece, its lens and its rig — and no canvas.
+ *
+ *  **It used to own the canvas, and that was the cost of opening a project.**
+ *  Keyed on the project, it threw away a `WebGLRenderer` and built another
+ *  every time you moved: `getContext`, every extension re-queried, the shaders
+ *  recompiled, the environment map regenerated, `forceContextLoss` on the way
+ *  out. See the note on `ModelStage` in `MechModel.tsx`, which is the same
+ *  story with the face's morph texture on top of it.
+ *
+ *  The canvas is `MechStage.tsx` now and outlives every project on the screen.
+ *  Stopped rather than unmounted while a still is on the stage, which is what
+ *  it always was — `frameloop="never"` up at the canvas. */
+export function PieceStage({
   project,
   tuning = PRODUCT_DEFAULTS,
   piece = PIECE_FALLBACK,
-  live = true,
   offset,
   tilt = 0
 }: {
   project: string
   tuning?: ProductTuning
   piece?: PieceTuning
-  live?: boolean
   /** A narrow-only pan, [x, y] in frame heights, added on top of the piece's
    *  own `liftX` / `liftY`. The desktop layout never passes it. */
   offset?: readonly [number, number]
@@ -345,39 +346,20 @@ export default function MechProduct({
   tilt?: number
 }) {
   const fill = piece.fill * piece.size
-  const distance = distanceFor(piece.focalLength, fill)
-  const narrow = useNarrow()
 
   return (
-    <Canvas
-      /* **A phone does not get the desktop's sample count.** This is the one
-         full-window canvas on the screen, and at `devicePixelRatio` 2 with
-         multisampling on a handset it is several times the pixel work of
-         anything else the page does — paid every frame, behind a subject that
-         is drifting a few degrees. `MechSlots` already makes exactly this
-         trade for the bank (`dpr={narrow ? 1 : [1, 1.75]}`, no antialias); the
-         stage was the piece that never had it. 1.5 rather than 1 because
-         unlike a bay this is the thing being looked at. */
-      dpr={narrow ? [1, 1.5] : [1, 2]}
-      /* Stopped rather than unmounted while a still is on the stage — the
-         same trade `MechModel` makes, and for the same reason: tearing down a
-         WebGL context, a compiled shader set and a generated environment map
-         costs most of a hundred milliseconds to build again. */
-      frameloop={live ? 'always' : 'never'}
-      camera={{ fov: fovForFocalLength(piece.focalLength), position: [0, 0, distance] }}
-      gl={{ alpha: true, antialias: !narrow, toneMapping: ACESFilmicToneMapping, outputColorSpace: SRGBColorSpace }}
-      style={{ background: 'transparent' }}
-    >
+    <>
       {/* All of this is the *piece's*, not the studio's. One exposure and two
           fixed lamps used to serve all eight, which meant a matte card, a
           glossy kiosk and a video-texture monitor were lit identically and at
           most one of them was right.
 
           Per-piece is cheap here in a way it was not on the home stage: a
-          project screen shows one piece at a time in a canvas of its own, so
-          exposure and the scene's environment — one-per-canvas, and the two
-          things the cast genuinely had to share — are free to differ. No
-          layers, nothing to keep apart. */}
+          project screen shows one piece at a time, so exposure — one per
+          canvas, and the thing the cast genuinely had to share — is free to
+          differ from project to project. No layers, nothing to keep apart.
+          It is written onto the shared renderer when this scene mounts rather
+          than baked into a canvas of its own. */}
       <Lens focalLength={piece.focalLength} fill={fill} />
       <Studio intensity={piece.envIntensity} exposure={piece.exposure} />
       <directionalLight position={[piece.keyX, piece.keyY, piece.keyZ]} intensity={piece.keyIntensity} />
@@ -406,6 +388,6 @@ export default function MechProduct({
           </Float>
         </group>
       </Suspense>
-    </Canvas>
+    </>
   )
 }

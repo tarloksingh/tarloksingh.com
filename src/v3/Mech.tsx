@@ -30,10 +30,14 @@ import { useLabelTuning, type Handed } from './labelTuning'
 import { boxOf, CARD, FRAME_SPACE, leadersFor, mediaBox, meetsCard, type Space } from './leaders'
 import './Mech.css'
 
-const MechModel = lazy(() => import('./MechModel'))
-const MechProduct = lazy(() => import('./MechProduct'))
+/* The project stage: one canvas holding whichever subject the project has, and
+   it outlives the project. It used to be these two imported separately, each
+   with a `<Canvas>` of its own keyed on the subject — which made every
+   navigation a WebGL context thrown away and another built. See
+   `MechStage.tsx`. */
+const MechStage = lazy(() => import('./MechStage'))
 /* Solomon's rider stands in for a case study the project does not have yet —
-   see `MechRider.tsx`. Its own canvas, so it is lazy like the other two. */
+   see `MechRider.tsx`. Its own canvas, so it is lazy like the stage. */
 const RiderStage = lazy(() => import('./MechRider').then((m) => ({ default: m.RiderStage })))
 /* Development only — the render is behind `import.meta.env.DEV`, so a visitor
    never fetches this chunk. See `MechPins.tsx`. */
@@ -2003,76 +2007,78 @@ export default function Mech({ id, onProject, onHome }: Props) {
             </div>
           )}
 
-          {modelFrame && (
-            <div className="mech-model-layer" data-on={current?.kind === 'model'}>
-              <Suspense fallback={null}>
-                {/* The same lens, framed larger. `fill` is how much of the
-                    stage's height the subject takes, and on a phone the stage
-                    is a tall box rather than a wide one — a head framed for
-                    the middle of a 16:9 island is a speck in it. Nothing
-                    about `MODEL_DEFAULTS` moves; the multiplier is narrow's
-                    own, on its own panel. */}
-                <MechModel
-                  /* Keyed on the file, so each subject builds its scene in a
-                     canvas of its own. Project to project this is a fresh
-                     mount either way; the key is what stops a subject that
-                     fails to frame — a gun down the wrong axis, a piece whose
-                     animation fights its `Resize` — from leaving the shared
-                     canvas in a state the next project inherits. Within a
-                     project `modelFrame` does not change, so stepping the tile
-                     rail still keeps the context. */
-                  key={modelFrame.src}
-                  src={modelFrame.src}
-                  tuning={
-                    narrow
+          {/* The subject: one canvas, whichever kind of thing this project
+              has, and it stays mounted for the whole of a project screen.
+
+              A project has a model or a piece, never both, and both used to
+              own a canvas of their own — so going from one project to the next
+              threw away a WebGL context and built another, recompiling shaders
+              that had just been compiled, regenerating an environment map that
+              is identical everywhere on this site, and rebuilding the face's
+              morph-target texture because three caches that per *renderer*.
+              Counted on the built page: one context created and one
+              deliberately lost on every single navigation. `MechStage.tsx` has
+              the numbers and the whole argument; the short version is that the
+              renderer now outlives the project and only the scene swaps.
+
+              Mounted unconditionally, including on a project with nothing to
+              draw at all (`subject` null): a bare project between two solid
+              ones would otherwise cost that rebuild twice, for a context that
+              is idle either way. An empty scene compiles nothing and
+              `frameloop="never"` draws nothing, so what an idle stage holds is
+              the context and the room. Stopped rather than hidden while a
+              still is on the stage — `live` is the same flag it always was.
+
+              `narrow` reframes rather than re-rigs: `fill` is how much of the
+              stage's height the subject takes, and on a phone the stage is a
+              tall box rather than a wide one, so a head framed for the middle
+              of a 16:9 island is a speck in it. Nothing about `MODEL_DEFAULTS`
+              or a piece's own tuning moves; the multipliers are narrow's own,
+              on their own panel. */}
+          <div
+            className="mech-model-layer"
+            data-on={current?.kind === 'model' || current?.kind === 'piece'}
+          >
+            <Suspense fallback={null}>
+              <MechStage
+                live={current?.kind === 'model' || current?.kind === 'piece'}
+                subject={
+                  modelFrame
+                    ? {
+                        kind: 'model',
+                        src: modelFrame.src,
+                        tuning: narrow
+                          ? {
+                              ...tuning,
+                              fill: tuning.fill * narrowScale.model,
+                              focalLength: tuning.focalLength * narrowScale.lens,
+                              turn: tuning.turn + narrowScale.spin,
+                              tilt: tuning.tilt + narrowScale.tilt
+                            }
+                          : tuning,
+                        offset: narrow ? [narrowScale.offsetX, narrowScale.offsetY] : undefined
+                      }
+                    : pieceFrame
                       ? {
-                          ...tuning,
-                          fill: tuning.fill * narrowScale.model,
-                          focalLength: tuning.focalLength * narrowScale.lens,
-                          turn: tuning.turn + narrowScale.spin,
-                          tilt: tuning.tilt + narrowScale.tilt
+                          kind: 'piece',
+                          project: pieceFrame.project,
+                          tuning: pieces.studio,
+                          piece: narrow
+                            ? {
+                                ...pieces.piece,
+                                size: pieces.piece.size * narrowScale.model,
+                                focalLength: pieces.piece.focalLength * narrowScale.lens,
+                                turn: pieces.piece.turn + narrowScale.spin
+                              }
+                            : pieces.piece,
+                          offset: narrow ? [narrowScale.offsetX, narrowScale.offsetY] : undefined,
+                          tilt: narrow ? narrowScale.tilt : undefined
                         }
-                      : tuning
-                  }
-                  offset={narrow ? [narrowScale.offsetX, narrowScale.offsetY] : undefined}
-                  live={current?.kind === 'model'}
-                />
-              </Suspense>
-            </div>
-          )}
-          {/* A project has a model or a piece, never both — but the two are
-              mounted the same way and for the same reason: hidden rather than
-              unmounted while a still is on the stage, because a WebGL context
-              and its shaders cost most of a hundred milliseconds to build
-              again. See `MechProduct.tsx`, which is a studio of its own and
-              shares nothing with the face's rig. */}
-          {pieceFrame && (
-            <div className="mech-model-layer" data-on={current?.kind === 'piece'}>
-              <Suspense fallback={null}>
-                <MechProduct
-                  /* See the note on `MechModel` above. The key also stops a
-                     piece that fails to frame from leaving the shared canvas
-                     in a state the next piece project inherits. */
-                  key={pieceFrame.project}
-                  project={pieceFrame.project}
-                  tuning={pieces.studio}
-                  piece={
-                    narrow
-                      ? {
-                          ...pieces.piece,
-                          size: pieces.piece.size * narrowScale.model,
-                          focalLength: pieces.piece.focalLength * narrowScale.lens,
-                          turn: pieces.piece.turn + narrowScale.spin
-                        }
-                      : pieces.piece
-                  }
-                  offset={narrow ? [narrowScale.offsetX, narrowScale.offsetY] : undefined}
-                  tilt={narrow ? narrowScale.tilt : undefined}
-                  live={current?.kind === 'piece'}
-                />
-              </Suspense>
-            </div>
-          )}
+                      : null
+                }
+              />
+            </Suspense>
+          </div>
           {current?.kind === 'flat' && (
             <Flat
               // Prefixed: the leaders below are keyed on the same frame, and

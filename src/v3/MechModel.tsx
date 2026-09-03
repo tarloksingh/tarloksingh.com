@@ -1,11 +1,9 @@
 import { Suspense, useEffect, useMemo, useRef, type RefObject } from 'react'
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import { Float, useAnimations, useGLTF } from '@react-three/drei'
-import { ACESFilmicToneMapping, Box3, MathUtils, PMREMGenerator, SRGBColorSpace, Vector3 } from 'three'
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
+import { Box3, MathUtils, Vector3 } from 'three'
 import { drift, flinch, gaze } from './subject'
 import { MODEL_DEFAULTS, type ModelTuning } from './modelTuning'
-import { useNarrow } from './narrow'
 import type { Group, Mesh, MeshStandardMaterial, PerspectiveCamera } from 'three'
 
 /* The subject of the project screen: the model itself, lit and drifting, with
@@ -456,23 +454,18 @@ function Lean({ degrees, look, children }: { degrees: number; look: Look; childr
   return <group ref={ref}>{children}</group>
 }
 
-/** Built inside three rather than fetched, so the page still makes no
- *  third-party request for an HDRI. Same reasoning as the gallery's stage,
- *  and the same exposure, because it is the same face. */
+/** How brightly the room falls on him, and how hot the whole canvas is.
+ *
+ *  **The room itself is not built here any more.** It is one PMREM per
+ *  *renderer* and the renderer now outlives the project — see `StageRoom` in
+ *  `MechStage.tsx`. Generating it was ~95ms of synchronous shader linking, and
+ *  it was being paid again on every project you opened for a picture that is
+ *  identical every time. What is left is the two numbers that really are this
+ *  rig's: `environmentIntensity` is the scene's and `toneMappingExposure` is
+ *  the canvas's, and both are simply written when they change. */
 function Studio({ intensity, exposure }: { intensity: number; exposure: number }) {
   const gl = useThree((state) => state.gl)
   const scene = useThree((state) => state.scene)
-
-  useEffect(() => {
-    const pmrem = new PMREMGenerator(gl)
-    const target = pmrem.fromScene(new RoomEnvironment(), 0.04)
-    scene.environment = target.texture
-    return () => {
-      scene.environment = null
-      target.dispose()
-      pmrem.dispose()
-    }
-  }, [gl, scene])
 
   useEffect(() => {
     scene.environmentIntensity = intensity
@@ -502,62 +495,50 @@ function Lens({ focalLength, fill }: { focalLength: number; fill: number }) {
   return null
 }
 
-/** Whether the subject is the thing on the stage right now.
+/** The model, its lens and its rig — everything the project stage draws, and
+ *  no canvas.
  *
- *  A still on the stage does not unmount this — see the stage in `Mech.tsx`.
- *  It stops instead: `frameloop="never"` means no render, no `useFrame`, no
- *  morph writes and no GPU work, while the context, the shaders, the cloned
- *  scene and the environment map all stay exactly where they are. Coming
- *  back is a flag; building them again was a visible stutter. */
-export default function MechModel({
+ *  **It used to own the canvas, and that was the cost of opening a project.**
+ *  A `<Canvas>` here, keyed on the subject, meant project → project threw away
+ *  a `WebGLRenderer` and built another: `getContext`, every extension
+ *  re-queried, seven to fifty-eight shaders recompiled, the environment map
+ *  regenerated, and `forceContextLoss` on the way out. Counted off the built
+ *  page, every single navigation created one WebGL context and deliberately
+ *  lost one. It also rebuilt the face's **morph-target texture** from scratch
+ *  — three.js caches that in a `WeakMap` keyed on the geometry, and a new
+ *  renderer is a new `WeakMap`, so 81ms of `WebGLMorphtargets.update` plus
+ *  another 220ms of vertex reads were paid for a texture that had not changed.
+ *
+ *  The canvas lives in `MechStage.tsx` now and outlives every project on the
+ *  screen. This is the scene that goes into it. `MechProduct`'s `PieceStage`
+ *  is the same shape for the same reason.
+ *
+ *  A still on the stage does not unmount this either — see the stage in
+ *  `Mech.tsx`. It stops: `frameloop="never"` on the canvas means no render, no
+ *  `useFrame`, no morph writes and no GPU work, while the cloned scene stays
+ *  exactly where it is. */
+export function ModelStage({
   src,
   tuning = MODEL_DEFAULTS,
-  live = true,
   offset
 }: {
   src: string
   tuning?: ModelTuning
-  live?: boolean
   /** A narrow-only pan, [x, y] in frame heights, added on top of the rig's
    *  own `liftY`. The desktop layout never passes it. See `narrowTuning.ts`. */
   offset?: readonly [number, number]
 }) {
-  /* From the tuning actually in force, not from the shipped constant.
- 
-     A `camera` prop is read once at mount; `Lens` below corrects it in an
-     effect, which is a frame later — and that frame is painted. On the home
-     screen the face is framed much smaller than on his own project screen
-     (his slot's `scale` multiplies `fill`), so with the constant here the
-     first frame drew him at project size and the second at cast size. That
-     is the "flashes large" on the way back to home, and the exposure below
-     is the "flashes white": `Studio` sets `toneMappingExposure` in an effect
-     too, and the renderer's default of 1 against this page's 0.6 is a
-     visibly brighter frame. Both are now right before anything is drawn. */
-  const distance = distanceFor(tuning.focalLength, tuning.fill)
-  const narrow = useNarrow()
-
   return (
-    <Canvas
-      /* **A phone does not get the desktop's sample count.** This is the one
-         full-window canvas on the screen, and at `devicePixelRatio` 2 with
-         multisampling on a handset it is several times the pixel work of
-         anything else the page does — paid every frame, behind a subject that
-         is drifting a few degrees. `MechSlots` already makes exactly this
-         trade for the bank (`dpr={narrow ? 1 : [1, 1.75]}`, no antialias); the
-         stage was the piece that never had it. 1.5 rather than 1 because
-         unlike a bay this is the thing being looked at. */
-      dpr={narrow ? [1, 1.5] : [1, 2]}
-      frameloop={live ? 'always' : 'never'}
-      camera={{ fov: fovForFocalLength(tuning.focalLength), position: [0, 0, distance] }}
-      gl={{
-        alpha: true,
-        antialias: !narrow,
-        toneMapping: ACESFilmicToneMapping,
-        toneMappingExposure: tuning.exposure,
-        outputColorSpace: SRGBColorSpace
-      }}
-      style={{ background: 'transparent' }}
-    >
+    <>
+      {/* `Lens` and `Studio` are what make a shared canvas safe to reuse.
+          Both write onto the camera and the renderer in effects, so the
+          incoming project's framing and exposure are in force before the loop
+          draws its next frame — and unlike a fresh canvas, what they are
+          correcting is the *previous* project's numbers rather than three's
+          defaults, which is a much smaller distance to travel. The old note
+          here was about a brand-new renderer starting at exposure 1 against
+          this page's 0.6 and flashing white; there is no new renderer any
+          more. */}
       <Lens focalLength={tuning.focalLength} fill={tuning.fill} />
       <Studio intensity={tuning.envIntensity} exposure={tuning.exposure} />
       <directionalLight position={[tuning.keyX, tuning.keyY, tuning.keyZ]} intensity={tuning.keyIntensity} />
@@ -578,7 +559,7 @@ export default function MechModel({
       >
         <FaceScene src={src} tuning={tuning} />
       </group>
-    </Canvas>
+    </>
   )
 }
 
