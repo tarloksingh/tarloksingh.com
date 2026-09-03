@@ -10,9 +10,6 @@
    but mostly because sound arriving unasked on someone's speakers at work is
    a hostile thing for a page to do. */
 
-/** Well under the music. These are punctuation, not a soundtrack. */
-const MASTER = 0.3
-
 let ctx: AudioContext | null = null
 let master: GainNode | null = null
 let noise: AudioBuffer | null = null
@@ -27,7 +24,7 @@ function audio(): AudioContext | null {
     if (!Ctor) return null
     ctx = new Ctor()
     master = ctx.createGain()
-    master.gain.value = MASTER
+    master.gain.value = current.effects
     master.connect(ctx.destination)
 
     // Two seconds of white noise, reused by everything that needs air in it.
@@ -175,46 +172,83 @@ export const sound = {
 
 /* ---- levels ----
 
-   The three things that can make noise on the page, on one scale so nothing
-   arrives louder than the music by accident: a synth effect is punctuation
-   (MASTER, above), the music sits under everything, and a clip with its own
-   audio track is the one thing you have actually asked to listen to — so
-   while one is playing the music steps back to MUSIC_DUCK and comes back up
-   when it stops. */
+   Three things make noise on the page: the synth effects (punctuation), the
+   music, and a clip's own audio track. One store behind a small panel on the
+   deck, persisted per browser, so the balance can be set by ear without a
+   rebuild. While a clip with sound is playing the music ducks to a fraction
+   of whatever it is set to and comes back when the clip stops. */
 
-export const LEVELS = {
-  /** The deck's own volume, and what it returns to when no clip is talking. */
-  music: 0.6,
-  /** The deck while a clip with sound is playing — under it, not silent. */
-  musicDuck: 0.22,
-  /** Every clip's audio track. Tamed off the raw 1.0 a <video> plays at, and
-   *  a shade above the music so dialogue stays intelligible over it. */
-  clip: 0.72
+export type Levels = { music: number; effects: number; clip: number }
+
+export const LEVELS_DEFAULT: Levels = { music: 0.6, effects: 0.3, clip: 0.72 }
+const LEVELS_KEY = 'v3.levels.v1'
+
+/** The music, while a clip is talking, as a fraction of its set level. */
+const DUCK_RATIO = 0.37
+
+const clampLevel = (value: unknown, fallback: number): number =>
+  typeof value === 'number' && value >= 0 && value <= 1 ? value : fallback
+
+function loadLevels(): Levels {
+  try {
+    const raw = JSON.parse(window.localStorage.getItem(LEVELS_KEY) ?? '{}') as Record<string, unknown>
+    return {
+      music: clampLevel(raw.music, LEVELS_DEFAULT.music),
+      effects: clampLevel(raw.effects, LEVELS_DEFAULT.effects),
+      clip: clampLevel(raw.clip, LEVELS_DEFAULT.clip)
+    }
+  } catch {
+    return { ...LEVELS_DEFAULT }
+  }
 }
 
+let current: Levels = typeof window === 'undefined' ? { ...LEVELS_DEFAULT } : loadLevels()
 let claims = 0
-const duckListeners = new Set<(ducked: boolean) => void>()
+const listeners = new Set<() => void>()
+const notify = () => listeners.forEach((fn) => fn())
 
-export const music = {
-  /** A clip with audio calls this while it plays and calls the returned
-   *  function when it stops. Ref-counted: several clips, one dip. */
-  claim() {
-    claims += 1
-    if (claims === 1) duckListeners.forEach((fn) => fn(true))
-    let released = false
-    return () => {
-      if (released) return
-      released = true
-      claims -= 1
-      if (claims === 0) duckListeners.forEach((fn) => fn(false))
+export const levels = {
+  /** The set values, for the panel to draw. */
+  get: (): Levels => current,
+
+  /** The music volume to apply right now: the set level, or a fraction of it
+   *  while a clip with its own audio is playing. */
+  music: (): number => (claims > 0 ? current.music * DUCK_RATIO : current.music),
+
+  set(patch: Partial<Levels>) {
+    current = { ...current, ...patch }
+    if (master) master.gain.value = current.effects
+    try {
+      window.localStorage.setItem(LEVELS_KEY, JSON.stringify(current))
+    } catch {
+      /* private mode — losing the preference is fine */
     }
+    notify()
   },
 
-  /** The deck subscribes; called with `true` when the music should duck. */
-  onDuck(fn: (ducked: boolean) => void) {
-    duckListeners.add(fn)
+  reset() {
+    levels.set({ ...LEVELS_DEFAULT })
+  },
+
+  /** Fired on any change — a slider moved, or a clip started or stopped. */
+  subscribe(fn: () => void) {
+    listeners.add(fn)
     return () => {
-      duckListeners.delete(fn)
+      listeners.delete(fn)
     }
+  }
+}
+
+/** A clip with audio holds this while it plays; the music ducks for it.
+ *  Ref-counted: several clips, one dip. Returns its own release. */
+export function claimAudio() {
+  claims += 1
+  if (claims === 1) notify()
+  let released = false
+  return () => {
+    if (released) return
+    released = true
+    claims -= 1
+    if (claims === 0) notify()
   }
 }

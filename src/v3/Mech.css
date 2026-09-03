@@ -2911,6 +2911,10 @@
    Figma frame's, in `--px`. */
 .mech-deck {
   position: relative;
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  gap: calc(8 * var(--px));
 }
 
 .mech-deck-pill {
@@ -2984,6 +2988,126 @@
   background:
     linear-gradient(var(--accent), var(--accent)) left / calc(36%) 100% no-repeat,
     linear-gradient(var(--accent), var(--accent)) right / calc(36%) 100% no-repeat;
+}
+
+/* ---- the mixer ----
+
+   Three sliders behind a toggle, sat to the interior side of the pill so it
+   grows away from the frame edge. The music, the synth effects and a clip's
+   own audio, on one scale — see `levels` in `sound.ts`. */
+
+.mech-deck-mix-toggle {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: calc(3 * var(--px));
+  width: calc(30 * var(--px));
+  height: calc(30 * var(--px));
+  padding: calc(8 * var(--px));
+  border: 0.5px solid var(--accent);
+  border-radius: 999px;
+  background: rgba(var(--accent-rgb), 0.13);
+  cursor: pointer;
+  transition: background 200ms linear;
+}
+
+.mech-deck-mix-toggle i {
+  display: block;
+  height: 0.5px;
+  background: var(--accent);
+}
+
+.mech-deck-mix-toggle i:nth-child(1) {
+  width: 100%;
+}
+.mech-deck-mix-toggle i:nth-child(2) {
+  width: 55%;
+}
+.mech-deck-mix-toggle i:nth-child(3) {
+  width: 78%;
+}
+
+.mech-deck[data-mix='true'] .mech-deck-mix-toggle {
+  background: rgba(var(--accent-rgb), 0.26);
+}
+
+.mech-deck-mix {
+  position: absolute;
+  top: calc(100% + 10 * var(--px));
+  right: 0;
+  z-index: 4;
+  width: calc(176 * var(--px));
+  padding: calc(12 * var(--px)) calc(14 * var(--px)) calc(10 * var(--px));
+  display: flex;
+  flex-direction: column;
+  gap: calc(9 * var(--px));
+  border: 0.5px solid var(--accent);
+  border-radius: calc(8 * var(--px));
+  background: rgba(0, 0, 0, 0.86);
+  box-shadow: 0 0 calc(22 * var(--px) * var(--g, 1)) rgba(var(--accent-rgb), calc(0.18 * var(--g, 1)));
+}
+
+.mech-deck-mix-row {
+  display: grid;
+  grid-template-columns: calc(46 * var(--px)) 1fr;
+  align-items: center;
+  gap: calc(9 * var(--px));
+  font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-weight: 300;
+  font-size: calc(10 * var(--type));
+  letter-spacing: calc(0.4 * var(--type));
+  color: rgba(var(--accent-rgb), 0.85);
+}
+
+.mech-deck-mix-row input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: calc(3 * var(--px));
+  border-radius: 999px;
+  background: rgba(var(--accent-rgb), 0.25);
+  cursor: pointer;
+}
+
+.mech-deck-mix-row input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: calc(11 * var(--px));
+  height: calc(11 * var(--px));
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 calc(6 * var(--px) * var(--g, 1)) rgba(var(--accent-rgb), calc(0.6 * var(--g, 1)));
+}
+
+.mech-deck-mix-row input::-moz-range-thumb {
+  width: calc(11 * var(--px));
+  height: calc(11 * var(--px));
+  border: none;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.mech-deck-mix-reset {
+  align-self: flex-end;
+  margin-top: calc(1 * var(--px));
+  padding: calc(3 * var(--px)) calc(10 * var(--px));
+  border: 0.5px solid rgba(var(--accent-rgb), 0.4);
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(var(--accent-rgb), 0.7);
+  font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-weight: 300;
+  font-size: calc(9 * var(--type));
+  letter-spacing: calc(1 * var(--type));
+  cursor: pointer;
+  transition: color 160ms linear, border-color 160ms linear;
+}
+
+.mech-deck-mix-reset:hover {
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 /* ---- footer ---- */

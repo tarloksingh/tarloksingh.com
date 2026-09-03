@@ -4866,16 +4866,22 @@ of gradients for the two bars. Green, not the warm channel the old strip used:
 it is a readout, not a warning. `<audio loop>`, wide layout only. Geometry is
 the Figma frame's, in `--px`.
 
-**One scale for the three things that make noise.** `LEVELS` in `sound.ts` is
-the whole of it: a synth effect is punctuation and sits at `MASTER`, the music
-plays at `LEVELS.music`, and a clip with its own audio track — the one thing
-you have actually pressed play on — runs at `LEVELS.clip`, tamed off the raw
-`1.0` a `<video>` plays at and a shade above the music so speech stays over it.
-While any such clip is playing the deck drops to `LEVELS.musicDuck` and comes
-back up when it stops: `music.claim()` is ref-counted (several clips, one dip),
-the deck subscribes with `music.onDuck`, and both clip components — `Flat` in
-`Mech.tsx` and `Video` in `Stage.tsx` — claim while they are audible. A silent
+**One scale for the three things that make noise, and a panel to set it.**
+`levels` in `sound.ts` is a small persisted store — music, effects, clip — read
+by the deck (`<audio>` volume), by `audio()` (the effects master gain, live)
+and by every clip (`<video>` volume, live via `levels.subscribe`). The synth
+effects start at `0.3`, the music at `0.6`, and a clip's own audio track at
+`0.72` — tamed off the raw `1.0` a `<video>` plays at, a shade above the music
+so speech stays over it. While a clip with sound is playing the music ducks to
+`DUCK_RATIO` of whatever it is set to and comes back when the clip stops:
+`claimAudio()` is ref-counted (several clips, one dip), and `Flat` in `Mech.tsx`
+and `Video` in `Stage.tsx` both hold a claim while they are audible. A silent
 screen capture, which is most of them, never touches any of this.
+
+The panel is the three-bar toggle next to the deck pill (`MechDeck.tsx`,
+`.mech-deck-mix` in `Mech.css`) — three sliders and a Reset, `v3.levels.v1` in
+`localStorage`. It is the *only* audio control on the page; there is no global
+mute (see below). Wide layout only, with the rest of the deck.
 
 
 Everything is synthesised in `sound.ts` — oscillators, one noise buffer, a

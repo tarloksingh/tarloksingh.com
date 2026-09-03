@@ -18,7 +18,7 @@ import { useClusterTuning } from './clusterTuning'
 import MechDeck from './MechDeck'
 import MechMenu from './MechMenu'
 import { useNarrowTuning } from './narrowTuning'
-import { sound, music, LEVELS } from './sound'
+import { sound, levels, claimAudio } from './sound'
 import { useNarrow } from './narrow'
 import { useReveal } from './reveal'
 import { drift, flinch, quarry } from './subject'
@@ -779,13 +779,17 @@ function Flat({ frame, index, count, narrow, onReady }: FrameProps) {
   }, [])
 
   useEffect(() => {
-    if (video.current) video.current.volume = LEVELS.clip
+    const apply = () => {
+      if (video.current) video.current.volume = levels.get().clip
+    }
+    apply()
+    return levels.subscribe(apply)
   }, [])
 
   // While this clip is audible, the music steps back for it.
   useEffect(() => {
     if (muted || !playing) return
-    return music.claim()
+    return claimAudio()
   }, [muted, playing])
 
   const place = {
