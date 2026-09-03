@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import Segment from './Segment'
 import { sound } from './sound'
 import { SLOTS, type Slot } from './bank'
+import { bankPick, useBankPick } from './bankPick'
 import MechSlots, { SlotView } from './MechSlots'
 import { RiderSlot } from './MechRider'
 import './MechCluster.css'
@@ -150,12 +151,20 @@ function SlotBox({
 }
 
 interface Props {
-  /** Which slot is lit, by index. On home it is what the pointer or a tap
-   *  chose; on a project screen it is the project you are on. */
-  picked: number | null
-  /** Choosing a slot without opening it. Absent on a project screen, which is
-   *  also what makes every press there open directly — see `direct`. */
-  onPick?: (n: number) => void
+  /** Which screen this is standing on, and it decides everything that differs
+   *  between the two: whether the head is a readout or a sign, whether a press
+   *  selects before it opens, whether the lit slot is scrolled into view, and
+   *  where the selection comes from.
+   *
+   *  It used to be inferred from `onPick` being passed or not, which was true
+   *  and unreadable. It is a flag now because the selection is no longer
+   *  handed in at all — see below. */
+  home: boolean
+  /** Which slot is lit on a **project** screen: the project you are on. Home
+   *  ignores it and reads `bankPick` instead, because home's selection follows
+   *  the pointer across eleven slots and threading that through `Mech.tsx`
+   *  would re-render the whole screen on every crossing of a bay. */
+  picked?: number | null
   onOpen: (id: string) => void
   /** The cover being off: nothing is dealt and nothing types until this. */
   up: boolean
@@ -163,33 +172,28 @@ interface Props {
    *  on it and every `Segment` takes its own word back off. */
   covered: boolean
   narrow: boolean
-  /** What the head reads, and whether it is a readout or a sign. Home hands in
-   *  the selected project's title; a project screen leaves it out and gets
-   *  `PROJECTS` permanently. */
-  title?: string | null
-  /** Mouse-only hold/release around the whole bank, so the selection survives
-   *  the pointer crossing the gap between two slots. Home only. */
-  onHold?: () => void
-  onRelease?: (event: React.PointerEvent) => void
-  /** Anything that belongs under the bank. Home hands in the field dials; a
-   *  project screen hands in nothing, because the dials report on a selection
-   *  that only home has. */
-  children?: React.ReactNode
 }
 
-export default function MechBank({
-  picked,
-  onPick,
-  onOpen,
-  up,
-  covered,
-  narrow,
-  title,
-  onHold,
-  onRelease,
-  children
-}: Props) {
+export default function MechBank({ home, picked: onProjectPicked, onOpen, up, covered, narrow }: Props) {
   const railList = useRef<HTMLDivElement>(null)
+
+  /* Home's selection is module state and a project's is the URL, so this is
+     the one place the two screens genuinely diverge — and it is four lines
+     rather than five props.
+
+     **`useBankPick` is called unconditionally, and that is not a formality
+     here.** `home` flips on the *same mount* now: this component survives the
+     crossing, which is the whole point of it being mounted from `Mech.tsx`. A
+     hook behind `home ?` would change the hook order on that flip and unmount
+     the app. A project screen never sets the pick either, so subscribing there
+     costs a listener and never fires. */
+  const homePicked = useBankPick()
+  const picked = home ? homePicked : (onProjectPicked ?? null)
+  const title = home && picked !== null ? (SLOTS[picked]?.title ?? null) : null
+  const onPick = (n: number) => {
+    bankPick.hold()
+    bankPick.set(n)
+  }
 
   /** How far down the rail the deal has got. The bank fills one slot at a
    *  time from the top — the subjects are WebGL and a slot's CSS entrance
@@ -288,24 +292,23 @@ export default function MechBank({
 
      Never on home, where the selection *is* the pointer — scrolling a list
      under the cursor that is choosing from it moves the next row out from
-     under the finger before it lands. `onPick` is the flag for that: home
-     passes it, a project screen does not.
+     under the finger before it lands. `home` is the flag for that.
 
      `block: 'nearest'` so a slot already on screen does not move, and the
      rail is the only thing that scrolls — `scrollIntoView` walks every
      scrollable ancestor, and on a phone that includes `.mech` itself, which
      would jump the page to the bank the moment a project opened. */
   useEffect(() => {
-    if (onPick || picked === null || !up) return
+    if (home || picked === null || !up) return
     const list = railList.current
     const slot = list?.children[0]?.children[picked] as HTMLElement | undefined
     if (!list || !slot || list.scrollHeight <= list.clientHeight + 1) return
     list.scrollTo({ top: Math.max(0, slot.offsetTop - (list.clientHeight - slot.offsetHeight) / 2), behavior: 'auto' })
-  }, [onPick, picked, up])
+  }, [home, picked, up])
 
   /* A press opens with no select first wherever there is no hover to have
      done the selecting — see `SlotBox`. */
-  const direct = narrow || !onPick
+  const direct = narrow || !home
 
   return (
     <aside className="mech-work-rail">
@@ -347,7 +350,16 @@ export default function MechBank({
           keeps the bank's canvas clipped to exactly this band as it scrolls —
           see the effect above. */}
       <div className="mech-work-rail-list" ref={railList}>
-        <div className="mech-bank" onPointerEnter={onHold} onPointerLeave={onRelease}>
+        {/* Mouse-only hold and release around the whole bank, so home's
+            selection survives the pointer crossing the gap between two slots.
+            Nothing to hold on a project screen, where the lit slot is the URL
+            — `bankPick` is never read there, so these are inert rather than
+            conditional. */}
+        <div
+          className="mech-bank"
+          onPointerEnter={() => bankPick.hold()}
+          onPointerLeave={(event) => bankPick.letGo(event.pointerType)}
+        >
           {SLOTS.map((item, n) => (
             <SlotBox
               key={item.id}
@@ -380,7 +392,12 @@ export default function MechBank({
         </div>
       </div>
 
-      {children}
+      {/* The field dials that used to be handed in here as children are the
+          cluster's now: they report on home's own selection, a project screen
+          never had them, and this component is mounted once for both screens.
+          `.mech-rail-hole` in MechCluster.tsx holds them and reserves this
+          rail's box in home's flex row — see *one rail, both screens* in the
+          README. */}
     </aside>
   )
 }

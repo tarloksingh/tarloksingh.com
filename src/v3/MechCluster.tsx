@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import Segment from './Segment'
 import Typed from './Typed'
 import { useNarrow } from './narrow'
-import MechBank, { CELLS as BANK_CELLS } from './MechBank'
+import { CELLS as BANK_CELLS } from './MechBank'
 import { SLOTS, FIELDS, FIELD_LABEL, type Field } from './bank'
 import { bankPick, useBankPick } from './bankPick'
 import type { ClusterTuning } from './clusterTuning'
@@ -910,7 +910,8 @@ const useNameFit = (narrow: boolean, ident: RefObject<HTMLElement | null>, probe
 }
 
 interface Props {
-  onProject: (id: string) => void
+  /* No `onProject` any more: the rail was the only thing on this screen that
+     opened one, and it is mounted from `Mech.tsx` now — see the hole below. */
   /** Held back while the machine is still booting, and again while the screen
    *  is leaving for a project. It is what holds the panel down and what runs
    *  its entrances — see *coming up, and going down* in MechCluster.css. */
@@ -929,7 +930,7 @@ interface Props {
   tuning: ClusterTuning
 }
 
-export default function MechCluster({ onProject, covered, leaving, tuning }: Props) {
+export default function MechCluster({ covered, leaving, tuning }: Props) {
   /* Which slot is selected. It persists rather than following the pointer: a
      preset bank holds the preset you pressed, and on a phone there is no
      "leaving" for it to be cleared by. What does release it is the pointer
@@ -942,6 +943,10 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
   const [step, setStep] = useState(0)
   const narrow = useNarrow()
   const identRef = useRef<HTMLElement>(null)
+  /** The box the rail stands in on home — the hole's *filler*, not the hole:
+   *  the dials take the bottom of that box and the rail has to stop above
+   *  them. See the note beside the hole below. */
+  const railHole = useRef<HTMLDivElement>(null)
   const nameProbe = useRef<HTMLHeadingElement>(null)
   useNameFit(narrow, identRef, nameProbe)
 
@@ -1041,6 +1046,69 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
      reason it is a scale and not a single needle. Otherwise it is the one
      field the current title falls under. */
   const marked = slot ? slot.fields : [TITLES[at % TITLES.length].field]
+
+  /* ---- telling the rail where home's box is ----
+
+     `.mech-bank-col` is positioned for a project screen in CSS and the two
+     screens already agree on left, width and height — measured at three window
+     sizes, identical to the pixel. Only the *top* differs, because home's rail
+     starts level with the tachometer rather than centring in the frame.
+
+     So the box is published rather than duplicated: the filler's offset inside
+     `.mech` and its height, written as `--rail-top` and `--rail-h` for
+     `.mech-bank-col[data-where='home']` to read. Custom properties rather than
+     React state, for the same reason `--cluster-glow` and `--rail-clip-top`
+     are: they move on resize and on nothing else, and a state update here
+     would re-render the whole panel to move one box.
+
+     **The height matters as much as the top, and for a reason that is easy to
+     miss.** The dials used to be *inside* the rail, under its list, so the
+     list stopped above them. They are in the hole now — so if the rail simply
+     stood `--panel-h` tall its list would grow into their row and print a
+     twelfth slot over the top of them. The filler is exactly the space left
+     over once the dials have taken theirs, which is the space the list had all
+     along.
+
+     `useLayoutEffect`, so the rail is never painted at a project screen's
+     position for a frame on the way in. */
+  useLayoutEffect(() => {
+    const hole = railHole.current
+    const root = hole?.closest('.mech') as HTMLElement | null
+    if (!hole || !root) return
+    let raf = 0
+    const measure = () => {
+      raf = 0
+      /* Relative to `.mech`, which is what `.mech-bank-col` is positioned
+         against — not the viewport, because on the narrow layout the page
+         itself scrolls. Narrow does not use this at all (the rail is a flex
+         item in the frame down there), but a stale value inherited across a
+         resize past the breakpoint would be worse than a correct one. */
+      const box = hole.getBoundingClientRect()
+      const base = root.getBoundingClientRect()
+      /* Unrounded. `--px` is fractional and the rail's own rows are laid out
+         against it, so rounding this to the nearest pixel walked the list's
+         top edge a pixel away from where it used to be at some window sizes —
+         visible as the first bay's border sitting off the head's baseline. */
+      root.style.setProperty('--rail-top', `${box.top - base.top}px`)
+      root.style.setProperty('--rail-h', `${box.height}px`)
+    }
+    const request = () => {
+      if (raf) return
+      raf = requestAnimationFrame(measure)
+    }
+    measure()
+    window.addEventListener('resize', request)
+    const ro = new ResizeObserver(request)
+    ro.observe(hole)
+    ro.observe(root)
+    return () => {
+      window.removeEventListener('resize', request)
+      ro.disconnect()
+      cancelAnimationFrame(raf)
+      root.style.removeProperty('--rail-top')
+      root.style.removeProperty('--rail-h')
+    }
+  }, [])
 
   const identity = (
     <section className="mech-ident" ref={identRef}>
@@ -1238,30 +1306,30 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
           {narrow && identity}
         </div>
 
-        {/* ---- the rail ----
+        {/* ---- where the rail goes, and the dials under it ----
 
-            Work, on the right, the full height of the panel — see *the bank is
-            the navigation* for why it is pressable slots rather than a graph.
-            It is `MechBank.tsx` now rather than markup here, because a project
-            screen mounts the same rail down its own right-hand margin. */}
-        <MechBank
-          picked={picked}
-          onPick={(n) => {
-            bankPick.hold()
-            bankPick.set(n)
-          }}
-          onOpen={onProject}
-          up={up}
-          covered={covered}
-          narrow={narrow}
-          title={slot ? slot.title : null}
-          onHold={() => bankPick.hold()}
-          onRelease={(event) => bankPick.letGo(event.pointerType)}
-        >
-          {/* The scale, under the bank — see `FieldGauge` above. Handed in as
-              children rather than living in `MechBank`: the dials report on
-              home's own selection, and a project screen's copy of the bank
-              has no selection to report. */}
+            **The rail itself is not here any more.** `MechBank` is mounted
+            once from `Mech.tsx`, for both screens, because rendering it from
+            two places meant the crossing between home and a project unmounted
+            it and took its WebGL context with it — one context built and one
+            destroyed every time you moved, plus every subject's geometry and
+            shaders. See *one rail, both screens* in the README.
+
+            What is left here is the two things that really are home's. The
+            **hole** reserves the rail's box in this flex row, so the three
+            columns keep the widths they had and the counts and the instrument
+            do not slide right when the rail stops being a child. And the
+            **dials** sit under it, because they report on home's own selection
+            and a project screen has none to report.
+
+            `railHole` is measured rather than the rail's top being duplicated
+            in CSS: home's rail begins level with the graph, which is below a
+            name whose height is font-driven and below `--cluster-y`, so there
+            is no constant to hardcode. One `getBoundingClientRect` on mount
+            and on resize, written onto `.mech` as `--rail-top` for the CSS to
+            read. */}
+        <aside className="mech-rail-hole" aria-hidden>
+          <div className="mech-rail-hole-fill" ref={railHole} />
           <div className="mech-scale-row">
             {/* `arc` is the ignition sweep — every dial round to full, then
                 back to nothing, then whatever is actually being read. See the
@@ -1270,7 +1338,7 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
               <FieldGauge key={name} name={name} on={arc === 'full' || (arc === 'live' && marked.includes(name))} />
             ))}
           </div>
-        </MechBank>
+        </aside>
         </div>
       </div>
     </div>

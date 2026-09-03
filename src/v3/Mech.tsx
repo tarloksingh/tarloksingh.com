@@ -1951,7 +1951,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
             work and the way into it. See `MechCluster.tsx`. */}
         {home && (
           <Suspense fallback={null}>
-            <MechCluster onProject={onProject} covered={covered} leaving={leaving} tuning={cluster.values} />
+            <MechCluster covered={covered} leaving={leaving} tuning={cluster.values} />
           </Suspense>
         )}
 
@@ -2208,49 +2208,68 @@ export default function Mech({ id, onProject, onHome }: Props) {
             header's index sheet as the only way on. A list that disappears
             when you use it is not navigation, it is a menu.
 
-            `MechBank` is the same component either way — see the note at the
-            top of it — but it reports something different here. There is no
-            selection to make on this screen, so `onPick` is left out, which is
-            also what makes a press open a project directly rather than
-            selecting it first (`direct` in `SlotBox`). The lit slot is the
-            project you are on, and the head says `PROJECTS` rather than naming
-            a choice you have not made. */}
-        {!home && (
-          <div
-            className="mech-bank-col"
-            /* The one cluster token that has to be handed over rather than
-               declared in CSS: `--cluster-slot` is the Slot height knob, set
-               inline on `.mech-cluster` from the same panel. Without it the
-               rail falls back to the stylesheet's 150 here and to the panel's
-               98 on home — a bay half again as wide on a project screen,
-               which eats the room the name needs and clamps "Mr. Takahashi"
-               to an ellipsis. One knob, both screens. */
-            style={{ ['--cluster-slot' as string]: cluster.values.slot }}
-            data-arrive
-            data-transiting={transiting}
-          >
-            {/* The column keeps its own entrance either way, so the fallback
-                is the empty column rather than a placeholder — and by the time
-                the boot is over the chunk has landed, because `primed` waited
-                for it. See *load first, then play* above. */}
-            <Suspense fallback={null}>
-              <MechBank
-                picked={slotOf(shownId)}
-                onOpen={onProject}
-                /* Down for the length of a retarget, not just the boot. `up` is
-                   what runs the deal — the timer that walks the subjects into
-                   their bays and, on the way out, back out of them — and the
-                   CSS beside it in MechCluster.css undeals the boxes on the
-                   same beats. Without this the bays kept their pictures while
-                   the boxes around them left, which is the one part of the
-                   handover a stylesheet cannot do. */
-                up={!booting && !transiting}
-                covered={covered && transiting}
-                narrow={narrow}
-              />
-            </Suspense>
-          </div>
-        )}
+            **And it is mounted here for both screens, once.** It used to be
+            rendered from two places — home's cluster flank and this column —
+            which meant React unmounted one subtree and mounted the other every
+            time you crossed between them, and `MechSlots`' single WebGL canvas
+            went with it: one context built and one destroyed each way, every
+            subject's geometry rebuilt, its shaders relinked and the
+            environment map regenerated. Counted off the built page it was the
+            last measured hitch on this site. `Mech` is the component that
+            survives the crossing, so the rail lives here and the cluster keeps
+            a hole where it used to be — see *one rail, both screens* in the
+            README, and `.mech-rail-hole` in `MechCluster.tsx`.
+
+            `MechBank` reports something different on each screen and `home` is
+            the only prop that says so: it decides whether the head is a
+            readout or a sign, whether a press selects before it opens
+            (`direct` in `SlotBox`), whether the lit slot is scrolled into
+            view, and whether the selection comes from `bankPick` or from the
+            URL. */}
+        <div
+          className="mech-bank-col"
+          data-where={home ? 'home' : 'project'}
+          /* The one cluster token that has to be handed over rather than
+             declared in CSS: `--cluster-slot` is the Slot height knob, set
+             inline on `.mech-cluster` from the same panel. Without it the
+             rail falls back to the stylesheet's 150 here and to the panel's
+             98 on home — a bay half again as wide on a project screen,
+             which eats the room the name needs and clamps "Mr. Takahashi"
+             to an ellipsis. One knob, both screens. */
+          style={{ ['--cluster-slot' as string]: cluster.values.slot }}
+          data-arrive
+          data-transiting={transiting}
+          /* Home's entrance counts from the cover and a project's from the
+             retarget — see the two blocks in MechCluster.css. Both attributes
+             are always present; each screen's rules read the one that means
+             something to it. */
+          data-covered={covered}
+        >
+          {/* The column keeps its own entrance either way, so the fallback
+              is the empty column rather than a placeholder — and by the time
+              the boot is over the chunk has landed, because `primed` waited
+              for it. See *load first, then play* above. */}
+          <Suspense fallback={null}>
+            <MechBank
+              home={home}
+              picked={slotOf(shownId)}
+              onOpen={onProject}
+              /* Down for the length of a retarget, not just the boot. `up` is
+                 what runs the deal — the timer that walks the subjects into
+                 their bays and, on the way out, back out of them — and the
+                 CSS beside it in MechCluster.css undeals the boxes on the
+                 same beats. Without this the bays kept their pictures while
+                 the boxes around them left, which is the one part of the
+                 handover a stylesheet cannot do.
+
+                 Home counts from its own cover instead: the panel's blocks all
+                 wait on `!covered` and the deal is one of them. */
+              up={home ? !covered : !booting && !transiting}
+              covered={home ? covered : covered && transiting}
+              narrow={narrow}
+            />
+          </Suspense>
+        </div>
 
         {/* A project's column, and only a project's. It used to be mounted on
             home too — empty, with a handful of rules re-shaping it around

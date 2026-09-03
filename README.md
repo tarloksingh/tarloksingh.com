@@ -5079,6 +5079,131 @@ before/after pair caught at different phases reads exactly like a broken rig.
 Shoot the same project three times before concluding anything about framing or
 exposure.
 
+### One rail, both screens
+
+The last measured hitch, and the same shape as the stage above: **the rail's
+WebGL canvas was thrown away and rebuilt every time you crossed between home
+and a project.**
+
+`MechBank` was rendered from two JSX sites — home's cluster flank and
+`.mech-bank-col` down a project's right-hand margin — so React unmounted one
+subtree and mounted the other, and `MechSlots`' single canvas went with it.
+Counted on the built page, in both directions:
+
+```
+open mr-takahashi  ctx=2 lose=1 link=22 shader=44   (the stage's first mount + the bank)
+back home          ctx=1 lose=2 link=10 shader=20   (the bank)
+```
+
+Unthrottled at 1728×1117, the profile of *project → home* named the pieces:
+
+```
+88ms  WebGLRenderer.setSize    <- setPixelRatio <- r3f configure
+79ms  getBoundingClientRect    <- drei View's Container, in the render loop
+41ms  getProgramInfoLog        <- PMREM fromScene <- MechSlots' Environment
+16ms  getExtension
+15ms  loseContext
+~30ms toCreasedNormals + expandByObject   (the bays rebuilt)
+17ms  WebGLMorphtargets.update            (the head's morph texture again)
+```
+
+`setSize` is the largest because that canvas is `position: fixed; inset: 0` —
+**3024×1954, 5.9 megapixels, with `antialias: true`** — for a rail of
+seventy-five-pixel thumbnails. Allocating it, its depth buffer and its
+multisample buffers is the 88ms.
+
+**`Mech` is the component that survives the crossing, so the rail lives there.**
+That is the whole fix and everything else is consequence. Three things had to
+move:
+
+- **The selection.** `picked` was `useState` in `MechCluster`, and the rail
+  that sets it is no longer inside it. It is `bankPick.ts` now — one number,
+  its release timer and the arrow-key step, on the same live-store pattern
+  `subject.ts` and `tourState.ts` use. `MechBank` subscribes to it *itself*
+  rather than being handed it, because home's selection follows the pointer
+  across eleven slots and threading that through `Mech` would re-render the
+  whole screen on every crossing of a bay. The cluster drops the pick on
+  unmount, or coming back from a project would arrive with a slot still lit
+  under a pointer that is nowhere near the rail.
+- **The dials.** They were the bank's `children`. They report on home's own
+  selection and a project screen never had them, so they stay with the cluster
+  — in the hole.
+- **The hole.** `.mech-rail-hole` is what home leaves behind: same `flex: none`
+  and the same `--flank-w`, so `.mech-body`'s three columns keep the widths
+  they had, with the dials in the bottom of it.
+
+**`MechBank`'s interface got smaller rather than larger.** `picked`, `onPick`,
+`title`, `onHold`, `onRelease` and `children` are gone; `home` replaces all of
+them and decides everything that differs — readout or sign, select-then-open or
+open directly, scroll-the-lit-slot-into-view or not, and where the selection
+comes from.
+
+Three traps, and the first one is the interesting one:
+
+- **`useBankPick` must be called unconditionally, and that is not a
+  formality.** `home` flips on the *same mount* now — that is the entire point
+  of the component surviving the crossing. A hook behind `home ?` changes the
+  hook order on that flip and unmounts the app. It was written that way first.
+- **Home's entrance cannot hang off `data-transiting`.** The project screen's
+  rules key the deal on `[data-transiting='false']`, which is *already* false
+  when this column mounts on home — that is during the boot, so the bank would
+  deal itself out behind the cover and the panel would come up with eleven
+  slots already sitting there. Home's copy keys on `[data-covered='false']`,
+  which is the flag every other block on the panel waits for. Same keyframes,
+  same numbers, one attribute different.
+- **Two things stopped inheriting.** `--sign` was declared on
+  `.mech-body`, and the third of the three narrow signs is the rail's own head
+  — which is not a descendant of that row any more, so it moved to `.mech`.
+  And home's rail had `--out: 560ms` from the cluster; the column declares
+  `300ms`, so home re-declares it or the rail leaves 260ms before the panel it
+  belongs to.
+
+**Where the box comes from, and why it is measured.** Home and a project
+already agree on left, width and height — checked at 1512×900, 1728×1117 and
+2560×1400, identical to the pixel, because both are 253 units wide,
+`--panel-h` tall and inset by the header's own 101. Only the *top* differs: a
+project centres the rail in the frame and home stands it level with the
+tachometer, which is below a name whose height is font-driven and below
+`--cluster-y`. There is no constant to hardcode, so `MechCluster` measures the
+hole's filler and publishes `--rail-top` and `--rail-h` onto `.mech` for
+`[data-where='home']` to read — a custom property rather than state, the same
+way `--cluster-glow` and `--rail-clip-top` are, because it moves on resize and
+on nothing else.
+
+Two details of that measurement earned themselves:
+
+- **The height is published as well as the top.** The dials used to be *inside*
+  the rail, under its list, so the list stopped above them. They are in the
+  hole now, so a rail standing the full `--panel-h` grows its list into their
+  row and prints a twelfth slot over the top of them. `--rail-h` is what the
+  hole has left once the dials have taken theirs — and `.mech-work-rail` takes
+  `height: 100%` rather than declaring `--panel-h` a second time.
+- **Do not round it.** `--px` is fractional and the rail's rows are laid out
+  against it; rounding to the nearest pixel walked the list's top edge a pixel
+  off the head's baseline at some window sizes.
+
+Counted after:
+
+```
+open mr-takahashi  ctx=1 lose=0 link= 9 shader=18   (the stage's first mount, alone)
+open capsule-c1    ctx=0 lose=0 link= 1 shader= 2
+back home          ctx=0 lose=1 link= 3 shader= 6
+```
+
+The bank's canvas is never rebuilt. What is left is the stage canvas, created
+the first time you open a project and released when you go home, because
+`.mech-stage` is a project screen's element — keeping *that* alive would mean
+mounting a second full-size canvas on home and paying its allocation during
+the boot, which is the one window this site can least afford it in.
+
+**Verified by geometry rather than by eye**, which is the part worth copying:
+`.mech-work-rail`, `.mech-work-rail-list`, `.mech-scale-row` and `.mech-main`
+were measured on both screens at three window sizes before and after, and the
+narrow layout's `scrollHeight` compared on both. Every number matches. A
+screenshot pair would not have caught the twelfth-slot overlap, because it only
+shows once the rail is tall enough — and `Float`'s random phase makes any 3D
+subject look like a regression anyway.
+
 ### Nothing shows a master
 
 The stills in `src/assets/<project>/` are camera and render output: 2316×3088,

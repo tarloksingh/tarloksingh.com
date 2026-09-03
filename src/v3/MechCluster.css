@@ -927,6 +927,47 @@
   min-height: 0;
 }
 
+/* ---- the hole home leaves for the rail ----
+
+   The rail is mounted from `Mech.tsx` now, once, for both screens — see *one
+   rail, both screens* in the README for the WebGL context that was being
+   rebuilt on every crossing. Two things still have to happen on home where it
+   used to be:
+
+   **The flex row has to keep its geometry.** `.mech-body` is three columns and
+   the rail was the third; without something of the same width in its place the
+   counts and the instrument slide right into the gap. Same `flex: none` and
+   the same `--flank-w`, so the row does not know the difference.
+
+   **And the dials go under it.** They are home's own — they report on home's
+   selection and a project screen has none — so they stay here rather than
+   being handed to the rail as children. The filler above them takes the height
+   the head and the list would have, which puts the dials on exactly the line
+   they were on: the rail's own bottom edge.
+
+   No paint of its own. It is `aria-hidden` and it holds only the dials; the
+   rail that lands on top of it is the real thing. */
+.mech-rail-hole {
+  flex: none;
+  width: var(--flank-w);
+  height: var(--panel-h);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.mech-rail-hole-fill {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Nothing to reserve at this width: the rail is a flex item in the frame down
+   here rather than a column in this row, and the dials are hidden anyway (see
+   `.mech-scale-row` in the narrow block). */
+.mech[data-narrow='true'] .mech-rail-hole {
+  display: none;
+}
+
 /* ---- the bank, on a project screen ----
 
    The same `<aside class="mech-work-rail">` home puts in its right flank,
@@ -968,6 +1009,22 @@
   z-index: 3;
   display: flex;
   flex-direction: column;
+
+  /* ---- and home's copy of the same column ----
+
+     Left, width and height are already right for both screens — measured at
+     1512×900, 1728×1117 and 2560×1400 and identical to the pixel, because both
+     are `253` units wide, `--panel-h` tall and inset by the header's own `101`.
+     Only the *top* differs: a project centres the rail in the frame, and home
+     stands it level with the tachometer.
+
+     That one number cannot be written here. Home's rail begins at the top of
+     `.mech-body`, which is below a name whose height is font-driven and below
+     `--cluster-y`, so there is no constant to hardcode and a wrong guess is a
+     rail that does not line up with the instrument beside it. `MechCluster`
+     measures the hole it leaves and publishes `--rail-top` onto `.mech`; this
+     reads it. The fallback is a project screen's own centring, which is what
+     shows for the one frame before the cluster has measured. */
 
   /* The panel's tokens, matching `.mech-cluster`'s exactly — including
      `--panel-h` now, so this rail stands the same height as home's rather
@@ -1083,13 +1140,64 @@
    way: an animation only restarts when its `animation-name` changes, so
    reusing the entrance with `animation-direction: reverse` would leave the
    finished exit held and play nothing. Same rule as the frame swap. */
-.mech-bank-col[data-transiting='false'] .mech-work-rail {
+.mech-bank-col[data-where='project'][data-transiting='false'] .mech-work-rail {
   animation: mech-cluster-fade 700ms 380ms var(--ease) both;
 }
 
-.mech-bank-col[data-transiting='false'] .mech-slot {
+.mech-bank-col[data-where='project'][data-transiting='false'] .mech-slot {
   animation: mech-cluster-in 420ms var(--ease) both;
   animation-delay: calc(620ms + var(--i, 0) * 55ms);
+}
+
+/* ---- and home's entrance, which counts from the cover ----
+
+   The same two animations on the same two beats, hung off `data-covered`
+   instead. That difference is load-bearing rather than cosmetic: `transiting`
+   is already false when this column mounts on home, which is *during the
+   boot*, so the project screen's rules above would deal the whole bank out
+   behind the cover and the panel would come up with eleven slots already
+   sitting there. `covered` is the flag every other block on home waits for.
+
+   These were `.mech-cluster[data-covered='false'] .mech-work-rail` and
+   `.mech-slot` until the rail moved out of the cluster; same numbers, same
+   keyframes, one selector further out. */
+.mech-bank-col[data-where='home'][data-covered='false'] .mech-work-rail {
+  animation: mech-cluster-fade 700ms 380ms var(--ease) both;
+}
+
+.mech-bank-col[data-where='home'][data-covered='false'] .mech-slot {
+  animation: mech-cluster-in 420ms var(--ease) both;
+  animation-delay: calc(620ms + var(--i, 0) * 55ms);
+}
+
+/* Home leaves on the cluster's clock, not a project screen's — the rail is one
+   block of a panel going down and has to leave in step with the rest of it.
+   The exit rules above are shared; only `--out` differs. */
+.mech-bank-col[data-where='home'] {
+  --out: 560ms;
+}
+
+/* The rail fills whatever column it is given rather than declaring
+   `--panel-h` twice. On a project that is the same number it always was; on
+   home it is `--rail-h`, the box left over once the dials have taken theirs.
+   Without this the rail keeps its own full height inside a shorter host and
+   its list prints a twelfth slot straight over the dials. */
+.mech-bank-col .mech-work-rail {
+  height: 100%;
+}
+
+/* Home's top comes from the measurement above; `bottom: auto` and `margin: 0`
+   take the project screen's centring back off, or the two would fight and the
+   rail would land halfway between them. */
+.mech-bank-col[data-where='home'] {
+  top: var(--rail-top, calc(168 * var(--px)));
+  /* Not `--panel-h`: the dials sit in the bottom of that box (they are in the
+     hole, not in the rail, now) and the list would otherwise grow into their
+     row and print a twelfth slot over them. `--rail-h` is what the hole has
+     left after the dials — see the measurement in MechCluster.tsx. */
+  height: var(--rail-h, var(--panel-h));
+  bottom: auto;
+  margin: 0;
 }
 
 /* ---- the bank ----
@@ -1631,18 +1739,10 @@
   animation: mech-cluster-fade 620ms 240ms var(--ease) both;
 }
 
-.mech-cluster[data-covered='false'] .mech-work-rail {
-  animation: mech-cluster-fade 700ms 380ms var(--ease) both;
-}
-
-/* The slots deal themselves down the rail once it is there. Hung off the same
-   attribute as everything else, for the same reason: on the entrance the boot
-   was hiding them, and going home they should arrive rather than be found
-   already sitting there. */
-.mech-cluster[data-covered='false'] .mech-slot {
-  animation: mech-cluster-in 420ms var(--ease) both;
-  animation-delay: calc(620ms + var(--i, 0) * 55ms);
-}
+/* The slots' own deal is in the bank's block above, not here: the rail is
+   mounted from `Mech.tsx` now and this selector no longer reaches it. Same
+   numbers, hung off `.mech-bank-col[data-where='home'][data-covered='false']`.
+*/
 
 /* Out, from the outside in — and **after the readings have come off**.
 
@@ -1693,20 +1793,11 @@
   animation: mech-cluster-unfade 240ms var(--out) linear both;
 }
 
-.mech-cluster[data-leaving='true'] .mech-work-rail {
-  animation: mech-cluster-unfade 240ms calc(var(--out) + 30ms) linear both;
-}
-
-/* And the slots undeal inside it, from the bottom of the rail up — the deal
-   backwards, matching `dealt` in MechCluster.tsx, which is running the
-   subjects out of their bays in the same order on the same beat. `--i` counts
-   down from eleven, so the last slot in is the first out. The rail's own fade
-   goes over the top of this; the stagger is what stops the bank leaving as one
-   block while everything else on the panel leaves in order. */
-.mech-cluster[data-leaving='true'] .mech-slot {
-  animation: mech-cluster-out 190ms var(--ease) both;
-  animation-delay: calc(var(--out) + (11 - var(--i, 0)) * 10ms);
-}
+/* The slots undeal from the bottom of the rail up — the deal backwards,
+   matching `dealt` in MechBank.tsx, which runs the subjects out of their bays
+   in the same order on the same beat. That rule is in the bank's own block
+   above for both screens (`[data-transiting='true'] .mech-slot`), because the
+   rail is no longer a descendant of this one; home only differs in `--out`. */
 
 .mech-cluster[data-leaving='true'] .mech-tach {
   animation: mech-cluster-out 240ms calc(var(--out) + 60ms) var(--ease) both;
@@ -1757,6 +1848,13 @@
    `--px` is re-based to a 500-unit frame on this layout, so every number above
    keeps roughly the proportion of the window it was drawn at. */
 
+/* `--sign` lives here rather than on `.mech-body`: the third of the three
+   signs is the rail's head, and the rail is mounted outside the cluster now.
+   See the note in `.mech-body` below. */
+.mech[data-narrow='true'] {
+  --sign: calc(var(--role-size, 0.8) * 100%);
+}
+
 .mech[data-narrow='true'] .mech-cluster {
   position: static;
   order: 1;
@@ -1777,11 +1875,15 @@
      one number is the only way to keep three boxes equal. `--role-size` on the
      Cluster tab moves all three at once.
 
-     Every one of them is a full-width child of this column (`.mech-main`,
-     `.mech-intro`, `.mech-work-rail` all take `width: 100%` down here), so the
+     Every one of them is a full-width child of a column inset by `--gutter`
+     (`.mech-main` and `.mech-intro` inside this row, and `.mech-work-rail`
+     inside `.mech-bank-col`, which takes the same gutter on home), so the
      percentage resolves to the same figure at all three use sites even though
-     each is measured against its own parent. */
-  --sign: calc(var(--role-size, 0.8) * 100%);
+     each is measured against its own parent.
+
+     Declared on `.mech` rather than here, because the rail is no longer a
+     descendant of this row — it is mounted from `Mech.tsx` for both screens
+     and a custom property only inherits down the tree it is declared on. */
 }
 
 /* The rail was a full-height column beside the middle one on a wide window;
@@ -1930,8 +2032,10 @@
    block whose edges did not line up with anything. The brackets are drawn
    `overflow`-visible over a page that scrolls; a few units past a slot's
    corner is not worth a visible seam down the whole layout. */
+/* No `order` any more: it was placing this inside `.mech-body` on home, and
+   the rail is the only child of `.mech-bank-col` on both screens now — the
+   ordering that matters is the column's own, below. */
 .mech[data-narrow='true'] .mech-work-rail {
-  order: 3;
   width: 100%;
   height: auto;
   align-self: auto;
@@ -1966,6 +2070,18 @@
    would auto-distribute vertical space instead, and shove this block away
    from where `order: 6` put it. `data-arrive` — the shared narrow reveal in
    Mech.css — draws it in as it is reached. */
+/* Home's copy, at this width. It is the last block of home's own column
+   rather than a new section after a write-up, so it takes the cluster's gutter
+   and none of the separation below: the `border-top` marks the boundary
+   between *this project* and everything else, and on home there is no this
+   project to be on the other side of it. Four units of padding on top of the
+   cluster's own thirty makes the same thirty-four `gap` the block had while it
+   was one of `.mech-body`'s children. */
+.mech[data-narrow='true'] .mech-bank-col[data-where='home'] {
+  padding: calc(4 * var(--px)) var(--gutter) calc(30 * var(--px));
+  border-top: 0;
+}
+
 .mech[data-narrow='true'] .mech-bank-col {
   position: static;
   order: 6;
@@ -1983,7 +2099,7 @@
 /* Home only: the reel, `INTRO` and `PROJECTS` are three signs sharing one
    box (`--sign`, a percentage of the narrow column) so they print at one
    size — see `roleSize` and the note in the README, "Home, on a phone". */
-.mech[data-narrow='true'] .mech-cluster .mech-work-rail-head .mech-display {
+.mech[data-narrow='true'] .mech-bank-col[data-where='home'] .mech-work-rail-head .mech-display {
   width: var(--sign);
 }
 
@@ -1993,7 +2109,7 @@
    `--sign`, which is a percentage of the full-width column here and printed
    "PROJECTS" far larger than "Challenges" above it. `--head-cells` is
    `CELLS` from `MechBank.tsx`, handed in the same way `--fold-cells` is. */
-.mech[data-narrow='true'] .mech-bank-col .mech-work-rail-head .mech-display {
+.mech[data-narrow='true'] .mech-bank-col[data-where='project'] .mech-work-rail-head .mech-display {
   width: calc(var(--head-cells, 21) * 16 * var(--px));
   max-width: 100%;
 }
