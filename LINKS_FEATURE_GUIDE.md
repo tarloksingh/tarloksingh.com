@@ -1,5 +1,9 @@
 # Links Feature Guide
 
+> **Legacy — describes the previous Vue site, not the current codebase.**
+> Kept for reference to the old project data. See `README.md` for how the
+> site works now.
+
 ## Overview
 You can now add clickable links to any section in your portfolio projects. These links appear as clean, highlighted blue text that matches your section text styling.
 

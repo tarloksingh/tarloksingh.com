@@ -1,0 +1,554 @@
+/* v3. Numbers here come straight from the Figma frame (1920×1080) —
+   the column is 952 wide and centred, blocks are 22 padded and 10 rounded.
+
+   The page does not scroll. Everything is sized to the viewport and the two
+   places that can overflow — the timeline and the open fold — scroll inside
+   themselves instead of pushing the layout around. */
+
+/* ---- the reset ----
+
+   v3 had no reset of its own and never needed one: `App.tsx` imported `Site`
+   statically, so `src/site/base.css` was in the entry chunk and its global
+   `box-sizing: border-box` applied to this screen as much as to v2's. Making
+   `Site` lazy took v2 out of a v3 visitor's download — which is right — and
+   took the reset with it, which was not. Every box on the page silently became
+   `content-box`, so padding and borders started adding to widths instead of
+   fitting inside them, and the leader cards outgrew the `foreignObject` that
+   clips them.
+
+   Declared here rather than borrowed again, because the two versions are
+   strangers: v3 should not break when v2 moves. Identical to `base.css`'s, so
+   the two agree wherever both are loaded. */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.v3 {
+  --bg: #000000;
+  --white: #ffffff;
+  --secondary: #5a5a5a;
+  --accent: #ff9e02;
+  --arrow: #e3e3e3;
+
+  --col: 952px;
+  /* The stage box. Fixed width, height capped by what the viewport leaves —
+     the media sizing and the scrubber both measure against these two. */
+  --frame-w: 629px;
+  --frame-h: min(630px, calc(100vh - 440px));
+
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--white);
+  font-family: Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- type ---- */
+
+.v3-wordmark {
+  font-size: 20px;
+  line-height: 23px;
+  letter-spacing: -0.07em;
+}
+
+.v3-email {
+  font-size: 15px;
+  line-height: 17px;
+  letter-spacing: -0.07em;
+  color: var(--white);
+  text-decoration: none;
+}
+
+.v3-title {
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 18px;
+  letter-spacing: -0.03em;
+}
+
+/* The Figma calls this "Small Text" — it is most of the page. */
+.v3-small {
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: 12px;
+  line-height: 14px;
+  letter-spacing: -0.03em;
+}
+
+/* "Secondary text Italized" — the role line and the frame caption. */
+.v3-italic {
+  font-style: italic;
+  font-weight: 300;
+  font-size: 11px;
+  line-height: 13px;
+  letter-spacing: -0.03em;
+}
+
+/* ---- shell ---- */
+
+.v3-head,
+.v3-foot {
+  width: var(--col);
+  margin: 0 auto;
+  display: flex;
+  flex: none;
+}
+
+.v3-head {
+  padding-top: 30px;
+}
+
+.v3-foot {
+  justify-content: flex-end;
+  padding: 17px 0 30px;
+}
+
+.v3-column {
+  width: var(--col);
+  margin: 0 auto;
+  padding-top: 17px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
+}
+
+.v3-block {
+  padding: 22px;
+  border-radius: 10px;
+}
+
+/* A button that is really a link — the wordmark, and the way back home. */
+.v3-linkish {
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  color: var(--white);
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+/* ---- filters + timeline ---- */
+
+.v3-browse {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  flex: none;
+}
+
+.v3-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* One row, always. It scrolls sideways rather than wrapping onto a second
+   line, because a second line changes the height of the page. */
+.v3-timeline-row {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 30px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: #222 transparent;
+}
+
+.v3-year {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: none;
+}
+
+.v3-year > span {
+  color: var(--secondary);
+}
+
+.v3-thumbs {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 5.29px;
+  flex: none;
+}
+
+/* 36 tall, and as wide as the frame actually is — a 16:9 clip stays 16:9
+   rather than being cropped square. */
+.v3-thumb {
+  height: 36px;
+  width: calc(36px * var(--a));
+  padding: 0;
+  border: 0.48px solid transparent;
+  border-radius: 3.5px;
+  background-color: #111;
+  background-size: cover;
+  background-position: center;
+  cursor: pointer;
+  flex: none;
+  transition: border-color 120ms linear;
+}
+
+.v3-thumb:hover {
+  border-color: #666;
+}
+
+.v3-thumb[aria-pressed='true'] {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 40px rgba(255, 158, 2, 0.31);
+}
+
+/* A model has no still, so its square says so rather than sitting empty. */
+.v3-thumb-model {
+  display: grid;
+  place-items: center;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: 9px;
+  letter-spacing: -0.03em;
+  color: var(--secondary);
+}
+
+/* ---- project ---- */
+
+.v3-project {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 53px;
+  flex: 1;
+  min-height: 0;
+}
+
+.v3-detail {
+  width: 247px;
+  flex: none;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 19px;
+}
+
+.v3-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: none;
+}
+
+.v3-role {
+  color: var(--white);
+}
+
+/* The folds scroll inside the column. Opening a long one lengthens this box's
+   contents, never the page. */
+.v3-accordion {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #222 transparent;
+}
+
+.v3-fold > button {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  color: var(--secondary);
+  text-align: left;
+  transition: color 120ms linear;
+}
+
+.v3-fold > button:hover {
+  color: var(--white);
+}
+
+.v3-fold[data-open='true'] > button {
+  color: var(--accent);
+  gap: 5px;
+}
+
+/* The little triangle: right when closed, down when open. */
+.v3-caret {
+  width: 5px;
+  height: 7px;
+  flex: none;
+  background: var(--arrow);
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+  transition: transform 140ms ease, background-color 120ms linear;
+}
+
+.v3-fold[data-open='true'] .v3-caret {
+  background: var(--accent);
+  transform: rotate(90deg);
+}
+
+.v3-fold-body {
+  padding: 0 0 8px 23px;
+  color: var(--white);
+  white-space: pre-line;
+}
+
+.v3-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  color: var(--white);
+}
+
+/* ---- stage ---- */
+
+.v3-stage {
+  width: var(--frame-w);
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.v3-caption {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  height: 14px;
+  flex: none;
+}
+
+.v3-caption > span:last-child {
+  color: var(--secondary);
+}
+
+.v3-frame {
+  position: relative;
+  width: var(--frame-w);
+  height: var(--frame-h);
+  border-radius: 7px;
+  overflow: hidden;
+  background: #0b0b0b;
+}
+
+/* One slide per frame, cross-fading in place — the carousel never moves the
+   box, only what is inside it. */
+.v3-slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 420ms ease;
+  pointer-events: none;
+}
+
+.v3-slide[data-active='true'] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Media sits at its own shape in the top-left of the box rather than being
+   cropped to fill it. `--a` is the frame's real width/height, so these two
+   are the size it actually renders at — which is also what the scrubber
+   measures against so it lands on the video's own bottom edge, not the
+   box's. */
+.v3-media {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: min(var(--frame-w), calc(var(--frame-h) * var(--a)));
+  height: min(var(--frame-h), calc(var(--frame-w) / var(--a)));
+}
+
+.v3-media img,
+.v3-media video,
+.v3-media canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  object-position: left top;
+  /* Slightly off square, the same as the project screen's. */
+  border-radius: 6px;
+}
+
+/* ---- video scrubber ---- */
+
+.v3-scrub {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.65), transparent);
+  opacity: 0;
+  transition: opacity 160ms linear;
+}
+
+.v3-media:hover .v3-scrub,
+.v3-scrub:focus-within {
+  opacity: 1;
+}
+
+.v3-scrub button {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--white);
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+  width: 10px;
+  flex: none;
+}
+
+.v3-scrub input[type='range'] {
+  flex: 1;
+  height: 3px;
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.v3-scrub input[type='range']::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.v3-scrub input[type='range']::-moz-range-thumb {
+  width: 9px;
+  height: 9px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.v3-time {
+  font-variant-numeric: tabular-nums;
+  color: var(--white);
+  flex: none;
+}
+
+.v3-arrow {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 88px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 160ms linear;
+  z-index: 2;
+  color: var(--white);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.v3-frame:hover .v3-arrow {
+  opacity: 0.55;
+}
+
+.v3-arrow:hover {
+  opacity: 1 !important;
+}
+
+.v3-arrow[data-side='prev'] {
+  left: 0;
+}
+
+.v3-arrow[data-side='next'] {
+  right: 0;
+}
+
+/* Position within the project, bottom-centre, only while there is more than
+   one frame to be at. */
+.v3-dots {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 12px;
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  z-index: 3;
+}
+
+.v3-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  border: 0;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  transition: background-color 120ms linear;
+}
+
+.v3-dot[aria-current='true'] {
+  background: var(--accent);
+}
+
+.v3-empty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--secondary);
+}
+
+/* ---- narrow ----
+
+   What is left in here is the browse screen's chrome. The home rules that
+   used to sit alongside it went with the home screen itself: home is a state
+   of `.mech` now, and its narrow layout is Mech.css's — see `narrow
+   viewports` there. */
+@media (max-width: 700px) {
+  /* The chrome hangs off a 952-unit column, which is two and a half times a
+     phone. Centred, that puts the wordmark and the index link off both edges
+     — so at this width they hang off the window instead, like everything
+     else on the page. */
+  .v3-head,
+  .v3-foot {
+    width: auto;
+    margin: 0;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .v3-head {
+    padding-top: 18px;
+  }
+
+  .v3-foot {
+    justify-content: center;
+    padding-top: 10px;
+    padding-bottom: 18px;
+  }
+}
+

@@ -1,0 +1,2437 @@
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type RefObject } from 'react'
+import { createPortal } from 'react-dom'
+import type { PanelTab } from './MechPanel'
+import Typed from './Typed'
+import Segment from './Segment'
+import MechBird from './MechBird'
+import MechMoth from './MechMoth'
+import MechCursor from './MechCursor'
+import MechLaser from './MechLaser'
+import Alarm from './Alarm'
+import Tour from './Tour'
+import { tourSeen, takeReplay, useReplaySignal, replayTour, type Flow } from './tourState'
+import MechHud from './MechHud'
+import MechTiles from './MechTiles'
+import { slotOf } from './bank'
+import { useModelTuning } from './modelTuning'
+import { useProductTuning } from './productTuning'
+import { useStationTuning } from './stationTuning'
+import { useClusterTuning } from './clusterTuning'
+import MechDeck from './MechDeck'
+import MechMenu from './MechMenu'
+import { useNarrowTuning } from './narrowTuning'
+import { sound, levels, claimAudio } from './sound'
+import { useNarrow } from './narrow'
+import { useReveal } from './reveal'
+import { drift, flinch, quarry } from './subject'
+import { findProject, thumbOf, type Entry, type Frame } from './model'
+import { focus, notesFor, pins, type Note } from './notes'
+import { useLabelTuning, type Handed } from './labelTuning'
+import { boxOf, CARD, FRAME_SPACE, leadersFor, mediaBox, meetsCard, type Space } from './leaders'
+import './Mech.css'
+
+/* The project stage: one canvas holding whichever subject the project has, and
+   it outlives the project. It used to be these two imported separately, each
+   with a `<Canvas>` of its own keyed on the subject — which made every
+   navigation a WebGL context thrown away and another built. See
+   `MechStage.tsx`. */
+const MechStage = lazy(() => import('./MechStage'))
+/* Solomon's rider stands in for a case study the project does not have yet —
+   see `MechRider.tsx`. Its own canvas, so it is lazy like the stage. */
+const RiderStage = lazy(() => import('./MechRider').then((m) => ({ default: m.RiderStage })))
+/* Development only — the render is behind `import.meta.env.DEV`, so a visitor
+   never fetches this chunk. See `MechPins.tsx`. */
+const MechPins = lazy(() => import('./MechPins'))
+/* Development only, for the same reason and with a second one: it is the only
+   thing on the site that imports leva's *panel* rather than its hooks, and a
+   static import would put that in the production graph whatever the render
+   condition says. The tuning hooks reach leva through the alias in
+   `vite.config.ts` instead. See `MechPanel.tsx`. */
+const MechPanel = lazy(() => import('./MechPanel'))
+/* Narrow only, and a phone is the one place a chunk it never needs is worth
+   not sending. See `MechFacts.tsx`. */
+const MechFacts = lazy(() => import('./MechFacts'))
+/* Home, and everything in it. Lazy because the bank puts every project's own
+   3D subject in its slot, which pulls three.js and eleven scene graphs in with
+   it — a visitor who lands straight on a project URL should never fetch any of
+   that. See `MechSlots.tsx`. */
+const MechCluster = lazy(() => import('./MechCluster'))
+/* The rail of work down a project's right-hand margin. Lazy for the same
+   reason `MechCluster` is, and it has to be: `MechSlots` is inside it and
+   `MechRider` beside that, so a static import here put three, drei *and*
+   postprocessing in the chunk that has to arrive before anything paints —
+   which is what made every other `lazy()` on this page decorative. Home does
+   not render this one; it gets its bank from inside `MechCluster`. */
+const MechBank = lazy(() => import('./MechBank'))
+/* The loading manager's report, and the arrival of the 3D chunk itself — see
+   `Warmth.tsx` and *load first, then play* below. */
+const Warmth = lazy(() => import('./Warmth'))
+
+/* ---- what home used to be ----
+
+   A line-up: five 3D subjects standing over a shader horizon, each with a tag
+   that drew itself in on hover, and the name laid across the back of it.
+   `MechCast.tsx`, `MechWave.tsx`, `MechCastPins.tsx`, `castTuning.ts`,
+   `castTags.ts`, `nameTuning.ts` and `tint.ts` are all still here and all
+   still work — nothing was deleted. They are simply not mounted any more.
+
+   The reason is not that any of it was bad. It is that a stage with objects
+   standing on it is a *showroom*, and every other screen on this site is a
+   readout: something is on a stage and the panel around it reports on it. Home
+   was the one page not doing that. See the note at the top of
+   `MechCluster.tsx` for what replaced it, and `git show` this commit for the
+   block that mounted the line-up if it is ever wanted back. */
+
+/* The project screen.
+
+   Laid out in the Figma's 1920×1080 coordinates, but not confined to them.
+   `--px` is one of those coordinates in real pixels, scaled to whatever the
+   window is; the chrome hangs off the true viewport edges while the subject
+   and its leader lines share one centred 16:9 box. So the page fills the
+   screen at any shape, and the labels still touch the thing they name —
+   which is the entire job of a readout.
+
+   Left: who made it, and the folds. Middle: the thing itself, with its parts
+   named. Right: everything else the project has to show. */
+
+/** How long the frame on screen takes to leave before the next is mounted:
+ *  the picture's own fade, then everything mounted around it running its entry
+ *  backwards after a beat. The longest of those is the leader retracting — up
+ *  to 260 of delay (`OUT_STEP.most`) and 520 of undraw — and this has to
+ *  outlast it, or the next set of lines is drawn over the last set still
+ *  coming off. Timed in Mech.css, under `entries, and their inverses`. */
+const EXIT_MS = 1050
+
+/** And how long a whole *screen* takes to leave, which is a longer job than
+ *  one picture's.
+ *
+ *  A screen change has two beats where a frame swap has one: every readout on
+ *  it takes its reading off first — words come off displays, gauges run down,
+ *  a name backspaces — and only then do the blocks those readouts sit in leave.
+ *  Hung on `EXIT_MS`, the second beat started at the same moment as the first
+ *  and the whole panel was gone in a fifth of a second, so what anyone actually
+ *  saw was a cut: the outro *ran*, but it ran underneath a fade that had
+ *  already taken it. The name had four hundred milliseconds of backspacing in
+ *  it and never got past the "h".
+ *
+ *  It is a separate number from `EXIT_MS` on purpose. Stepping the tile strip
+ *  is a picture being replaced and should stay quick; nothing on that path has
+ *  a reading to take off. Timed against `--out` in MechCluster.css and the
+ *  `OUT` beats beside it — this has to outlast the last of them. */
+const LEAVE_MS = 1150
+
+/** How long the stage will wait, empty, for the incoming frame to be ready to
+ *  paint before bringing it in anyway. Nothing covers the gap now, so this is
+ *  a hole in the middle of the transition rather than time hidden behind a
+ *  field of cells — shorter than it was for that reason, and mostly unspent:
+ *  `warm` starts the fetch when the tile is picked, so a neighbour is usually
+ *  decoded before its turn comes. */
+const HOLD_CAP = 300
+
+/* ---- the type scale ----
+
+   `--type` in Mech.css floors the type at a rem so it survives a small window
+   and follows browser zoom. It reaches everything set in HTML by being a
+   length. It cannot reach the leaders or the compass: those are SVG text,
+   drawn in user units that the viewBox scales by `--px`, and a rem written in
+   there would be scaled along with everything else.
+
+   What crosses is the ratio between the two — a plain number multiplies the
+   same in both coordinate systems. It has to be measured rather than worked
+   out here: `--px` and `--type` are `min()`/`max()` over rem and viewport
+   units, and `getComputedStyle` hands back the expression, not the value. So
+   a hidden probe is sized by both and its own box is read.
+
+   On a resize, which is also what zoom fires. */
+const useTypeScale = (root: RefObject<HTMLDivElement | null>, probe: RefObject<HTMLElement | null>) => {
+  useEffect(() => {
+    const host = root.current
+    const box = probe.current
+    if (!host || !box) return
+
+    const measure = () => {
+      const rect = box.getBoundingClientRect()
+      if (rect.height > 0) host.style.setProperty('--type-k', String(rect.width / rect.height))
+    }
+
+    measure()
+    /* The probe, not the window. Its own box is the two units, so it changes
+       whenever either of them does — a resize, a zoom, or the reader turning
+       their browser's text size up, which moves the rem without moving the
+       window at all. */
+    const watch = new ResizeObserver(measure)
+    watch.observe(box)
+    return () => watch.disconnect()
+  }, [root, probe])
+}
+
+/* ---- the stage, in frame units ----
+
+   The leaders are drawn onto the stage in a viewBox, and on the wide layout
+   that box is the frame itself: 1920×1080, exactly what `.mech-stage`
+   measures, so one user unit is one `--px` and nothing is distorted.
+
+   Narrow, the stage is its own shape and a 1920×1080 viewBox stretched onto
+   it squashes every label flat sideways. So the canvas takes the stage's own
+   proportions instead — measured here, in frame units, which is the one
+   number that keeps a user unit worth one `--px` on both layouts. See
+   `Space` in leaders.ts.
+
+   Both boxes are read off the DOM rather than worked out: `--px` is a `min()`
+   over rem and viewport units that `getComputedStyle` hands back unevaluated,
+   and the stage's height is a `min()` of its own. The probe is already there
+   for `--type-k`; it is sized by both units, so a hundred of its height is a
+   hundred `--px`. */
+const useStageSpace = (
+  stage: RefObject<HTMLDivElement | null>,
+  probe: RefObject<HTMLElement | null>,
+  narrow: boolean
+): Space => {
+  const [space, setSpace] = useState<Space>(FRAME_SPACE)
+
+  useEffect(() => {
+    if (!narrow) {
+      setSpace(FRAME_SPACE)
+      return
+    }
+    const box = stage.current
+    const unit = probe.current
+    if (!box || !unit) return
+
+    const measure = () => {
+      const px = unit.getBoundingClientRect().height / 100
+      const rect = box.getBoundingClientRect()
+      if (px <= 0 || rect.height <= 0) return
+      setSpace((was) => {
+        const w = Math.round(rect.width / px)
+        const h = Math.round(rect.height / px)
+        return was.w === w && was.h === h && was.narrow ? was : { w, h, narrow: true }
+      })
+    }
+
+    measure()
+    const watch = new ResizeObserver(measure)
+    watch.observe(box)
+    watch.observe(unit)
+    return () => watch.disconnect()
+  }, [stage, probe, narrow])
+
+  return space
+}
+
+/* ---- the swap ----
+
+   Frames do not cross-fade and they no longer come apart either. It is four
+   beats in order, and the order is the whole idea: the picture goes, then the
+   labels that were pointing at it follow it out — a leader should still be
+   pointing while there is something to point at — then the next picture
+   arrives, and only then do its own labels draw themselves in.
+
+   What this replaces is a field of cells drawn over the subject, which is in
+   `50629fd` if it is ever wanted back. Two things were wrong with it that a
+   fade does not have: the field was the subject's own box, so a 16:9 frame
+   followed by a 9:16 one changed the size of the block mid-swap, and the
+   canvas cleared as the box changed, which is the blank between them.
+
+   Every beat is a CSS transition on `opacity` or an animation the leaders
+   already had; nothing here paints. The lengths live in `Mech.css` beside the
+   rules that use them, except the two the machine has to know about: how long
+   the picture and its labels take to leave, and how long the next one is
+   allowed to keep the stage empty while it decodes. */
+
+/** The model floats and turns, so the space it is a target in has to be what
+ *  it moves through rather than where it happens to be sitting. */
+const PAD = { x: 0.1, y: 0.18 }
+
+/* ---- warming ----
+
+   The pictures on this page are big: several of them are multi-megabyte webp,
+   and decoding one of those is a hundred milliseconds of main thread. Doing
+   it at the moment the cover lifts is exactly the stutter you can see, and
+   `HOLD_CAP` only ever hid the loading half of it.
+
+   So the frames either side of the one on the stage are pulled through the
+   network and the decoder while nothing is happening, and the decoded bitmap
+   is still warm when you step to them. Neighbours rather than everything: a
+   project with a dozen stills is fifty megabytes of decoded pixels, and
+   nobody opens a readout to look at all of it at once. */
+
+const warmed = new Set<string>()
+
+/** Held so the browser does not collect a clip the moment it is buffered and
+ *  then have to fetch it again a second later. Two or three at a time. */
+const buffering: HTMLVideoElement[] = []
+const BUFFERS = 4
+
+const warm = (frame: Frame | undefined) => {
+  if (!frame || frame.kind !== 'flat' || warmed.has(frame.id)) return
+  warmed.add(frame.id)
+
+  if (frame.type === 'image') {
+    const image = new Image()
+    image.src = frame.still ?? frame.src
+    // `decode` is the part that matters — a fetch alone leaves the expensive
+    // half to happen on the frame it is first painted.
+    void image.decode?.().catch(() => {})
+    return
+  }
+
+  /* Clips are the slow ones — several megabytes each, and the housing waits
+     for `loadeddata` before it uncovers, which is the pause. Pulled through
+     the network here, into the HTTP cache the real `<video>` will hit; the
+     element is never mounted and never plays. */
+  const video = document.createElement('video')
+  video.preload = 'auto'
+  video.muted = true
+  video.src = frame.src
+  video.load()
+  buffering.push(video)
+  while (buffering.length > BUFFERS) {
+    const old = buffering.shift()
+    if (old) old.src = ''
+  }
+}
+
+/** Whenever the browser has a moment. Not `setTimeout(0)`: this is deliberately
+ *  the lowest-priority work on the page, and it is competing with a boot
+ *  sequence and a WebGL context coming up. */
+const whenIdle = (run: () => void) => {
+  const host = window as Window & {
+    requestIdleCallback?: (cb: () => void) => number
+    cancelIdleCallback?: (id: number) => void
+  }
+  if (host.requestIdleCallback) {
+    const id = host.requestIdleCallback(run)
+    return () => host.cancelIdleCallback?.(id)
+  }
+  const timer = window.setTimeout(run, 600)
+  return () => window.clearTimeout(timer)
+}
+
+/** The name, which the corner signature types in on a project screen. Home
+ *  says it for itself, large, in the middle of the cluster — see
+ *  `MechCluster.tsx`, which owns its own copy because it is the one thing on
+ *  that screen the layout is built around. */
+const NAME = 'Tarlok Singh'
+
+/** The project's write-up, in the order it is read.
+ *
+ *  Roles used to stand on their own under the title; they read as one more
+ *  fact about the project, so they take their place among the other folds
+ *  instead — right after the overview, where the standalone line used to sit.
+ *
+ *  Every one of them arrives shut. A project used to open on its overview —
+ *  on the narrow layout, whatever it led with — and that is a screen
+ *  answering before it has been asked: the subject is already on the stage
+ *  and the title already above it, and a drawer standing open is the one
+ *  thing in the column that was not opened by the reader. */
+/** Cells in the title's display.
+ *
+ *  Twenty-one, which is "red dead redemption 2" — the longest title any
+ *  project has, and the same count home's two big readouts use for the same
+ *  reason (`CELLS` in MechCluster.tsx). This is what replaced the capped
+ *  `font-size` the title used to carry on each layout: a display cannot break
+ *  a name across two lines, so the promise the cap existed to keep is kept by
+ *  construction now. */
+const TITLE_CELLS = 21
+
+/** Cells in a fold's heading display.
+ *
+ *  Nineteen, which is "branding & insights" — the longest heading any project
+ *  has — and not a cell more. Fixed for the same reason every other readout on
+ *  this site is: a display is a fixed number of lamps, and the dark ones after
+ *  "roles" are what say so. Same argument as `CELLS` in MechCluster.tsx. */
+const FOLD_CELLS = 19
+
+/** `carded` is whether the restricted note is on the stage — see `bare` below.
+ *  When it is, the whole of what can be said about the project is already
+ *  printed in the middle of the screen, and "project overview" opens a drawer
+ *  onto a second, shorter paragraph about the same thing. Visa is the case
+ *  that made it obvious: one fold, holding one sentence, under a card holding
+ *  five. The column is empty on those screens instead, which is honest — there
+ *  is no write-up to open yet. */
+const foldsFor = (project: Entry['project'] | undefined, carded: boolean) => {
+  if (!project) return []
+  return [
+    ...(project.intro && !carded
+      ? [{ id: 'overview', title: 'project overview', text: project.intro, tags: undefined }]
+      : []),
+    ...project.sections
+      .filter((section) => section.id === 'roles')
+      .map((section) => ({ id: section.id, title: section.title.toLowerCase(), text: section.text, tags: section.tags })),
+    ...project.sections
+      .filter((section) => section.id !== 'roles')
+      .map((section) => ({ id: section.id, title: section.title.toLowerCase(), text: section.text, tags: section.tags }))
+  ]
+}
+
+/** The model goes first. "Open a project" means the object, and the stills are
+ *  what you step to afterwards — `model.ts` appends it because the index
+ *  screen wants it last. */
+const modelFirst = (entry: Entry): Frame[] => [
+  ...entry.frames.filter((frame) => frame.kind !== 'flat'),
+  ...entry.frames.filter((frame) => frame.kind === 'flat')
+]
+
+interface LeadersProps {
+  notes: Note[]
+  box: ReturnType<typeof boxOf>
+  space: Space
+  floats: boolean
+  /** A fold the pointer is over, or a leader's own label. Anything named is
+   *  lit and everything else is dimmed — one at a time, so the link reads as
+   *  a link rather than as a colour scheme. */
+  lit: string | null
+  onLit: (key: string | null) => void
+}
+
+/** The two cascades a set of leaders runs, in milliseconds. `in` waits out the
+ *  picture it is naming and then lays the lines on one after another; `out`
+ *  takes them off in the opposite order — last in, first away — which is what
+ *  makes it read as the arrival undone rather than as a second, different
+ *  cascade of its own.
+ *
+ *  Shorter steps going out, and capped. An entry can take as long as it likes;
+ *  an exit has a swap waiting on it, and six pinned notes leaving at the
+ *  entry's own pace would be most of a second of goodbye. The cap is what
+ *  `EXIT_MS` is set against. */
+const IN_STEP = { from: 240, by: 170 }
+const OUT_STEP = { by: 90, most: 260 }
+
+/* ---- fitting a card to its own lines ----
+
+   A card is `width: max-content` capped at whatever room its seat has, so a
+   sentence longer than that room wraps — and the box then stays the full width
+   it was *allowed* while the last line ends wherever it ends. The gap left on
+   the right is the thing: a label pointing at something should be the size of
+   what it says, not the size of the space it was offered.
+
+   No CSS keyword does this. `fit-content` and `max-content` shrink-wrap to the
+   unwrapped width or fall back to the available width; neither one is "the
+   widest line the wrapping actually produced". So the lines are measured and
+   the width is written back.
+
+   Two things have to be right.
+
+   **The units.** `Range.getClientRects()` hands back one rect per line box in
+   *screen* pixels, and a card lives inside a `foreignObject` in a
+   `viewBox`-scaled svg, so screen pixels are not the units its `width` is set
+   in. The card's own `getBoundingClientRect().width / offsetWidth` is exactly
+   that scale — and because `getBoundingClientRect` includes the entrance
+   animation's `transform` while `offsetWidth` does not, the animation's own
+   scale cancels out of the division. Which is what makes this safe to run
+   while the cards are still opening.
+
+   **The face.** Clash Display is `font-display: swap`, so a card measured
+   before it arrives is a card fitted to Helvetica's metrics — and then clipping
+   its own last word a moment later. Hence the second pass off `fonts.ready`. */
+const fitCards = (root: SVGGElement | null) => {
+  if (!root) return
+  const range = document.createRange()
+  root.querySelectorAll<SVGGElement>('g').forEach((leader) => {
+    const card = leader.querySelector<HTMLElement>('.mech-leader-card')
+    if (!card) return
+
+    // Back to the seat's full width before measuring, or each pass measures
+    // the last pass's answer and the card walks itself narrower.
+    card.style.width = ''
+    const drawn = card.getBoundingClientRect().width
+    if (!drawn || !card.offsetWidth) return
+    const scale = drawn / card.offsetWidth
+
+    range.selectNodeContents(card)
+    const lines = Array.from(range.getClientRects())
+    // One line is already hugging its text — that is what `max-content` is
+    // for, and there is nothing to take off it.
+    if (lines.length > 1) {
+      const style = getComputedStyle(card)
+      const chrome =
+        style.boxSizing === 'border-box'
+          ? parseFloat(style.paddingLeft) +
+            parseFloat(style.paddingRight) +
+            parseFloat(style.borderLeftWidth) +
+            parseFloat(style.borderRightWidth)
+          : 0
+      // A pixel of slack: the widest line measured back to exactly its own
+      // width is a line one sub-pixel rounding away from wrapping again.
+      const widest = Math.max(...lines.map((line) => line.width)) / scale
+      card.style.width = `${Math.ceil(widest) + 1 + chrome}px`
+    }
+
+    aimLeader(leader, card)
+  })
+}
+
+/* ---- landing the line on the card that was actually drawn ----
+
+   `seated` in leaders.ts aims the leader before anything is laid out, so it
+   has to guess two of the card's four edges: the far one is `anchor + w`,
+   where `w` is the width the card was *allowed* rather than the width it took,
+   and the lower one is `cardHeight()`, an estimate off the sentence.
+
+   Both guesses are only ever read when a flip has stood the card on the tip's
+   own side — which on the wide frame effectively never happens, and on a phone
+   happens constantly: there is no room beside the subject there, so nearly
+   every card is forced back across the middle. `fitCards` above then shrinks
+   the box to its longest line, and the line is left pointing at a corner the
+   card no longer has. That is the mobile bug where the leaders end in open
+   space beside their labels.
+
+   Nothing here re-places the card. It measures the box that exists, takes the
+   corner of it nearest the tip — which is what "the corner facing the tip"
+   means once the card is real — and re-cuts the line on that corner's arc.
+   Inside a `foreignObject`, CSS pixels are the viewBox's own user units, so
+   `offsetWidth`/`offsetHeight` need no conversion; the seat's 34px padding is
+   `CARD.glow`, the slack the halo is drawn into. */
+const aimLeader = (leader: SVGGElement, card: HTMLElement) => {
+  const line = leader.querySelector<SVGLineElement>('.mech-leader')
+  const mark = leader.querySelector<SVGCircleElement>('.mech-leader-mark')
+  const note = leader.querySelector<SVGForeignObjectElement>('.mech-leader-note')
+  const seat = leader.querySelector<HTMLElement>('.mech-leader-seat')
+  if (!line || !mark || !note || !seat) return
+
+  const w = card.offsetWidth
+  const h = card.offsetHeight
+  if (!w || !h) return
+
+  const boxX = note.x.baseVal.value
+  const boxY = note.y.baseVal.value
+  const left =
+    seat.dataset.x === 'left' ? boxX + CARD.glow : boxX + note.width.baseVal.value - CARD.glow - w
+  const top =
+    seat.dataset.y === 'top' ? boxY + CARD.glow : boxY + note.height.baseVal.value - CARD.glow - h
+
+  const tip = [mark.cx.baseVal.value, mark.cy.baseVal.value]
+  // The corner facing the tip, and the direction from it into the card — which
+  // is all `meetsCard` needs to put the cut on the rounded corner's arc.
+  const onLeft = tip[0] < left + w / 2
+  const onTop = tip[1] < top + h / 2
+  const corner = [onLeft ? left : left + w, onTop ? top : top + h]
+  const meets = meetsCard(tip, corner, onLeft ? 1 : -1, onTop ? 1 : -1)
+
+  line.setAttribute('x1', String(meets[0]))
+  line.setAttribute('y1', String(meets[1]))
+  // The draw-in animation runs on a dash the length of the line, so the length
+  // has to move with the end that moved or the last of it never arrives.
+  line.style.setProperty('--l', String(Math.hypot(tip[0] - meets[0], tip[1] - meets[1])))
+}
+
+/* The labels ride the same bob the subject is on, read from what the float
+   actually did this frame rather than from an animation timed to look like it
+   — two clocks that agree at the start and not a minute later is exactly the
+   sort of thing nobody can name and everybody notices.
+
+   Written straight through, no easing. A low-pass here trails the subject by
+   its own time constant, and at the float's slow rate that lag reads as the
+   labels and the model running at different speeds — see the note in
+   `README.md`. `drift` is already the damped-enough output of the frame loop.
+
+   `drift` is published in the frame's own coordinates — a 1920×1080 box —
+   because that is the space the wide layout draws in. A narrow canvas is a
+   different number of units tall for the same amount of world, so the bob has
+   to be converted on the way in or the marks swing twice as far as the head
+   does. */
+const useRide = (group: React.RefObject<SVGGElement | null>, floats: boolean, space: Space) => {
+  const perFrame = space.h / 1080
+  useEffect(() => {
+    if (!floats) return
+    let raf = 0
+    const tick = () => {
+      raf = requestAnimationFrame(tick)
+      group.current?.setAttribute(
+        'transform',
+        `translate(${drift.x * perFrame} ${drift.y * perFrame})`
+      )
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [group, floats, perFrame])
+}
+
+function Leaders({ notes, box, space, floats, lit, onLit }: LeadersProps) {
+  const group = useRef<SVGGElement>(null)
+  const list = leadersFor(notes, box, space)
+
+  useRide(group, floats, space)
+
+  /* Laid out, then fitted — see `fitCards`. `list` is rebuilt on every render
+     so it cannot be a dependency; what actually moves a card is the notes it
+     is drawn from and the box they are placed in, which is what is watched
+     here. */
+  useLayoutEffect(() => {
+    const fit = () => fitCards(group.current)
+    fit()
+    let live = true
+    document.fonts?.ready.then(() => {
+      if (live) fit()
+    })
+    /* And again on a resize, which is also what browser zoom fires. A card's
+       type is `14px * --type-k` — the ratio between the frame unit and the
+       type unit, which moves with the window — so the sentence re-wraps under
+       a width that was measured for a different size, and the fit has to be
+       taken again. `space` only changes on the narrow layout, so it cannot
+       stand in for this. */
+    window.addEventListener('resize', fit)
+    return () => {
+      live = false
+      window.removeEventListener('resize', fit)
+    }
+  }, [notes, box.x, box.y, box.w, box.h, space.w, space.h])
+
+  return (
+    <svg
+      className="mech-leaders"
+      viewBox={`0 0 ${space.w} ${space.h}`}
+      preserveAspectRatio="none"
+      data-lit={lit !== null}
+      /* The cards are set a size down on a phone stage, which is a third the
+         width and carries the same sentences. See `.mech-leader-card`. */
+      data-narrow={space.narrow}
+      aria-hidden
+    >
+      <g ref={group}>
+      {list.map((leader, i) => {
+        /* Not the corner the card hangs off — the point on its rounded corner
+           where the border actually is. See `meetsCard` in leaders.ts. */
+        const meets = leader.meets
+        const length = Math.hypot(leader.tip[0] - meets[0], leader.tip[1] - meets[1])
+        /* This leader's place in each cascade, handed to the stylesheet as
+           variables rather than spent here as `animation-delay`. An inline
+           delay is a delay no rule can override, which is what kept the way
+           out from having any timing of its own — see `entries, and their
+           inverses` in Mech.css, where both directions are written. */
+        const delay = IN_STEP.from + i * IN_STEP.by
+        const back = Math.min((list.length - 1 - i) * OUT_STEP.by, OUT_STEP.most)
+
+        const on = lit !== null && (lit === leader.label || lit === leader.fold)
+
+        return (
+          <g
+            key={leader.label}
+            data-on={on}
+            style={{ ['--d' as string]: `${delay}ms`, ['--d-out' as string]: `${back}ms` }}
+            onPointerEnter={() => onLit(leader.label)}
+            onPointerLeave={() => onLit(null)}
+          >
+            {/* The mark on the spot. A line arriving at a picture tells you
+                there is something there; a ring opening on it tells you
+                *which* thing, which is the entire job of a leader and the one
+                part a bare polyline could never do. Drawn before the line so
+                the line is laid over it rather than under. */}
+            <circle
+              className="mech-leader-ping"
+              cx={leader.tip[0]}
+              cy={leader.tip[1]}
+              r={13}
+            />
+            <circle
+              className="mech-leader-mark"
+              cx={leader.tip[0]}
+              cy={leader.tip[1]}
+              r={6.5}
+            />
+            <circle
+              className="mech-leader-core"
+              cx={leader.tip[0]}
+              cy={leader.tip[1]}
+              r={1.9}
+            />
+            {/* One straight run now, from the tip to the corner of the card.
+                The elbow was there to carry a horizontal rule with two words
+                sitting on it; there is no rule left for it to be. */}
+            <line
+              className="mech-leader"
+              x1={meets[0]}
+              y1={meets[1]}
+              x2={leader.tip[0]}
+              y2={leader.tip[1]}
+              style={{ ['--l' as string]: length }}
+            />
+            {/* The card is HTML, because a sentence has to wrap and SVG text
+                does not. `foreignObject` clips to its own box, so it is drawn
+                `CARD.glow` larger than the card on every side and the seat
+                inside pads that slack back — otherwise the halo is sliced off
+                square, which reads as a rendering bug rather than a border.
+                The seat pushes the card into the corner the line arrives at,
+                so the card grows away from the subject without anything having
+                to measure how large it turned out. */}
+            <foreignObject
+              className="mech-leader-note"
+              x={(leader.sx === 1 ? leader.anchor[0] : leader.anchor[0] - leader.w) - CARD.glow}
+              y={(leader.sy === 1 ? leader.anchor[1] : leader.anchor[1] - CARD.h) - CARD.glow}
+              width={leader.w + CARD.glow * 2}
+              height={CARD.h + CARD.glow * 2}
+            >
+              <div
+                className="mech-leader-seat"
+                data-x={leader.sx === 1 ? 'left' : 'right'}
+                data-y={leader.sy === 1 ? 'top' : 'bottom'}
+              >
+                <p className="mech-leader-card">{leader.value}</p>
+              </div>
+            </foreignObject>
+          </g>
+        )
+      })}
+      </g>
+    </svg>
+  )
+}
+
+/* ---- transport icons ----
+
+   Drawn rather than typed. The transport was a row of single characters —
+   `▶`, `⊘`, `⤢` — at eleven frame pixels, which is a row of specks: nobody
+   could tell the full screen control from the mute one, and `⊘` does not say
+   "muted" in any font. These are the same weight of line as the reticle and
+   the bird, and they scale with the frame like everything else.
+
+   `viewBox` is 24 square for all of them, so one CSS rule sizes the set. */
+
+const Icon = ({ children }: { children: React.ReactNode }) => (
+  <svg className="mech-icon" viewBox="0 0 24 24" aria-hidden focusable="false">
+    {children}
+  </svg>
+)
+
+const PLAY = (
+  <Icon>
+    {/* The one filled shape in the set: a triangle in outline reads as a
+        cursor rather than as play. */}
+    <path className="mech-icon-solid" d="M 8 5 L 19 12 L 8 19 Z" />
+  </Icon>
+)
+
+const PAUSE = (
+  <Icon>
+    <path d="M 9 5 v 14 M 15 5 v 14" />
+  </Icon>
+)
+
+const SOUND = (
+  <Icon>
+    <path d="M 4 9.5 h 3.5 L 12 5.5 v 13 L 7.5 14.5 H 4 Z" />
+    <path d="M 15.5 9 a 4.4 4.4 0 0 1 0 6" />
+    <path d="M 18 6.5 a 8 8 0 0 1 0 11" />
+  </Icon>
+)
+
+const MUTED = (
+  <Icon>
+    <path d="M 4 9.5 h 3.5 L 12 5.5 v 13 L 7.5 14.5 H 4 Z" />
+    <path d="M 16 9.5 l 5 5 M 21 9.5 l -5 5" />
+  </Icon>
+)
+
+const FULL = (
+  <Icon>
+    <path d="M 4 9 V 4 h 5 M 20 9 V 4 h -5 M 4 15 v 5 h 5 M 20 15 v 5 h -5" />
+  </Icon>
+)
+
+const UNFULL = (
+  <Icon>
+    <path d="M 9 4 v 5 H 4 M 15 4 v 5 h 5 M 9 20 v -5 H 4 M 15 20 v -5 h 5" />
+  </Icon>
+)
+
+const clock = (seconds: number) => {
+  if (!Number.isFinite(seconds)) return '0:00'
+  return `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`
+}
+
+/* ---- the housing ----
+
+   The subject sits in something, the way every readout on a dashboard does:
+   corner brackets, a label strip naming what you are looking at, and a scale
+   of ticks along the bottom edge. Without it a still is a picture floating in
+   a void, and the rest of the screen is instruments.
+
+   Positioned in frame coordinates off the same `mediaBox()` the leaders are
+   laid out against, so the housing, the labels and the lines cannot disagree
+   about where the picture is. */
+
+interface FrameProps {
+  frame: Extract<Frame, { kind: 'flat' }>
+  index: number
+  count: number
+  /** Narrow, the housing has no frame coordinates to sit at: the stage is a
+   *  real box of its own rather than a 16:9 island inside a 1920-unit frame,
+   *  and the picture fills it. See `narrow viewports` in Mech.css. */
+  narrow: boolean
+  onReady: () => void
+}
+
+function Flat({ frame, index, count, narrow, onReady }: FrameProps) {
+  const box = mediaBox(frame.aspect)
+  const shell = useRef<HTMLDivElement>(null)
+  const video = useRef<HTMLVideoElement>(null)
+
+  const [playing, setPlaying] = useState(true)
+  const [muted, setMuted] = useState(true)
+  /* Whether this clip has an audio track at all. `Stage.tsx` has always asked
+     — this screen never did, and offered a sound control on every clip in the
+     rail: a switch that reports nothing, on sixty-odd silent screen captures,
+     next to the handful of demos actually filmed with sound. */
+  const hasSound = frame.kind === 'flat' && frame.hasSound === true
+  const [at, setAt] = useState(0)
+  const [length, setLength] = useState(0)
+  const [full, setFull] = useState(false)
+
+  useEffect(() => {
+    const onChange = () => setFull(document.fullscreenElement === shell.current)
+    document.addEventListener('fullscreenchange', onChange)
+    return () => document.removeEventListener('fullscreenchange', onChange)
+  }, [])
+
+  useEffect(() => {
+    const apply = () => {
+      if (video.current) video.current.volume = levels.get().clip
+    }
+    apply()
+    return levels.subscribe(apply)
+  }, [])
+
+  // While this clip is audible, the music steps back for it.
+  useEffect(() => {
+    if (muted || !playing) return
+    return claimAudio()
+  }, [muted, playing])
+
+  const place = {
+    left: `calc(${box.x} * var(--px))`,
+    top: `calc(${box.y} * var(--px))`,
+    width: `calc(${box.w} * var(--px))`,
+    height: `calc(${box.h} * var(--px))`
+  }
+
+  /** The cover comes off when the picture can actually be painted, which is
+   *  after the decode and not after the download. Called from both the ref
+   *  and `load`; lifting a cover that is already up is a no-op. */
+  const decoded = (image: HTMLImageElement) => {
+    const done = () => onReady()
+    if (image.decode) void image.decode().then(done, done)
+    else done()
+  }
+
+  const toggleFull = () => {
+    sound.select()
+    if (document.fullscreenElement) {
+      void document.exitFullscreen()
+      return
+    }
+    const el = shell.current
+    /* iOS Safari has no Element Fullscreen API at all — `requestFullscreen`
+       is undefined on every element, so the housing can never go full. The
+       one thing a phone *will* take fullscreen is a `<video>`, through
+       `webkitEnterFullscreen`, so a clip falls back to that. */
+    if (el?.requestFullscreen) {
+      void el.requestFullscreen().catch(() => {})
+      return
+    }
+    const v = video.current as (HTMLVideoElement & { webkitEnterFullscreen?: () => void }) | null
+    v?.webkitEnterFullscreen?.()
+  }
+
+  const togglePlay = () => {
+    const el = video.current
+    if (!el) return
+    sound.select()
+    if (el.paused) void el.play().catch(() => {})
+    else el.pause()
+  }
+
+  return (
+    <div className="mech-housing" data-full={full} style={narrow ? undefined : place} ref={shell}>
+      <div className="mech-housing-label">
+        <span>{frame.type === 'video' ? 'clip' : 'still'}</span>
+        <span className="mech-housing-count">
+          {String(index + 1).padStart(2, '0')} / {String(count).padStart(2, '0')}
+        </span>
+      </div>
+
+      {frame.type === 'video' ? (
+        /* No `poster`. The cover is held until `loadeddata`, so a poster has
+           nothing left to do except be the thing that flashes if the clip is
+           slower than the cap. Muted on arrival because a clip that starts
+           talking on its own is a hostile thing for a page to do — the
+           transport is how you ask for the sound — and only on a clip that has
+           any, which is `hasSound` above. */
+        <video
+          className="mech-media"
+          ref={video}
+          src={frame.src}
+          muted={muted}
+          loop
+          autoPlay
+          playsInline
+          onClick={togglePlay}
+          onLoadedData={onReady}
+          onPlay={() => setPlaying(true)}
+          onPause={() => setPlaying(false)}
+          onTimeUpdate={(event) => setAt(event.currentTarget.currentTime)}
+          onLoadedMetadata={(event) => setLength(event.currentTarget.duration)}
+        />
+      ) : (
+        <img
+          className="mech-media"
+          // The 1600px copy, never the master — see `MediaItem.still`.
+          src={frame.still ?? frame.src}
+          alt={frame.label ?? ''}
+          // Decoded off the main thread, and the cover held until it is —
+          // `load` only means the bytes arrived, and uncovering onto a
+          // multi-megabyte webp that has not been decoded yet is a stall on
+          // the exact frame the picture is meant to appear.
+          decoding="async"
+          // A cached image can finish loading before React attaches the
+          // handler, and then `onLoad` never fires and the cover sits there
+          // until the cap.
+          ref={(el) => {
+            if (el?.complete) decoded(el)
+          }}
+          onLoad={(event) => decoded(event.currentTarget)}
+        />
+      )}
+
+      <i className="mech-corner" data-at="tl" />
+      <i className="mech-corner" data-at="tr" />
+      <i className="mech-corner" data-at="bl" />
+      <i className="mech-corner" data-at="br" />
+
+      <div className="mech-transport">
+        {frame.type === 'video' ? (
+          <>
+            <button onClick={togglePlay} aria-label={playing ? 'Pause' : 'Play'} title={playing ? 'Pause' : 'Play'}>
+              {playing ? PAUSE : PLAY}
+            </button>
+            <input
+              type="range"
+              min={0}
+              max={length || 0}
+              step={0.01}
+              value={at}
+              onChange={(event) => {
+                const to = Number(event.target.value)
+                if (video.current) video.current.currentTime = to
+                setAt(to)
+              }}
+              aria-label="Seek"
+            />
+            <span className="mech-time">
+              {clock(at)} / {clock(length)}
+            </span>
+            {hasSound && (
+              <button
+                data-off={muted}
+                onClick={() => {
+                  sound.select()
+                  setMuted((was) => !was)
+                }}
+                aria-label={muted ? 'Unmute' : 'Mute'}
+                title={muted ? 'Sound on' : 'Mute'}
+              >
+                {muted ? MUTED : SOUND}
+              </button>
+            )}
+          </>
+        ) : (
+          <span className="mech-time">{frame.label ?? ''}</span>
+        )}
+
+        <button
+          onClick={toggleFull}
+          aria-label={full ? 'Exit full screen' : 'Full screen'}
+          title={full ? 'Exit full screen' : 'Full screen'}
+        >
+          {full ? UNFULL : FULL}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/* ---- the source, on screen ----
+
+   Whatever the copy buttons hand over is also shown, always, in a field that
+   is already selected. The clipboard is the one part of this that cannot be
+   checked: there is no reading it back, `execCommand` reports success it did
+   not have, and on a plain http origin — which is what the dev server is over
+   the tailnet — the modern API is not there at all.
+
+   Portalled to `body` rather than drawn on the readout. Inside `.mech` the
+   native cursor is hidden, so a text field there is one you cannot see
+   yourself select in, and the pin overlay treats every press as a placement.
+   Out here it is an ordinary dialog and ⌘C is an ordinary ⌘C. */
+function Source({ handed, onClose }: { handed: Handed; onClose: () => void }) {
+  const field = useRef<HTMLTextAreaElement>(null)
+
+  // In an effect rather than a ref callback: the button that opened this still
+  // has the focus at the moment the ref runs, and whichever of the two lands
+  // second is the one that wins.
+  useEffect(() => {
+    if (!handed) return
+    const timer = window.setTimeout(() => {
+      field.current?.focus()
+      field.current?.select()
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [handed])
+
+  if (!handed) return null
+
+  return createPortal(
+    <div className="mech-source" role="dialog" aria-label="Label source">
+      <div className="mech-source-head">
+        <span>
+          {handed.copied ? 'copied ✓' : 'no clipboard on this origin'} — paste into NOTES in src/v3/notes.ts
+        </span>
+        <button
+          onClick={() => {
+            field.current?.focus()
+            field.current?.select()
+          }}
+        >
+          select all
+        </button>
+        <button onClick={onClose}>close</button>
+      </div>
+      <textarea ref={field} readOnly value={handed.text} spellCheck={false} />
+    </div>,
+    document.body
+  )
+}
+
+/** How long the machine takes to come up: the grid strikes on, the compass
+ *  spins and settles, and only then do the leaders extend. Trimmed down from
+ *  1500 — the subject (the model or the first still) uncovers at the same
+ *  moment, and it was sitting behind the cover longer than the boot itself
+ *  needed. Still generous enough to cover the one-time cost of a model's
+ *  first mount: building the WebGL context, compiling shaders, cloning the
+ *  scene graph. */
+const BOOT_MS = 1200
+
+/** The longest the machine will wait for its own weight before coming up
+ *  anyway, in milliseconds.
+ *
+ *  The boot is a dozen staggered CSS animations and a thousand-cell ripple,
+ *  and it used to start on the same frame as the WebGL context, the shader
+ *  compile, the environment map and a GLB — so the smoothest sequence on the
+ *  site was scheduled against the busiest main thread it ever has. Waiting
+ *  first costs nothing on screen (what is behind the boot is the bare grid on
+ *  black, which is what a machine that has not been switched on should look
+ *  like) and buys the whole ripple an idle thread to play on.
+ *
+ *  **It is a cap, not a wait.** Whatever has not arrived by here is not going
+ *  to hold the page: a cold cache, a slow network, a font that never resolves,
+ *  a loader that errors without telling anyone. The machine comes up. */
+const WARM_CAP = 1500
+
+/** And the same cap for the 3D chunk, which is a longer job than the rest of
+ *  the warm-up and is allowed to be.
+ *
+ *  Three, drei and everything under them are half a megabyte gzipped and a
+ *  couple of megabytes to parse, and that parse is synchronous main-thread
+ *  work. It used to happen *before* this component existed — it was a static
+ *  import — which is why the boot never had to think about it and why nothing
+ *  at all was on screen until it finished. Now it lands beside the boot
+ *  instead, so the boot has to decline to start under it, or the ripple plays
+ *  against exactly the traffic `primed` was written to get out of.
+ *
+ *  Longer than `WARM_CAP` because it is a fetch of a known, large thing rather
+ *  than a wait on something that may never come, and because there is nothing
+ *  to show until it arrives regardless — the bank and the subject are both
+ *  inside it. Still a cap: a chunk that never lands does not hold the grid on
+ *  black for ever. */
+const CHUNK_CAP = 4000
+
+/** How long to give the page to ask for anything at all before deciding there
+ *  is nothing to wait for, in milliseconds.
+ *
+ *  An idle loading manager means two opposite things — nothing requested yet,
+ *  and everything arrived — and the gate has to tell them apart or it holds
+ *  the screen for the full `WARM_CAP` every time nothing needed loading. Which
+ *  is **home**, every load: the bank's eleven subjects are not requested until
+ *  `up`, and `up` is `!booting`, so they queue up behind the boot rather than
+ *  under it and there is genuinely nothing here to wait for. Short enough that
+ *  home is not sitting on black, long enough to cover a `<Suspense>` boundary
+ *  taking a beat to mount its loader. */
+const WARM_GRACE = 350
+
+/** How long after the cover lifts the overview fold puts itself down — see
+ *  *the overview puts itself down* in the component. Long enough that the side
+ *  column's own entrance (`mech-in`, 420ms on a stagger) has finished, so the
+ *  fold opens against a column that has settled rather than during its
+ *  arrival, where it would read as part of the same animation instead of as
+ *  the machine answering afterwards. */
+const OVERVIEW_MS = 900
+
+interface Props {
+  /** The project on screen, or `null` for the home screen.
+   *
+   *  Home is a *state of this component*, not a screen beside it. The whole
+   *  page — the dashboard, the grid, the compass, the header, the footer, the
+   *  bird and the reticle — is one machine that is already running, and
+   *  opening a project should be that machine retargeting rather than a new
+   *  page being built. Two components meant two of everything and a black
+   *  frame between them where the second one booted; the background flicker
+   *  was the second `.mech` painting over the first.
+   *
+   *  So there is one. Home puts the cast on the stage, the readout in the
+   *  side column and the index across the bottom; a project puts its subject,
+   *  its write-up and its tile rail in the same three places. Everything else
+   *  never moves, because it is never remounted. */
+  id: string | null
+  /** Retarget to another project without unmounting: the readout swings over
+   *  rather than the page being replaced. */
+  onProject: (id: string) => void
+  onHome: () => void
+}
+
+
+
+export default function Mech({ id, onProject, onHome }: Props) {
+  /* The project on screen trails the one in the URL by a transit, the same
+     way the frame trails the tile you picked. Retargeting is the readout
+     swinging over to something else, not a page being replaced.
+
+     It is declared first because three tuning hooks below have to key off it,
+     and one of them used to key off `id` instead — see the note on `tuning`. */
+  const [shownId, setShownId] = useState<string | null>(id)
+  /* Keyed on whichever model is **on screen**, which is `shownId` and not
+     `id`. The two GLB models used to share one rig, so Capsule C1 — an
+     injection-moulded enclosure — was lit by a setup built around a face. At
+     home it is always Mr. Takahashi, who stands in the cast. See `MODEL_RIGS`
+     in `modelTuning.ts`.
+
+     **`id` was the whole of the flash on the way out.** It is the URL, and it
+     changes the instant you press a tile — a full `EXIT_MS` before the screen
+     does. So for the length of its own fade the outgoing subject was being
+     re-framed and re-lit with the *incoming* project's numbers: leaving
+     Capsule C1 (`fill: 0.15`) for home retuned it to Mr. Takahashi's 0.56 and
+     it grew almost four times over while dissolving, and the two guns swap a
+     focal length as well (18mm against 200), so the framing jumped with the
+     size. It read as the subject flinching before it left. Keyed on what is
+     actually on the stage, nothing about a subject moves after the cover
+     starts coming down; the incoming one mounts on the `hold` beat with
+     `shownId` already swung over, so it still arrives on its own rig. */
+  const tuning = useModelTuning(shownId ?? 'mr-takahashi')
+  /* The phone's two knobs — how large the subject and the pictures sit in a
+     stage that is no longer a 16:9 island. Its own panel, because the other
+     two are hidden at this width. Keyed on `shownId` for the same reason, and
+     it had the same bug: `model` multiplies the subject's `fill`, so on a
+     phone the flash was both numbers changing at once. See `narrowTuning.ts`. */
+  const { store: narrowStore, values: narrowScale } = useNarrowTuning(shownId ?? 'mr-takahashi')
+  /* The label maker's half that belongs on the panel rather than over the
+     picture: copying out, reverting, and adding a line without having a
+     picture to click on. See `labelTuning.ts`. */
+  const [handed, setHanded] = useState<Handed>(null)
+  const labels = useLabelTuning(setHanded)
+  /* The pieces' own studio, on its own panel. Keyed on the project because
+     the per-piece folder shows one piece at a time — see `productTuning.ts`.
+     This one was always keyed on `shownId`, which is why a piece never
+     flinched on its way out and only the two GLB subjects did. */
+  const pieces = useProductTuning(shownId ?? '')
+  /* Mecha Station's three parts, which no other piece has — one object's
+     `size` cannot pull a register out of a monitor's foot. Its tab only shows
+     on that project; the hook is unconditional because a hook has to be, and
+     it writes into the same live store the piece reads whether the tab is up
+     or not. See `stationTuning.ts`. */
+  const station = useStationTuning()
+  /* Home's own handful of numbers — where the cluster sits, how large the name
+     is, how far it bleeds. The four tabs this replaces (Cast, Tags, Wave,
+     Name) went with the line-up they described. See `clusterTuning.ts`. */
+  const cluster = useClusterTuning()
+  const [booting, setBooting] = useState(true)
+  const [lit, setLit] = useState<string | null>(null)
+  /* `home` is the whole difference between the two states, and it is read
+     off what is on screen rather than off the prop — during a retarget the
+     prop has already changed and the page has not, which is the entire point
+     of `shownId`. */
+  const home = shownId === null
+  const found = shownId ? findProject(shownId) : null
+  const project = found?.project ?? null
+  const entry = found?.entry ?? null
+  const frames = useMemo(() => (entry ? modelFirst(entry) : []), [entry])
+  /* Whether the *screen* is changing, as opposed to the frame on it.
+     `phase === 'out'` is true for both — stepping the tile rail runs the same
+     beat — and two things have to happen only on the first: the name handing
+     itself to the header, and the tile strip clearing out for the set of tiles
+     that is about to replace it. Anything hung off the cover instead answers a
+     step along the strip as well, which is how the strip came to fade itself
+     out every time you picked a picture with it. See the retarget effect
+     below, which is the one place this is ever set. */
+  const [transiting, setTransiting] = useState(false)
+  const [index, setIndex] = useState(0)
+  /* What is actually on the stage, which trails `index` by the swap. Picking
+     a tile lights it immediately — the feedback is instant — while the frame
+     it points at is eaten and the next one arrives.
+
+     Three phases, not two. `hold` is the frame after the cover completes and
+     before it lifts: the incoming still or clip is mounted but has not
+     necessarily painted, and uncovering onto an undecoded video is what was
+     showing its poster for a beat and then cutting to the real thing. */
+  const [shown, setShown] = useState(0)
+  const [phase, setPhase] = useState<'in' | 'out' | 'hold'>('in')
+  const [open, setOpen] = useState<string | null>(null)
+  /* Which project's overview has already been put down — see *the overview
+     puts itself down* below. A ref because it must not cause a render and
+     must survive the ones the retarget causes. */
+  const openedFor = useRef<string | null>(null)
+  const rail = useRef<HTMLDivElement>(null)
+  const railWrap = useRef<HTMLDivElement>(null)
+  const stage = useRef<HTMLDivElement>(null)
+  const root = useRef<HTMLDivElement>(null)
+  const scale = useRef<HTMLElement>(null)
+  useTypeScale(root, scale)
+  const narrow = useNarrow()
+  const space = useStageSpace(stage, scale, narrow)
+  /* Blocks draw themselves in as they are reached — narrow only, where the
+     page scrolls and half of it starts below the fold. See `reveal.ts`. */
+  useReveal(root, narrow)
+  /* The green does not drift any more. `tint.ts` rotated `--accent` in step
+     with the hue of the wave under the cast, and with the wave gone there is
+     nothing for the panel to be following — a colour that wanders on its own
+     is a screensaver, not an instrument. The hook is still in the file if a
+     drifting supply is ever wanted back. */
+  /* What has been pinned in this browser, if anything. Subscribed rather than
+     read once: the editor writes to the same store the leaders read from, so
+     a drag moves the real line rather than a preview of one. */
+  const drafts = useSyncExternalStore(pins.subscribe, pins.snapshot, pins.snapshot)
+  const [pinning, setPinning] = useState(false)
+  const [menu, setMenu] = useState(false)
+  /* Which fact is up in the deck under the picture, narrow only. Back to the
+     first one whenever the picture changes: the deck is about *this* frame, and
+     arriving at a new one already three cards along is the readout remembering
+     something that has nothing to do with what is on screen.
+
+     Held here rather than inside `MechFacts` because the marks on the picture
+     were lit off the same number. They are gone and this could move down with
+     them — it is left here because it is one `useState` and the reset belongs
+     beside the frame it is watching. */
+  const [fact, setFact] = useState(0)
+
+  useEffect(() => {
+    if (!narrow) setMenu(false)
+  }, [narrow])
+
+  const current = frames[shown]
+  useEffect(() => setFact(0), [current?.id])
+  const modelFrame = frames.find((frame) => frame.kind === 'model')
+  const pieceFrame = frames.find((frame) => frame.kind === 'piece')
+  const covered = phase !== 'in' || booting
+  /* `covered` also spans `hold`, which is when the next frame's housing first
+     mounts — a fresh set of brackets, label and transport that have no exit to
+     play. Scoping the exit animations to `leaving` instead keeps `hold` from
+     handing them `data-covered`'s "true" and having them open on the wrong
+     keyframe: `mech-unpop`'s first frame is full opacity, held there by
+     `animation-fill-mode: both` until its delay runs out, which is the flash. */
+  const leaving = phase === 'out'
+
+  /* ---- load first, then play ----
+
+     Everything heavy about this page mounts on the same frame the boot starts
+     on, and the boot is the one sequence here whose whole job is to be smooth.
+     So it waits: `primed` gates both the ripple (`MechTiles`) and the countdown
+     below, and turns true when three things have happened — the 3D chunk has
+     arrived, the fonts have resolved, and three's loading manager has gone
+     quiet — each with a cap so that none of them can hold the page for ever.
+
+     **The chunk is the newest of the three and the one that matters most on a
+     phone.** Three, drei, leva and postprocessing used to be *static* imports
+     of this file, by way of `useProgress` and `MechBank`, so half a megabyte
+     gzipped was fetched and parsed before `Mech` existed and the page was
+     blank for all of it. It is behind `lazy()` now — which is what the
+     boundaries around `MechCluster` and `MechModel` always claimed to be doing
+     and could not, because a dependency already in the eager chunk is not
+     deferred by being imported again behind one. The grid paints as soon as
+     React does. The cost of that is that the parse now lands beside the boot
+     rather than in front of it, so the boot has to wait for it explicitly:
+     `heavy`, resolved by the same dynamic import `Warmth` is behind.
+
+     `Warmth` is what watches the loader, and it is a leaf component in a file
+     of its own for a reason: drei's `useProgress` re-renders its subscriber on
+     every progress tick, and this screen is not a component you want
+     re-rendered a few dozen times while it is trying to come up. It reports
+     once, upward.
+
+     On home the loader settles almost immediately — the bank's eleven subjects
+     are not requested until `up`, which is `!booting`, so they queue up
+     *behind* the boot rather than under it. On a project deep link it is
+     waiting for that project's own model, which is exactly the load worth
+     waiting for. */
+  const [primed, setPrimed] = useState(false)
+  const [quiet, setQuiet] = useState(false)
+  const [fonts, setFonts] = useState(false)
+  /** Whether the 3D chunk has been fetched and parsed — see `CHUNK_CAP`. */
+  const [heavy, setHeavy] = useState(false)
+  /** Whether anything was ever asked for — see `WARM_GRACE`. */
+  const asked = useRef(false)
+
+  const onLoading = useCallback((active: boolean) => {
+    if (active) {
+      asked.current = true
+      return
+    }
+    if (asked.current) setQuiet(true)
+  }, [])
+
+  /* The 3D chunk, started on mount rather than left to whichever `lazy()`
+     renders first, so the fetch is under way from the first frame and the boot
+     has something definite to wait on. `import()` is memoised by the module
+     registry, so this and the `lazy()` boundaries above share one request. A
+     rejection counts as arrived: a chunk that failed to load is not going to
+     start loading again because the boot held out for it. */
+  useEffect(() => {
+    let alive = true
+    const done = () => {
+      if (alive) setHeavy(true)
+    }
+    void import('./Warmth').then(done, done)
+    const cap = window.setTimeout(done, CHUNK_CAP)
+    return () => {
+      alive = false
+      window.clearTimeout(cap)
+    }
+  }, [])
+
+  useEffect(() => {
+    let alive = true
+    /* The cap stops waiting for the two it covers rather than priming
+       outright, so it cannot start the ripple underneath a chunk that is still
+       parsing — that one has `CHUNK_CAP` of its own. */
+    const cap = window.setTimeout(() => {
+      if (!alive) return
+      setQuiet(true)
+      setFonts(true)
+    }, WARM_CAP)
+    const grace = window.setTimeout(() => {
+      if (alive && !asked.current) setQuiet(true)
+    }, WARM_GRACE)
+    /* `document.fonts` is everywhere this site runs, but a promise that never
+       settles would hold the page to the cap for no reason, so a failure here
+       counts as ready rather than as waiting. */
+    const done = () => alive && setFonts(true)
+    document.fonts?.ready.then(done, done) ?? done()
+    return () => {
+      alive = false
+      window.clearTimeout(cap)
+      window.clearTimeout(grace)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!fonts || !quiet || !heavy) return
+    /* Two frames, not zero. What has just finished loading has not been drawn
+       yet — the first paint of a decoded texture or a compiled program is
+       itself a frame of work, and starting the ripple on the same one puts it
+       straight back into the traffic this whole gate exists to get out of. */
+    let second = 0
+    const first = requestAnimationFrame(() => {
+      second = requestAnimationFrame(() => setPrimed(true))
+    })
+    return () => {
+      cancelAnimationFrame(first)
+      cancelAnimationFrame(second)
+    }
+  }, [fonts, quiet, heavy])
+
+  /* The machine coming up, once the page is primed. `sound.boot()` fires into a
+     suspended `AudioContext` on a fresh load — nothing plays until the
+     visitor's first real gesture elsewhere resumes it (see `audio()` in
+     `sound.ts`, which resumes on every call) — but the visual boot runs
+     regardless. */
+  useEffect(() => {
+    if (!primed) return
+    sound.boot()
+    const timer = window.setTimeout(() => setBooting(false), BOOT_MS)
+    return () => window.clearTimeout(timer)
+  }, [primed])
+
+  /* ---- the tour ----
+
+     Two runs, one per screen kind, each shown once per browser and then only
+     on request. Someone opened this and did not know there was anything to do
+     — the rail is pressable, the range is shootable, and neither says so.
+     `Tour` (portalled, `Tour.css`) points a short transient label at one
+     thing at a time, leader-line style, and never blocks the pointer. `tour`
+     is which run is live; it is cleared on every navigation so a run never
+     outlives its screen. */
+  const [tour, setTour] = useState<Flow | null>(null)
+  const closeTour = useCallback(() => setTour(null), [])
+  const homeTourFired = useRef(false)
+  const projectTourFired = useRef(false)
+  const replaySignal = useReplaySignal()
+
+  useEffect(() => {
+    setTour(null)
+  }, [shownId])
+
+  useEffect(() => {
+    // Wide only: a phone gets the boot and the shooting to discover on its
+    // own, without a label layer over a screen that is already tight.
+    if (narrow || !home || booting || !primed || homeTourFired.current || tourSeen('home')) return
+    homeTourFired.current = true
+    // Four seconds past the boot, well clear of the opening animations.
+    const t = window.setTimeout(() => setTour('home'), 4000)
+    return () => window.clearTimeout(t)
+  }, [narrow, home, booting, primed])
+
+  useEffect(() => {
+    if (narrow || home || booting || phase !== 'in' || projectTourFired.current || tourSeen('project')) return
+    projectTourFired.current = true
+    const t = window.setTimeout(() => setTour('project'), 4000)
+    return () => window.clearTimeout(t)
+  }, [narrow, home, booting, phase])
+
+  /* The "?" key cleared a flag and bumped the signal — start the run that
+     fits the screen we are on. */
+  useEffect(() => {
+    if (replaySignal === 0) return
+    const asked = takeReplay()
+    if (!asked) return
+    homeTourFired.current = true
+    projectTourFired.current = true
+    setTour(asked)
+  }, [replaySignal])
+
+  /* The subject's canvas learns its size from a ResizeObserver, and a tab that
+     is still in the background when the page loads throttles that observer's
+     first callback away entirely — so a project opened in a tab you have not
+     looked at yet mounts a canvas stuck at its 300×150 default and stays that
+     way even once you switch to it. A resize event makes r3f's `useMeasure`
+     re-read the box. Fired straight rather than off a `requestAnimationFrame`
+     (which a background tab pauses), and again the moment the tab is shown,
+     which is the frame that actually needs it. The canvas is lazy and mounts a
+     beat after this effect, so the opening kicks are spread across the first
+     second; every one past the mount is a harmless re-measure to the same
+     size. Home's cluster canvas is `position: fixed` over the viewport and
+     never has this problem. */
+  useEffect(() => {
+    if (home) return
+    const kick = () => window.dispatchEvent(new Event('resize'))
+    const timers = [0, 200, 600, 1200].map((ms) => window.setTimeout(kick, ms))
+    const onShow = () => {
+      if (!document.hidden) kick()
+    }
+    document.addEventListener('visibilitychange', onShow)
+    return () => {
+      timers.forEach(window.clearTimeout)
+      document.removeEventListener('visibilitychange', onShow)
+    }
+  }, [home])
+
+  /* Retargeting. The subject comes apart, the project underneath changes, and
+     the rail goes back to the model — reusing the same cover the frame swap
+     uses, because it is the same gesture at a larger scale.
+
+     Home is one more target, not a special case. Going home and going to a
+     different project run the identical beat: what is on the stage leaves,
+     `shownId` changes underneath, and what replaces it draws itself in. The
+     dashboard, the header and the footer are never told any of it happened,
+     which is what "seamless" means here — not a transition between two
+     screens, but the absence of a second screen to transition to. */
+  useEffect(() => {
+    if (id === shownId) return
+    sound.dissolve()
+    setPhase('out')
+    setTransiting(true)
+    const timer = window.setTimeout(() => {
+      setShownId(id)
+      setIndex(0)
+      setShown(0)
+      /* Back to the top, under the cover.
+
+         `.mech` is the scroll container on the narrow layout (the wide one
+         does not scroll at all), and it is never remounted — home and a
+         project are the same element, which is the whole point of this
+         component. So the scroll offset survives the change: press a slot
+         from halfway down the bank and the project arrives already scrolled
+         to its write-up, with the subject it was opened for off the top of
+         the window.
+
+         Done here rather than on mount because here is the one frame the
+         screen is fully covered — a jump the reader can see is a jump, and
+         this one lands while there is nothing to see. */
+      root.current?.scrollTo({ top: 0, behavior: 'auto' })
+      /* Shut *here*, and opened a beat later by the effect below. What must
+         not happen is the fold arriving already down: the write-up is
+         underneath the cover on this frame, and a drawer that is simply found
+         open is a drawer nobody watched open. It is put down deliberately,
+         on screen, once there is a screen to put it down on. */
+      setOpen(null)
+      openedFor.current = null
+      setPhase('hold')
+      /* Cleared on the same beat the screen actually changes, so whichever
+         of the two names is mounting on the other side of it mounts with
+         something to type rather than something to delete. */
+      setTransiting(false)
+    }, LEAVE_MS)
+    return () => window.clearTimeout(timer)
+  }, [id, shownId])
+
+
+  useEffect(() => {
+    if (index === shown) return
+    /* Started here rather than when the frame is mounted, which is a third of
+       a second later at full cover: the cover is time the picture could have
+       been loading in, and spending it doing nothing is most of the pause
+       people saw between one picture and the next. */
+    warm(frames[index])
+    sound.dissolve()
+    setPhase('out')
+    const timer = window.setTimeout(() => {
+      setShown(index)
+      setPhase('hold')
+    }, EXIT_MS)
+    return () => window.clearTimeout(timer)
+  }, [index, shown])
+
+  // A model is its own Suspense boundary and has nothing to decode; anything
+  // else lifts the cover when it says it is ready, or when the cap runs out.
+  useEffect(() => {
+    if (phase !== 'hold') return
+    // A model, the cast, or a project with nothing on its stage at all: none
+    // of them have a picture to decode, so none of them have anything to wait
+    // for.
+    if (!frames[shown] || frames[shown].kind !== 'flat') {
+      setPhase('in')
+      return
+    }
+    const cap = window.setTimeout(() => setPhase('in'), HOLD_CAP)
+    return () => window.clearTimeout(cap)
+  }, [phase, shown, frames])
+
+  /* The subject is a target while it is the thing on the stage. Registered
+     as a box in client pixels worked out from the stage's own rect, so it
+     scales with the composition and needs no element of its own — and padded
+     out to the space the float actually moves the head through, the same
+     reasoning as `dissolveBox`. A still is not a target: shooting a
+     photograph of something is shooting a photograph. */
+  useEffect(() => {
+    if (!current || current.kind === 'flat') return
+    quarry.subject = {
+      rect: () => {
+        const box = stage.current?.getBoundingClientRect()
+        if (!box) return null
+        // `space` is the frame the subject is actually drawn in — 1920×1080
+        // wide, a narrower box of its own on a phone (`useStageSpace`). This
+        // used to assume 1920 unconditionally, which on narrow put the
+        // hitbox at the wrong scale and offset entirely: shots low on the
+        // stage — the bottom half of the face — landed below where the box
+        // actually was.
+        const model = boxOf(current, space)
+        const px = box.width / space.w
+        const pad = { x: model.w * PAD.x, y: model.h * PAD.y }
+        return new DOMRect(
+          box.left + (model.x - pad.x) * px,
+          box.top + (model.y - pad.y) * px,
+          (model.w + pad.x * 2) * px,
+          (model.h + pad.y * 2) * px
+        )
+      },
+      hit: () => {
+        flinch.at = performance.now()
+        sound.thud()
+      }
+    }
+    return () => {
+      quarry.subject = null
+    }
+  }, [current, space])
+
+  // What the panel's label buttons act on.
+  useEffect(() => {
+    focus.id = current?.id ?? ''
+  }, [current])
+
+  // P opens the pin editor, in development. Not while something is being
+  // typed into — the editor is mostly text fields, and a shortcut that fires
+  // inside one is a shortcut that cannot be spelled.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'p' && event.key !== 'P') return
+      if (event.metaKey || event.ctrlKey || event.altKey) return
+      const on = event.target as HTMLElement | null
+      if (on && (on.tagName === 'INPUT' || on.tagName === 'TEXTAREA' || on.isContentEditable)) return
+      setPinning((was) => !was)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  /* The neighbours of whatever is on the stage, and the grid shapes this
+     project's frames dissolve through — both worked out while the machine is
+     still booting or the visitor is still reading, rather than on the frame
+     something has to move. */
+  useEffect(() => {
+    return whenIdle(() => {
+      warm(frames[shown + 1])
+      warm(frames[shown - 1])
+      warm(frames[shown + 2])
+    })
+  }, [frames, shown])
+
+  // A project with a dozen frames outruns the rail's height (or, narrow, its
+  // width), so stepping with the arrow keys has to bring the tile back into
+  // view on whichever axis it now scrolls.
+  //
+  // Both axes are named either way. `block` defaults to `'start'` when it is
+  // left out, and narrow the page itself is the vertical scroller — so asking
+  // only for `inline: 'nearest'` scrolled the whole screen down to put the
+  // tile strip at the top of the window, taking the subject off it.
+  useEffect(() => {
+    rail.current?.children[index]?.scrollIntoView(
+      narrow ? { inline: 'nearest', block: 'nearest' } : { block: 'nearest', inline: 'nearest' }
+    )
+  }, [index, narrow])
+
+  // The rail's own scrubber: a thumb sized and placed off the tile strip's
+  // real scroll state, and a track that only shows itself once there is
+  // somewhere for the thumb to go.
+  //
+  // One axis, on both layouts. The strip used to run down the right-hand
+  // margin on a wide window and sideways on a phone, so this measured
+  // whichever of the two the current layout was using and wrote a different
+  // pair of custom properties for each. The margin belongs to the projects
+  // rail now and the strip is horizontal everywhere — see *the media strip*
+  // in Mech.css — so there is one measurement and one pair of properties.
+  useEffect(() => {
+    const el = rail.current
+    const wrap = railWrap.current
+    if (!el || !wrap) return
+
+    const update = () => {
+      const scrollable = el.scrollWidth > el.clientWidth + 1
+      wrap.dataset.scrollable = String(scrollable)
+      if (!scrollable) return
+      wrap.style.setProperty('--thumb-w', `${(el.clientWidth / el.scrollWidth) * 100}%`)
+      wrap.style.setProperty('--thumb-left', `${(el.scrollLeft / el.scrollWidth) * 100}%`)
+    }
+
+    update()
+    el.addEventListener('scroll', update)
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => {
+      el.removeEventListener('scroll', update)
+      ro.disconnect()
+    }
+  }, [frames, narrow])
+
+  // Click-and-drag on the strip, and a plain mouse wheel turned sideways —
+  // `overflow-x: auto` alone only answers a trackpad's own horizontal
+  // gesture or a shift-scroll, which is not the reach a wide window's mouse
+  // makes first. Mouse only: `pointerType` gates every listener here, so a
+  // touch or pen leaves the browser's own momentum scroll alone rather than
+  // fighting a second one built by hand on top of it.
+  useEffect(() => {
+    const el = rail.current
+    if (!el) return
+
+    let dragging = false
+    let dragged = false
+    let startX = 0
+    let startScroll = 0
+
+    const onDown = (event: PointerEvent) => {
+      if (event.pointerType !== 'mouse') return
+      dragging = true
+      dragged = false
+      startX = event.clientX
+      startScroll = el.scrollLeft
+    }
+    const onMove = (event: PointerEvent) => {
+      if (!dragging) return
+      const dx = event.clientX - startX
+      // A real press is never pixel-still — the threshold has to clear
+      // ordinary mouse and trackpad wobble on a click, not just a
+      // deliberate drag, or every press reads as one and no tile is ever
+      // reachable by clicking.
+      if (!dragged && Math.abs(dx) > 10) {
+        dragged = true
+        /* **The capture is taken here and not on the press.** A captured
+           pointer retargets its own `click` to the capture element, so
+           taking it on `pointerdown` meant every click on the strip was
+           delivered to the strip rather than to the tile under the cursor
+           — which is exactly one tile-selection bug with a mouse and none
+           at all with a finger, because `pointerType` never lets a touch
+           in here. Taken once the drag is real, the retarget is what we
+           want: that click is one we were going to suppress anyway. */
+        el.setPointerCapture(event.pointerId)
+      }
+      el.scrollLeft = startScroll - dx
+    }
+    const onUp = (event: PointerEvent) => {
+      if (!dragging) return
+      dragging = false
+      if (el.hasPointerCapture(event.pointerId)) el.releasePointerCapture(event.pointerId)
+    }
+    // A press that turned into a drag should not also select the tile it
+    // let go over — captured ahead of the tile buttons' own click handlers
+    // rather than checked inside each of them.
+    const onClickCapture = (event: MouseEvent) => {
+      if (!dragged) return
+      event.stopPropagation()
+      event.preventDefault()
+    }
+    const onWheel = (event: WheelEvent) => {
+      if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return
+      el.scrollLeft += event.deltaY
+      event.preventDefault()
+    }
+
+    el.addEventListener('pointerdown', onDown)
+    el.addEventListener('pointermove', onMove)
+    el.addEventListener('pointerup', onUp)
+    el.addEventListener('pointercancel', onUp)
+    el.addEventListener('click', onClickCapture, true)
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => {
+      el.removeEventListener('pointerdown', onDown)
+      el.removeEventListener('pointermove', onMove)
+      el.removeEventListener('pointerup', onUp)
+      el.removeEventListener('pointercancel', onUp)
+      el.removeEventListener('click', onClickCapture, true)
+      el.removeEventListener('wheel', onWheel)
+    }
+  }, [frames])
+
+  // The arrow keys step the rail, the same as clicking it.
+  useEffect(() => {
+    if (frames.length < 2) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') setIndex((at) => (at - 1 + frames.length) % frames.length)
+      if (event.key === 'ArrowDown' || event.key === 'ArrowRight') setIndex((at) => (at + 1) % frames.length)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [frames.length])
+
+  // A project id that matches nothing at all. Home is not this case: it has
+  // no project on purpose.
+  if (!home && !project) return <div className="mech" />
+
+  const notes = entry && current ? notesFor(entry, current, drafts) : []
+  /* A project in the index with nothing to put on the stage — Visa, under an
+     NDA, and Solomon, whose write-up is still to come. Both are real work and
+     both are listed, so opening one has to land somewhere: the `restricted`
+     note on its own card, in place of the subject. See `MENU` in `model.ts`
+     for why a project with no media is in the index at all. */
+  const bare = !home && !current
+  /* Solomon has no frames, so it would fall through to the card — and the
+     rider (`MechRider.tsx`) is built to stand in for one. It is held back
+     while the project is `locked` ("in development"), which is what puts the
+     Visa-style card up instead; drop `locked` in projects.ts and the rider
+     returns here and in the bank. */
+  const riderStage = bare && project?.id === 'a-game' && !project?.locked
+  /* Computed after the two above, because whether the overview fold is worth
+     opening depends on whether the card under it already said the same thing.
+     See `foldsFor`. */
+  const folds = foldsFor(project ?? undefined, bare && !riderStage)
+
+  /* ---- the overview puts itself down ----
+
+     A project arrives with its first fold open, a beat after the screen does.
+
+     "Everything arrives shut" was the rule before this, and the argument for
+     it was that a drawer standing open is the one thing in the column nobody
+     opened. What that missed is that the column then arrives saying nothing
+     at all: a title, a tagline, and seven closed headings, with the answer to
+     *what is this* one press away and no indication that pressing is where
+     the writing lives. The overview is the fold that answers the question the
+     screen has already raised by putting an object on a stage.
+
+     So it opens, but it is **not open on arrival** — the distinction is the
+     whole of it. `setOpen` runs on the covered beat above and clears; this
+     runs once the cover is off and the side column has had time to draw
+     itself in, so the fold is seen going down. A fold found open is furniture;
+     a fold that opens is the machine answering.
+
+     Once per project, held on a ref rather than on state. `covered` also goes
+     true for an ordinary step along the tile rail, and re-opening the overview
+     every time somebody looked at a different picture would fight them for
+     the column. The ref is cleared in the retarget above, so coming back to a
+     project you have already read opens it again. */
+  const firstFold = folds[0]?.id ?? null
+  useEffect(() => {
+    if (home || covered || !shownId || !firstFold) return
+    if (openedFor.current === shownId) return
+    openedFor.current = shownId
+    const timer = window.setTimeout(() => setOpen(firstFold), OVERVIEW_MS)
+    return () => window.clearTimeout(timer)
+  }, [home, covered, shownId, firstFold])
+  /* What the readout in the side column is about — only ever a project. Home
+     has no side column any more: the whole screen is the cluster, and the name
+     sits in the middle of it. */
+  const lede = project ?? null
+
+  /* Which panels belong to what is on screen. This is the whole reason the
+     panel is tabbed: every panel used to be mounted all the time, so home
+     offered a project subject's lighting rig — titled "Subject tuning", which
+     does not say whose subject — and a project screen offered none of home's.
+     Home's four tabs (Cast, Tags, Wave, Name) went with the line-up they
+     described; what is left is the cluster's own handful of numbers. */
+  const panels: PanelTab[] = import.meta.env.DEV
+    ? narrow
+      ? home
+        ? /* Home's own numbers are open down here too now. Leva's minimum
+             width is most of a phone and that is still true — but three of
+             the Cluster tab's controls only do anything on this layout (the
+             role reel's size and the air either side of it), so a narrow
+             *window* on a desktop is where they have to be reachable from,
+             and that is the same `narrow` this branch is testing. */
+          [{ id: 'cluster', label: 'Cluster', store: cluster.store }]
+        : [
+            { id: 'scale', label: 'Scale', store: narrowStore },
+            { id: 'labels', label: 'Labels', store: labels }
+          ]
+      : home
+        ? [{ id: 'cluster', label: 'Cluster', store: cluster.store }]
+        : [
+            ...(modelFrame ? [{ id: 'subject', label: 'Subject', store: tuning.store }] : []),
+            ...(pieceFrame ? [{ id: 'piece', label: 'Piece', store: pieces.store }] : []),
+            ...(pieceFrame && shownId === 'mecha-station'
+              ? [{ id: 'station', label: 'Station', store: station.store }]
+              : []),
+            { id: 'labels', label: 'Labels', store: labels }
+          ]
+    : []
+
+  return (
+    <div
+      className="mech"
+      ref={root}
+      /* Bloom is a property of the room, not of home. It is set here rather
+         than on `.mech-cluster` — which only exists on home — because a knob
+         living on the screen it lights means every glow on the site falls back
+         to 1 the moment a project opens, and the swap reads as the lights
+         changing. See *one room, both screens* in Mech.css. */
+      style={{ ['--cluster-glow' as string]: cluster.values.glow }}
+      data-boot={booting}
+      data-pins={pinning}
+      data-narrow={narrow}
+      data-covered={covered}
+      /* The screen changing, as opposed to the picture on it. The tile strip
+         takes its exit off this and not off `data-covered`, which is also true
+         for an ordinary step along the strip — see `the exchange` in
+         Mech.css. */
+      data-transiting={transiting}
+    >
+      {/* Sized by both units at once, so the ratio between them can be read
+          off one box. See `useTypeScale`. */}
+      <i className="mech-scale" ref={scale} aria-hidden />
+      {/* Development only, and portalled to `body` for the same reason the
+          gallery's panel is: rendered in place it would sit inside the
+          readout's stacking context and paint under the chrome. */}
+      {/* One panel, tabbed, and only the tabs this screen can actually
+          change — see `MechPanel.tsx`. Portalled to `body` for the same
+          reason it always was: rendered in place it would sit inside the
+          readout's stacking context and paint under the chrome.
+
+          Off entirely at phone width. Leva's own minimum is most of a
+          390-point window, and the one adjustment the narrow layout needs is
+          the only tab left. */}
+      {typeof document !== 'undefined' && import.meta.env.DEV
+        ? createPortal(
+            <Suspense fallback={null}>
+              <MechPanel tabs={panels} />
+            </Suspense>,
+            document.body
+          )
+        : null}
+
+      <Source handed={handed} onClose={() => setHanded(null)} />
+
+      {/* The 3D horizon that used to sit under the line-up is gone with it —
+          `.mech-wave-layer` and `MechWave.tsx` are both still here, unmounted.
+          What is left under the readout is the flat phosphor grid, which is
+          the surface this panel is printed on and the one the reference has. */}
+      <MechHud />
+
+      {/* The grid's cells dealt in from the middle of the window, once, while
+          the rest of the machine comes up. It takes itself down when its own
+          ripple is over rather than being cut off with the boot flag, which
+          is a little shorter than the furthest cell needs — see `LIFE` in
+          `MechTiles.tsx`. It has no exit to miss — every cell animates to
+          nothing and the layer removes itself. */}
+      {primed && <MechTiles />}
+      {/* Renders nothing and suspends until the 3D chunk lands, so a `null`
+          fallback is the whole of what it looks like either way. */}
+      <Suspense fallback={null}>
+        <Warmth onLoading={onLoading} />
+      </Suspense>
+      <MechCursor />
+      <MechBird />
+      <MechMoth />
+      <MechLaser />
+      {/* No `start` any more: the pair used to spell its two words a cell at
+          a time and had to be held until the cover lifted. Two lamps and a
+          number have nothing to spell, so the row simply comes up with the
+          rest of the chrome on `[data-boot]`'s own fade. */}
+      <Alarm />
+
+      {/* Shown around, once per browser — see *the tour* above. Gated on the
+          screen so a run never draws over the wrong one. */}
+      {tour && (home ? tour === 'home' : tour === 'project') && (
+        <Tour flow={tour} onClose={closeTour} />
+      )}
+
+      {/* The way back into the tour. Off during the boot, like the rest of the
+          chrome, and off on a phone, where the run does not play. A press
+          starts the run that fits the screen. */}
+      {!booting && !narrow && (
+        <button
+          className="mech-tour-key"
+          aria-label="Show me around"
+          onClick={() => {
+            sound.select()
+            replayTour(home ? 'home' : 'project')
+          }}
+        >
+          ?
+        </button>
+      )}
+
+      {menu && (
+        <MechMenu shownId={shownId} onProject={onProject} onHome={onHome} onClose={() => setMenu(false)} />
+      )}
+
+      <div className="mech-frame">
+        <header className="mech-head">
+          {/* Home already says whose site this is — large, in the middle of
+              the cluster. This signature in the corner is a way back from a
+              project, not a second copy of the same name, so it only draws
+              once there is a project to come back from.
+
+              And it is the same name, handed over. Opening a project takes the
+              cluster off screen; a beat later this types itself into the
+              corner, one character at a time, in the same typeface. Going home
+              runs it the other way. Two blocks of markup, one gesture — which
+              is the whole reason `transiting` exists as a separate flag from
+              `phase`: stepping the tile rail is also an exit, and the name has
+              no business reacting to it. */}
+          {!home && (
+            <button className="mech-wordmark" onClick={onHome}>
+              <Typed text={NAME} run="wordmark" delay={0.12} speed={34} caret={false} back={transiting} />
+            </button>
+          )}
+
+          {/* One control, on both layouts. Ten projects is too many for a tag
+              row to stand in for and too many to spell out along the header —
+              it used to be a row of tag chips here and a second strip of
+              every title along the bottom edge, and neither one told you
+              where you actually were. This opens the same index sheet
+              `MechMenu` draws on a phone: every project, named and typed in,
+              one control to reach any of them. */}
+          <button
+            className="mech-menu-key"
+            onClick={() => {
+              sound.select()
+              setMenu(true)
+            }}
+            aria-label="Open the index"
+          >
+            <i />
+            <i />
+            <i />
+          </button>
+        </header>
+
+        {/* Docked between the header and the rail on wide; narrow, it floats
+            fixed at the bottom of the window (see `.mech-deck-slot` in the
+            CSS) so the song is reachable on a phone too. */}
+        <div className="mech-deck-slot">
+          <MechDeck />
+        </div>
+
+        {/* Home: the whole screen, as one instrument cluster. The lamps, the
+            name, the display that reads out either a title or whatever project
+            the pointer is on, the counts, and the bar graph that is both the
+            work and the way into it. See `MechCluster.tsx`. */}
+        {home && (
+          <Suspense fallback={null}>
+            <MechCluster covered={covered} leaving={leaving} tuning={cluster.values} />
+          </Suspense>
+        )}
+
+        {/* The subject and its labels share one box so that scaling the window
+            moves them together. Only a project has one: home's cluster is the
+            frame's own child and needs no stage under it, and an empty 16:9
+            box sitting in the middle of the cluster is a box that eats the
+            pointer over half of it. */}
+        {!home && (
+        <div
+          className="mech-stage"
+          ref={stage}
+          data-covered={covered}
+          data-leaving={leaving}
+          data-kind={current?.kind ?? 'bare'}
+          style={narrow ? { ['--media-scale' as string]: narrowScale.media } : undefined}
+        >
+          {/* The model is mounted for as long as the project has one, and
+              hidden rather than unmounted while a still is on the stage.
+
+              Unmounting it threw away a WebGL context, a compiled set of
+              shaders, a cloned scene graph and a generated environment map,
+              and building all of that again is most of a hundred milliseconds
+              on the main thread — a hitch, every single time you stepped back
+              to the model. Hidden and stopped it costs nothing per frame: see
+              `live` in MechModel, which puts the render loop to sleep. */}
+          {/* Nothing to put on the stage, and that is the truth about the
+              project rather than a failure to load one. */}
+          {bare && !riderStage && project && (
+            <div className="mech-bare" data-locked={Boolean(project.locked)}>
+              {project.locked && (
+                <span className="mech-bare-lock" aria-hidden="true">
+                  <svg viewBox="0 0 44 44">
+                    <path className="lock-shackle" d="M13 21v-7a9 9 0 0 1 18 0v7" />
+                    <rect className="lock-body" x="8" y="21" width="28" height="18" rx="3" />
+                    <circle className="lock-keyhole" cx="22" cy="28.5" r="2.4" />
+                    <rect className="lock-keyhole" x="20.9" y="29" width="2.2" height="6" rx="1.1" />
+                  </svg>
+                </span>
+              )}
+              <span className="mech-bare-tag">
+                {project.locked ? (project.lockNote ?? 'not yet disclosable') : 'no material'}
+              </span>
+              <p>{project.restricted ?? project.intro}</p>
+            </div>
+          )}
+
+          {riderStage && (
+            <div className="mech-model-layer" data-on={true}>
+              <Suspense fallback={null}>
+                <RiderStage live={!covered} />
+              </Suspense>
+            </div>
+          )}
+
+          {/* The subject: one canvas, whichever kind of thing this project
+              has, and it stays mounted for the whole of a project screen.
+
+              A project has a model or a piece, never both, and both used to
+              own a canvas of their own — so going from one project to the next
+              threw away a WebGL context and built another, recompiling shaders
+              that had just been compiled, regenerating an environment map that
+              is identical everywhere on this site, and rebuilding the face's
+              morph-target texture because three caches that per *renderer*.
+              Counted on the built page: one context created and one
+              deliberately lost on every single navigation. `MechStage.tsx` has
+              the numbers and the whole argument; the short version is that the
+              renderer now outlives the project and only the scene swaps.
+
+              Mounted unconditionally, including on a project with nothing to
+              draw at all (`subject` null): a bare project between two solid
+              ones would otherwise cost that rebuild twice, for a context that
+              is idle either way. An empty scene compiles nothing and
+              `frameloop="never"` draws nothing, so what an idle stage holds is
+              the context and the room. Stopped rather than hidden while a
+              still is on the stage — `live` is the same flag it always was.
+
+              `narrow` reframes rather than re-rigs: `fill` is how much of the
+              stage's height the subject takes, and on a phone the stage is a
+              tall box rather than a wide one, so a head framed for the middle
+              of a 16:9 island is a speck in it. Nothing about `MODEL_DEFAULTS`
+              or a piece's own tuning moves; the multipliers are narrow's own,
+              on their own panel. */}
+          <div
+            className="mech-model-layer"
+            data-on={current?.kind === 'model' || current?.kind === 'piece'}
+          >
+            <Suspense fallback={null}>
+              <MechStage
+                live={current?.kind === 'model' || current?.kind === 'piece'}
+                subject={
+                  modelFrame
+                    ? {
+                        kind: 'model',
+                        src: modelFrame.src,
+                        tuning: narrow
+                          ? {
+                              ...tuning,
+                              fill: tuning.fill * narrowScale.model,
+                              focalLength: tuning.focalLength * narrowScale.lens,
+                              turn: tuning.turn + narrowScale.spin,
+                              tilt: tuning.tilt + narrowScale.tilt
+                            }
+                          : tuning,
+                        offset: narrow ? [narrowScale.offsetX, narrowScale.offsetY] : undefined
+                      }
+                    : pieceFrame
+                      ? {
+                          kind: 'piece',
+                          project: pieceFrame.project,
+                          tuning: pieces.studio,
+                          piece: narrow
+                            ? {
+                                ...pieces.piece,
+                                size: pieces.piece.size * narrowScale.model,
+                                focalLength: pieces.piece.focalLength * narrowScale.lens,
+                                turn: pieces.piece.turn + narrowScale.spin
+                              }
+                            : pieces.piece,
+                          offset: narrow ? [narrowScale.offsetX, narrowScale.offsetY] : undefined,
+                          tilt: narrow ? narrowScale.tilt : undefined
+                        }
+                      : null
+                }
+              />
+            </Suspense>
+          </div>
+          {current?.kind === 'flat' && (
+            <Flat
+              // Prefixed: the leaders below are keyed on the same frame, and
+              // two siblings under one parent with the same key is a duplicate
+              // React resolves by leaving the outgoing housing in the DOM.
+              key={`flat-${current.id}`}
+              frame={current}
+              index={shown}
+              count={frames.length}
+              narrow={narrow}
+              onReady={() => setPhase((at) => (at === 'hold' ? 'in' : at))}
+            />
+          )}
+          {/* Keyed on the frame, so stepping the rail draws the leaders out
+              again rather than revealing them already extended. */}
+          {/* Held back until the machine is up: the leaders extending is the
+              last beat of the boot, not something already there when it
+              finishes. */}
+          {/* Mounted for the two phases the picture is on the stage and not
+              the one where it is empty, so the lines that are leaving belong
+              to the frame that is leaving — and the ones arriving mount at the
+              moment the next picture starts, which is what their own draw-in
+              is timed against. */}
+          {/* Wide only. Nothing at all is drawn on the picture at a phone
+              width — the readout is the deck under it, and that is the whole
+              readout. There were marks here: the ring, the dot and the ping on
+              each spot, minus the lines and the cards. They were the half of a
+              leader that survives having no room, and they still pointed at the
+              part of the picture a fact was about. What they could not do was
+              say *which* fact, once the numbers beside them came off; a ring
+              pulsing on a cheek with nothing to connect it to is an effect. So
+              the picture is a picture down there. */}
+          {!booting && phase !== 'hold' && current && !narrow && (
+            <Leaders
+              key={`leaders-${current.id}`}
+              notes={notes}
+              box={boxOf(current, space)}
+              space={space}
+              floats={current.kind !== 'flat'}
+              lit={lit}
+              onLit={setLit}
+            />
+          )}
+
+          {import.meta.env.DEV && pinning && current && (
+            <Suspense fallback={null}>
+              <MechPins frame={current} notes={notes} space={space} onClose={() => setPinning(false)} />
+            </Suspense>
+          )}
+        </div>
+        )}
+
+        {/* What the picture's marks are pointing at, in words. Narrow only:
+            the wide layout says the same things in cards fanned around the
+            subject, which is a shape a phone cannot hold — see the sum at the
+            top of `leaders.ts`.
+
+            Mounted for as long as there is a picture, and not held back to the
+            phases the marks are drawn in. The deck is a block in a scrolling
+            column: taking it out between two frames would drop everything
+            below it up the page and back down again, so it stays and its
+            contents fade on `data-covered` with the picture they belong to. */}
+        {narrow && !home && current && notes.length > 0 && (
+          <Suspense fallback={null}>
+            <MechFacts key={current.id} notes={notes} index={fact} onIndex={setFact} />
+          </Suspense>
+        )}
+
+        {/* Home's way into the work is the bar graph in the cluster: twelve
+            projects plotted against the years they were made, which you point
+            at to read and press to open. What that replaced, in order, was a
+            row of twelve named boxes along this edge, and then a line-up of
+            five 3D subjects that each put their own tag up on hover. The list
+            lost to the objects because a shape is not scannable; the objects
+            lost because a stage with things standing on it is a showroom, and
+            seven of the twelve projects had no object to stand there at all.
+            A graph has a bar for every one of them.
+
+            Everything the graph cannot reach — the way home, the index by name
+            — is behind the one control in the header. See `MechMenu.tsx`. */}
+
+        {/* The tile strip, which is a project's own thing — home has the
+            index in this slot instead. Unmounted rather than hidden: the two
+            never overlap, and whichever one is up fades out on `data-covered`
+            before the swap and the other fades in after it, so the exchange
+            reads as one control changing rather than two appearing. */}
+        {!home && frames.length > 0 && (
+        <div className="mech-rail-wrap" ref={railWrap} data-arrive>
+          <div className="mech-rail" ref={rail}>
+            {frames.map((frame, i) => {
+              const thumb = thumbOf(frame)
+              return (
+                <button
+                  key={frame.id}
+                  className="mech-tile"
+                  aria-pressed={i === index}
+                  aria-label={frame.label ?? project?.title}
+                  title={frame.label ?? project?.title}
+                  style={{ ...(thumb ? { backgroundImage: `url(${thumb})` } : {}), ['--i' as string]: i }}
+                  /* Hovering is the earliest honest signal that a frame is
+                     about to be wanted, and it buys a few hundred milliseconds
+                     of head start on the fetch for free. */
+                  onPointerEnter={() => warm(frame)}
+                  onClick={() => {
+                    sound.select()
+                    setIndex(i)
+                  }}
+                >
+                  {thumb ? null : <span>3D</span>}
+                </button>
+              )
+            })}
+          </div>
+          <div className="mech-rail-track" aria-hidden>
+            <div className="mech-rail-thumb" />
+          </div>
+        </div>
+        )}
+
+        {/* ---- the work, on every screen ----
+
+            The same rail home puts in its right flank, down a project's
+            right-hand margin — the one the media strip used to have. It is the
+            list of what is on this site, and it used to vanish the moment you
+            opened anything on it: you pressed a project and the way to every
+            other project went with the screen you pressed it from, leaving the
+            header's index sheet as the only way on. A list that disappears
+            when you use it is not navigation, it is a menu.
+
+            **And it is mounted here for both screens, once.** It used to be
+            rendered from two places — home's cluster flank and this column —
+            which meant React unmounted one subtree and mounted the other every
+            time you crossed between them, and `MechSlots`' single WebGL canvas
+            went with it: one context built and one destroyed each way, every
+            subject's geometry rebuilt, its shaders relinked and the
+            environment map regenerated. Counted off the built page it was the
+            last measured hitch on this site. `Mech` is the component that
+            survives the crossing, so the rail lives here and the cluster keeps
+            a hole where it used to be — see *one rail, both screens* in the
+            README, and `.mech-rail-hole` in `MechCluster.tsx`.
+
+            `MechBank` reports something different on each screen and `home` is
+            the only prop that says so: it decides whether the head is a
+            readout or a sign, whether a press selects before it opens
+            (`direct` in `SlotBox`), whether the lit slot is scrolled into
+            view, and whether the selection comes from `bankPick` or from the
+            URL. */}
+        <div
+          className="mech-bank-col"
+          data-where={home ? 'home' : 'project'}
+          /* The one cluster token that has to be handed over rather than
+             declared in CSS: `--cluster-slot` is the Slot height knob, set
+             inline on `.mech-cluster` from the same panel. Without it the
+             rail falls back to the stylesheet's 150 here and to the panel's
+             98 on home — a bay half again as wide on a project screen,
+             which eats the room the name needs and clamps "Mr. Takahashi"
+             to an ellipsis. One knob, both screens. */
+          style={{ ['--cluster-slot' as string]: cluster.values.slot }}
+          data-arrive
+          data-transiting={transiting}
+          /* Home's entrance counts from the cover and a project's from the
+             retarget — see the two blocks in MechCluster.css. Both attributes
+             are always present; each screen's rules read the one that means
+             something to it. */
+          data-covered={covered}
+        >
+          {/* The column keeps its own entrance either way, so the fallback
+              is the empty column rather than a placeholder — and by the time
+              the boot is over the chunk has landed, because `primed` waited
+              for it. See *load first, then play* above. */}
+          <Suspense fallback={null}>
+            <MechBank
+              home={home}
+              picked={slotOf(shownId)}
+              onOpen={onProject}
+              /* Down for the length of a retarget, not just the boot. `up` is
+                 what runs the deal — the timer that walks the subjects into
+                 their bays and, on the way out, back out of them — and the
+                 CSS beside it in MechCluster.css undeals the boxes on the
+                 same beats. Without this the bays kept their pictures while
+                 the boxes around them left, which is the one part of the
+                 handover a stylesheet cannot do.
+
+                 Home counts from its own cover instead: the panel's blocks all
+                 wait on `!covered` and the deal is one of them. */
+              up={home ? !covered : !booting && !transiting}
+              covered={home ? covered : covered && transiting}
+              narrow={narrow}
+            />
+          </Suspense>
+        </div>
+
+        {/* A project's column, and only a project's. It used to be mounted on
+            home too — empty, with a handful of rules re-shaping it around
+            nothing — and everything it once held there is the cluster's now.
+            An empty absolutely-positioned column over half the screen is a
+            column that eats the pointer. */}
+        {!home && (
+        /* `data-transiting`, the same flag the wordmark takes, and not
+           `covered`. This column is the one block on a project screen that
+           belongs to the *project* rather than to the picture on the stage:
+           stepping along the tile strip is also `phase === 'out'`, and a title
+           and a write-up have no business leaving because you picked a
+           different photograph. The stage's own contents take `covered`
+           precisely because they are the thing that changed.
+
+           It had no exit at all before — a plain `animation: mech-in` on mount
+           and nothing else — so the title, the tagline and the whole fold
+           column sat at full brightness until the component was unmounted a
+           second later and they simply stopped existing. See *coming up, and
+           going down* in MechCluster.css for the rule this is following. */
+        <section className="mech-side" data-transiting={transiting}>
+          {/* See `display: contents` under `narrow viewports` in Mech.css for
+              why the title gets its own wrapper rather than folding straight
+              into `.mech-side`: a project's title needs to sit above the
+              picture on a narrow layout while the write-up stays below the
+              tile strip, and that reorder has to happen at this level. */}
+          <div className="mech-lede">
+            {/* The title is the largest readout on the screen — the same
+                fourteen-segment display the folds under it and home's `INTRO`
+                are, one size up. It used to be type: Clash Display, then
+                Audiowide, set on one line by a size capped against its own
+                character count. A display has no such problem, because the
+                box is a fixed number of lamps and a longer name simply fills
+                more of them; `TITLE_CELLS` is the whole of what `--title-len`
+                and two `min()` sums used to do on both layouts.
+
+                `settle` and not `arrive`: the title is the one line that is
+                genuinely re-set rather than switched on. Stepping from one
+                project to the next holds the same display and changes what is
+                on it, which is exactly the change the scramble is for. */}
+            {lede && (
+              <>
+                <h1 className="mech-title" style={{ ['--title-cells' as string]: TITLE_CELLS }}>
+                  <Segment text={lede.title} cells={TITLE_CELLS} align="left" warn back={transiting} label={lede.title} />
+                </h1>
+                {lede.tagline && (
+                  <p className="mech-tagline">
+                    <Typed text={lede.tagline} run={lede.id} delay={0.3} speed={22} caret={false} />
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Sized to its own content and sandwiched between two flexible
+              spacers (`.mech-folds-wrap`'s ::before/::after) rather than
+              stretched to fill the space under the title — that is what
+              lets it sit centred in whatever room is left, biased a little
+              above true middle. */}
+          <div className="mech-folds-wrap">
+            {/* `--fold-cells` is what sizes a heading's display — see
+                `.mech-fold > button .mech-seg` in Mech.css, which multiplies it
+                by home's own cell to print at the same size `INTRO` does.
+                Handed down rather than written in the stylesheet so the width
+                cannot drift from the count. */}
+            <div className="mech-folds" style={{ ['--fold-cells' as string]: FOLD_CELLS }}>
+              {folds.map((fold) => {
+                const isOpen = open === fold.id
+                return (
+                  <div className="mech-fold" key={fold.id} data-open={isOpen} data-arrive>
+                    <button
+                      onClick={() => {
+                        sound.select()
+                        setOpen(isOpen ? null : fold.id)
+                      }}
+                      onPointerEnter={() => setLit(fold.id)}
+                      onPointerLeave={() => setLit(null)}
+                      aria-expanded={isOpen}
+                    >
+                      <span className="mech-pip" />
+                      {/* The heading is a readout, not a line of type — the
+                          same fourteen-segment display home's `INTRO` cap is,
+                          in the same warm channel, over the same field of
+                          unlit cells. It replaced a `Typed` line, and the
+                          settle is what carries that arrival over: `arrive`
+                          runs the scramble on the first word too, so opening
+                          a project switches the column's lamps on rather than
+                          finding them already lit. */}
+                      <Segment
+                        text={fold.title}
+                        cells={FOLD_CELLS}
+                        align="left"
+                        arrive
+                        back={transiting}
+                        warn
+                        label={fold.title}
+                      />
+                    </button>
+
+                    {/* Always mounted, and opened by growing its row from 0fr to
+                        1fr — the only way a panel of unknown height can animate
+                        shut as well as open. */}
+                    <div className="mech-fold-body">
+                      <div>
+                        <span className="mech-fold-rule" />
+                        <p>{fold.tags ? fold.tags.join(', ').toLowerCase() : fold.text}</p>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </section>
+        )}
+
+        {/* Both ends typed, and typed *again* every time the screen changes —
+            `run` is keyed on what is on screen, so coming back to home spells
+            them out afresh alongside the cluster's own arrival rather than
+            leaving the one pair of lines on the page that were simply already
+            there. They go out the way they came in, backspacing, so the two
+            corners of the footer empty and fill rather than cutting between
+            two addresses. The address is short enough to be quick; the credit
+            follows it, so the corners fill left then right rather than racing.
+
+            **`transiting`, not `covered`.** The two are the same thing for a
+            screen change and very different for a step along the tile strip,
+            which is also `phase === 'out'` — hang these off the cover and
+            picking a picture on a project screen backspaces the footer and
+            types it again, which is the exact bug the flag was added for. See
+            the retarget effect above, the one place it is ever set. */}
+        <footer className="mech-foot" data-arrive>
+          <a className="mech-comms" href="mailto:hello@tarloksingh.com">
+            <span className="mech-comms-to">
+              <Typed
+                text="hello@tarloksingh.com"
+                run={`comms-${shownId ?? 'home'}`}
+                delay={0.34}
+                speed={26}
+                caret={false}
+                start={!booting && !transiting}
+                back={transiting}
+              />
+            </span>
+            <i className="mech-foot-dot" aria-hidden />
+          </a>
+          <p className="mech-credit">
+            <i className="mech-foot-dot" aria-hidden />
+            <span>
+              <Typed
+                text="developed by tarlok singh"
+                run={`credit-${shownId ?? 'home'}`}
+                delay={0.72}
+                speed={26}
+                caret={false}
+                start={!booting && !transiting}
+                back={transiting}
+              />
+            </span>
+          </p>
+        </footer>
+      </div>
+    </div>
+  )
+}

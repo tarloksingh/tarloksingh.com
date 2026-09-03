@@ -1,0 +1,194 @@
+/* The contents page. */
+
+.ix {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+  pointer-events: none;
+  visibility: hidden;
+  transition: visibility 0s linear var(--t-mid);
+}
+
+.ix.is-open {
+  pointer-events: auto;
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+.ix-sheet {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: var(--gutter);
+  background: var(--paper);
+  /* Drawn down over the page rather than faded in — the same sheet language
+     the loader and the page transition use. */
+  transform: translateY(-100%);
+  transition: transform 0.72s var(--ease-in-out);
+}
+
+.ix.is-open .ix-sheet {
+  transform: none;
+}
+
+.ix-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.ix-close {
+  font-size: var(--size-small);
+  font-weight: 500;
+}
+
+.ix-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  list-style: none;
+  overscroll-behavior: contain;
+}
+
+.ix-row {
+  border-bottom: 1px solid var(--rule-soft);
+  /* Rows cascade in behind the sheet, so the list is already arriving as the
+     sheet lands rather than sitting there finished. */
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.5s var(--ease-out),
+    transform 0.5s var(--ease-out);
+}
+
+.ix.is-open .ix-row {
+  opacity: 1;
+  transform: none;
+  transition-delay: calc(0.22s + var(--row) * 0.035s);
+}
+
+.ix-row-hit {
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr) minmax(0, 1.1fr) auto 2rem;
+  align-items: baseline;
+  gap: clamp(10px, 2vw, 32px);
+  width: 100%;
+  padding: clamp(14px, 2.2vh, 26px) 4px;
+  text-align: left;
+  color: var(--ink-soft);
+  transition: color var(--t-fast) var(--ease-out);
+}
+
+.ix-row-hit:hover,
+.ix-row-hit:focus-visible {
+  color: var(--ink);
+}
+
+.ix-row-num {
+  color: var(--ink-ghost);
+}
+
+.ix-row-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 3.4vw, 2.9rem);
+  line-height: 1;
+  letter-spacing: -0.028em;
+  color: var(--ink);
+  transition: transform var(--t-mid) var(--ease-out);
+  transform-origin: left center;
+}
+
+.ix-row-hit:hover .ix-row-title,
+.ix-row-hit:focus-visible .ix-row-title {
+  transform: translateX(10px);
+}
+
+.ix-row-tagline {
+  font-size: var(--size-small);
+  letter-spacing: 0.01em;
+}
+
+.ix-row-year {
+  white-space: nowrap;
+  color: var(--ink-faint);
+}
+
+.ix-row-arrow {
+  display: inline-flex;
+  justify-content: flex-end;
+  opacity: 0;
+  transform: translateX(-8px);
+  transition:
+    opacity var(--t-fast) var(--ease-out),
+    transform var(--t-fast) var(--ease-out);
+}
+
+.ix-row-hit:hover .ix-row-arrow,
+.ix-row-hit:focus-visible .ix-row-arrow {
+  opacity: 1;
+  transform: none;
+}
+
+.ix-row[data-current='true'] .ix-row-title {
+  font-style: italic;
+}
+
+.ix-row[data-current='true'] .ix-row-num {
+  color: var(--accent);
+}
+
+/* ---- the pointer-following preview ---- */
+
+.ix-preview {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  width: clamp(180px, 17vw, 280px);
+  aspect-ratio: 4 / 3;
+  margin: -14px 0 0 26px;
+  overflow: hidden;
+  border-radius: var(--radius-card);
+  box-shadow: 0 22px 48px -22px rgba(20, 18, 14, 0.55);
+  pointer-events: none;
+  opacity: 0;
+  /* Only the fade and the settle transition; the position itself is written
+     every frame and must not lag behind the cursor. */
+  transition:
+    opacity var(--t-fast) var(--ease-out),
+    scale var(--t-fast) var(--ease-out);
+  scale: 0.94;
+}
+
+.ix-preview[data-on='true'] {
+  opacity: 1;
+  scale: 1;
+}
+
+.ix-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@media (max-width: 900px) {
+  .ix-row-hit {
+    grid-template-columns: 2.4rem minmax(0, 1fr) auto;
+    gap: 12px;
+  }
+
+  /* The tagline and the arrow are the first things to go — the title and the
+     year are what a row is actually for. */
+  .ix-row-tagline,
+  .ix-row-arrow {
+    display: none;
+  }
+
+  /* Following a finger is meaningless. */
+  .ix-preview {
+    display: none;
+  }
+}

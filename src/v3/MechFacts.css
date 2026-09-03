@@ -1,0 +1,158 @@
+/* ---- the fact deck ----
+
+   Narrow only; the component is not mounted anywhere else, which is why
+   nothing in here is scoped under `.mech[data-narrow='true']` the way the rest
+   of the phone layout is. Every number is still a frame coordinate — `--px` is
+   `100vw / 500` down here — and every type size is on `--type`. That pairing
+   is exactly what broke the leader cards it replaces, and it is safe here for
+   one reason: nothing in this deck is *positioned* by the frame unit. A card
+   is a percentage of a scroller, so type that grows past what the frame
+   expected makes the card taller instead of making it overflow. See the sum at
+   the top of `leaders.ts`. */
+
+.mech-facts {
+  order: 3;
+  margin-top: calc(18 * var(--px));
+}
+
+/* Which readout this is, and where you are in it — the same pairing as the
+   housing strip over the picture: a word on the left, a count on the right. */
+.mech-facts-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(12 * var(--px));
+  padding: 0 var(--gutter) calc(9 * var(--px));
+}
+
+.mech-facts-key {
+  font-size: calc(9.5 * var(--type));
+  letter-spacing: calc(2.2 * var(--type));
+  text-transform: uppercase;
+  color: var(--accent);
+  text-shadow: 0 0 calc(12 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.5 * var(--g)));
+}
+
+/* Five cells: two digits, a slash, two digits. Fixed, so stepping from note
+   nine to note ten does not shift the display sideways. */
+.mech-facts-count .mech-seg {
+  width: calc(5 * 9.5 * var(--px));
+}
+
+/* ---- the cards ----
+
+   Snapped to the start rather than centred, so the card that is up lines up
+   with the title and the write-up down the same left edge. What is left over
+   on the right is the next card's shoulder, and that shoulder is the whole
+   affordance — a deck that fits its screen exactly is a deck nobody swipes. */
+.mech-facts-run {
+  position: relative;
+  display: flex;
+  gap: calc(12 * var(--px));
+  padding: 0 var(--gutter);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-padding-left: var(--gutter);
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.mech-facts-run::-webkit-scrollbar {
+  display: none;
+}
+
+/* One fact is not a deck: with nothing to swipe to there is no shoulder to
+   leave, so a long sentence may have the full width to wrap in. */
+.mech-facts-run[data-one='true'] .mech-facts-card {
+  max-width: 100%;
+}
+
+.mech-facts-card {
+  /* As wide as what it says, and no wider — up to a cap, past which the
+     sentence wraps and `fitAll` in MechFacts.tsx measures the box back down to
+     the widest line the wrapping actually produced. A fixed share of the screen
+     made "Spoke in English and Japanese." a box with a hand's width of empty
+     green after it: the shoulder of the next card is what says the deck is
+     swipeable, and a card padded out to make one is a card lying about its own
+     length.
+
+     Every card is the same height, though — they are items of one flex row and
+     nothing overrides that. A row of boxes that step up and down as you swipe
+     is a set of different things; these are one readout showing one of its
+     entries. */
+  flex: 0 0 auto;
+  width: max-content;
+  max-width: 86%;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  /* Along the row, not down it: the number beside its sentence rather than on
+     a line of its own above it, which cost a whole line of height on a card
+     that is one or two lines of anything. */
+  flex-direction: row;
+  align-items: baseline;
+  gap: calc(12 * var(--px));
+  padding: calc(13 * var(--px)) calc(15 * var(--px));
+  border: 1px solid rgba(var(--accent-rgb), 0.5);
+  border-radius: var(--round);
+  background: rgba(var(--accent-rgb), 0.07);
+  /* No halo, and this is the one block on the screen that does without one.
+     A scroll container clips to its padding box on *both* axes —
+     `overflow-y: visible` is not available, because a box that scrolls on one
+     axis computes `visible` to `auto` on the other — so a glow drawn outside
+     these borders is cut off square along the length of the deck, which reads
+     as a lit panel behind the card rather than as light coming off it. Padding
+     the run out far enough only moves the cut. The border does the work.
+
+     The one off is dimmer, so a half-swiped deck reads as one card in front of
+     another rather than as two competing for the same sentence. */
+  opacity: 0.4;
+  transition: opacity 220ms linear, border-color 220ms linear;
+}
+
+.mech-facts-card[data-on='true'] {
+  opacity: 1;
+  border-color: rgba(var(--accent-rgb), 0.9);
+}
+
+/* Which fact this is, in front of it. It had a rule running out of it to the
+   far edge of the card, which is a divider — and a divider under a heading is
+   for separating a heading from a body, which this is not: it is one line with
+   a number in front of it. */
+.mech-facts-no {
+  flex: none;
+  font-size: calc(10 * var(--type));
+  letter-spacing: calc(1.6 * var(--type));
+  color: var(--accent);
+  text-shadow: 0 0 calc(10 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.5 * var(--g)));
+}
+
+.mech-facts-card p {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-weight: 400;
+  font-size: calc(13 * var(--type));
+  line-height: 1.45;
+  color: #fff;
+  text-wrap: pretty;
+}
+
+/* Out with the picture it is about, and back with the next one. Hung off the
+   two children rather than off `.mech-facts` itself, which carries
+   `data-arrive` and is therefore already spoken for: the reveal's own
+   `[data-arrive][data-arrived='true']` sets an opacity of its own, and two
+   rules bidding for one property is the sort of fight that is won by whichever
+   selector happens to be longer. */
+.mech[data-covered='true'] .mech-facts-head,
+.mech[data-covered='true'] .mech-facts-run {
+  opacity: 0;
+}
+
+.mech-facts-head,
+.mech-facts-run {
+  transition: opacity 260ms var(--ease);
+}

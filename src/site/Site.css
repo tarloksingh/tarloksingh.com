@@ -1,0 +1,87 @@
+/* Shell-level furniture: the page-turn curtain and the holding frame. */
+
+.st-curtain {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-loader);
+  display: grid;
+  place-items: center;
+  background: var(--ink);
+  visibility: hidden;
+  will-change: transform;
+  /* No `transform` here on purpose. GSAP owns this element's transform, and
+     it animates `yPercent` — a channel it keeps *separate* from the `y` px
+     channel it parses an existing declaration into. A `translateY(100%)` in
+     this rule is read as `y: 778px` and stays in the matrix underneath the
+     tween, so the sheet animates to "yPercent 0" while still sitting a whole
+     viewport below the fold: the page swap then happens in full view with no
+     curtain over it at all. The resting pose is set in JS instead. */
+}
+
+.st-curtain-label {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 6vw, 4.5rem);
+  line-height: 1;
+  letter-spacing: -0.035em;
+  text-align: center;
+  color: var(--paper);
+  opacity: 0;
+  padding-inline: var(--gutter);
+}
+
+/* Shown for the frame or two a case study's chunk takes to arrive. Deliberately
+   blank: it is only ever seen behind the curtain, and anything visible here
+   would be a flash of a thing that isn't the page. */
+.st-holding {
+  min-height: 100dvh;
+  background: var(--paper);
+}
+
+/* ---- the phone preview (development only) ----
+
+   Renders the whole site into a phone-width column down the left of the
+   window, leaving the rest of it clear for the tuning panel. See
+   `mobilePreview` in room.ts for why this exists rather than leaning on
+   Chrome's device mode — the short version is that device mode shrinks the
+   panel too, and the panel is what you are trying to read.
+
+   Switched from Gallery.tsx, which puts the flag on `<html>` and writes
+   `--preview-w` from the panel's width slider.
+
+   `contain: layout paint` is doing the load-bearing work. The gallery's
+   layers are all `position: fixed` — `.gl` is `inset: 0` — and a fixed
+   element ignores an ordinary ancestor's box; paint containment makes `#app`
+   a containing block for them, so the canvas, the wall label and the
+   wallpaper all resolve against the phone column instead of the window.
+   (A `transform` would do the same, and is the usual trick, but it also
+   resamples every glyph underneath it — not something to hand someone whose
+   whole task is judging how the type sits.)
+
+   `100vh` and `vh` generally stay honest here, because the column is full
+   height and the gallery is deliberately sized in `vh` and never `vw` (see
+   the note in Gallery.css). `100vw` does not — it still means the desktop
+   window — which is why `--stage-w` exists below. Type elsewhere on the site
+   that is sized in `vw` will read a little large in the preview; the room
+   itself, which is what the panel tunes, is exact. */
+html[data-mobile-preview='true'] {
+  background: #0b0b0b;
+}
+
+html[data-mobile-preview='true'] body {
+  background: #0b0b0b;
+}
+
+html[data-mobile-preview='true'] #app {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: var(--preview-w, 390px);
+  /* `auto`, not `hidden`: the gallery drives itself off wheel and touch
+     events and never scrolls natively, but a case study is ordinary flowing
+     copy — pinning `#app` without giving it a scroller would cut every
+     project page off at the fold with no way down. */
+  overflow: auto;
+  contain: layout paint;
+  /* A visible edge, so it reads as a device standing on the page rather than
+     as the site having mysteriously failed to fill the window. */
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.14), 0 24px 80px rgba(0, 0, 0, 0.55);
+}

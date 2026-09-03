@@ -1,0 +1,348 @@
+/* See Birds.tsx. Where each bird *is* is written to its node every frame by
+   the one loop in there; everything here is what a bird looks like in its two
+   states, and how it changes between them. */
+
+.bd-flock {
+  /* One frame, at the twelve a second everything drawn on this site moves at
+     — the frames' weave, the sprigs, these birds. Every duration below is a
+     whole number of these, so that the whole flock is on one clock.
+
+     Travel is the exception, and lives in Birds.tsx: a bird's position is
+     painted on twenty-fours, the old trick of holding the drawing at twelve
+     and moving it on every frame. What is stepped here is the drawings. */
+  --bd-frame: 0.08333s;
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-chrome);
+  /* The sheet is never a hit target — a fixed layer over the whole window
+     that swallowed clicks would take the menu with it. Individual birds take
+     their own events back below, and only while they are standing still. */
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.6s var(--ease-out);
+}
+
+.bd-flock[data-on='true'] {
+  opacity: 1;
+}
+
+.bd {
+  position: absolute;
+  top: 0;
+  left: 0;
+  /* Written on the flock by Birds.tsx, which is where the number lives — the
+     loop has to know the same width to land the feet on a rail. */
+  width: var(--bd-size, 28px);
+  /* Written every frame while a bird is in the air. */
+  will-change: transform;
+  /* Body ink rather than the faintest — at this size a bird set in the tone
+     of a hairline rule reads as a smudge on the paper rather than as a
+     drawing of something alive. */
+  color: var(--ink-body);
+}
+
+/* Perched, a bird is small enough to press. Flying, it is a target crossing
+   the window at three hundred pixels a second, which nobody is aiming at on
+   purpose and everybody would hit by accident. See the tap handler in
+   Birds.tsx — on a mouse this rarely comes up, because the cursor startles
+   one off its rail long before it arrives. */
+.bd[data-mode='perched'] {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.bd-art {
+  width: 100%;
+  height: auto;
+  /* The wings reach well outside the body's own box. */
+  overflow: visible;
+}
+
+.bd path {
+  fill: none;
+  stroke: currentColor;
+  /* In the drawing's own units: the box is 44 across at 28px, so this comes
+     out a little under a pixel and a half — the same weight as a sprig beside
+     a word, which is the scale a bird is at here. Raised when the birds were
+     made smaller, so that shrinking them did not also thin them. */
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ---- the two poses ---- */
+
+.bd-fly,
+.bd-sit {
+  transition: opacity 0.18s linear;
+}
+
+.bd[data-mode='perched'] .bd-fly {
+  opacity: 0;
+}
+
+.bd-sit {
+  opacity: 0;
+}
+
+.bd[data-mode='perched'] .bd-sit {
+  opacity: 1;
+}
+
+/* Landing writes the perched bird on, stroke by stroke, the same way a sprig
+   grows out of a word: body first, then the tail, the beak, the wing, the eye
+   and the legs. Taking off runs the list backwards, so the bird comes apart
+   from the outside in rather than a leg being the last thing left standing on
+   the rail. */
+.bd-sit path {
+  stroke-dashoffset: 1;
+  transition: stroke-dashoffset 0.26s var(--ease-out);
+  /* Nine strokes in `BIRD_SIT`, so eight is the last index. */
+  transition-delay: calc((8 - var(--sp-i, 0)) * 0.02s);
+}
+
+.bd[data-mode='perched'] .bd-sit path {
+  stroke-dashoffset: 0;
+  transition-delay: calc(var(--sp-i, 0) * 0.045s);
+}
+
+/* ---- perched, but never still ----
+
+   A bird standing on a rail is doing three things at once, and none of them
+   is holding a pose. Underneath everything there is the settle: a constant,
+   almost invisible shift of weight, off its own feet. Over that, most of a
+   second apart, one of two fidgets — the wings shaken out, or a look around —
+   started by Birds.tsx setting `data-fidget` and lasting exactly as long as
+   it holds it.
+
+   All of it is on twelve frames a second, like everything else drawn on this
+   site: the frames' own weave, the wingbeat below. `--bd-frame` is one of
+   those frames, every duration here is a whole number of them, and `steps()`
+   is what keeps the motion on that clock rather than on the display's. A
+   drawn bird that moves at 120Hz is a drawn bird sliding around; a drawn bird
+   that moves at 12 is animation.
+
+   The three animate three different elements on purpose. `.bd` itself is
+   written by the loop every frame and cannot be touched from here; `.bd-art`
+   takes the settle, and the two fidgets share `.bd-sit` because only one of
+   them ever runs at a time. */
+
+.bd[data-mode='perched'] .bd-art {
+  /* About the feet, which is the one point on a perched bird that does not
+     move. Rocking a bird about its middle looks like it is floating. */
+  transform-origin: 50% 93%;
+  /* Three intervals of exactly a second, each cut into twelve. The three
+     birds share one duration and differ only in phase — a shared frame rate
+     is the point, and varying it would put two of them off the clock. */
+  animation: bd-settle calc(var(--bd-frame) * 36) steps(12) infinite;
+}
+
+.bd:nth-child(2)[data-mode='perched'] .bd-art {
+  animation-delay: calc(var(--bd-frame) * -13);
+}
+
+.bd:nth-child(3)[data-mode='perched'] .bd-art {
+  animation-delay: calc(var(--bd-frame) * -25);
+}
+
+@keyframes bd-settle {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  33.333% {
+    transform: translateY(-0.9px) rotate(-1.3deg);
+  }
+  66.667% {
+    transform: translateY(0.4px) rotate(1deg);
+  }
+}
+
+/* The fidgets are on the group, so the numbers here are the drawing's own
+   units (the box is 44 x 30) rather than pixels. */
+.bd-sit {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+/* Six frames and ten frames — the two durations Birds.tsx holds the attribute
+   for. `steps(1, end)` on a keyframe list spaced a frame apart is a cel
+   sheet: each pose is held for its whole frame and then replaced, with
+   nothing tweened in between. */
+.bd[data-fidget='flap'] .bd-sit {
+  animation: bd-shudder calc(var(--bd-frame) * 6) steps(1, end);
+}
+
+.bd[data-fidget='turn'] .bd-sit {
+  animation: bd-turn calc(var(--bd-frame) * 10) steps(1, end);
+}
+
+/* The folded wing, thrown open and shut three times over six frames. Rotated
+   about its own shoulder — the top right of its box, which is where the
+   stroke starts — because a wing that pivots anywhere else detaches from the
+   body it is folded against. */
+.bd-sit-wing {
+  transform-box: fill-box;
+  transform-origin: 100% 0%;
+}
+
+.bd[data-fidget='flap'] .bd-sit-wing {
+  animation: bd-shake calc(var(--bd-frame) * 6) steps(1, end);
+}
+
+@keyframes bd-shake {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  16.667% {
+    transform: rotate(36deg);
+  }
+  33.333% {
+    transform: rotate(6deg);
+  }
+  50% {
+    transform: rotate(31deg);
+  }
+  66.667% {
+    transform: rotate(5deg);
+  }
+  83.333% {
+    transform: rotate(22deg);
+  }
+}
+
+/* The body rides the wingbeat rather than staying put under it. */
+@keyframes bd-shudder {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  16.667% {
+    transform: translateY(-1.4px);
+  }
+  33.333% {
+    transform: translateY(-0.4px);
+  }
+  50% {
+    transform: translateY(-1.2px);
+  }
+  66.667% {
+    transform: translateY(-0.3px);
+  }
+  83.333% {
+    transform: translateY(-0.8px);
+  }
+}
+
+/* Looking about: ten frames, held longest at the far end of the turn, so it
+   reads as the bird having looked at something rather than as it oscillating
+   back through where it started. */
+@keyframes bd-turn {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  10% {
+    transform: rotate(-2deg);
+  }
+  20%,
+  30%,
+  40% {
+    transform: rotate(-5deg);
+  }
+  50% {
+    transform: rotate(-2deg);
+  }
+  60% {
+    transform: rotate(1deg);
+  }
+  70%,
+  80% {
+    transform: rotate(3deg);
+  }
+  90% {
+    transform: rotate(1deg);
+  }
+}
+
+/* ---- the wingbeat ----
+
+   Two wings, one shown at a time, cut between on a steps() cycle. Tweening
+   one wing between up and down would read as rubber; a wingbeat is two
+   positions and the eye filling in the rest, which is also how the frames'
+   own weave is stepped rather than eased.
+
+   One frame up and one frame down: six beats a second, which is a small bird
+   working rather than a large one gliding, and the fastest a wing can go and
+   still be two drawings.
+
+   Each bird takes a different number of frames per pose, off `nth-child`, so
+   three of them in the air do not flap in unison — but every one of those is
+   a whole number of frames, so all three stay on the same clock. */
+.bd[data-mode='flying'] .bd-wing-up {
+  animation: bd-beat calc(var(--bd-frame) * 2) steps(1, end) infinite;
+}
+
+.bd[data-mode='flying'] .bd-wing-down {
+  /* Its own keyframes rather than the same ones reversed: `bd-beat` is
+     symmetric about its midpoint, so playing it backwards gives the identical
+     sequence and both wings would show at once. */
+  animation: bd-beat-alt calc(var(--bd-frame) * 2) steps(1, end) infinite;
+}
+
+.bd:nth-child(2)[data-mode='flying'] .bd-wing-up,
+.bd:nth-child(2)[data-mode='flying'] .bd-wing-down {
+  animation-duration: calc(var(--bd-frame) * 4);
+}
+
+.bd:nth-child(3)[data-mode='flying'] .bd-wing-up,
+.bd:nth-child(3)[data-mode='flying'] .bd-wing-down {
+  /* Offset rather than slowed: at three frames a cycle the two poses cannot
+     divide evenly, and an uneven wingbeat reads as a limp. */
+  animation-delay: var(--bd-frame);
+}
+
+/* Perched, neither wing beats and only the folded one in `BIRD_SIT` is
+   showing — but the flying pair are still in the box, so they are held down
+   rather than left on their last frame. */
+.bd-wing-down {
+  opacity: 0;
+}
+
+.bd[data-mode='perched'] .bd-wing-up,
+.bd[data-mode='perched'] .bd-wing-down {
+  animation: none;
+}
+
+@keyframes bd-beat {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes bd-beat-alt {
+  0% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The loop never starts (see Birds.tsx), so there would be nothing here but
+     three birds parked off the edge of the screen. */
+  .bd-flock {
+    display: none;
+  }
+}

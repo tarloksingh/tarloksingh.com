@@ -1,0 +1,490 @@
+/* The stage: the name inside the field, and the chrome that stays put the
+   whole way through. */
+
+.hm {
+  position: fixed;
+  inset: 0;
+  /* Above the background wash — see `--z-screen` in tokens.css. Being fixed
+     makes this a stacking context no matter what, so this one number decides
+     where *everything* on the stage paints relative to `.site-pattern`; the
+     z-indexes inside here are only ever argued out amongst themselves. */
+  z-index: var(--z-screen);
+  overflow: hidden;
+  /* The paper gradient this used to paint itself is on `body.is-fixed` now
+     (base.css). It has to sit under `.site-pattern` for the wash to show,
+     and nothing inside a stacking context can be under something outside
+     it — so the ground moved out rather than the stage moving down. */
+  background: transparent;
+  /* The mark, the menu and the footer rule are each pinned to a screen edge
+     with `left`/`right: var(--gutter)`, which is right up until the window
+     is wider than a page of text ever gets read at — past that they just
+     keep sliding apart, which is the edge-to-edge look on a wide monitor
+     this corrects. Past 1200px plus its gutters, this holds them at the
+     edges of a centred 1200px rail instead; short of that it is exactly
+     `var(--gutter)`, unchanged. */
+  --rail-inset: max(var(--gutter), calc((100vw - 1200px) / 2));
+  /* How wide the signature sits in the middle of the screen, as a length the
+     stylesheet can do arithmetic with. `--sig-hero-*` on `.hm-sig` are these
+     same three numbers taken apart, because `placeSign` has to read them as
+     plain numbers — `getPropertyValue` hands a `clamp()` back unevaluated.
+     Matched to `--sig-w` on `.in-stack` (Intro.css): the opening draws this
+     same mark at this same size, and everything on this screen that is hung
+     off the middle — the vine, the invitation under the name — is measured
+     from it, so the whole stack holds its proportions at every width. */
+  --sig-w: clamp(15rem, 19vw, 26rem);
+}
+
+/* ---- chrome ---- */
+
+.hm-sig,
+.hm-menu,
+.hm-cue,
+.hm-vine,
+.hm-foot {
+  position: fixed;
+  z-index: var(--z-chrome);
+}
+
+/* The vine around the name — the drawing itself is ProjectFrame.tsx's, and
+   `VINE_FRAME` in frames.ts is the ornament it puts in each corner.
+
+   Held off the window's own four edges, on the same insets `.gl-frame`
+   (Gallery.css) stands a project's own frame on — this is the frame for the
+   whole first screen, filling it the way that one fills the exhibit behind
+   it, rather than a ring cinched tight around the name in the middle of it.
+   Home.tsx fades the name itself out on the rubric's own curve as it leaves,
+   independently of this box. */
+.hm-vine {
+  top: clamp(64px, 17vh, 190px);
+  bottom: clamp(64px, 17vh, 190px);
+  left: 7vw;
+  right: 7vw;
+  pointer-events: none;
+  /* `placeSign` writes both of these every frame of the journey to the menu
+     bar, around a transform-origin it measures onto the parked mark. */
+  will-change: transform, opacity;
+  /* How much of the whole draw one stroke takes, against ProjectFrame.css's
+     default of a half. A project's frame is drawn in a few seconds and wants
+     its lines overlapping, so the thing arrives as one movement; this one
+     wants the opposite — small enough that the starts spread right across the
+     draw and one leaf, or one flower, opens at a time rather than the whole
+     line unrolling at once. */
+  --pf-hold: 0.17;
+}
+
+@media (min-width: 761px) {
+  .hm-vine {
+    left: var(--rail-inset);
+    right: var(--rail-inset);
+  }
+}
+
+/* Which way to go: a stroke laying itself down under the word and gone again,
+   travelling its own length and repeating. In the flow right after
+   `.hm-cue-word` rather than positioned off the vine — see the note on it in
+   Home.tsx — so it takes the word's own opacity for free instead of needing
+   one written onto it. */
+.hm-vine-cue {
+  display: block;
+  width: 1px;
+  height: calc(var(--sig-w) * 0.115);
+  margin-top: calc(var(--sig-w) * 0.05);
+}
+
+.hm-vine-cue-line {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(180deg, var(--ink-faint), transparent);
+  transform-origin: top center;
+  animation: hm-cue-fall 2.4s var(--ease-in-out) infinite;
+}
+
+/* The signature, and the only mark on the page.
+ 
+   Laid out *parked* — exactly where it belongs in the menu bar, from the same
+   two edges every other piece of chrome is pinned to — and transformed out to
+   the middle of the screen from there. Home.tsx writes that transform; see
+   `placeSign` for why this pose is the one that is real and the big one is
+   the derived one.
+ 
+   `transform-origin` is the top-left corner because the parked pose is what
+   the transform is measured *from*: scaling about the centre would move the
+   parked corner off the gutter it is aligned to, which is the one thing about
+   this element that has to be exact. */
+.hm-sig {
+  top: var(--gutter);
+  left: var(--rail-inset);
+  transform-origin: 0 0;
+  /* Handed back by `placeSign` once the mark has parked, so its sprigs can be
+     reached in the menu bar and never at the hero pose. */
+  pointer-events: none;
+  will-change: transform;
+  /* A signature is a drawn path scaled across a five-fold range on this page.
+     Asking for the sharpest rasterisation is cheap insurance. */
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+  /* How wide the signature sits in the middle of the screen, read by
+     `placeSign` as plain numbers — `getPropertyValue` hands back a `clamp()`
+     unevaluated, so the clamp is done in JS instead and these are its three
+     terms. Matched to `.in-name` in Intro.css on purpose: the opening draws
+     this same signature at this same size, and the handover from the film to
+     the page should be the black lifting off it, not the mark resizing. */
+  --sig-hero-vw: 19;
+  --sig-hero-min: 240;
+  --sig-hero-max: 416;
+}
+
+/* Out of flow, so the box `placeSign` measures is the signature alone and the
+   parked pose lands on the menu bar's line rather than a rubric's height
+   above it. */
+.hm-sig-artist {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-family: var(--font-display);
+  /* Tied to the mark's own width rather than to a root size, so it holds the
+     proportion the opening sets between the rubric and the signature at every
+     breakpoint — and so it grows with the mark, since the whole element is
+     scaled by one transform. The two factors are solved against `.in-artist`
+     in Intro.css: at the hero size they come out at the same pixel size and
+     the same gap it uses, so the rubric does not resize across the handover
+     any more than the signature does. */
+  font-size: calc(var(--wordmark-w, 8.2rem) * 0.056);
+  /* In em, so the two factors above are the only things that set the rubric's
+     size — but the *gap* is meant to hold while the type grows, so this comes
+     down whenever that goes up. The product is what matters: 0.0406 of the
+     mark's width, and the invitation below the name is hung at exactly that
+     same distance (see `.hm-cue`). */
+  margin-bottom: 0.724em;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  color: var(--ink-soft);
+}
+
+.hm-sig-name {
+  color: var(--ink);
+}
+
+/* The mark's own sprigs. Wider and lighter than the menu's, because this is
+   a drawn signature rather than a word set in type and a sprig at the menu's
+   weight beside it reads as a second, competing mark. `em` here is the
+   signature's inherited body size, not its drawn width, so the size is given
+   against the parked mark directly. */
+.hm-sig .sp {
+  color: var(--ink-faint);
+  --sp-w: 3.4em;
+  --sp-gap: 0.9em;
+  --sp-pen: 2.2;
+}
+
+/* Everything about what a menu item looks like — type, hover colour, the
+   branch that draws itself under the current one — lives in Menu.css now,
+   shared with a case study's own copy of this nav. Only where it sits on
+   *this* screen stays here. */
+.hm-menu {
+  top: var(--gutter);
+  right: var(--rail-inset);
+}
+
+/* The invitation, hung under the name the way the rubric is hung over it.
+
+   Off the middle of the window rather than off the foot of it: half the
+   signature's own height (its viewBox is 4839 x 1137, so half of that is
+   width / 8.512) and then the rubric's own gap, `0.0406` of the mark's width —
+   the product of the two factors on `.hm-sig-artist`, which is the number that
+   has to be matched for the spacing above and below the name to be even. The
+   same technique `.in-artist` uses in Intro.css, and for the same reason:
+   what the middle of the screen holds is the signature alone, so anything set
+   against it is measured from there rather than laid out in a column with it. */
+.hm-cue {
+  left: 0;
+  right: 0;
+  top: 50%;
+  margin-top: calc(var(--sig-w) / 8.512 + var(--sig-w) * 0.0406);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+  transition: opacity var(--t-mid) var(--ease-out);
+}
+
+/* The word, in the signature's hand, written on rather than faded in.
+
+   The reveal is one mask sweeping along the writing direction: a hard black
+   region with a short ramp at its leading edge, three times the width of the
+   word so that at the start it is entirely off to the left and at the end it
+   covers everything. Sliding `mask-position` moves it — the size and the
+   stops never change, so the ramp keeps its width for the whole sweep and
+   the edge reads as a nib rather than as a fade.
+
+   Linear on purpose: a hand does not accelerate into the middle of a word.
+   The delay is the beat after the page has settled from the opening.
+
+   Sized off the mark rather than off the root, now that it sits directly under
+   it: a word an inch across was the right size for the foot of the page, and
+   next to the signature it read as a second heading. A fraction of the mark's
+   width instead, and a small one — under the name this is the quietest of the
+   three lines, quieter than the rubric above it. */
+.hm-cue-word {
+  display: block;
+  width: calc(var(--sig-w) * 0.15);
+  color: var(--ink-soft);
+  -webkit-mask-image: linear-gradient(90deg, #000 38%, transparent 45%);
+  mask-image: linear-gradient(90deg, #000 38%, transparent 45%);
+  -webkit-mask-size: 300% 100%;
+  mask-size: 300% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: 100% 0;
+  mask-position: 100% 0;
+}
+
+/* Held until the film has actually lifted off the page — see `wrote` in
+   Home.tsx — and then a beat, so the word arrives into a page that has
+   already settled rather than underneath the last of the black. */
+.hm-cue[data-wrote='true'] .hm-cue-word {
+  animation: hm-cue-write 1.5s linear 0.35s forwards;
+}
+
+.hm-cue-word svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+@keyframes hm-cue-write {
+  to {
+    -webkit-mask-position: 0 0;
+    mask-position: 0 0;
+  }
+}
+
+/* The stroke lays itself down from the flower it grows out of, holds, and then
+   travels its own length away and is gone — a drawn stroke put down again and
+   again rather than an arrow bouncing. Used by `.hm-vine-cue`.
+
+   It travelled a fixed 46px once, back when it was a fixed 46px long. It is on
+   the mark's scale now, so `100%` — its own length, whatever that has come out
+   as at this width — is the only distance that stays right. */
+@keyframes hm-cue-fall {
+  0% {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+  35% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+  70%,
+  100% {
+    transform: scaleY(1) translateY(100%);
+    opacity: 0;
+  }
+}
+
+.hm-foot {
+  left: var(--rail-inset);
+  right: var(--rail-inset);
+  bottom: var(--gutter);
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  pointer-events: none;
+}
+
+/* The year, sitting wherever the cursor is on the rule it belongs to. `left`
+   is written as a percentage of the footer by `scrubTrack`, in Home.tsx; the
+   translate centres the label on that point, and is a percentage of the
+   *label*, which is why the two can be composed without either needing to
+   know the other's width. */
+.hm-foot-year {
+  position: relative;
+  left: 0;
+  align-self: flex-start;
+  transform: translateX(-50%);
+  font-family: var(--font-display);
+  font-size: clamp(0.85rem, 1.05vw, 1.05rem);
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--ink);
+  /* Hidden until hovered, and never itself the hit target — the tracks
+     under it are. */
+  opacity: 0;
+  transition: opacity var(--t-fast) var(--ease-out);
+}
+
+/* The mark under the year — `DATE_PIN` in frames.ts, a stem growing down out
+   of the label onto the point of the rule it names, ending in a bud that
+   lands on the line. On the same `data-on` the label is shown with, since
+   this label sits above the rule and takes no pointer of its own: the two
+   arrive together as one gesture.
+
+   The height is the nine pixels of `.hm-foot`'s own gap plus the bud, so the
+   drawing spans the distance between the label and the rule rather than
+   stopping short of it or crossing it. */
+.hm-foot-pin {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  height: 15px;
+  width: auto;
+  transform: translateX(-50%);
+  overflow: visible;
+  pointer-events: none;
+  color: var(--ink-faint);
+  /* Guards the round caps at rest, the way Sprig.css does. */
+  opacity: 0;
+  transition: opacity 0.15s linear 0.3s;
+}
+
+.hm-foot-year[data-on='true'] .hm-foot-pin {
+  opacity: 1;
+  transition: opacity 0.08s linear;
+}
+
+.hm-foot-pin path {
+  fill: none;
+  stroke: currentColor;
+  /* The box is 20 units across at 7px on screen, so the pen is written large
+     in the drawing's own units to come out a hairline — same arithmetic as
+     `.sp path`. */
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dashoffset: 1;
+  transition: stroke-dashoffset 0.3s var(--ease-out);
+  /* Backwards on the way out: the bud closes before the stem it stands on
+     goes. */
+  transition-delay: calc((4 - var(--sp-i, 0)) * 0.035s);
+}
+
+.hm-foot-year[data-on='true'] .hm-foot-pin path {
+  stroke-dashoffset: 0;
+  transition-delay: calc(var(--sp-i, 0) * 0.05s);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hm-foot-pin {
+    display: none;
+  }
+}
+
+.hm-foot-tracks {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* The footer itself takes no input — see `.hm-foot` — but the two rules
+     are a hover scrubber and need it back. */
+  pointer-events: auto;
+}
+
+/* The work line takes whatever room the side line doesn't. */
+.hm-foot-track--work {
+  flex: 1 1 auto;
+}
+
+/* Deliberately smaller — this is the *other* line, for the work that isn't
+   client work, not a second line of equal weight. */
+.hm-foot-track--side {
+  flex: none;
+  width: clamp(56px, 9vw, 110px);
+}
+
+.hm-foot-dot {
+  flex: none;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--ink-faint);
+}
+
+.hm-foot-track {
+  position: relative;
+  height: 2px;
+  /* The rule a visitor can actually see is 2px; the box a cursor can
+     actually land on is not — the padding stretches the hit area well past
+     the hairline without widening the line itself, which stays clipped to
+     the unpadded content box. The negative margin takes the padding back
+     out of the surrounding layout, so the row's height is still set by the
+     line, not by this.
+
+     `content-box` explicitly, against the site-wide `border-box`: under
+     border-box, 18px of padding is taken out of a 2px height rather than
+     added to it, so the content box — the only part `content-box` clip
+     paints — floors at zero and the rule disappears entirely. */
+  box-sizing: content-box;
+  padding: 9px 0;
+  margin: -9px 0;
+  /* The part of the room you have not walked yet. At `--rule-soft` it was
+     nearly the paper's own colour, which made the line read as a fill with
+     nothing behind it rather than as a length with a position on it; one
+     step darker is enough to see where the rest of the work is. */
+  background: var(--rule);
+  background-clip: content-box;
+  cursor: pointer;
+}
+
+.hm-foot-track-fill {
+  position: absolute;
+  inset: 9px 0 auto 0;
+  height: 2px;
+  /* Full ink. The room you have walked is the thing this line is actually
+     saying, and at `--ink-faint` over a `--rule` ground it was one grey on
+     another — a difference you had to go looking for rather than one you
+     read. */
+  background: var(--ink);
+  transform: scaleX(0);
+  transform-origin: left center;
+  will-change: transform;
+}
+
+/* ---- narrow ---- */
+
+@media (max-width: 760px) {
+  /* Only the parked size changes on a phone. The hero size is deliberately
+     left alone: it is the opening's `--sig-w`, and the two have to agree at
+     every width or the mark resizes at the handover. Its own clamp already
+     does the right thing here — the 15rem floor works out at about 62% of a
+     small phone's width, which is where a hand-tuned mobile value had landed
+     anyway, and it keeps agreeing on the wider ones where that value did
+     not. */
+  .hm-sig {
+    --wordmark-w: 6.4rem;
+  }
+
+  .hm-menu {
+    gap: 12px;
+    font-size: 0.85rem;
+  }
+
+  /* The sprigs go. There is no pointer here to grow them, and the chrome is
+     tight enough at this width that a drawing hung off each side of the mark
+     reaches the gutters. */
+  .sp {
+    display: none;
+  }
+
+  .hm-foot-title {
+    font-size: 1.1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The word is hidden until its sweep uncovers it, so with the sweep gone
+     it has to start uncovered — a cue nobody can read is worse than a cue
+     that does not move. The rule simply stands still. */
+  .hm-cue-word,
+  .hm-cue[data-wrote='true'] .hm-cue-word {
+    -webkit-mask-position: 0 0;
+    mask-position: 0 0;
+    animation: none;
+  }
+
+  .hm-vine-cue-line {
+    animation: none;
+  }
+}

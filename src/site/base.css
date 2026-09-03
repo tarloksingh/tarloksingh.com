@@ -1,0 +1,203 @@
+/* Reset, page ground, and the handful of type/interaction primitives that
+   more than one screen uses. Screen-specific rules live beside their screen. */
+
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  /* The home page is a fixed 3D stage driven by a virtual scroll; a case
+     study is an ordinary long document. `overflow` is therefore set per
+     screen (see `.is-fixed` below) rather than pinned here. */
+  height: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100%;
+  /* The page's ground, under `.site-pattern` — one ground for the whole site,
+     not one per screen. The stage used to have its own on `body.is-fixed` and
+     a case study a paler one here, and walking through the door changed the
+     colour of the paper under you; they are the same sheet, so it is written
+     once. `fixed` keeps the highlight anchored to the window rather than to
+     the top of a very long document, which is what makes the stage's version
+     of it work on a page you actually scroll. */
+  background:
+    radial-gradient(120% 90% at 50% 0%, var(--paper-raised) 0%, transparent 58%),
+    linear-gradient(180deg, var(--paper) 0%, var(--paper-deep) 100%);
+  background-attachment: fixed;
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--size-body);
+  line-height: 1.6;
+  font-synthesis-weight: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* A horizontal trackpad swipe over the stage must not trigger the
+     browser's back navigation. */
+  overscroll-behavior: none;
+}
+
+/* Set by the shell while a fixed-stage screen (loader, home) is mounted. */
+body.is-fixed {
+  overflow: hidden;
+  height: 100%;
+  /* No ground of its own any more — see `body` above, which now carries the
+     one both screens share. It is painted on the body rather than on `.hm`
+     because `.hm` is fixed, so it is a stacking context, and the background
+     pattern — which has to lie *between* the ground and the stage — cannot be
+     slotted inside one from outside. See `.site-pattern` and `--z-screen` in
+     tokens.css. */
+}
+
+#app {
+  min-height: 100%;
+  isolation: isolate;
+}
+
+img,
+video,
+canvas,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* ---- type primitives ---- */
+
+.u-label {
+  font-family: var(--font-ui);
+  font-size: var(--size-label);
+  font-weight: 500;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  line-height: 1;
+}
+
+.u-display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: var(--track-display);
+  line-height: 0.94;
+  color: var(--ink);
+}
+
+.u-lead {
+  font-family: var(--font-display);
+  font-size: var(--size-lead);
+  line-height: 1.46;
+  letter-spacing: -0.005em;
+  color: var(--ink-body);
+}
+
+.u-body p + p {
+  margin-top: 1.1em;
+}
+
+.u-rule {
+  height: 1px;
+  background: var(--rule);
+  border: 0;
+}
+
+/* Screen-reader-only, for the headings the decorative type replaces. */
+.u-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---- the underline that draws itself ----
+   Used by every link and nav item on the site, so a hover reads the same
+   everywhere. Scaled from the left in, from the right out, which is what
+   makes it feel like one stroke rather than a bar fading. */
+.u-link {
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+}
+
+.u-link::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -0.18em;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: right center;
+  transition: transform var(--t-fast) var(--ease-out);
+}
+
+.u-link:hover::after,
+.u-link:focus-visible::after,
+.u-link[data-on='true']::after {
+  transform: scaleX(1);
+  transform-origin: left center;
+}
+
+/* ---- reveal-on-scroll ----
+   `Reveal.tsx` flips `data-shown` when the element enters the viewport.
+   Kept as a CSS transition rather than a per-element GSAP tween: there are a
+   lot of these on a case study and none of them need a timeline. */
+[data-reveal] {
+  opacity: 0;
+  transform: translate3d(0, var(--reveal-from, 26px), 0);
+  transition:
+    opacity var(--t-slow) var(--ease-out) var(--reveal-delay, 0s),
+    transform var(--t-slow) var(--ease-out) var(--reveal-delay, 0s);
+  will-change: opacity, transform;
+}
+
+[data-reveal][data-shown='true'] {
+  opacity: 1;
+  transform: none;
+}
+
+/* Once it has arrived it never moves again — dropping the hint frees the
+   layer, and there can be a hundred of these on a long case study. */
+[data-reveal][data-settled='true'] {
+  will-change: auto;
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

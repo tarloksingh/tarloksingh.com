@@ -1,0 +1,465 @@
+import { resetAllTuning } from './tuningStore'
+import { button, folder, useControls, useCreateStore } from 'leva'
+import { useEffect, useRef } from 'react'
+import { copyText } from './clipboard'
+
+/* ---- the pieces, and their tuning panel ----
+
+   Ten projects have media on this site and two of them have a model: Capsule
+   C1 and Mr. Takahashi. The other eight had a photograph where the subject
+   should be. What they *do* have, and have had since v2, is a hand-built
+   piece each in `src/site/products.tsx` — a video-texture monitor for Mecha
+   Station, a phone for OpenUp, a disc case for the two game credits, a card,
+   a printer, a flipbook of fish. `MechProduct.tsx` stands those on the
+   project screen's stage.
+
+   **This is not Mr. Takahashi's rig and must never become it.** `MechModel`
+   is built for one face — its lighting, its lens and its morph driving are
+   tuned around that head, and `MODEL_DEFAULTS` is shared with Capsule C1,
+   which is already lit to look right under it. So the pieces get a studio of
+   their own here, at their own exposure, with their own lens. Nothing in this
+   file is read by `MechModel` and nothing in `modelTuning.ts` is read by
+   `MechProduct`.
+
+   Same arrangement as every other panel: a `_DEFAULTS` constant that is the
+   shipped value, a localStorage scratchpad, and a copy button that hands back
+   source to paste over it. Nothing set here reaches a visitor until it is
+   pasted. */
+
+/** The drift every piece sits on, and nothing else.
+ *
+ *  Everything about *light* used to be here, and that was wrong. One exposure,
+ *  one environment and two fixed lamps had to suit a matte business card, a
+ *  glossy moulded kiosk, a video-texture monitor and a flipbook of fish at the
+ *  same time — so any of them being right meant the others were approximately
+ *  lit. They are on `PieceTuning` now.
+ *
+ *  The *lens* was here too, and was wrong for the same reason and in a way
+ *  that was much harder to notice: the Lens folder sat next to the per-piece
+ *  folder on the panel, so framing one piece by eye silently reframed the
+ *  other seven. Nothing on screen said so — every other piece was on a
+ *  different screen. `focalLength` and `fill` are on `PieceTuning` now.
+ *
+ *  All of that can be per-piece where the cast's could not: a project screen
+ *  shows one piece at a time in a canvas of its own, so exposure, the scene's
+ *  environment and the camera — all one-per-canvas, and all of which had to be
+ *  shared on the home stage — are free here. No layers, no isolation, nothing
+ *  to keep apart. */
+export interface ProductTuning {
+  floatSpeed: number
+  floatRange: number
+  floatRotation: number
+}
+
+export const PRODUCT_DEFAULTS: ProductTuning = {
+  floatSpeed: 1.1,
+  floatRange: 0.06,
+  floatRotation: 0.35
+}
+
+/** One piece's own framing. Normalising every piece to the same bounding-box
+ *  height is what makes them frame consistently and is also why they need
+ *  this: a flat card and a tall kiosk fitted to the same height do not read
+ *  as the same size, they read as a card blown up. */
+export interface PieceTuning {
+  /** Multiplies `fill`. */
+  size: number
+  /** Degrees turned to camera — which face of the piece you meet. */
+  turn: number
+  /** Frame heights above centre. */
+  liftY: number
+  /** Frame widths right of centre. */
+  liftX: number
+  /** How much the piece leans toward the pointer, and toward the bird while it
+   *  is in the air. 1 is the built-in amount, 0 holds it still.
+   *
+   *  **0 is the default, and every piece is on it.** It went in at 1 and the
+   *  till was the first exception, on the grounds that a fixed object has no
+   *  reason to track anything — and that argument does not stop at the till.
+   *  None of these is a face: a disc case, a card and a phone tipping toward
+   *  the cursor read as the page being loose rather than as anything paying
+   *  attention. Following a pointer is the one subject's on this site that
+   *  has eyes, and he does it in `MechModel` — see `lean` there, which is 11
+   *  for him and 0 for the enclosure. The knob stays because the answer is a
+   *  judgement per piece and not a law. */
+  sway: number
+
+  /* ---- its own camera ----
+
+     Per-piece for the same reason the light is, and it is the more surprising
+     of the two: a lens is not a neutral setting. A disc case at 60mm and the
+     same case at 75mm are differently shaped objects — the near corner stops
+     running away from the far one — and which of those is right depends
+     entirely on what the piece is. A card wants the flat one; a kiosk you are
+     meant to read the depth of does not. */
+
+  /** Millimetres on a 35mm back. The camera backs off to hold the framing, so
+   *  this changes how much perspective the piece has, not how large it is. */
+  focalLength: number
+  /** How much of the frame's height the piece fills before its own `size`. */
+  fill: number
+
+  /* ---- its own light ----
+
+     Nothing like the face's rig, and nothing like the piece next to it. A
+     tenth-stop exposure lit back up by two enormous lamps is how a matte skin
+     shader ends up with any specular at all; a monitor, a card and a printer
+     are ordinary surfaces in an ordinary room. */
+  exposure: number
+  /** How strongly `RoomEnvironment` lights this piece. */
+  envIntensity: number
+  keyIntensity: number
+  keyX: number
+  keyY: number
+  keyZ: number
+  fillIntensity: number
+  fillX: number
+  fillY: number
+  fillZ: number
+
+  /* ---- how metal, how glossy ----
+
+     Offsets, not absolutes, and that matters: a piece is built out of several
+     materials on purpose — a disc case is a clear sleeve over a printed
+     insert, a kiosk is a screen in a moulded shell — and writing one
+     roughness across all of them flattens the thing into a single plastic.
+     These move every material *relative to what it already is*, so the
+     variety the piece was built with survives being tuned.
+
+     Added rather than multiplied, which is the part that had to be got right.
+     Most of these pieces are authored at `metalness: 0`, and a multiplier
+     cannot lift a zero — a "Metal" slider that scales would have run its
+     whole range without any of them ever turning metal. Adding can. */
+
+  /** Taken *off* roughness, so turning it up is shinier. */
+  gloss: number
+  /** Added to metalness. This is the one that makes a surface read as metal
+   *  rather than as bright plastic — and metal takes almost all of its colour
+   *  from reflections, so it wants `reflects` up with it. */
+  metal: number
+  /** `envMapIntensity` outright: how much of the room the surface returns. */
+  reflects: number
+}
+
+/** What every piece started at, which is what the whole set was lit by before
+ *  any of them had a rig of their own. Seeded rather than neutral so nothing
+ *  changed appearance the day this became per-piece — the numbers below are
+ *  the shared studio's, copied. */
+export const PIECE_FALLBACK: PieceTuning = {
+  size: 1,
+  turn: 0,
+  liftY: 0,
+  liftX: 0,
+  sway: 0,
+  focalLength: 60,
+  fill: 0.72,
+  exposure: 0.55,
+  envIntensity: 2.2,
+  keyIntensity: 2.4,
+  keyX: 3,
+  keyY: 4,
+  keyZ: 5,
+  fillIntensity: 0.9,
+  fillX: -4,
+  fillY: 1,
+  fillZ: -3,
+  gloss: 0,
+  metal: 0,
+  reflects: 1
+}
+
+/** Seeded from the `turn` each piece already carries in `products.tsx` —
+ *  those were settled by eye against a real render and are the right starting
+ *  pose here too. `size` and `liftY` start neutral and are for this screen's
+ *  own composition, which is a readout with leader lines coming off it rather
+ *  than a case in a room. */
+export const PIECE_DEFAULTS: Record<string, PieceTuning> = {
+  'mecha-station': {
+    ...PIECE_FALLBACK,
+    size: 0.92,
+    turn: 5.1,
+    liftY: 0.04,
+    focalLength: 85,
+    fill: 0.64,
+    exposure: 0.29,
+    envIntensity: 0,
+    keyIntensity: 40,
+    keyX: -7,
+    keyY: 7,
+    keyZ: -7.6,
+    fillIntensity: 40,
+    fillX: 5.5,
+    fillY: 0.9,
+    gloss: -0.36,
+    metal: -1,
+    reflects: 0
+  },
+  /* A modelled iPhone 17 Pro Max rather than a rounded box with a video plane
+     in front of it — `Phone17.tsx`. Its numbers are the two largest departures
+     from the fallback studio on this panel and both are the handset:
+
+     - **200mm and no turn.** Everything else here is on 60mm, which gives a
+       piece a near corner and a far one. A phone has neither: it is a flat
+       slab, its whole subject is the screen, and any perspective at all reads
+       as the picture on the glass being keystoned. Square-on and long, so it
+       is a phone rather than a photograph of one at an angle.
+     - **A fifth of the exposure, and every surface at once.** The screen is a
+       `MeshBasicMaterial` — unlit, `toneMapped: false`, printing the capture
+       at its own brightness whatever the room is doing. So the exposure is
+       free to be set for the *body* alone, and the body is polished titanium
+       and glass: gloss and metal both at 1, `reflects` at 8. At the shared
+       0.55 the chassis blew out to white around a screen that had not
+       moved. */
+  openup: {
+    ...PIECE_FALLBACK,
+    size: 0.73,
+    turn: 0.4,
+    focalLength: 200,
+    fill: 0.73,
+    exposure: 0.15,
+    gloss: 1,
+    metal: 1,
+    reflects: 8
+  },
+  /* Square on and larger in the frame, now the loop runs the whole face of the
+     frame rather than sitting in a mount — see `VideoFrame.tsx`. A picture
+     turned twenty-eight degrees is a picture in a room; a picture you are
+     meant to watch faces you. `sway` is the one place on this panel it is not
+     zero: this piece is a moving image, so the frame answering the pointer
+     reads as the one thing on the screen that is alive rather than as the
+     page being loose. */
+  stitchfam: { ...PIECE_FALLBACK, size: 0.53, turn: -12.4, liftY: 0.02, sway: 0.14, focalLength: 75, fill: 0.63 },
+  /* Red Dead Redemption 2 and Grand Theft Auto V used to be here, on the same
+     disc case at a mirrored turn. Both are `MODELS` now — a revolver and a
+     carbine — and their tuning is in `modelTuning.ts`, not this file. The
+     panel's export still lists them, because it exports whatever its
+     scratchpad holds; they are dropped on the way in. */
+  /* The one piece whose bounding box is not the piece. Block Builder's blocks
+     fly apart and stack, so `Resize` normalises the volume they travel
+     through rather than any of them, and at a neutral size the blocks
+     themselves come out the size of the type. */
+  'block-builder': {
+    ...PIECE_FALLBACK,
+    size: 1.19,
+    turn: -8.5,
+    liftY: 0.045,
+    liftX: 0.01,
+    focalLength: 200,
+    exposure: 0.78,
+    envIntensity: 0.65,
+    fillIntensity: 12.6,
+    fillY: 10.9,
+    gloss: -1,
+    metal: -1,
+    reflects: 0
+  },
+  /* The one piece framed on a lens of its own so far: a flipbook of fish is a
+     billboard, and at the shared 60mm the sprite's own plane read as leaning
+     away. 75mm flattens it back. */
+  'slider-engine': { ...PIECE_FALLBACK, size: 0.64, turn: 0, liftY: 0, focalLength: 75, fill: 0.71, gloss: -0.84 }
+}
+
+export const pieceFor = (projectId: string): PieceTuning => PIECE_DEFAULTS[projectId] ?? PIECE_FALLBACK
+
+const STORE_KEY = 'v3.product.tuning.v1'
+
+interface Stored {
+  studio?: Partial<ProductTuning>
+  pieces?: Record<string, PieceTuning>
+}
+
+const stored = (): Stored => {
+  try {
+    const parsed: unknown = JSON.parse(window.localStorage.getItem(STORE_KEY) ?? 'null')
+    return parsed && typeof parsed === 'object' ? (parsed as Stored) : {}
+  } catch {
+    return {}
+  }
+}
+
+const saved = typeof window === 'undefined' ? {} : stored()
+const start: ProductTuning = { ...PRODUCT_DEFAULTS, ...saved.studio }
+
+/** Current values, kept fresh by the hook — the copy button reads these
+ *  rather than closing over state that would be a render behind. Same
+ *  arrangement as `modelTuning.ts`'s `live`. */
+/* Each piece filled from `PIECE_FALLBACK` first so a scratchpad saved before a
+   field existed cannot hand `MechProduct` an `undefined` size or turn — see
+   the matching note in `modelTuning.ts`. */
+const savedPieces: Record<string, Partial<PieceTuning>> = saved.pieces ?? {}
+const mergedPieces = Object.fromEntries(
+  [...new Set([...Object.keys(PIECE_DEFAULTS), ...Object.keys(savedPieces)])].map((id) => [
+    id,
+    { ...PIECE_FALLBACK, ...PIECE_DEFAULTS[id], ...savedPieces[id] }
+  ])
+)
+const live = { studio: { ...start }, pieces: mergedPieces, id: '', current: { ...PIECE_FALLBACK } as PieceTuning }
+
+const keys = Object.keys(PRODUCT_DEFAULTS) as Array<keyof ProductTuning>
+const PIECE_KEYS = Object.keys(PIECE_FALLBACK) as Array<keyof PieceTuning>
+
+const tidy = (value: number) => String(Number(value.toFixed(4)))
+
+const pieceLine = (id: string, piece: PieceTuning) =>
+  `  '${id}': { ${PIECE_KEYS.map((k) => `${k}: ${tidy(piece[k])}`).join(', ')} }`
+
+const asSource = () => {
+  const studio = `export const PRODUCT_DEFAULTS: ProductTuning = {\n${keys
+    .map((key) => `  ${key}: ${tidy(live.studio[key])}`)
+    .join(',\n')}\n}`
+  const pieces = `export const PIECE_DEFAULTS: Record<string, PieceTuning> = {\n${Object.entries(live.pieces)
+    .map(([id, piece]) => pieceLine(id, piece))
+    .join(',\n')}\n}`
+  return `${studio}\n\n${pieces}`
+}
+
+/** The panel, and the values it is currently set to.
+ *
+ *  Its own store, and therefore its own panel — the same reasoning as
+ *  `labelTuning.ts`. The per-piece folder is reseeded when the project
+ *  changes rather than rebuilt: Leva reads a schema once, so a folder built
+ *  for Mecha Station would still be showing Mecha Station's numbers after the
+ *  readout swung to OpenUp. */
+export function useProductTuning(projectId: string) {
+  const store = useCreateStore()
+  /* The schema is read once, so it has to open on the piece that is actually
+     on screen — the effect below only catches the *next* one. */
+  const seed = live.pieces[projectId] ?? PIECE_FALLBACK
+
+  const [values, set] = useControls(
+    () => ({
+      'Copy this one': button(() => {
+        /* `live`, never `projectId` / `values` straight: Leva reads this
+           schema once, so a raw closure here is frozen to whichever project
+           the panel first mounted under — home, or a deep link. That is how
+           "Copy this one" on Mecha Station was pasting
+           `'capsule-c1': { <fallback> }`. `live.id` and `live.current` are
+           re-pointed every render in the hook body below. */
+        const text = `${pieceLine(live.id, { ...PIECE_FALLBACK, ...live.current })},`
+        void copyText(text)
+        // eslint-disable-next-line no-console
+        console.log(`[pieces] Paste this row into PIECE_DEFAULTS in src/v3/productTuning.ts:\n\n${text}`)
+      }),
+      'Copy for source': button(() => {
+        const text = asSource()
+        void copyText(text)
+        // eslint-disable-next-line no-console
+        console.log(`[pieces] paste over PRODUCT_DEFAULTS and PIECE_DEFAULTS in src/v3/productTuning.ts:\n\n${text}`)
+      }),
+      Reset: button(() => {
+        resetAllTuning()
+      }),
+
+      'This piece': folder(
+        {
+          size: { value: seed.size, min: 0.2, max: 2.5, step: 0.01, label: 'Size' },
+          turn: { value: seed.turn, min: -180, max: 180, step: 0.1, label: 'Turn' },
+          liftY: { value: seed.liftY, min: -0.5, max: 0.5, step: 0.005, label: 'Lift' },
+          liftX: { value: seed.liftX, min: -0.5, max: 0.5, step: 0.005, label: 'Slide' },
+          sway: { value: seed.sway, min: 0, max: 1, step: 0.01, label: 'Sway' },
+
+          /* This piece's camera, and nobody else's. It was a sibling of this
+             folder rather than inside it, which read as a studio setting and
+             behaved as one — reframing a piece here used to reframe all
+             eight. */
+          Lens: folder(
+            {
+              focalLength: { value: seed.focalLength, min: 18, max: 200, step: 1, label: 'mm' },
+              fill: { value: seed.fill, min: 0.2, max: 0.95, step: 0.01, label: 'Fills' }
+            },
+            { collapsed: true }
+          ),
+
+          /* This piece's rig, and nobody else's. */
+          Light: folder(
+            {
+              exposure: { value: seed.exposure, min: 0.01, max: 3, step: 0.01, label: 'Exposure' },
+              envIntensity: { value: seed.envIntensity, min: 0, max: 12, step: 0.05, label: 'Room' },
+              keyIntensity: { value: seed.keyIntensity, min: 0, max: 40, step: 0.1, label: 'Key' },
+              keyX: { value: seed.keyX, min: -12, max: 12, step: 0.1, label: 'Key X' },
+              keyY: { value: seed.keyY, min: -12, max: 12, step: 0.1, label: 'Key Y' },
+              keyZ: { value: seed.keyZ, min: -12, max: 12, step: 0.1, label: 'Key Z' },
+              fillIntensity: { value: seed.fillIntensity, min: 0, max: 40, step: 0.1, label: 'Fill' },
+              fillX: { value: seed.fillX, min: -12, max: 12, step: 0.1, label: 'Fill X' },
+              fillY: { value: seed.fillY, min: -12, max: 12, step: 0.1, label: 'Fill Y' },
+              fillZ: { value: seed.fillZ, min: -12, max: 12, step: 0.1, label: 'Fill Z' }
+            },
+            { collapsed: true }
+          ),
+
+          /* How metal and how glossy. Relative to what the piece was built
+             with — see the note in `PieceTuning`. For a metal look: Metal up,
+             Gloss up, Reflects up. Metal on its own only ever darkens,
+             because a metal with nothing to reflect is a black surface. */
+          Surface: folder(
+            {
+              gloss: { value: seed.gloss, min: -1, max: 1, step: 0.01, label: 'Gloss' },
+              metal: { value: seed.metal, min: -1, max: 1, step: 0.01, label: 'Metal' },
+              reflects: { value: seed.reflects, min: 0, max: 8, step: 0.02, label: 'Reflects' }
+            },
+            { collapsed: true }
+          )
+        },
+        { collapsed: false }
+      ),
+
+      /* The last thing on this panel that is still every piece's at once, and
+         it is here on purpose: drift is the stage's own idle, not a property
+         of the object standing on it. */
+      Drift: folder(
+        {
+          floatSpeed: { value: start.floatSpeed, min: 0, max: 4, step: 0.05, label: 'Speed' },
+          floatRange: { value: start.floatRange, min: 0, max: 0.3, step: 0.005, label: 'Range' },
+          floatRotation: { value: start.floatRotation, min: 0, max: 1.5, step: 0.02, label: 'Turn' }
+        },
+        { collapsed: true }
+      )
+    }),
+    { store }
+  ) as unknown as [ProductTuning & PieceTuning, (values: Partial<PieceTuning>) => void]
+
+  /* The copy button above closes over this file's schema, which Leva reads
+     once — so `live` is what stays current across a navigation, not a closure.
+     Set here in render, not in an effect, so a click on the same commit the
+     project changed still copies the right one. */
+  live.id = projectId
+  live.current = { ...PIECE_FALLBACK, ...(values as PieceTuning) }
+
+  /* Which keys this panel actually declares — read off Leva's own values so
+     it cannot drift out of step with the schema. `set()` throws on a key with
+     no input, and a throw here unmounts the whole app to a blank paper
+     gradient that reads as a CSS bug rather than as a crash. */
+  const declared = useRef<string[]>([])
+  if (declared.current.length === 0) declared.current = Object.keys(values as object)
+
+  // Reseed the per-piece folder when the readout swings to another project.
+  useEffect(() => {
+    live.id = projectId
+    if (!projectId) return
+    const next = live.pieces[projectId] ?? PIECE_FALLBACK
+    set(
+      Object.fromEntries(
+        Object.entries(next).filter(([key]) => declared.current.includes(key))
+      ) as Partial<PieceTuning>
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId])
+
+  const serialised = JSON.stringify(values)
+  useEffect(() => {
+    for (const key of keys) (live.studio[key] as number) = values[key]
+    if (live.id) {
+      live.pieces[live.id] = Object.fromEntries(
+        PIECE_KEYS.map((k) => [k, values[k]])
+      ) as unknown as PieceTuning
+    }
+    try {
+      window.localStorage.setItem(STORE_KEY, JSON.stringify({ studio: live.studio, pieces: live.pieces }))
+    } catch {
+      /* private mode, a full quota — not worth breaking the page over */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serialised])
+
+  return { store, studio: values as ProductTuning, piece: values as PieceTuning }
+}

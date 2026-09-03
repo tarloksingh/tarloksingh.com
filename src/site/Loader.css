@@ -1,0 +1,116 @@
+/* The loading sheet. See Loader.tsx for what it is actually measuring. */
+
+.ld {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-loader);
+  pointer-events: auto;
+}
+
+.ld-sheet {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, var(--paper-raised) 0%, var(--paper) 55%, var(--paper-deep) 100%);
+  transform: translateY(0);
+  transition: transform 0.9s var(--ease-in-out);
+}
+
+/* The sheet is drawn off the top and its contents move faster than it does,
+   so the page underneath is uncovered by something with weight rather than by
+   a rectangle fading out. */
+.ld.is-leaving .ld-sheet {
+  transform: translateY(-101%);
+}
+
+.ld-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(18px, 3.2vh, 34px);
+  width: min(calc(100vw - var(--gutter) * 2), 720px);
+  transition: transform 0.9s var(--ease-in-out), opacity 0.5s var(--ease-out);
+}
+
+.ld.is-leaving .ld-inner {
+  transform: translateY(-46px);
+  opacity: 0;
+}
+
+.ld-eyebrow {
+  color: var(--ink-faint);
+}
+
+/* ---- the name, being inked ---- */
+
+.ld-word {
+  position: relative;
+  font-family: var(--font-display);
+  font-size: clamp(2.6rem, 8.5vw, 6.5rem);
+  line-height: 1;
+  letter-spacing: -0.035em;
+  white-space: nowrap;
+}
+
+.ld-word-ghost {
+  display: block;
+  color: var(--ink-ghost);
+}
+
+.ld-word-ink {
+  position: absolute;
+  inset: 0;
+  display: block;
+  color: var(--ink);
+  /* No transition — the clip is driven from the eased progress value itself,
+     which is already smooth. A transition on top would lag behind the counter
+     and the two would visibly disagree. */
+}
+
+/* ---- meter ---- */
+
+.ld-meter {
+  position: relative;
+  width: 100%;
+  height: 1px;
+  background: var(--ink-ghost);
+  overflow: hidden;
+}
+
+.ld-meter-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--ink);
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+.ld-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.ld-foot .u-label {
+  color: var(--ink-faint);
+}
+
+.ld-count {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  /* Fixed-width digits — without them the counter jitters sideways every
+     time a 1 goes past. */
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ld-sheet,
+  .ld-inner {
+    transition-duration: 0.2s;
+  }
+}

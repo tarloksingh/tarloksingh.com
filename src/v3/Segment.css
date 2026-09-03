@@ -1,0 +1,82 @@
+/* ---- the segment display ----
+
+   The geometry is in `Segment.tsx` and the note at the top of that file is
+   why it is drawn rather than typed. Everything visual is here.
+
+   Its own stylesheet, imported by the component, because the display is not
+   home's any more: the tally in the footer is drawn with it too, and that is
+   on every screen. A rule set that lives in the stylesheet of one screen and
+   is relied on by another is a rule set waiting to be deleted by someone
+   tidying up that screen.
+
+   It reads `--accent`, `--warn` and `--g` off whatever it is mounted inside.
+   `--g` is the cluster's bloom knob and only exists on `.mech-cluster`; the
+   `1` fallback here is what the tally gets. */
+
+.mech-seg {
+  display: block;
+}
+
+.mech-seg svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.mech-seg line {
+  stroke-linecap: butt;
+  stroke-width: 3;
+}
+
+/* Off, and still there. Low enough not to read as a word, high enough that the
+   grid of lamps is visible on a dark panel. */
+.mech-seg-off line {
+  stroke: rgba(var(--accent-rgb), 0.1);
+}
+
+.mech-seg[data-warn='true'] .mech-seg-off line {
+  stroke: rgba(var(--warn-rgb), 0.1);
+}
+
+.mech-seg-on line {
+  stroke: var(--accent);
+}
+
+.mech-seg[data-warn='true'] .mech-seg-on line {
+  stroke: var(--warn);
+}
+
+/* The bloom pass: the same segments, blurred, under the sharp ones. This is
+   the light coming off the glass, and neither pass looks like a display on its
+   own. Scaled by the panel's one glow knob like everything else.
+
+   Wider than the segment it doubles, so the light reads as spilling past the
+   edge of the lamp rather than as the lamp being slightly out of focus. */
+.mech-seg-glow line {
+  stroke: var(--accent);
+  stroke-width: 5.5;
+  opacity: calc(0.85 * var(--g, 1));
+}
+
+/* And once more, further out — on the *sharp* pass, not this one.
+   Two blurs at different radii is what a real diffusion looks like: one is a
+   halo, two is haze with a hot core.
+
+   It has to hang off `.mech-seg-on` rather than off the blurred group,
+   because the blurred group already carries `filter="url(#bloom-…)"` as a
+   presentation attribute and a CSS `filter` *replaces* that outright — the
+   Gaussian would simply stop happening, and the display would go flat with
+   nothing in the DOM looking wrong. */
+.mech-seg-on {
+  filter: drop-shadow(0 0 calc(7px * var(--g, 1)) rgba(var(--accent-rgb), calc(0.4 * var(--g, 1))));
+}
+
+.mech-seg[data-warn='true'] .mech-seg-on {
+  filter: drop-shadow(0 0 calc(7px * var(--g, 1)) rgba(var(--warn-rgb), calc(0.45 * var(--g, 1))));
+}
+
+.mech-seg[data-warn='true'] .mech-seg-glow line {
+  stroke: var(--warn);
+}
+
+

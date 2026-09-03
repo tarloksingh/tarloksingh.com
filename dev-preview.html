@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Dev preview — mobile beside desktop</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body {
+        min-height: 100vh;
+        background: #14181b;
+        color: #eff4f7;
+        font: 13px/1.4 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        padding: 16px;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+        padding-bottom: 14px;
+      }
+      h1 { font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.65; }
+      label { opacity: 0.65; }
+      select, input, button {
+        background: #222a2f;
+        color: inherit;
+        border: 1px solid #384249;
+        border-radius: 6px;
+        padding: 5px 8px;
+        font: inherit;
+      }
+      button { cursor: pointer; }
+      button:hover { background: #2c363c; }
+      input[type="text"] { width: 22ch; }
+
+      .stage { display: flex; gap: 20px; align-items: flex-start; overflow-x: auto; padding-bottom: 16px; }
+      figure { flex: 0 0 auto; }
+      figcaption {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 0 2px 6px;
+        opacity: 0.55;
+        font-variant-numeric: tabular-nums;
+      }
+      /* The frames render at true device pixel sizes, then scale down purely for
+         display — so the page inside still sees the real viewport width. */
+      .shell { transform-origin: top left; }
+      iframe { display: block; border: 0; background: #eff4f7; border-radius: 4px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Dev preview</h1>
+      <label>path <input id="path" type="text" value="/" /></label>
+      <label>
+        phone
+        <select id="phone">
+          <option value="390x844">iPhone 14 · 390×844</option>
+          <option value="375x667">iPhone SE · 375×667</option>
+          <option value="430x932">iPhone 15 Pro Max · 430×932</option>
+          <option value="360x800">Android · 360×800</option>
+          <option value="820x1180">iPad · 820×1180</option>
+        </select>
+      </label>
+      <label>
+        desktop
+        <select id="desk">
+          <option value="1440x900">1440×900</option>
+          <option value="1280x800">1280×800</option>
+          <option value="1920x1080">1920×1080</option>
+        </select>
+      </label>
+      <label>zoom <input id="zoom" type="range" min="30" max="100" value="60" /></label>
+      <button id="reload">Reload both</button>
+    </header>
+
+    <div class="stage">
+      <figure>
+        <figcaption><span>mobile</span><span id="phoneDims"></span></figcaption>
+        <div class="shell" id="phoneShell"><iframe id="phoneFrame"></iframe></div>
+      </figure>
+      <figure>
+        <figcaption><span>desktop</span><span id="deskDims"></span></figcaption>
+        <div class="shell" id="deskShell"><iframe id="deskFrame"></iframe></div>
+      </figure>
+    </div>
+
+    <script type="module">
+      const els = {
+        path: document.getElementById('path'),
+        phone: document.getElementById('phone'),
+        desk: document.getElementById('desk'),
+        zoom: document.getElementById('zoom'),
+        reload: document.getElementById('reload'),
+      }
+
+      // Each frame is laid out at full device size and visually scaled, so the
+      // shell has to reserve the *scaled* footprint or the two would overlap.
+      function fit(shellId, frameId, dimsId, size, scale) {
+        const [w, h] = size.split('x').map(Number)
+        const frame = document.getElementById(frameId)
+        const shell = document.getElementById(shellId)
+        frame.style.width = w + 'px'
+        frame.style.height = h + 'px'
+        shell.style.transform = `scale(${scale})`
+        shell.style.width = w * scale + 'px'
+        shell.style.height = h * scale + 'px'
+        document.getElementById(dimsId).textContent = `${w}×${h} @ ${Math.round(scale * 100)}%`
+      }
+
+      function render() {
+        const scale = Number(els.zoom.value) / 100
+        fit('phoneShell', 'phoneFrame', 'phoneDims', els.phone.value, scale)
+        fit('deskShell', 'deskFrame', 'deskDims', els.desk.value, scale)
+      }
+
+      function load() {
+        const path = els.path.value.startsWith('/') ? els.path.value : '/' + els.path.value
+        for (const id of ['phoneFrame', 'deskFrame']) {
+          // Cache-bust so a manual reload always re-runs the scene from scratch.
+          document.getElementById(id).src = path + (path.includes('?') ? '&' : '?') + 'preview=' + Date.now()
+        }
+      }
+
+      els.zoom.addEventListener('input', render)
+      for (const el of [els.phone, els.desk]) el.addEventListener('change', render)
+      els.path.addEventListener('change', load)
+      els.reload.addEventListener('click', load)
+
+      render()
+      load()
+    </script>
+  </body>
+</html>

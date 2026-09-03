@@ -1,0 +1,483 @@
+/* Home, second pass. Two columns off the 2048x1080 frame: a fixed stone
+   sidebar carrying the identity, and a gradient stage holding the product.
+   Type sizes are literal from the spec rather than fluid — at 12px the small
+   caps stop reading if they scale. */
+
+.capsule-home {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  overflow: hidden;
+  /* The gradient lives here rather than on the content column, so the
+     sidebar can be absent before the cut without leaving a flat panel where
+     it will be. */
+  background: linear-gradient(180deg, #ffffff 0%, #d7d6d0 100%);
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  color: #000000;
+}
+
+/* ---- left: title area ---- */
+
+.ch-title-area {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 30px;
+  width: 405px;
+  flex: none;
+  align-self: stretch;
+  background: #f3f3ef;
+  z-index: 2;
+  /* Not there until the cut. It keeps its box the whole time — collapsing it
+     would move the stage's centre and drag the ring sideways mid-transform. */
+  opacity: 0;
+  transition: opacity 0.7s ease-out;
+}
+
+.capsule-home.is-open .ch-title-area {
+  opacity: 1;
+}
+
+.ch-title {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 345px;
+}
+
+/* The 12px labels all share this; only the colour changes between them. */
+.ch-label {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 15px;
+  letter-spacing: 0;
+}
+
+.ch-label-muted {
+  color: #b0b0b0;
+}
+
+.ch-name {
+  font-family: 'Times New Roman', Times, serif;
+  font-weight: 400;
+  font-size: 96px;
+  line-height: 110px;
+  /* Tight enough that the two words read as one block. */
+  letter-spacing: -0.12em;
+  color: #000000;
+}
+
+.ch-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 30px;
+  width: 281px;
+}
+
+.ch-meta-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
+  width: 281px;
+}
+
+.ch-passion {
+  font-size: 12px;
+  font-style: italic;
+  font-weight: 700;
+  line-height: 15px;
+}
+
+.ch-focus {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 15px;
+}
+
+/* ---- right: content area ---- */
+
+.ch-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: 30px;
+  flex: 1 1 auto;
+  align-self: stretch;
+  min-width: 0;
+  /* Above the sidebar's 2 while the banner is up: it is far wider than this
+     column and has to cross the whole screen. Underneath, the sidebar cut it
+     off at the column edge. Only the overflow crosses — this box does not
+     overlap the sidebar. */
+  z-index: 3;
+}
+
+/* Once the opening has finished, the column drops back under the sidebar so
+   the ring is confined to its own section. On a narrow window the ring is
+   wider than the column, and left above the sidebar it runs straight across
+   the name. */
+.capsule-home.is-settled .ch-content {
+  z-index: auto;
+}
+
+.ch-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 9px;
+  width: 100%;
+  z-index: 2;
+}
+
+.ch-menu a {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 15px;
+  text-align: right;
+  text-decoration: none;
+  color: #000000;
+}
+
+.ch-menu a.is-dim {
+  color: #bebebe;
+}
+
+.ch-credit {
+  width: 100%;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 15px;
+  text-align: right;
+  color: rgba(0, 0, 0, 0.5);
+  z-index: 2;
+}
+
+/* The stage is its own row between menu and credit so the ring stays
+   optically centred no matter how tall those two get. */
+/* Spans the whole content area rather than sitting as a flex row between the
+   menu and the credit. As a row its bottom edge fell above the credit line,
+   and the canvas ended there — so a product entering from below was cut off
+   in mid-air at that line instead of coming in off the bottom of the screen.
+   The menu and credit float over it on z-index 2. */
+.ch-stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* The ring is projected in JS, so there is no CSS perspective here — but
+     the far arc still sits at z-index -1, and without a stacking context of
+     its own that would drop behind the page gradient rather than behind the
+     product. `isolate` makes one without any of the paint cost. */
+  isolation: isolate;
+}
+
+/* ---- the ring ---- */
+
+/* Not a stacking context — the glyphs' own z-index has to sort against the
+   model, which is this element's sibling. */
+.ch-ring {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ch-ring-glyph {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: 0;
+  white-space: pre;
+  font-weight: 700;
+  /* Dragging to cut would otherwise select the ring as text and leave every
+     glyph sitting in a highlight. */
+  user-select: none;
+  -webkit-user-select: none;
+  /* Glyphs are placed one by one, so spacing is angular — a tracking value
+     here would only shift each one off its own centre. */
+  letter-spacing: 0;
+  line-height: 1;
+  color: #000000;
+  /* No will-change here on purpose. There are ~200 of these, and promoting
+     every one to its own compositor layer costs far more than the repaints
+     it saves. */
+}
+
+/* The ring is decorative once it is 200 spans; this carries the actual name
+   for screen readers and nothing else. */
+.ch-ring-label,
+.ch-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---- the film strip the banner is printed on ---- */
+
+.ch-ring-strip {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.ch-strip-seg {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  background-color: #141414;
+  /* Sprocket notches top and bottom, then the ink wash over the middle. The
+     pattern is offset per segment so it runs unbroken across the joins. */
+  background-image:
+    repeating-linear-gradient(90deg, #ece9e2 0 9px, transparent 9px 26px),
+    repeating-linear-gradient(90deg, #ece9e2 0 9px, transparent 9px 26px),
+    linear-gradient(180deg, transparent 0 22%, var(--ink) 22% 62%, transparent 62%);
+  background-size:
+    100% 5px,
+    100% 5px,
+    100% 100%;
+  background-position:
+    0 4px,
+    0 calc(100% - 4px),
+    0 0;
+  background-repeat: repeat-x, repeat-x, no-repeat;
+  will-change: transform;
+}
+
+/* Rebate type: pale, sitting on the black. Goes to ink once the strip has
+   dropped away and the letters are on the page. */
+.ch-ring.is-strip .ch-ring-glyph {
+  color: #f1eee7;
+}
+
+/* ---- model ---- */
+
+/* Fills the stage rather than sitting in a fixed box. At any smaller size the
+   canvas edge crops the product the moment it is scaled up, and a hard
+   straight edge through the model reads as a container around it. */
+.ch-model {
+  position: absolute;
+  inset: 0;
+  /* Sits at 0 so the ring's far arc (-1) passes behind it and the near
+     arc (1) in front — the orbit reads as going round the product. */
+  z-index: 0;
+  pointer-events: none;
+}
+
+.ch-model canvas {
+  display: block;
+}
+
+/* ---- the seal ---- */
+
+/* There is no tape graphic. Before the cut the ring's own flat line is the
+   seal, so all this does is catch the click and carry the prompt. */
+.ch-ring-cutter {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  cursor: crosshair;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.ch-ring-cutter:focus-visible {
+  outline: 2px solid #000000;
+  outline-offset: -4px;
+}
+
+.ch-ring-cue {
+  position: absolute;
+  left: 50%;
+  bottom: 40px;
+  transform: translateX(-50%);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.24em;
+  color: rgba(0, 0, 0, 0.45);
+  animation: ch-cue-breathe 2.6s ease-in-out infinite;
+}
+
+@keyframes ch-cue-breathe {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ch-ring-cue {
+    animation: none;
+  }
+}
+
+/* Tuning panel, only mounted behind ?tune. */
+.ch-tuner {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  width: 300px;
+  z-index: 100;
+}
+
+@media screen and (max-width: 700px) {
+  .ch-tuner {
+    top: auto;
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
+    width: auto;
+    max-height: 46vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* ---- narrow screens ---- */
+
+@media (max-width: 900px) {
+  .capsule-home {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .ch-title-area {
+    width: 100%;
+    align-self: auto;
+    gap: 80px;
+  }
+
+  .ch-title,
+  .ch-meta,
+  .ch-meta-block {
+    width: 100%;
+  }
+
+  .ch-name {
+    font-size: 64px;
+    line-height: 72px;
+  }
+
+  .ch-content {
+    align-self: auto;
+    min-height: 70vh;
+  }
+}
+
+/* ---- phone: the 402x874 frame ----
+
+   Must stay below the 900px block: several rules here override it, and at
+   equal specificity the later one wins.
+
+   The design collapses the two columns into one frame. The stone panel stops
+   being a sidebar and becomes the whole page, with the name and menu on the
+   top row, the product in the middle, and the focus copy and credit at the
+   bottom. The DOM keeps its desktop shape — the menu and credit still live in
+   the content column — so on the phone they are lifted out of that flow and
+   pinned to the corners of the frame they belong to in the design. */
+
+@media screen and (max-width: 700px) {
+  .capsule-home {
+    flex-direction: column;
+    /* The gradient stage does not appear on the phone at all: the title area
+       covers the frame, so its colour becomes the page's. */
+    background: #f3f3ef;
+    /* One frame, one screen — the design has nothing below the fold. */
+    overflow: hidden;
+  }
+
+  .ch-title-area {
+    width: 100%;
+    flex: 1 1 auto;
+    padding: 30px;
+    /* space-between carries the vertical rhythm; the 900px gap would fight it. */
+    gap: 0;
+    /* The credit is pinned to the bottom of the frame and the focus copy has
+       to clear it: 30px frame padding + the 12px line + the 39px the design
+       puts between them. */
+    padding-bottom: 81px;
+    /* The page carries the stone now, or this panel would paint over the
+       product sitting behind it. */
+    background: transparent;
+  }
+
+  .ch-title {
+    width: 100%;
+  }
+
+  /* The design's top row is the name and the menu, nothing else — so the
+     ARTIST label steps out and the name starts at the frame's padding. */
+  .ch-title .ch-label {
+    display: none;
+  }
+
+  .ch-name {
+    font-size: 48px;
+    line-height: 57px;
+  }
+
+  .ch-meta {
+    width: 100%;
+    gap: 30px;
+  }
+
+  .ch-meta-block {
+    width: 100%;
+    max-width: 281px;
+  }
+
+  .ch-content {
+    position: absolute;
+    inset: 0;
+    padding: 30px;
+    align-self: auto;
+    min-height: 0;
+    /* It covers the whole frame to hold the stage, so it must not swallow
+       taps meant for the panel underneath. The three things that are actually
+       interactive take their events back below. */
+    pointer-events: none;
+  }
+
+  .ch-menu,
+  .ch-credit,
+  .ch-ring-cutter {
+    pointer-events: auto;
+  }
+
+  .ch-menu {
+    position: absolute;
+    top: 30px;
+    right: 30px;
+    width: 57px;
+  }
+
+  .ch-credit {
+    position: absolute;
+    left: 30px;
+    right: 30px;
+    bottom: 30px;
+    width: auto;
+    font-size: 10px;
+    line-height: 12px;
+    text-align: left;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ch-ring-glyph {
+    transition: none;
+  }
+}

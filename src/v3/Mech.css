@@ -1,0 +1,4785 @@
+/* The project screen.
+
+   Every number below is a Figma coordinate in a 1920×1080 frame, and `--px`
+   is what one of those is worth in real pixels right now — the smaller of
+   what the width and the height allow, so the composition scales as one thing
+   and never crops.
+
+   What changed from a fixed frame: the chrome hangs off the true viewport
+   edges rather than the frame's, so there is no letterbox at any window
+   shape. Only the subject and its leader lines share a centred 16:9 box, and
+   they have to, because a label that does not touch what it names is not a
+   readout. A wider window buys the leaders more clearance, never less. */
+
+@font-face {
+  font-family: 'Clash Display';
+  src: url('/fonts/clash-display/ClashDisplay-Variable.woff2') format('woff2-variations');
+  font-weight: 200 700;
+  font-display: swap;
+  font-style: normal;
+}
+
+/* The display face: home's name, and now a project's title and the wordmark in
+   its corner. Self-hosted, the same way every other face on this site is — no
+   request to a third party for a name that is on screen the moment the panel
+   arrives.
+
+   Declared here rather than in `MechCluster.css`, where it used to live. That
+   stylesheet is imported by `MechCluster.tsx`, which is lazy and only mounts on
+   home, so a visitor landing straight on `/v3/p/<id>` would never fetch it and
+   the title would come up in the fallback sans. */
+@font-face {
+  font-family: 'Audiowide';
+  src: url('/fonts/audiowide/Audiowide-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+  font-style: normal;
+}
+
+.mech {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #000;
+
+  /* No text selection anywhere on the readout. A drag on the page is a shot
+     being aimed, never a paragraph being highlighted -- the blue smear that
+     came of the latter fights the gun. The dev panel's textarea turns it
+     back on for itself. */
+  user-select: none;
+  -webkit-user-select: none;
+
+  /* No grey box flashed over a button when it is tapped. Every control on
+     this screen is drawn to sit under the reticle; the browser's own tap
+     highlight is a rounded rectangle that has nothing to do with any of them
+     and reads as a stray panel around whatever was pressed — most visibly
+     the deck's pill on a phone. */
+  -webkit-tap-highlight-color: transparent;
+
+  /* One Figma pixel, in real ones. Three terms, and whichever is smallest
+     wins: a rem so browser zoom actually enlarges the readout (rem is a fixed
+     count of CSS pixels, and zoom magnifies those), and the two viewport
+     terms so the composition always fits. 0.0749rem is 1.1984px at a 16px
+     root, which puts the frame's natural width at 2300 — its cap. Past that
+     the page would be a poster seen from across a room. */
+  --px: min(0.0749rem, 0.0520833vw, 0.0925926vh);
+
+  /* How far the lit things bleed, for the whole site rather than for home.
+     `--cluster-glow` is written onto this element from `Mech.tsx` — deliberately
+     here and not on `.mech-cluster`, which only exists on home: set there, `--g`
+     fell back to 1 the moment a project opened and the room changed brightness
+     under you. See *one room, both screens* below. */
+  --g: var(--cluster-glow, 1);
+  /* Side padding for full-bleed overlays — the index sheet, on the wide
+     layout. The same inset the header and rail already sit at, so the sheet
+     lines up with the chrome it covers. Narrow redefines this smaller of its
+     own, once there is no rail or 101-unit margin left to match. */
+  --gutter: calc(101 * var(--px));
+  /* The green off an eighties instrument cluster rather than a terminal
+     cyan: paler, further toward the yellow side, and it reads as something
+     lit from behind instead of something emitting. */
+  --accent: #86e2b4;
+  --accent-rgb: 134, 226, 180;
+  /* The one warm thing on the panel. A lamp, not a siren. */
+  --warn: #e0562b;
+  --warn-rgb: 224, 86, 43;
+  /* What comes out of the gun. Warmer and brighter than the warning lamp,
+     and the only thing on the screen allowed this much heat — a bolt in the
+     panel's own green would read as another instrument lighting up rather
+     than as something leaving the page. */
+  --shot: #ff8f3a;
+  --shot-rgb: 255, 143, 58;
+  /* The moth, on its own colour rather than the panel's green — it needs to
+     read as a different kind of target from the bird at a glance. */
+  --moth: #ff4d4d;
+  --moth-rgb: 255, 77, 77;
+  /* The room the panel is lit in: a cold blue off one side and a lime sign
+     off the other. Both stay under the readout, never in it. Kept off the
+     warm half of the wheel on purpose — red down here reads as a warning,
+     and the only thing on this screen allowed to say that is the target
+     marker on the compass. */
+  --wash-blue: 60, 150, 255;
+  --wash-lime: 140, 255, 170;
+  /* Both pulled a little green, so the unlit type belongs to the same panel
+     as the lit type rather than sitting on it as neutral grey. */
+  /* The one corner radius on the readout: the pictures, the clips and the
+     tiles that stand for them, in frame coordinates like everything else so
+     it scales with the composition rather than staying 10px on a wall
+     display. */
+  --round: calc(10 * var(--px));
+  /* The housing's furniture, in frame coordinates: how far the strip above
+     the picture and the transport below it sit off its edges, and how far in
+     from its sides the words start.
+
+     The inset is not decoration. The corner brackets hang 13 out and are 15
+     long, so anything set flush with the picture's left edge is set under a
+     bracket — which is what "clip" was doing. These are the two numbers to
+     move if the type ever wants to sit differently. */
+  --label-gap: calc(16 * var(--px));
+  --label-inset: calc(26 * var(--px));
+  /* Type, and only type. Every other number here is a frame coordinate — how
+     big a thing is *in the composition* — and that is the right answer for a
+     bracket and the wrong one for a word: at the bottom of the range the
+     frame's idea of 13.5 is ten real pixels, and nothing is gained by a label
+     nobody can read being perfectly in proportion.
+
+     The floor is the rem out of `--px` itself, which is the size the type is
+     drawn at once the frame has stopped growing. So at the cap nothing here
+     renders a pixel differently than it did when all of it was `--px`; below
+     the cap the words hold while the drawing shrinks around them.
+
+     And `max()` is the only way browser zoom reaches this page at all. Zoom
+     makes a CSS pixel physically bigger: a rem is a fixed count of them so it
+     grows, `vw`/`vh` are fractions of the window so they do not. `--px` takes
+     the `min()` of the three, so past about 118% a viewport term is under the
+     rem and the readout freezes at the size it had — a rem in a `min()` is a
+     cap, and a cap can only hold a design back. Type takes the `max()` and
+     keeps going, for as long as anyone keeps pressing.
+
+     The leaders and the compass are SVG, drawn in user units that the viewBox
+     scales by `--px`, where a rem cannot reach. They multiply by `--type-k`
+     instead — the same ratio as a plain number, set in `Mech.tsx`. */
+  --type: max(var(--px), 0.0749rem);
+  --dim: #4a544f;
+  --mid: #7e8c85;
+  --ease: cubic-bezier(0.22, 0.85, 0.25, 1);
+
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  color: #fff;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Everything the project screen is made of hangs off this column rather than
+   off the window, so on a very wide screen the readout stays a readout
+   instead of stretching into a billboard. Full height, though — the dashboard
+   underneath it runs to all four edges. */
+/* Sized by both units at once so `useTypeScale` can read the ratio between
+   them off one box — 100 of each, for a number with some precision in it. */
+.mech-scale {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+  width: calc(100 * var(--type));
+  height: calc(100 * var(--px));
+}
+
+.mech-frame {
+  position: relative;
+  width: calc(1920 * var(--px));
+  height: 100%;
+  margin: 0 auto;
+}
+
+/* ---- the reticle ----
+
+   The native arrow is replaced outright, so every hit target on the page has
+   to be one the reticle can sit over — which the whole screen already is. */
+
+@media (pointer: fine) {
+  .mech,
+  .mech * {
+    cursor: none;
+  }
+}
+
+.mech-cursor {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 240ms linear;
+}
+
+.mech-cursor[data-live='true'] {
+  opacity: 1;
+}
+
+@media (pointer: coarse) {
+  .mech-cursor {
+    display: none;
+  }
+}
+
+.mech-cursor-ring,
+.mech-cursor-pin {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 96px;
+  height: 96px;
+  will-change: transform;
+}
+
+.mech-cursor svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.8);
+  stroke-width: 1.6;
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.45));
+  transition: stroke 200ms linear, filter 200ms linear;
+}
+
+.mech-cursor[data-hot='true'] svg {
+  filter: drop-shadow(0 0 7px rgba(var(--accent-rgb), 0.8));
+}
+
+.mech-cursor[data-hot='true'] svg {
+  stroke: var(--accent);
+}
+
+/* `fill-box` is what makes `center` mean the centre of the circle rather than
+   the centre of the SVG viewport — without it the arcs orbit a point off to
+   one side instead of turning on the spot. */
+.mech-ring,
+.mech-pin {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mech-spin 14s linear infinite;
+  transition: r 260ms var(--ease);
+}
+
+.mech-pin {
+  animation: mech-spin 9s linear infinite reverse;
+}
+
+.mech-cursor[data-hot='true'] .mech-ring {
+  r: 22;
+  animation-duration: 4.5s;
+}
+
+.mech-cursor[data-hot='true'] .mech-pin {
+  r: 13;
+}
+
+/* Off a target the cursor wears its own brackets. Over one it hands them to
+   the target's box and lets its own fade out. */
+.mech-brackets {
+  transition: opacity 180ms linear;
+}
+
+.mech-cursor[data-hot='true'] .mech-brackets {
+  opacity: 0;
+}
+
+.mech-cross {
+  stroke-width: 1;
+  opacity: 0.85;
+}
+
+.mech-dot {
+  fill: currentColor;
+  stroke: none;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.mech-cursor[data-hot='true'] .mech-dot {
+  color: var(--accent);
+}
+
+@keyframes mech-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---- lock-on ----
+
+   Four corners on the target's own rectangle. Position and size are written
+   from JS every frame and eased by these transitions, so acquiring a new
+   target slides the box across to it rather than cutting. */
+
+.mech-lock {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  transform: scale(1.12);
+  transition:
+    left 220ms var(--ease),
+    top 220ms var(--ease),
+    width 220ms var(--ease),
+    height 220ms var(--ease),
+    opacity 160ms linear,
+    transform 220ms var(--ease);
+}
+
+.mech-cursor[data-hot='true'] .mech-lock {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.mech-lock i {
+  position: absolute;
+  width: 13px;
+  height: 13px;
+  border: 1.6px solid var(--accent);
+  filter: drop-shadow(0 0 5px rgba(var(--accent-rgb), 0.7));
+  transition: border-color 160ms linear, filter 160ms linear;
+}
+
+/* The one target that is not a control on the page — warm, like the bird
+   itself and the bolt it is hit by, rather than the panel's own accent. */
+.mech-cursor[data-quarry='true'] .mech-lock i {
+  border-color: var(--warn);
+  filter: drop-shadow(0 0 5px rgba(var(--warn-rgb), 0.7));
+}
+
+.mech-lock i:nth-child(1) {
+  left: 0;
+  top: 0;
+  border-right: 0;
+  border-bottom: 0;
+}
+
+.mech-lock i:nth-child(2) {
+  right: 0;
+  top: 0;
+  border-left: 0;
+  border-bottom: 0;
+}
+
+.mech-lock i:nth-child(3) {
+  left: 0;
+  bottom: 0;
+  border-right: 0;
+  border-top: 0;
+}
+
+.mech-lock i:nth-child(4) {
+  right: 0;
+  bottom: 0;
+  border-left: 0;
+  border-top: 0;
+}
+
+/* ---- boot ----
+
+   The machine comes up rather than simply being on. The chrome holds off,
+   the grid strikes, the compass spins into place (MechHud.tsx), and the
+   leaders extend last. Everything is a delay on an entrance that was already
+   there, so nothing has a second code path for its first second. */
+
+.mech[data-boot='true'] .mech-head,
+.mech[data-boot='true'] .mech-rail-wrap,
+.mech[data-boot='true'] .mech-deck-slot,
+.mech[data-boot='true'] .mech-foot,
+.mech[data-boot='true'] .mech-coords,
+.mech[data-boot='true'] .mech-alarm {
+  opacity: 0;
+}
+
+/* The header drops in rather than just fading — it is chrome hung off the
+   top edge, so it reads better arriving from there than appearing in place. */
+.mech[data-boot='true'] .mech-head {
+  transform: translateY(calc(-18 * var(--px)));
+}
+
+.mech-head {
+  transition: opacity 500ms var(--ease) 120ms, transform 500ms var(--ease) 120ms;
+}
+
+.mech-rail-wrap,
+.mech-deck-slot,
+.mech-foot,
+.mech-coords,
+.mech-alarm {
+  transition: opacity 500ms var(--ease) 120ms;
+}
+
+/* Docked top right, the same right edge as the rail below it, in the gap
+   between it and the header. */
+.mech-deck-slot {
+  position: absolute;
+  top: calc(90 * var(--px));
+  right: calc(101 * var(--px));
+  z-index: 3;
+}
+
+/* ---- the warning pair ----
+
+   The one instrument on this screen that is about the page rather than
+   about the work: whether there is a bird or a moth in the air to shoot at.
+   Two keys, one lit at a time — see `Alarm.tsx` for why it is a pair rather
+   than a single lamp, and why it lives here now rather than inside
+   `MechCluster.tsx`: the gun, the reticle and the creatures are all mounted
+   plainly in this file, not gated on home, and a lamp reporting on them
+   used to vanish the moment a project opened.
+
+   `position: fixed`, centred, `top` matching `.mech-head`'s own — the pair
+   reads as part of the header row rather than a second thing floating under
+   it, and it no longer answers to home's Vertical knob at all now that it
+   is not inside `.mech-cluster`. */
+.mech-alarm {
+  position: fixed;
+  left: 50%;
+  top: calc(25 * var(--px));
+  transform: translateX(-50%);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(7 * var(--px));
+  /* One number for the whole row: the side of a lamp, and the height of the
+     count between them. Declared here rather than with the tokens at the top
+     of the file because nothing outside this row has any use for it. */
+  --lamp: calc(19 * var(--px));
+}
+
+/* A lamp, and that is all it is — see the note at the top of `Alarm.tsx` for
+   what it replaced and why.
+
+   Two squares of `--lamp` either side of the count. Small: the whole row is
+   under a fifth of the width it used to be, which is what puts it back to
+   being chrome hung off the top edge rather than a second headline competing
+   with the name under it. Squarish rather than square — a couple of frame
+   units of radius, the same treatment every other housing on this panel gets
+   — and sized off `--lamp`, declared on the row above so the two lamps and
+   the number between them cannot drift apart. */
+.mech-alarm-key {
+  position: relative;
+  display: block;
+  flex: none;
+  width: var(--lamp);
+  height: var(--lamp);
+  /* Round — a dot, not a housing. The pair is a shift-light metaphor: the
+     left dot lights the panel's green while there is something in the air,
+     the right dot (`[data-warn]`) burns red while there is not. */
+  border-radius: 999px;
+  border: 1px solid rgba(var(--accent-rgb), 0.26);
+  background: rgba(var(--accent-rgb), 0.08);
+  transition: border-color 200ms linear, background-color 200ms linear, box-shadow 200ms linear;
+}
+
+.mech-alarm-key[data-warn] {
+  border-color: rgba(var(--warn-rgb), 0.26);
+  background: rgba(var(--warn-rgb), 0.08);
+}
+
+/* Lit: the dot fills with its own colour and bleeds off `--g` like every
+   other lit thing in the room. */
+.mech-alarm-key[data-on='true'] {
+  border-color: rgba(var(--accent-rgb), 0.8);
+  background: rgba(var(--accent-rgb), 0.62);
+  box-shadow:
+    0 0 calc(9 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.4 * var(--g))),
+    0 0 calc(24 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.2 * var(--g)));
+}
+
+.mech-alarm-key[data-warn][data-on='true'] {
+  border-color: rgba(var(--warn-rgb), 0.9);
+  background: rgba(var(--warn-rgb), 0.8);
+  box-shadow:
+    0 0 calc(10 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.44 * var(--g))),
+    0 0 calc(28 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.22 * var(--g)));
+}
+
+/* The subject arrives out of nothing rather than out of a cover — on the
+   first paint there is no previous frame for the cells to eat. */
+/* The subject is not faded in separately. On the first paint the cells are
+   already covering it, so the boot's last beat is the same disintegration
+   lifting that every frame change uses. */
+
+/* ---- header ---- */
+
+/* `flex-end`, with the signature pushing itself over rather than the row
+   spacing two things apart. Home has no signature — the name is behind the
+   cast — and `space-between` with one child left in it put the index key on
+   the *left* of the screen, which is the one place a way-in to everything
+   should never be. This way the key is welded to the right edge on both
+   screens and the signature appears to its left when there is one. */
+.mech-head {
+  position: absolute;
+  left: calc(101 * var(--px));
+  right: calc(101 * var(--px));
+  top: calc(24 * var(--px));
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: calc(24 * var(--px));
+  z-index: 3;
+}
+
+/* The same name, in the same design, at a signature's size.
+
+   It used to be Clash Display in `--mid` — the project title's old voice,
+   scaled down. But the two are one gesture, not two labels that happen to say
+   the same words: opening a project backspaces the big name out of the middle
+   of the cluster and types this one into the corner, and a name that changes
+   typeface and colour while it is being handed over is two names. So this is
+   `.mech-ident-name` in MechCluster.css, verbatim apart from the size — the
+   same Audiowide, the same warm channel, the same three-term glow, the same
+   flicker. */
+.mech-wordmark {
+  font-family: 'Audiowide', 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-weight: 400;
+  font-size: calc(15 * var(--type));
+  /* Audiowide is drawn wide already; a hair of room, not the negative
+     tracking Clash Display wanted. */
+  letter-spacing: calc(0.5 * var(--type));
+  text-transform: uppercase;
+  color: var(--warn);
+  /* Scaled down from the ident's 9/42/130 — the glow is a proportion of the
+     glyph, and the cluster's radii around a line this size would be a smear
+     across the header rather than a lit sign. */
+  text-shadow:
+    0 0 calc(4 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.58 * var(--g))),
+    0 0 calc(16 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.34 * var(--g))),
+    0 0 calc(48 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.2 * var(--g)));
+  animation: mech-flicker 7s steps(1, end) infinite;
+  background: none;
+  border: 0;
+  padding: 0;
+  flex: none;
+  margin-right: auto;
+  transition: filter 160ms linear;
+  /* No entrance of its own. It types itself in a character at a time — see
+     the handover note in Mech.tsx — and a block fading up underneath a line
+     being typed is two arrivals for one name. */
+}
+
+/* Brightened, not recoloured. There is one warm channel on this site and the
+   hover state of a lamp is the lamp turned up. */
+.mech-wordmark:hover {
+  filter: brightness(1.35);
+}
+
+/* `.mech-nav` and `.mech-projects` — the tag row and the bottom-edge title
+   strip this header used to carry — are gone. Ten projects made both of them
+   clutter rather than navigation; what replaced them is `.mech-menu-key`
+   below, opening the same index sheet a phone gets. See `MechMenu.tsx`. */
+
+/* The name that used to hang behind the cast — `.mech-hero-name`, its kicker
+   and its title — is gone with the line-up it was drawn over. Home says the
+   name in the middle of the cluster now, and it is a `container-type` fit
+   against its own column rather than the average-advance sum this did against
+   the frame's width. See `.mech-ident-name` in `MechCluster.css`.
+
+/* ---- the subject ---- */
+
+.mech-stage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(1920 * var(--px));
+  height: calc(1080 * var(--px));
+  transform: translate(-50%, -50%);
+  z-index: 1;
+}
+
+/* The pool of light behind the subject is `.mech-bloom` in MechHud — one
+   wash for the whole site, drawn on every screen. The stage used to carry
+   its own `::before` central glow on top of that, which is what read as the
+   centre of a project screen being doubly lit; it is gone. See *one room,
+   both screens* below. */
+
+.mech-stage canvas {
+  display: block;
+}
+
+/* The subject's own layer, so it can be taken off the stage without being
+   taken down. `visibility` rather than `display`: a canvas in a box that has
+   been laid out keeps its size, and one in `display: none` has none to come
+   back to. */
+.mech-model-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.mech-model-layer[data-on='false'] {
+  visibility: hidden;
+}
+
+/* A still or a clip stands where the model does, at the exact size the
+   leaders were laid out against — `mediaBox()` in Mech.tsx does this same
+   sum, which is why the two can never drift apart. */
+.mech-flat {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  object-fit: cover;
+  border-radius: var(--round);
+}
+
+/* ---- the swap ----
+
+   Four beats, in order: the picture fades, the labels pointing at it follow
+   it out, the next picture arrives, and its labels draw themselves in. See
+   `the swap` in Mech.tsx — `EXIT_MS` there is the first two of these and has
+   to stay longer than they add up to.
+
+   Opacity only, so every frame of it is on the compositor and none of it is
+   painted. What it replaces — a canvas of cells eaten out of the subject — is
+   in `50629fd`. */
+
+/* Out is quicker than in. A picture leaving is a thing being taken away and
+   wants to be brisk about it; a picture arriving is the thing you asked for
+   and can afford to settle.
+
+   The *picture* — not the housing it is mounted in. The brackets, the strip
+   naming it and the transport under it are not part of the image, they are
+   the thing holding it, and each has an entry of its own to undo. Fading the
+   whole housing took them all out on one curve and made the entry a lie. */
+.mech-stage .mech-media,
+.mech-stage .mech-model-layer {
+  transition: opacity 300ms linear;
+}
+
+.mech-stage[data-covered='true'] .mech-media,
+.mech-stage[data-covered='true'] .mech-model-layer {
+  opacity: 0;
+  transition-duration: 240ms;
+}
+
+/* ---- entries, and their inverses ----
+
+   Everything mounted around the picture arrives with an animation and leaves
+   by undoing it. Not a fade out: a fade out of a thing that was drawn on, or
+   popped in, is a different gesture, and the housing should read as being
+   *placed* and then *taken*.
+
+   **Each exit is its own keyframes, and that is not a style choice.** The
+   obvious way to write this is the entry with `animation-direction: reverse`,
+   and it does not work, for two reasons that both look like the animation is
+   missing:
+
+   A `reverse` animation runs its keyframes backwards but evaluates its timing
+   function at 1−t rather than mirroring it, so an entry that starts fast comes
+   out as an exit that sits still and then snaps.
+
+   And — the one that actually bit — **an animation is only restarted when its
+   `animation-name` changes.** Going from `mech-draw` on the way in to
+   `mech-draw reverse` on the way out leaves the *same* running animation in
+   place with new timing bolted on. Its current time is already seconds past
+   the end of the entry, so it lands in the after-phase immediately and holds
+   the finished value: the line is not retracted, it is simply gone on the next
+   frame. Nothing animates, and nothing in the DOM looks wrong — the animation
+   is attached, with the right duration and direction, and it is over.
+
+   Different names force the browser to build a new animation with a current
+   time of zero. `mech-pop`/`mech-unpop`, `mech-draw`/`mech-undraw`,
+   `mech-fade`/`mech-out`. Forward, so the curve means what it says.
+
+   All of it waits out the picture's own fade first: the housing goes after the
+   thing it was holding, the same way the leaders do.
+
+   Scoped to `data-leaving`, not `data-covered` — `covered` is also true for
+   the whole `hold` phase in between, which is when the *next* frame's housing
+   first mounts. Keyed off `data-covered` there, a brand new set of brackets
+   would open on `mech-unpop`'s first keyframe (full opacity, held by
+   `animation-fill-mode: both` until its delay runs out) instead of `mech-pop`'s
+   — a flash of the thing that just arrived, before it corrects itself into
+   fading in properly once `phase` reaches `in`. `leaving` is only true while
+   the outgoing frame — same DOM nodes, not a fresh mount — is actually on its
+   way out. */
+.mech-stage[data-leaving='true'] .mech-housing-label,
+.mech-stage[data-leaving='true'] .mech-transport,
+.mech-stage[data-leaving='true'] .mech-corner {
+  animation: mech-unpop 240ms var(--ease) 140ms both;
+}
+
+/* A leader does not fade out. Its entry draws the line on out of nothing, so
+   its exit takes the line back off, to the tip it grew from.
+
+   Two orders are mirrored, not one. Inside a leader, what came last goes
+   first and the line is taken off after everything it was carrying; across the
+   set, `--d-out` runs the arrival backwards, so the last leader to be laid
+   down is the first away. Shorter steps than the way in and capped — see
+   `OUT_STEP` in Mech.tsx, which `EXIT_MS` is set against. */
+.mech-stage[data-covered='true'] .mech-leader-mark,
+.mech-stage[data-covered='true'] .mech-leader-core {
+  animation: mech-out 320ms var(--ease) calc(170ms + var(--d-out, 0ms)) both;
+}
+
+/* The card shuts back into the corner it opened from — its own keyframes, not
+   `mech-card` reversed, for the reason written out at length below. */
+.mech-stage[data-covered='true'] .mech-leader-card {
+  animation: mech-uncard 280ms var(--ease) calc(200ms + var(--d-out, 0ms)) both;
+}
+
+@keyframes mech-uncard {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.82);
+  }
+}
+
+.mech-stage[data-covered='true'] .mech-leader {
+  animation: mech-undraw 520ms var(--ease) calc(210ms + var(--d-out, 0ms)) both;
+}
+
+/* The ping is a loop rather than an entry, so there is nothing to undo — it
+   goes out with the mark it came from. */
+.mech-stage[data-covered='true'] .mech-leader-ping {
+  animation: mech-out 260ms var(--ease) calc(170ms + var(--d-out, 0ms)) both;
+}
+
+/* ---- the housing ----
+
+   A still is not laid on the page, it is mounted in something: corners, a
+   strip naming it, a transport under it. The dashboard this borrows from puts
+   every readout in a box with a label, and a picture floating in a void
+   beside a screen full of instruments looks like the one thing nobody
+   finished. */
+
+.mech-housing {
+  position: absolute;
+  z-index: 2;
+}
+
+.mech-media {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  /* Barely off square. Enough that the picture reads as a screen set into the
+     panel rather than as a rectangle cut out of it, and not so much that the
+     corner brackets — which are hard right angles sitting a few pixels
+     outside — start to look like they are pointing at nothing. */
+  border-radius: var(--round);
+  /* The subject sits behind glass: an inner line rather than a border, so the
+     picture keeps its full size and the housing keeps its exact box. */
+  box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.22);
+}
+
+.mech-housing-label,
+.mech-transport {
+  position: absolute;
+  left: var(--label-inset);
+  right: var(--label-inset);
+  display: flex;
+  align-items: center;
+  gap: calc(10 * var(--px));
+  font-size: calc(12.5 * var(--type));
+  letter-spacing: calc(1.3 * var(--type));
+  color: rgba(var(--accent-rgb), 0.75);
+  animation: mech-pop 400ms cubic-bezier(0.2, 1.4, 0.4, 1) 160ms both;
+  /* Out of the picture's edge rather than out of its own middle: these two
+     are set against the left inset, and a strip that grows from its centre
+     reads as the words arriving from somewhere other than where they sit. */
+  transform-origin: left center;
+}
+
+.mech-housing-label {
+  bottom: calc(100% + var(--label-gap));
+}
+
+.mech-housing-count {
+  margin-left: auto;
+  color: var(--mid);
+  font-variant-numeric: tabular-nums;
+}
+
+.mech-transport {
+  top: calc(100% + var(--label-gap) - 6 * var(--px));
+}
+
+/* Big enough to read and to hit. The controls were single characters at
+   eleven frame pixels, which is a row of specks — you could not tell the full
+   screen control from the mute one, which is the only thing either of them
+   has to say. */
+.mech-transport button {
+  display: grid;
+  place-items: center;
+  width: calc(30 * var(--px));
+  height: calc(30 * var(--px));
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mid);
+  transition: color 160ms linear, filter 160ms linear;
+}
+
+.mech-icon {
+  width: calc(22 * var(--px));
+  height: calc(22 * var(--px));
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Play is a solid triangle; everything else is a line drawing. */
+.mech-icon-solid {
+  fill: currentColor;
+  stroke: none;
+}
+
+.mech-transport button:hover {
+  color: var(--accent);
+  filter: drop-shadow(0 0 calc(7 * var(--px)) rgba(var(--accent-rgb), 0.7));
+}
+
+.mech-transport button[data-off='true'] {
+  color: #7c5340;
+}
+
+.mech-transport input[type='range'] {
+  flex: 1;
+  height: calc(2 * var(--px));
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(var(--accent-rgb), 0.22);
+}
+
+.mech-transport input[type='range']::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: calc(5 * var(--px));
+  height: calc(11 * var(--px));
+  background: var(--accent);
+  box-shadow: 0 0 calc(8 * var(--px)) rgba(var(--accent-rgb), 0.7);
+}
+
+.mech-transport input[type='range']::-moz-range-thumb {
+  width: calc(5 * var(--px));
+  height: calc(11 * var(--px));
+  border: 0;
+  background: var(--accent);
+}
+
+/* The full screen control sits on the right-hand end of the strip whatever is
+   in front of it. On a clip the scrubber pushes it there; on a still there was
+   nothing to push, so it ended up tucked against the caption as if it belonged
+   to the words. */
+.mech-transport button:last-child {
+  margin-left: auto;
+}
+
+.mech-time {
+  color: var(--mid);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: calc(320 * var(--px));
+}
+
+/* Corner brackets, drawn well outside the picture so they never sit on it —
+   and never touch it either. Pulled back off the corners: at five pixels they
+   read as a border that had a bite taken out of each corner, and the whole
+   point of a bracket is the air between it and the thing it is holding.
+
+   They breathe. Each one drifts a couple of pixels further out and back on a
+   slow cycle, all four together, so the housing reads as something holding
+   the picture rather than as a rule drawn around it. `--dx`/`--dy` are which
+   way out is for that corner, which is what lets one set of keyframes serve
+   all four. */
+.mech-corner {
+  position: absolute;
+  width: calc(15 * var(--px));
+  height: calc(15 * var(--px));
+  border: 1px solid rgba(var(--accent-rgb), 0.7);
+  filter: drop-shadow(0 0 calc(6 * var(--px)) rgba(var(--accent-rgb), 0.4));
+  /* Two at once: the entry owns opacity and `scale`, the breath owns
+     `transform`. Separate properties rather than one transform between them —
+     a bracket that popped in with a transform would have the breath take the
+     property back off it the moment the entry finished. */
+  animation: mech-pop 380ms cubic-bezier(0.2, 1.5, 0.4, 1) 220ms both,
+    mech-breathe 4.2s 700ms ease-in-out infinite alternate;
+}
+
+/* Placed rather than faded: a little under size, and a curve that goes past 1
+   before it settles. Slight — this is a bracket being set down, not a button
+   being pressed. `scale` on its own rather than inside a `transform`, so
+   anything already animating transform on the same element is untouched. */
+@keyframes mech-pop {
+  from {
+    opacity: 0;
+    scale: 0.88;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+@keyframes mech-breathe {
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(calc(var(--dx) * 5 * var(--px)), calc(var(--dy) * 5 * var(--px)));
+  }
+}
+
+.mech-corner[data-at='tl'] {
+  left: calc(-13 * var(--px));
+  top: calc(-13 * var(--px));
+  border-right: 0;
+  border-bottom: 0;
+  --dx: -1;
+  --dy: -1;
+}
+
+.mech-corner[data-at='tr'] {
+  right: calc(-13 * var(--px));
+  top: calc(-13 * var(--px));
+  border-left: 0;
+  border-bottom: 0;
+  --dx: 1;
+  --dy: -1;
+}
+
+.mech-corner[data-at='bl'] {
+  left: calc(-13 * var(--px));
+  bottom: calc(-13 * var(--px));
+  border-right: 0;
+  border-top: 0;
+  --dx: -1;
+  --dy: 1;
+}
+
+.mech-corner[data-at='br'] {
+  right: calc(-13 * var(--px));
+  bottom: calc(-13 * var(--px));
+  border-left: 0;
+  border-top: 0;
+  --dx: 1;
+  --dy: 1;
+}
+
+/* Nothing breathes at anybody who asked it not to. */
+@media (prefers-reduced-motion: reduce) {
+  .mech-corner {
+    animation: mech-fade 400ms 220ms both;
+  }
+
+  .mech-stage[data-leaving='true'] .mech-corner,
+  .mech-stage[data-leaving='true'] .mech-housing-label,
+  .mech-stage[data-leaving='true'] .mech-transport {
+    animation: mech-out 240ms 140ms both;
+  }
+}
+
+/* Full screen: the housing becomes the window, and its furniture goes back
+   inside it — a label strip positioned above the top edge of the screen is a
+   label strip nobody can read. The overrides are forced because the box is
+   sized by inline styles in frame coordinates, and inline wins otherwise. */
+.mech-housing:fullscreen {
+  left: 0 !important;
+  top: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+}
+
+.mech-housing[data-full='true'] {
+  background: #000;
+}
+
+.mech-housing[data-full='true'] .mech-media {
+  object-fit: contain;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.mech-housing[data-full='true'] .mech-corner {
+  display: none;
+}
+
+.mech-housing[data-full='true'] .mech-housing-label {
+  bottom: auto;
+  top: calc(20 * var(--px));
+  left: calc(24 * var(--px));
+  right: calc(24 * var(--px));
+}
+
+.mech-housing[data-full='true'] .mech-transport {
+  top: auto;
+  bottom: calc(30 * var(--px));
+  left: calc(24 * var(--px));
+  right: calc(24 * var(--px));
+}
+
+/* ---- leaders ---- */
+
+.mech-leaders {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+  overflow: visible;
+}
+
+/* The cards are the only part that takes the pointer. The lines are a
+   hairline and nobody is going to hit one on purpose — and the `foreignObject`
+   around a card is a rectangle a third larger than the card on every side, so
+   the slack it leaves for the halo must not be hoverable either. */
+.mech-leaders text,
+.mech-leader-card {
+  pointer-events: auto;
+}
+
+.mech-leader-note,
+.mech-leader-seat {
+  pointer-events: none;
+}
+
+/* The link is additive only. Dimming the rest of the readout made hovering
+   anything read as the labels going out, which is worse than no link at
+   all — the answer to "which one is this" is that one getting brighter, not
+   the others leaving. */
+.mech-leaders g {
+  transition: opacity 200ms linear;
+}
+
+.mech-leaders g[data-on='true'] .mech-leader {
+  stroke: var(--accent);
+  stroke-width: 1.6;
+  filter: drop-shadow(0 0 6px rgba(var(--accent-rgb), 0.9));
+}
+
+/* Lit is the border coming up and the halo widening, never the words changing
+   colour: the sentence in there is the one white thing on the card and turning
+   it accent makes the card read as disabled the rest of the time. */
+.mech-leaders g[data-on='true'] .mech-leader-card {
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.12);
+  box-shadow:
+    0 0 calc(34px) rgba(var(--accent-rgb), 0.4),
+    inset 0 0 calc(30px) rgba(var(--accent-rgb), 0.14);
+}
+
+/* ---- the mark on the spot ----
+
+   Three circles on the tip of every leader: a still ring, a dot in it, and a
+   ping that opens out of it and goes. Together they answer the question a
+   line on its own leaves open — not "there is something here" but "this, the
+   thing under the ring". The ping is the part you notice without looking,
+   which is why it is slow and faint rather than a beacon.
+
+   `transform-box: fill-box` so the scale turns about the circle's own centre
+   and not about the corner of the 1920×1080 viewBox. */
+.mech-leader-ping,
+.mech-leader-mark,
+.mech-leader-core {
+  transform-box: fill-box;
+  transform-origin: center;
+  pointer-events: none;
+}
+
+/* A leader arrives in a cascade: the line is drawn on, the words land on it,
+   and the mark opens on the spot last. `--d` is which leader this is — 200 and
+   130 apart, set on the group in Mech.tsx — and everything inside offsets from
+   it, so one number places the whole thing and the offsets between its parts
+   are written here with the rest of the timing. */
+.mech-leader-mark {
+  fill: none;
+  stroke: rgba(var(--accent-rgb), 0.85);
+  stroke-width: 1.2;
+  opacity: 0;
+  animation: mech-fade 560ms ease calc(var(--d) + 560ms) both;
+}
+
+.mech-leader-core {
+  fill: var(--accent);
+  opacity: 0;
+  animation: mech-fade 560ms ease calc(var(--d) + 560ms) both;
+  filter: drop-shadow(0 0 5px rgba(var(--accent-rgb), 0.9));
+}
+
+.mech-leader-ping {
+  fill: none;
+  stroke: rgba(var(--accent-rgb), 0.55);
+  stroke-width: 1;
+  animation: mech-ping 2.8s cubic-bezier(0.2, 0.7, 0.35, 1) calc(var(--d) + 700ms) infinite both;
+}
+
+@keyframes mech-ping {
+  0% {
+    opacity: 0;
+    transform: scale(0.35);
+  }
+  12% {
+    opacity: 0.85;
+  }
+  /* Held open and empty for most of the cycle: a ring that pulses without a
+     rest is a loading spinner, and this is meant to be something you catch
+     out of the corner of an eye twice a minute. */
+  62%,
+  100% {
+    opacity: 0;
+    transform: scale(2.1);
+  }
+}
+
+/* Lit with everything else in the pair, so hovering a fold points at the part
+   of the picture it is about. */
+.mech-leaders g[data-on='true'] .mech-leader-mark {
+  stroke: var(--accent);
+  stroke-width: 1.6;
+  filter: drop-shadow(0 0 7px rgba(var(--accent-rgb), 0.9));
+}
+
+.mech-leaders g[data-on='true'] .mech-leader-ping {
+  stroke: var(--accent);
+  animation-duration: 1.3s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mech-leader-ping {
+    animation: mech-fade 420ms ease 220ms both;
+    opacity: 0.35;
+  }
+}
+
+/* First in, and the only one of these that is not a fade: the line is drawn
+   on out of nothing, which is what a leader is. */
+.mech-leader {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 1.15;
+  stroke-dasharray: var(--l);
+  stroke-dashoffset: var(--l);
+  animation: mech-draw 850ms cubic-bezier(0.3, 0.8, 0.3, 1) var(--d) both;
+}
+
+/* ---- the card at the end of the line ----
+
+   A sentence, in a box, with the leader running into the corner of it. What
+   was here before was SVG text — a key in accent over a value in white, on a
+   rule — and SVG text does not wrap, so the label could hold two words and
+   never a clause. This is HTML inside a `foreignObject` for that one reason.
+
+   Everything in here is authored in plain `px`, which inside the leaders'
+   `viewBox` are *user units*: one unit is one `--px`, the same as every
+   coordinate in `leaders.ts` and every radius above. So the border, the
+   corner and the padding all scale with the frame with nothing overridden.
+   Type is the exception and takes `--type-k` like the SVG text did, because
+   type is on its own unit everywhere on this site — see `useTypeScale`.
+
+   `.mech-leader-seat` is the slack. `foreignObject` clips to its own
+   rectangle, and this card has a halo well outside its border, so the element
+   is drawn `CARD.glow` larger on every side and the seat pads that back and
+   pushes the card into whichever corner the line is arriving at. Which corner
+   is `data-x`/`data-y`, and it is also the corner the card opens from.
+
+   Nothing here is a `--px` calc: inside the viewBox that would be a unit
+   inside a unit. */
+.mech-leader-seat {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  padding: 34px;
+}
+
+.mech-leader-seat[data-x='left'] {
+  justify-content: flex-start;
+}
+
+/* The same corner twice: the one the card is pushed into, and the one it
+   opens from. */
+.mech-leader-seat[data-x='right'] {
+  justify-content: flex-end;
+  --card-x: right;
+}
+
+.mech-leader-seat[data-y='top'] {
+  align-items: flex-start;
+}
+
+.mech-leader-seat[data-y='bottom'] {
+  align-items: flex-end;
+  --card-y: bottom;
+}
+
+.mech-leader-card {
+  margin: 0;
+  width: max-content;
+  max-width: 100%;
+  padding: 9px 14px 10px;
+  border: 1.3px solid rgba(var(--accent-rgb), 0.9);
+  /* Kept the same as `CARD.round` in leaders.ts, which the leader needs in
+     order to land on the stroke rather than on the corner the stroke has
+     curved away from. */
+  border-radius: 8px;
+  /* Barely a fill. The card sits over the subject as often as not, and a box
+     opaque enough to read against the grid is a box you cannot see the face
+     through. */
+  background: rgba(var(--accent-rgb), 0.07);
+  box-shadow:
+    0 0 26px rgba(var(--accent-rgb), 0.22),
+    inset 0 0 24px rgba(var(--accent-rgb), 0.08);
+  color: #fff;
+  font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-weight: 400;
+  font-size: calc(14px * var(--type-k, 1));
+  line-height: 1.32;
+  /* Ragged right, and never a hyphen: this is a caption pointing at a thing,
+     and justified type in a box that narrow opens rivers in two lines. */
+  text-wrap: pretty;
+  transition: border-color 200ms linear, background 200ms linear, box-shadow 200ms linear;
+}
+
+/* A phone stage is about a third of the frame's width and holds the same
+   sentences. At the size above, three of them are the screen. `leaders.ts`
+   already caps how wide a card may be set there; this is the other half of
+   it. */
+.mech-leaders[data-narrow='true'] .mech-leader-card {
+  padding: 7px 11px 8px;
+  font-size: calc(12.5px * var(--type-k, 1));
+}
+
+/* Opened from the corner the line arrives at, so it reads as the leader
+   pushing it out rather than as a box fading up beside one. `--d` is this
+   leader's place in the cascade; the line is drawn on first and the card is
+   let out over the last of it. */
+.mech-leader-card {
+  opacity: 0;
+  transform-origin: var(--card-x, left) var(--card-y, top);
+  animation: mech-card 380ms var(--ease) calc(var(--d) + 430ms) both;
+}
+
+@keyframes mech-card {
+  from {
+    opacity: 0;
+    transform: scale(0.82);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.mech-leader-label,
+.mech-leader-value {
+  opacity: 0;
+  animation: mech-fade 520ms ease both;
+}
+
+/* Still drawn by the cast's own pin editor, which is unmounted but intact —
+   see `MechCastPins.tsx`. A project screen's leaders are cards now. */
+.mech-leader-label {
+  animation-delay: calc(var(--d) + 420ms);
+}
+
+.mech-leader-value {
+  animation-delay: calc(var(--d) + 520ms);
+}
+
+.mech-leader-label {
+  font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-weight: 400;
+  font-size: calc(18px * var(--type-k, 1));
+  fill: var(--accent);
+  /* SVG text takes no text-shadow; a drop-shadow filter is the same halo. */
+  filter: drop-shadow(0 0 6px rgba(46, 230, 196, 0.55));
+}
+
+.mech-leader-value {
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  /* Same size as `.mech-fold-body p` — the other white detail text on the
+     screen, under project overview. `13.5px * type-k` and `13.5 * var(--type)`
+     land on the same rendered size; `type-k` is exactly the ratio between the
+     two units, so a plain SVG px multiplied by it means "this many `--type`". */
+  font-size: calc(13.5px * var(--type-k, 1));
+  fill: #fff;
+}
+
+@keyframes mech-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes mech-fade {
+  to {
+    opacity: 1;
+  }
+}
+
+/* Both ends written out. `mech-out` is used on elements that declare
+   `opacity: 0` themselves — the leader's text and its mark, which are invisible
+   until their entry runs — and an implicit `from` would take that underlying 0
+   and fade nothing to nothing. */
+@keyframes mech-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* The implicit end here is the underlying `stroke-dashoffset`, which is the
+   line's own length: drawn at 0, taken back off to `--l`. */
+@keyframes mech-undraw {
+  from {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes mech-unpop {
+  to {
+    opacity: 0;
+    scale: 0.88;
+  }
+}
+
+@keyframes mech-rise {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 10px));
+  }
+}
+
+/* ---- left column ---- */
+
+.mech-side {
+  position: absolute;
+  left: calc(101 * var(--px));
+  top: calc(85 * var(--px));
+  width: calc(380 * var(--px));
+  bottom: calc(120 * var(--px));
+  /* A column rather than three absolute things: the tagline is the one
+     block here whose height is set by the words instead of by the frame, so
+     the folds under it have to be able to move. See `.mech-tagline`. */
+  display: flex;
+  flex-direction: column;
+  z-index: 3;
+}
+
+@keyframes mech-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(10 * var(--px)));
+  }
+  /* An explicit rest state, for the same reason `mech-cluster-in` has one:
+     with only a `from`, `animation-fill-mode: both` holds the entrance offset
+     forever in Chrome rather than settling back to the base style. */
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes mech-side-out {
+  to {
+    opacity: 0;
+    transform: translateY(calc(-8 * var(--px)));
+  }
+}
+
+/* Both directions on the attribute rather than a plain declaration on the
+   block, exactly as the cluster's blocks are — see *coming up, and going down*
+   in MechCluster.css, and *the housing arrives empty* in the README.
+
+   The entrance used to be a bare `animation` on `.mech-side` above, which runs
+   once when the element mounts and never again; the column had no exit at all,
+   so a project's title, tagline and whole write-up sat at full brightness for
+   the length of the transit and then stopped existing when the component
+   unmounted. Hung off `data-transiting` they leave and come back on every
+   screen change — and *only* on a screen change. Stepping the tile strip is
+   also `phase === 'out'`, and a write-up has no business leaving because you
+   picked a different photograph of the same project. */
+.mech-side[data-transiting='false'] {
+  animation: mech-in 620ms var(--ease) both;
+}
+
+/* And it waits for its own readouts first, the same two-beat exit home has —
+   see `--out` in MechCluster.css. The title and every fold heading are
+   `Segment`s taking `back`, so their lamps come off over about three hundred
+   milliseconds; the column leaving on the same frame took them out lit, which
+   is the cut this was fixed to stop being. Still well inside `LEAVE_MS`. */
+.mech-side[data-transiting='true'] {
+  animation: mech-side-out 240ms 360ms var(--ease) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mech-side[data-transiting='false'],
+  .mech-side[data-transiting='true'] {
+    animation: none;
+  }
+}
+
+/* ---- the title ----
+
+   A readout, not a line of type. `.mech-title` holds a `Segment` — the same
+   fourteen-segment display the fold headings under it and home's `INTRO` are,
+   one size up, in the warm channel. See `TITLE_CELLS` in Mech.tsx.
+
+   What that deleted was a whole mechanism. The title was set to one line, and
+   at a flat size the column held "openup" and broke "grand theft auto v"
+   across three, with the break landing in the middle of a name — so the size
+   was capped against the character count (`--title-len`, handed in from
+   Mech.tsx, over an average advance for the face, plus 26 for the caret),
+   once here and once for narrow, with `white-space: nowrap` said out loud
+   underneath in case a name of unusually wide letters overran the average. A
+   display cannot break a name across two lines. All of it is gone.
+
+   `git show` the commit that added this note for the sums, if the reasoning
+   is ever wanted for something else — it was good arithmetic for the problem
+   it had. */
+.mech-title {
+  margin: 0;
+  /* Wider than the 380-unit column it sits in, and deliberately so — the
+     argument above about 460 still holds and holds further here. A fixed
+     twenty-one lamps is a much wider box than a name's worth of type was, and
+     the title has to out-read the fold headings under it (nineteen lamps
+     across 366 units); at the column's own width it printed *smaller* than
+     they do, which inverted the one hierarchy this column has. There is
+     nothing beside it until the subject's box starts past 600.
+
+     And no `max-width` — that was the bug: `100%` of a 380-unit column is
+     380 units, so the width above was never once used. Narrow gets the
+     window instead, below. */
+  width: calc(620 * var(--px));
+  /* An over-wide item in a flex column is stretched back to the column's
+     width unless it is told not to shrink. */
+  flex: none;
+}
+
+@keyframes mech-flicker {
+  0%, 34%, 37%, 62%, 64%, 100% {
+    opacity: 1;
+  }
+  35%, 63% {
+    opacity: 0.93;
+  }
+}
+
+/* The cursor the title types behind. It blinks while there is more to come
+   and goes out when the line is finished, rather than sitting there flashing
+   at a title nobody is writing. */
+.mech-caret {
+  display: inline-block;
+  width: calc(17 * var(--px));
+  height: calc(34 * var(--px));
+  margin-left: calc(4 * var(--px));
+  vertical-align: calc(-3 * var(--px));
+  background: var(--accent);
+  box-shadow: 0 0 calc(12 * var(--px)) rgba(var(--accent-rgb), 0.6);
+  animation: mech-caret 0.5s steps(1, end) infinite;
+}
+
+.mech-caret[data-done='true'] {
+  animation: mech-caret-out 400ms var(--ease) forwards;
+}
+
+@keyframes mech-caret {
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes mech-caret-out {
+  to {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+}
+
+/* The panel's system text, like the write-up under it and home's own intro
+   paragraph — see `.mech-fold-body p`. It was the last line on this screen set
+   in the site's sans, sitting directly under a readout, which made it read as
+   a caption printed on a different machine. White at the write-up's own size:
+   one voice for every sentence in this column. */
+.mech-tagline {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #fff;
+  margin-top: calc(10 * var(--px));
+  /* A short line, not the role list this replaced — so the reserve under it
+     only has to cover a wrap to two lines on a narrow window, not the six a
+     long tag list could run to. Still a floor and not a position, for the
+     same reason: nothing should shift the folds' start between one project's
+     tagline and the next. */
+  min-height: calc(40 * var(--px));
+  font-size: calc(11 * var(--type));
+  line-height: 1.6;
+}
+
+.mech-folds-wrap {
+  /* Whatever is left of the column under the title and tagline. `min-height:
+     0` is what lets the fold list below shrink back down and actually
+     scroll, rather than growing the flex item to fit. */
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Two flexible spacers around the fold list rather than `justify-content:
+   center` — a plain centre sat noticeably low, most of the way down a tall
+   window, because the space under the title genuinely is that tall. Weighting
+   the lower spacer more than the upper one holds the list a little above
+   true middle instead. */
+.mech-folds-wrap::before,
+.mech-folds-wrap::after {
+  content: '';
+  flex: 1;
+}
+
+.mech-folds-wrap::after {
+  flex-grow: 1.6;
+}
+
+/* Inset by four and padded back out by four: a scroll box clips both axes
+   whatever `overflow-x` says, and the pip turning to a diamond reaches
+   outside the column's left edge. The content lands where it always did. */
+.mech-folds {
+  /* Sized to its own content so the spacers above and below can centre it,
+     rather than stretching to fill the wrap and padding out the space below
+     it. `min-height: 0` is what lets it shrink back down and actually scroll
+     on a project with more folds than the column has room for. */
+  flex: 0 1 auto;
+  min-height: 0;
+  margin: 0 calc(-5 * var(--px));
+  padding: 0 calc(5 * var(--px));
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.mech-folds::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---- a fold's heading ----
+
+   A readout, not a line of type. It used to be Clash Display in the panel's
+   phosphor, typed in a character at a time; it is home's `INTRO` cap now —
+   the same fourteen-segment display, the same warm channel, over the same
+   field of unlit cells. See `FOLD_CELLS` in Mech.tsx for why the box is a
+   fixed nineteen and not the length of the word in it.
+
+   The lit/unlit grammar the typed version carried in three colours is carried
+   by brightness here, which is the only thing a lamp actually has: a closed
+   fold is a display turned down, an open one is a display at full. Fading the
+   whole `.mech-seg` takes the unlit field down with the word, which is right —
+   the display dims, it does not go monochrome. */
+.mech-fold > button {
+  display: flex;
+  align-items: center;
+  gap: calc(10 * var(--px));
+  width: 100%;
+  background: none;
+  border: 0;
+  /* The row height came off `line-height` when this was type; the display
+     sets its own height from its aspect, so the space between headings has
+     to be said out loud. */
+  padding: calc(5 * var(--px)) 0;
+  text-align: left;
+  /* Lit before anyone touches it. These sat at half brightness closed, which
+     is a grammar that works for a lamp on an instrument — off until it has
+     something to report — and does not work for the only list of what a
+     project *is*. Turned that far down they read as disabled, and a heading
+     nobody can see is not a heading held in reserve. The span between the
+     three states is what carries "closed / pointed at / open", and it does
+     that as well from 0.8 as it did from 0.5, over a range anyone can read at
+     the bottom of. */
+  color: rgba(var(--warn-rgb), 0.82);
+  transition: color 200ms linear;
+}
+
+.mech-fold > button .mech-seg {
+  /* Sized to a *cell*, not to the room.
+
+     `Segment` scales by width, so a display handed the whole column prints
+     bigger glyphs the wider the column is — and filling the 380 here put the
+     cell at nineteen frame units against home's twelve, which made these
+     headings half again the size of the readout they are modelled on. Home's
+     `INTRO` is `--count-w` (253) over twenty-one cells; twelve units a cell is
+     that same measure, so the two instruments print at one size.
+
+     `--fold-cells` is `FOLD_CELLS`, handed in from Mech.tsx rather than
+     written here twice — the width has to track the cell count or the next
+     project with a longer section title silently resizes every heading on the
+     site. */
+  flex: none;
+  width: calc(var(--fold-cells, 19) * 12 * var(--px));
+  max-width: 100%;
+  opacity: 0.82;
+  transition: opacity 200ms linear;
+}
+
+.mech-fold > button:hover {
+  color: rgba(var(--warn-rgb), 0.92);
+}
+
+.mech-fold > button:hover .mech-seg {
+  opacity: 0.92;
+}
+
+.mech-fold[data-open='true'] > button {
+  color: var(--warn);
+}
+
+.mech-fold[data-open='true'] .mech-seg {
+  opacity: 1;
+}
+
+/* A square, not a triangle — this is a readout, not a disclosure widget. */
+.mech-pip {
+  width: calc(4 * var(--px));
+  height: calc(4 * var(--px));
+  flex: none;
+  background: currentColor;
+  transition: transform 320ms var(--ease);
+}
+
+.mech-fold[data-open='true'] .mech-pip {
+  transform: rotate(45deg) scale(1.3);
+}
+
+/* ---- the fold itself ----
+
+   A grid row grown from 0fr to 1fr. An unknown height cannot be transitioned
+   any other way, and unmounting the body would give the panel an opening but
+   never a close. Everything inside is staggered behind that: the rule draws
+   across, then the copy lifts in — and both run backwards on the way out. */
+
+.mech-fold-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition: grid-template-rows 440ms var(--ease), visibility 0s linear 440ms;
+}
+
+.mech-fold-body > div {
+  overflow: hidden;
+  padding-left: calc(24 * var(--px));
+}
+
+.mech-fold[data-open='true'] .mech-fold-body {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  transition: grid-template-rows 440ms var(--ease), visibility 0s;
+}
+
+.mech-fold-rule {
+  display: block;
+  height: 1px;
+  margin: calc(6 * var(--px)) 0 calc(9 * var(--px));
+  /* Warm, following the heading it hangs off — see `.mech-fold > button`. A
+     green rule under a red readout reads as two different instruments. */
+  background: linear-gradient(to right, var(--warn), rgba(var(--warn-rgb), 0));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 380ms var(--ease);
+}
+
+.mech-fold[data-open='true'] .mech-fold-rule {
+  transform: scaleX(1);
+  transition-delay: 90ms;
+}
+
+/* The same voice as home's profile paragraph — `.mech-profile` in
+   MechCluster.css, and the note there is the argument: what a panel does with
+   a block of prose is set it in the monospace its system text already is,
+   pulled toward the phosphor rather than left at plain white. This column was
+   the last block on either screen still setting body copy in the site's own
+   sans, which made a project read as a document laid over the machine. */
+.mech-fold-body p {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* Home's intro paragraph exactly — 11 over 1.6, the `profileSize` default in
+     clusterTuning.ts. Not `--profile-size`: that variable is written onto
+     `.mech-cluster` by home's own Cluster tab, and a knob on the home panel
+     quietly resizing a project screen's body copy is a knob nobody would ever
+     find. */
+  font-size: calc(11 * var(--type));
+  line-height: 1.6;
+  /* White, not the phosphor tint home's profile carries. That paragraph is a
+     caption on a lit panel; this is the copy the project is actually read
+     from, and several hundred words of tinted monospace is a wall. */
+  color: #fff;
+  white-space: pre-line;
+  padding-bottom: calc(14 * var(--px));
+  opacity: 0;
+  transform: translateY(calc(-6 * var(--px)));
+  transition: opacity 200ms linear, transform 420ms var(--ease);
+}
+
+.mech-fold[data-open='true'] .mech-fold-body p {
+  opacity: 1;
+  transform: none;
+  transition-delay: 130ms;
+}
+
+/* ---- the media strip ----
+
+   **Along the foot of the frame, not down the right-hand margin.** It was a
+   vertical column opposite the write-up for as long as there was nothing else
+   asking for that side; the projects rail has it now — `MechBank` is mounted
+   on a project screen too (see `.mech-bank-col` below), so the one persistent
+   thing on this site stops disappearing the moment you use it. The strip took
+   the only other edge with room on it.
+
+   Which turns out to be the better place for it anyway, and the narrow layout
+   had already worked that out: pictures of *this* project are a row you scan,
+   not a list you read, and a row wants the long axis. It sits above the coords
+   readout and below everything else, so the order down the frame is the
+   subject, the pictures of it, and then the machine's own footer.
+
+   Everything below is horizontal now as the base case, with the narrow rules
+   keeping only what is genuinely narrow — tile sizes, snap and gutters. Two
+   copies of "make this sideways" was one copy too many the moment both
+   layouts wanted it. */
+
+.mech-rail-wrap {
+  position: absolute;
+  left: 50%;
+  /* Clear of the compass (`.mech-strip`, bottom 74 to 118) and the X/Y
+     readout under it — the strip runs the full width of the frame, and at
+     78 the rail's frame and thumb landed inside that same band, printing the
+     heading's own readout box over a tile. 132 puts the rail's bottom edge
+     above the strip's top with a little air to spare. */
+  bottom: calc(132 * var(--px));
+  transform: translateX(-50%);
+  z-index: 3;
+  display: flex;
+  /* The strip, and its scrubber under it. */
+  flex-direction: column;
+  gap: calc(8 * var(--px));
+  /* Wide enough for a dozen tiles and narrow enough to stay clear of the
+     write-up's column and the bank's; the strip scrolls rather than running
+     under either. */
+  max-width: calc(940 * var(--px));
+}
+
+.mech-rail {
+  display: flex;
+  flex-direction: row;
+  gap: calc(14 * var(--px));
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  /* Click-and-drag on a mouse (`Mech.tsx` does the actual scrolling); a
+     touch or pen never sees this, `touch-action: pan-x` leaves the browser's
+     own momentum scroll alone for those. */
+  cursor: grab;
+  touch-action: pan-x;
+  padding: calc(14 * var(--px)) calc(12 * var(--px));
+  border: 1px solid rgba(var(--accent-rgb), 0.16);
+  border-radius: var(--round);
+  background: rgba(0, 0, 0, 0.25);
+  box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.1);
+  /* Drawn in after the tiles have bubbled into place — 1200ms is `BOOT_MS`
+     in Mech.tsx, plus enough of a tail for a full tile strip's own stagger
+     to clear before the frame around it appears. */
+  animation: mech-rail-frame-in 420ms var(--ease) calc(1200ms + 760ms) both;
+}
+
+.mech-rail:active {
+  cursor: grabbing;
+}
+
+@keyframes mech-rail-frame-in {
+  from {
+    border-color: rgba(var(--accent-rgb), 0);
+    background-color: rgba(0, 0, 0, 0);
+    box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0);
+  }
+}
+
+.mech-rail::-webkit-scrollbar {
+  display: none;
+}
+
+/* The tile strip's own scrubber, in the same pen as the transport's — a
+   hairline track and a small glowing thumb, rather than a native scrollbar
+   nothing here otherwise draws. The bar itself grows in last of all, after
+   the frame around the tiles — `data-scrollable` still decides whether it
+   shows at all, hidden whenever the tiles all fit. */
+.mech-rail-track {
+  position: relative;
+  flex: none;
+  width: 100%;
+  height: calc(3 * var(--px));
+  border-radius: calc(2 * var(--px));
+  background: rgba(var(--accent-rgb), 0.18);
+  opacity: 0;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: opacity 200ms linear;
+  animation: mech-rail-track-in 380ms var(--ease) calc(1200ms + 940ms) both;
+}
+
+@keyframes mech-rail-track-in {
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.mech-rail-wrap[data-scrollable='true'] .mech-rail-track {
+  opacity: 1;
+}
+
+.mech-rail-thumb {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--thumb-left, 0%);
+  width: var(--thumb-w, 30%);
+  border-radius: calc(2 * var(--px));
+  background: var(--accent);
+  box-shadow: 0 0 calc(7 * var(--px)) rgba(var(--accent-rgb), 0.7);
+}
+
+.mech-tile {
+  animation: mech-tile-in 460ms cubic-bezier(0.24, 1.5, 0.4, 1) both;
+  /* 1200ms is `BOOT_MS` in Mech.tsx: the tiles hold off with the rest of the
+     chrome and bubble in top to bottom once the machine is up, rather than
+     counting down from mount while the strip they're in is still invisible
+     — which is what a plain per-tile delay works out to under the boot fade
+     in `.mech-rail-wrap`. */
+  animation-delay: calc(1200ms + var(--i) * 55ms + 60ms);
+  width: calc(68 * var(--px));
+  height: calc(58 * var(--px));
+  flex: none;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: calc(6 * var(--px));
+  background-color: #141414;
+  background-size: cover;
+  background-position: center;
+  display: grid;
+  place-items: center;
+  font-size: calc(10.5 * var(--type));
+  letter-spacing: calc(0.6 * var(--type));
+  color: var(--mid);
+  opacity: 0.55;
+  transition: opacity 200ms linear, border-color 200ms linear, box-shadow 200ms linear;
+}
+
+/* Lit, not moved. A tile that slides out from under the pointer is a tile you
+   have to chase, and the reticle's lock box is already measuring it. */
+.mech-tile:hover {
+  opacity: 1;
+  border-color: rgba(var(--accent-rgb), 0.55);
+  box-shadow: 0 0 calc(14 * var(--px)) rgba(var(--accent-rgb), 0.28);
+}
+
+.mech-tile[aria-pressed='true'] {
+  opacity: 1;
+  border-color: var(--accent);
+  outline: none;
+  box-shadow: inset 0 0 0 calc(60 * var(--px)) rgba(var(--accent-rgb), 0.2);
+  color: #fff;
+}
+
+/* ---- the dashboard ----
+
+   The surface everything else is printed on: a phosphor grid, a bloom off the
+   middle, a sweep that crosses now and then, and the compass strip along the
+   bottom. All of it under the readout and none of it in anyone's way. */
+
+.mech-hud {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* Faded out toward the edges rather than drawn to them — a grid that reaches
+   the corners of the window is a background, and this is meant to read as a
+   panel lit from behind. */
+/* Two copies of the same grid. The sharp one is the line; the blurred one
+   underneath is the light coming off it, which is the whole difference
+   between a wireframe and a lit panel. Blurring a repeating gradient costs
+   one composited layer and no per-frame work. */
+.mech-grid,
+.mech-grid::after {
+  background-image:
+    linear-gradient(to right, rgba(var(--accent-rgb), 0.16) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(var(--accent-rgb), 0.16) 1px, transparent 1px);
+  background-size: calc(46 * var(--px)) calc(46 * var(--px));
+}
+
+.mech-grid {
+  position: absolute;
+  inset: 0;
+  mask-image: radial-gradient(ellipse 80% 74% at 50% 48%, #000 22%, transparent 80%);
+  animation: mech-grid-in 1400ms var(--ease) both;
+  /* Moved with the page rather than welded to the glass — `--scrolled` is
+     written on `.mech-hud` from MechHud's scroll listener. A third of the
+     distance, because the grid is *behind* the readout and parallax is the
+     only thing on a flat screen that says so. The background is what moves,
+     not the element: a transform would drag the mask and the blurred copy
+     with it, and both of those belong to the window. */
+  background-position: 0 calc(var(--scrolled, 0px) * -0.34);
+}
+
+.mech-grid::after {
+  background-position: 0 calc(var(--scrolled, 0px) * -0.34);
+}
+
+.mech-grid::after {
+  content: '';
+  position: absolute;
+  inset: calc(-8 * var(--px));
+  filter: blur(calc(3 * var(--px)));
+  opacity: 0.85;
+}
+
+@keyframes mech-grid-in {
+  from {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+}
+
+/* ---- the panel coming alive ----
+
+   The grid's own cells, dealt in once as a ring travelling out from the middle
+   of the window while the rest of the machine boots. Each strikes bright,
+   holds a frame and decays to nothing; what is underneath when the last of
+   them has gone is `.mech-grid`, at the same 46-unit pitch and in the same
+   accent, so this reads as that grid lighting up rather than as a second one
+   laid over it. The layer is mounted for the boot and taken down after —
+   `MechTiles.tsx`, which measures the cell and works out the delays.
+
+   Nothing here animates anything but `opacity` and `transform`. There can be
+   a thousand of these on a wide window, and those two are the only properties
+   a compositor will run without waking the main thread — which on this exact
+   beat is busy with a WebGL context, a shader compile and a GLB. Colour is
+   baked into the cell and the flash is opacity alone for the same reason, and
+   `will-change` is deliberately absent: a thousand promoted layers is a
+   worse problem than the one it solves. */
+.mech-tiles {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 1), var(--cell, 0px));
+  grid-auto-rows: var(--cell, 0px);
+  /* Centred both ways, so the middle of the ring is the middle of the window
+     — the cell count is rounded up and there is a spare row and column to
+     absorb. */
+  justify-content: center;
+  align-content: center;
+  /* The same falloff `.mech-grid` has, for the same reason: an effect that
+     reaches the corners of the window is a background, and this is a panel
+     lit from behind.
+
+     **This mask has been suspected twice and measured once. It is not the
+     cost.** The reasoning against it is sound as far as it goes — a mask makes
+     its subtree one rasterised layer, so five hundred cells animating
+     `opacity` and `transform` cannot be composited and are ticked on the main
+     thread instead, which a trace confirms: twelve thousand nine hundred style
+     invalidations on `<i>` attributed to `Animation`. It was replaced with a
+     per-cell alpha computed from the same offsets the delay uses, which drew
+     the same picture and halved that count. Over five runs on a 4× throttled
+     handset it changed the medians by about three per cent — inside the run to
+     run spread — because a style invalidation on a leaf `<i>` with four
+     declarations is cheap, and *how many* of them there are was never the
+     problem. See **what the boot actually costs** in README.md for what was.
+     Don't spend it again. */
+  mask-image: radial-gradient(ellipse 82% 78% at 50% 50%, #000 25%, transparent 82%);
+}
+
+/* A struck cell, not a filled one. The wash is faint and the edge is what
+   carries it: a solid block of accent at any real opacity turns the whole
+   window green the moment more than a ring of them is up at once, which is
+   what the first pass at this did. An outline lighting up reads as the cell
+   being *found*; a solid reads as a colour wash. */
+.mech-tiles i {
+  display: block;
+  background: rgba(var(--accent-rgb), 0.22);
+  box-shadow:
+    inset 0 0 0 1px var(--accent),
+    0 0 calc(10 * var(--px)) rgba(var(--accent-rgb), 0.45);
+  opacity: 0;
+  animation: mech-tile 420ms var(--ease) both;
+}
+
+/* Struck, then gone. There is no plateau in the middle of this on purpose:
+   a cell that holds at a low opacity for most of its run leaves the whole
+   window faintly lit at once, and what should be a ring travelling outward
+   reads as a grid fading up. Bright by a fifth of the way through and falling
+   from there, so what is on screen at any moment is a hard front with a short
+   tail behind it. See `RING` in MechTiles.tsx, which is set against this
+   number rather than against a total. */
+@keyframes mech-tile {
+  0% {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  20% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+/* The front of the ring, drawn once as one element rather than inferred from
+   a thousand. It is what makes the cells read as being *struck* by something
+   travelling outwards instead of merely taking their turn. */
+.mech-tiles::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(60 * var(--px));
+  height: calc(60 * var(--px));
+  margin: calc(-30 * var(--px)) 0 0 calc(-30 * var(--px));
+  border: 1px solid rgba(var(--accent-rgb), 0.55);
+  border-radius: 50%;
+  animation: mech-tiles-ring 1150ms cubic-bezier(0.16, 0.8, 0.3, 1) both;
+}
+
+@keyframes mech-tiles-ring {
+  from {
+    opacity: 0.9;
+    transform: scale(0.2);
+  }
+  to {
+    opacity: 0;
+    transform: scale(46);
+  }
+}
+
+/* Nothing is dealt in for a reader who has asked for less motion — the grid
+   is simply there, which is what it was before any of this. */
+@media (prefers-reduced-motion: reduce) {
+  .mech-tiles {
+    display: none;
+  }
+}
+
+/* The room the panel is in. A rose sign off to the left, sodium off the
+   right, and the panel's own green wash in the middle — all far enough under
+   the readout that no white text ever sits on a tint. */
+/* ---- one room, both screens ----
+
+   The reference is not a lit display on a black page — it is a lit display in a
+   dark *room*, and what sells that is the light not stopping at the edge of
+   anything. The first four washes here are the room; the last two are the
+   pool the instruments sit in, and they used to live on `.mech-cluster::before`
+   instead.
+
+   Moving them was a fix. The cluster only exists on home, so its whole haze
+   went out the moment you opened a project — and `--cluster-glow` was set
+   inline on that element, which meant `--g` fell back to 1 on a project screen
+   however far up the Bloom knob was left. Wound up on home, the two screens
+   were lit differently and the swap read as the room's lights changing rather
+   than as a page moving. This element is on every screen and `--g` is set on
+   `.mech`, so the bloom is now one setting for the whole site.
+
+   Bled well past the frame on every side: a wash that stops at an edge is a
+   rectangle, and the whole point of it is that the light does not stop.
+
+   **One green in the middle, not two.** There used to be a second central
+   accent wash here — `ellipse 44% 36% at 50% 48%` at `0.1 * --g`, concentric
+   with the room's own `55% 50% at 50% 52%` and, at the Bloom knob's shipped
+   2.8, nearly four times its strength. On home you never saw it: the cluster
+   sits over the middle of the frame and covers it, so what shows is the wide
+   soft wash around the panel. A project screen has nothing over the middle,
+   so both ellipses were on view at once, and two concentric blurs of the same
+   colour at different radii read as exactly what they are — a glow with a
+   second, harder glow stacked on it, centred on the subject.
+
+   Only the wide one is left. It is the wash that is the same on both screens,
+   which is the one the site was already being lit by. */
+.mech-bloom {
+  position: absolute;
+  inset: calc(-200 * var(--px));
+  background:
+    radial-gradient(ellipse 55% 50% at 50% 52%, rgba(var(--accent-rgb), 0.075), transparent 72%),
+    radial-gradient(ellipse 46% 60% at 6% 88%, rgba(var(--wash-blue), 0.11), transparent 70%),
+    radial-gradient(ellipse 42% 55% at 96% 12%, rgba(var(--wash-lime), 0.07), transparent 70%),
+    radial-gradient(ellipse 38% 44% at 88% 92%, rgba(var(--wash-blue), 0.06), transparent 70%),
+    radial-gradient(ellipse 36% 28% at 50% 82%, rgba(var(--accent-rgb), calc(0.06 * var(--g))), transparent 74%),
+    /* The warm pool the reference's brake light throws — a single wash the size
+       of half the panel, most of it faded out before it reaches anything else
+       lit. Nothing on either screen is `--warn` this large. */
+    radial-gradient(ellipse 36% 26% at 50% 0%, rgba(var(--warn-rgb), calc(0.06 * var(--g))), transparent 68%);
+  animation: mech-bloom-drift 24s ease-in-out infinite alternate;
+}
+
+/* The room is never quite still either. */
+@keyframes mech-bloom-drift {
+  from {
+    transform: scale(1) translate(0, 0);
+  }
+  to {
+    transform: scale(1.06) translate(calc(-10 * var(--px)), calc(6 * var(--px)));
+  }
+}
+
+/* One line down the screen every so often. Long gap, short pass — a sweep you
+   catch out of the corner of your eye beats one you sit and watch. */
+.mech-sweep {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: calc(140 * var(--px));
+  background: linear-gradient(to bottom, transparent, rgba(var(--accent-rgb), 0.07), transparent);
+  animation: mech-sweep 9s linear infinite;
+}
+
+@keyframes mech-sweep {
+  0% {
+    transform: translateY(-30vh);
+    opacity: 0;
+  }
+  6% {
+    opacity: 1;
+  }
+  26% {
+    transform: translateY(110vh);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(110vh);
+    opacity: 0;
+  }
+}
+
+/* ---- the compass strip ---- */
+
+.mech-strip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(74 * var(--px));
+  height: calc(44 * var(--px));
+  mask-image: linear-gradient(to right, transparent, #000 16%, #000 84%, transparent);
+  animation: mech-strip-in 900ms 300ms var(--ease) both;
+}
+
+@keyframes mech-strip-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(8 * var(--px)));
+  }
+}
+
+.mech-strip svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.mech-tick {
+  stroke: rgba(var(--accent-rgb), 0.32);
+  stroke-width: 1.2;
+}
+
+.mech-tick-major {
+  stroke: rgba(var(--accent-rgb), 0.6);
+  stroke-width: 1.6;
+}
+
+/* The marker is the one red thing on a green panel, which is the whole
+   reason it reads as a target and not as another gauge — filled solid,
+   the way `STOP` on the cluster's warning pair is, rather than an outline
+   with a wash inside it: a shift light is a block of colour, not a box
+   with a hint of one. */
+.mech-marker-box {
+  fill: var(--warn);
+  stroke: var(--warn);
+  stroke-width: 1.4;
+  filter: drop-shadow(0 0 7px rgba(var(--warn-rgb), 0.8));
+}
+
+/* Drawn, not typed — the same seven-segment grammar `Segment.tsx` draws
+   everywhere else on this panel, reimplemented small and local in
+   `MechHud.tsx` because this number changes on every `pointermove` and has
+   to stay off React state. See the note above `HEADING_CELL` there. */
+.mech-heading-off line {
+  stroke: rgba(0, 0, 0, 0.18);
+  stroke-width: 1.4;
+  stroke-linecap: butt;
+}
+
+.mech-heading-on line {
+  stroke: #0a0500;
+  stroke-width: 1.7;
+  stroke-linecap: butt;
+  opacity: 0;
+}
+
+.mech-coords {
+  position: absolute;
+  left: 50%;
+  bottom: calc(48 * var(--px));
+  transform: translateX(-50%);
+  display: flex;
+  gap: calc(26 * var(--px));
+  font-size: calc(12.5 * var(--type));
+  letter-spacing: calc(1.5 * var(--type));
+  color: rgba(var(--accent-rgb), 0.7);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 calc(9 * var(--px)) rgba(var(--accent-rgb), 0.5);
+}
+
+.mech-coords span span {
+  color: #fff;
+  margin-left: calc(6 * var(--px));
+}
+
+
+/* ---- the bird ----
+
+   v2's drawing, in the accent, on its own layer above the readout and below
+   the reticle. Twelve frames a second like everything else drawn by hand on
+   this site: the two wing poses alternate on a stepped opacity, which is a
+   cheaper flipbook than swapping paths. */
+
+.mech-sky {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+
+  --beat: 0.08333s;
+}
+
+.mech-bird-wrap {
+  position: absolute;
+  left: 0;
+  top: 0;
+  will-change: transform;
+  transition: opacity 300ms linear;
+}
+
+/* Parked off screen between flights, and untouchable while it is: the button
+   is still somewhere in the layout, and an invisible one the reticle can lock
+   onto is a target you cannot see. */
+.mech-sky[data-mode='away'] .mech-bird-wrap {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.mech-bird {
+  position: relative;
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  pointer-events: auto;
+  /* Warm, like the compass marker and the deck — not another green thing on
+     a green panel. */
+  color: var(--warn);
+  transform: translate(-50%, -50%);
+}
+
+.mech-bird svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  filter: drop-shadow(0 0 5px rgba(var(--warn-rgb), 0.5));
+}
+
+.mech-bird path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mech-sky[data-mode='flying'] .mech-wing-up {
+  animation: mech-beat calc(var(--beat) * 2) steps(1, end) infinite;
+}
+
+/* Its own keyframes rather than the same ones reversed: `mech-beat` is
+   symmetric about its midpoint, so playing it backwards gives the identical
+   sequence and both wings would show at once. */
+.mech-sky[data-mode='flying'] .mech-wing-down {
+  animation: mech-beat-alt calc(var(--beat) * 2) steps(1, end) infinite;
+}
+
+@keyframes mech-beat {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes mech-beat-alt {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Hit. The bird goes white for a frame and the ring it was carrying blows
+   out through it; the tumble itself is gravity, in MechBird.tsx. */
+.mech-sky[data-mode='hit'] .mech-bird {
+  color: #fff;
+}
+
+.mech-sky[data-mode='hit'] .mech-bird svg {
+  opacity: 0;
+  transition: opacity 900ms 200ms linear;
+}
+
+.mech-burst {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  /* Warm, matching the bird itself — a hit reads as the same warm thing
+     breaking apart, not a green flash on a warm bird. */
+  border: 1.6px solid var(--warn);
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.mech-sky[data-mode='hit'] .mech-burst {
+  animation: mech-burst 520ms cubic-bezier(0.1, 0.7, 0.3, 1) forwards;
+}
+
+@keyframes mech-burst {
+  from {
+    opacity: 1;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 0;
+    transform: scale(7);
+  }
+}
+
+/* ---- the pin editor ----
+
+   Development only, and it looks it: this is a tool laid over the readout,
+   not part of it. Everything is placed in the same frame coordinates the
+   leaders are, so a handle sits exactly where the line it belongs to will.
+
+   The native cursor comes back while it is open. The reticle is a lovely
+   thing to aim with and a terrible thing to drag a five-pixel handle with. */
+
+.mech-pins {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+}
+
+.mech[data-pins='true'] .mech-cursor,
+.mech[data-pins='true'] .mech-guns {
+  display: none;
+}
+
+@media (pointer: fine) {
+  .mech[data-pins='true'],
+  .mech[data-pins='true'] * {
+    cursor: crosshair;
+  }
+
+  .mech[data-pins='true'] input,
+  .mech[data-pins='true'] .mech-pins-bar button {
+    cursor: auto;
+  }
+
+  .mech[data-pins='true'] .mech-pins-bar button {
+    cursor: pointer;
+  }
+
+  .mech[data-pins='true'] .mech-pin-tip,
+  .mech[data-pins='true'] .mech-pin-grip {
+    cursor: grab;
+  }
+}
+
+/* The picture's own edges — what every fraction is measured against, and the
+   only part of the screen a click can add a line in. Said out loud, because
+   an invisible rule about where clicks count is a rule nobody discovers. */
+.mech-pins-box {
+  position: absolute;
+  outline: 1px dashed rgba(var(--accent-rgb), 0.5);
+  outline-offset: 0;
+  background: rgba(var(--accent-rgb), 0.04);
+  pointer-events: none;
+}
+
+.mech-pins-box span {
+  position: absolute;
+  /* Inside the box, not above it: above it is where the housing already puts
+     its own label strip, and two lines of small green type on the same
+     baseline is neither of them being read. */
+  left: 7px;
+  top: 6px;
+  font-size: 10.5px;
+  letter-spacing: 0.4px;
+  color: rgba(var(--accent-rgb), 0.85);
+  text-shadow: 0 0 6px #000, 0 0 12px #000;
+}
+
+.mech-pin-tip,
+.mech-pin-chip {
+  position: absolute;
+}
+
+/* The wrapper is `mech-pin-note` and not `mech-pin`, which is already the
+   reticle's spinning centre circle — a note that inherited that animation
+   came out rotating on the spot. */
+
+/* The spot the line touches. Big enough to grab, drawn small enough to aim:
+   a ring on the point with a transparent halo of hit area around it. */
+.mech-pin-tip {
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, transparent 26%, rgba(var(--accent-rgb), 0.9) 30%, rgba(var(--accent-rgb), 0.9) 42%, transparent 46%);
+  filter: drop-shadow(0 0 4px rgba(var(--accent-rgb), 0.8));
+}
+
+.mech-pin-note[data-live='true'] .mech-pin-tip {
+  background: radial-gradient(closest-side, transparent 26%, #fff 30%, #fff 42%, transparent 46%);
+}
+
+/* Where the text will be set. The chip is not the label — it is the label's
+   seat, with the words in it. */
+.mech-pin-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 4px;
+  transform: translateY(-50%);
+  background: rgba(6, 12, 10, 0.92);
+  border: 1px solid rgba(var(--accent-rgb), 0.45);
+  box-shadow: 0 0 18px rgba(0, 0, 0, 0.6);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* Narrow, the chips are stacked up off the foot of the stage rather than laid
+   beside their tips (`STACK` in MechPins.tsx): a phone's readout is one point
+   per note, so there is no second end to drag, and a form two thirds of the
+   screen wide has to be somewhere it can be typed into. Nothing about it is a
+   handle, so it does not offer itself as one. */
+.mech-pin-chip[data-fixed='true'] {
+  transform: none;
+  cursor: default;
+}
+
+.mech-pin-idx {
+  flex: none;
+  padding: 0 2px;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Stacked, a chip has the width of the window rather than whatever it wants,
+   and the sentence takes what the other three leave. The fixed 300px it is
+   set at everywhere else is most of a phone on its own. */
+.mech-pin-chip[data-fixed='true'] {
+  width: 100%;
+}
+
+.mech-pin-chip[data-fixed='true'] .mech-pin-say {
+  width: auto;
+  min-width: 0;
+  flex: 1;
+}
+
+/* A note nobody has pinned yet is sitting wherever the fan put it. Dashed,
+   so the difference between "placed here" and "fell here" is visible at a
+   glance across a frame with eight of them. */
+.mech-pin-note[data-loose='true'] .mech-pin-chip {
+  border-style: dashed;
+  opacity: 0.8;
+}
+
+.mech-pin-grip {
+  width: 9px;
+  align-self: stretch;
+  flex: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(var(--accent-rgb), 0.8) 0 1px,
+    transparent 1px 3px
+  );
+}
+
+.mech-pin-chip input {
+  width: 78px;
+  padding: 2px 4px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #000;
+  color: #fff;
+  font: inherit;
+  font-size: 11px;
+}
+
+.mech-pin-chip input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* Three fields of three sizes, because they hold three different amounts. The
+   sentence is the one the card is built around and it gets the room; the
+   handle and the fold are a word each. A chip with three equal boxes in it
+   made the sentence the hardest of the three to write, which is backwards. */
+.mech-pin-chip .mech-pin-name {
+  width: 72px;
+}
+
+.mech-pin-chip .mech-pin-say {
+  width: 300px;
+}
+
+.mech-pin-chip .mech-pin-fold {
+  width: 58px;
+  color: var(--mid);
+}
+
+.mech-pin-drop {
+  padding: 2px 5px;
+  border: 0;
+  background: none;
+  color: var(--warn);
+  font: inherit;
+  font-size: 11px;
+}
+
+/* The bar sits along the bottom of the frame rather than the window: it
+   belongs to the picture being pinned, and the deck and the email are already
+   at the bottom of the screen. */
+.mech-pins-bar {
+  position: absolute;
+  left: 50%;
+  bottom: calc(24 * var(--px));
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  background: rgba(6, 12, 10, 0.94);
+  border: 1px solid rgba(var(--accent-rgb), 0.45);
+  font-size: 11px;
+  letter-spacing: 0.4px;
+  color: var(--mid);
+}
+
+.mech-pins-id {
+  color: var(--accent);
+}
+
+.mech-pins-hint {
+  color: var(--mid);
+}
+
+.mech-pins-bar button {
+  padding: 3px 8px;
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
+  background: none;
+  font: inherit;
+  font-size: 11px;
+  color: var(--accent);
+}
+
+.mech-pins-bar button:hover {
+  background: rgba(var(--accent-rgb), 0.14);
+}
+
+/* The one button on the bar that makes something rather than moving it. */
+.mech-pins-bar button.mech-pins-add,
+.mech-pins-bar button.mech-pins-add:hover {
+  color: #000;
+  background: var(--accent);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+/* The narrow stage is a short box in the middle of a scroll, not the whole
+   frame, so a bar sat `bottom: 24` off it lands over the picture. Dock it to
+   the window instead and let it wrap — this is a dev tool and the room it
+   needs is more than a phone's width has on one line. */
+.mech[data-narrow='true'] .mech-pins-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  transform: none;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 10px;
+}
+
+/* ---- the same editor, for the cast ----
+
+   Home has no picture to pin a note to; it has five subjects standing in a
+   scene, each with a tag that names the project it opens. So the handles are
+   on the tag itself — the dot on the end that touches the subject, and a bar
+   over the words for the end that reads — and the whole thing rides the
+   subject's float rather than sitting on a patch of screen. See
+   `MechCastPins.tsx`.
+
+   Everything is drawn with the leaders' own classes, which is the point: what
+   you drag is the real tag at its real size in its real type, not a
+   representation of one. What has to be turned off is their *entry*. A leader
+   arrives drawn-on and faded-up out of `opacity: 0`, timed off `--d` and
+   `--l`, and neither variable exists out here — an animation whose delay is
+   an unresolved `var()` is simply dropped, which leaves the declared
+   `opacity: 0` underneath it standing. The labels were invisible until this
+   said otherwise. */
+.mech-cast-pin-layer .mech-leader,
+.mech-cast-pin-layer .mech-leader-label,
+.mech-cast-pin-layer .mech-leader-value,
+.mech-cast-pin-layer .mech-leader-mark,
+.mech-cast-pin-layer .mech-leader-core {
+  animation: none;
+  opacity: 1;
+  stroke-dasharray: none;
+  stroke-dashoffset: 0;
+}
+
+/* One being dragged, lit the way a note being dragged is. */
+.mech-cast-pin[data-live='true'] .mech-leader,
+.mech-cast-pin[data-live='true'] .mech-leader-mark {
+  stroke: #fff;
+}
+
+/* Nobody has placed this one — it is sitting where the fan put it, the same
+   thing a dashed chip says on a project screen. */
+.mech-cast-pin[data-loose='true'] {
+  opacity: 0.62;
+}
+
+/* The two handles. Transparent, but a fill all the same: an SVG shape filled
+   `none` is not hit-tested, so a handle drawn as an outline is a handle you
+   cannot grab. Last in the group, and therefore on top of the parts they
+   move. */
+.mech-cast-pin-grab {
+  pointer-events: auto;
+  fill: rgba(var(--accent-rgb), 0.001);
+  stroke: rgba(var(--accent-rgb), 0.35);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.mech-cast-pin-grab:hover {
+  fill: rgba(var(--accent-rgb), 0.12);
+  stroke: var(--accent);
+}
+
+@media (pointer: fine) {
+  .mech[data-pins='true'] .mech-cast-pin-grab {
+    cursor: grab;
+  }
+}
+
+/* ---- the source, on screen ----
+
+   Portalled to `body`, so none of `.mech`'s rules reach it: the cursor is a
+   real cursor, the text is really selectable, and ⌘C is an ordinary ⌘C. Its
+   own colours for the same reason — the accent tokens live on `.mech` and
+   this is not inside it. */
+.mech-source {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 3000;
+  width: min(780px, 88vw);
+  padding: 12px;
+  background: #050a09;
+  border: 1px solid #86e2b4;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.85);
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  cursor: auto;
+}
+
+.mech-source-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 9px;
+  font-size: 11.5px;
+  letter-spacing: 0.3px;
+  color: #86e2b4;
+}
+
+.mech-source-head span {
+  flex: 1;
+}
+
+.mech-source-head button {
+  padding: 3px 9px;
+  border: 1px solid rgba(134, 226, 180, 0.45);
+  background: none;
+  font: inherit;
+  font-size: 11.5px;
+  color: #86e2b4;
+  cursor: pointer;
+}
+
+.mech-source-head button:hover {
+  background: rgba(134, 226, 180, 0.14);
+}
+
+.mech-source textarea {
+  display: block;
+  width: 100%;
+  height: 300px;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: #000;
+  color: #cfe9dc;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  line-height: 1.55;
+  resize: vertical;
+  /* Both said out loud. This is a text field that has to behave like one, and
+     it is a portal away from a subtree where neither is the default. */
+  cursor: text;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* ---- the gun ----
+
+   Bolts, tracers and impacts, all of them created and destroyed by
+   `MechLaser.tsx` rather than rendered — this layer is just where they land.
+   Above the readout and the bird, below the reticle: you are always looking
+   through the sight at the thing you are shooting.
+
+   Every element here is positioned by transform alone from the layer's own
+   origin, so nothing below reflows when a shot is fired. */
+
+.mech-guns {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.mech-guns > * {
+  position: absolute;
+  left: 0;
+  top: 0;
+  will-change: transform, opacity;
+}
+
+/* The gun is somewhere, and it is under you. A low wash along the bottom edge
+   says where without drawing a barrel: on faintly all the time, so the bolts
+   have somewhere to have come from, and flaring on every shot.
+
+   Positioned against the layer's own edges rather than by transform, so it is
+   the one thing in here that is not a bolt. */
+.mech-emitter {
+  left: 50%;
+  top: auto;
+  bottom: 0;
+  width: min(1100px, 86vw);
+  height: 190px;
+  transform: translateX(-50%) translateY(46%);
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    rgba(var(--shot-rgb), 0.5),
+    rgba(var(--shot-rgb), 0.16) 45%,
+    transparent 100%
+  );
+  opacity: 0.16;
+  /* Quick up, slow down — a flare, not a blink. This is the whole discharge:
+     there used to be a separate flash element as well, and three orange
+     things appearing at the bottom of the screen at once read as three
+     bullets leaving rather than as one gun going off. */
+  transition: opacity 520ms ease-out, transform 520ms ease-out;
+  will-change: opacity, transform;
+}
+
+.mech-emitter[data-on='true'] {
+  opacity: 0.9;
+  transform: translateX(-50%) translateY(40%) scale(1.12);
+  transition-duration: 55ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mech-emitter {
+    transition: none;
+  }
+}
+
+/* The head of the shot: a white core with the heat bleeding off the length of
+   it, tapered at the tail so it reads as exhaust rather than as a rod. It is
+   scaled from JS as it travels, which is where the depth is — see
+   `MechLaser.tsx`. Nothing here has a fixed size in the frame's coordinates,
+   because a bolt is not part of the composition; it is in the room. */
+.mech-bolt {
+  height: 3.4px;
+  border-radius: 2px;
+  /* Not the default centre. The transform ends in `translate(-100%, -50%)` to
+     put the head of the streak on the aim point, and that only works if the
+     whole chain is applied from the element's own corner: about the centre,
+     the rotation and the scale swing the head away from the point by up to
+     half the bolt's length, in a direction that changes with the angle. That
+     was the shot landing beside the reticle. */
+  transform-origin: 0 0;
+  background: linear-gradient(to right, rgba(var(--shot-rgb), 0) 0%, rgba(var(--shot-rgb), 0.6) 55%, #fff5e8 100%);
+  box-shadow: 0 0 11px rgba(var(--shot-rgb), 0.95), 0 0 30px rgba(var(--shot-rgb), 0.5);
+}
+
+/* Where it landed. A hit blows a ring out of the bird; a miss is a tap on
+   whatever was behind it — smaller, dimmer, and gone quicker, so a shot that
+   found nothing reads as having found nothing.
+
+   The mark is a point, and the ring is its pseudo-element. The point is
+   placed by a transform written from JS and the ring is scaled by one written
+   in CSS, and they have to be two elements because a `scale` on top of a
+   `transform` scales about the element's own box origin rather than about
+   where the transform put it — which sends the ring off toward the corner of
+   the screen instead of opening on the spot. */
+.mech-impact {
+  width: 0;
+  height: 0;
+}
+
+.mech-impact::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 15px;
+  height: 15px;
+  margin: -7.5px 0 0 -7.5px;
+  border-radius: 50%;
+  border: 1.6px solid var(--shot);
+  box-shadow: 0 0 12px rgba(var(--shot-rgb), 0.6);
+  animation: mech-impact var(--for) cubic-bezier(0.1, 0.7, 0.3, 1) forwards;
+}
+
+.mech-impact[data-kind='hit'] {
+  --for: 560ms;
+  --reach: 5.5;
+}
+
+.mech-impact[data-kind='miss'] {
+  --for: 320ms;
+  --reach: 2.3;
+  opacity: 0.6;
+}
+
+@keyframes mech-impact {
+  from {
+    opacity: 1;
+    transform: scale(0.3);
+  }
+  to {
+    opacity: 0;
+    transform: scale(var(--reach));
+  }
+}
+
+/* A drop and a small overshoot rather than a slide — the tiles read as
+   settling into place, not sliding in from the side. The overshoot is on
+   `transform` only; opacity's implicit end value is the tile's own resting
+   0.55 (or whatever hover/pressed already has it at), the same trick as
+   everywhere else here that fades an element up to a dim rather than a lit
+   state. */
+@keyframes mech-tile-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(-16 * var(--px))) scale(0.82);
+  }
+  55% {
+    transform: translateY(calc(2 * var(--px))) scale(1.04);
+  }
+}
+
+/* ---- the deck ----
+
+   Bottom left, on the same line as the email. Reads as another gauge on the
+   panel rather than as a media player dropped onto one — no rounded pill, no
+   album art, a level meter instead of a progress bar. */
+
+/* ---- the deck ----
+
+   A pill: the track name in Audiowide (the panel's display face, what `INTRO`
+   and the role reel are set in) over "Tarlok Singh" in Clash Display Light,
+   and a play / pause triangle on the right. Green — `--accent` — not the warm
+   channel the old strip used; it is a readout, not a warning. Numbers are the
+   Figma frame's, in `--px`. */
+.mech-deck {
+  position: relative;
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  gap: calc(8 * var(--px));
+}
+
+.mech-deck-pill {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(24 * var(--px));
+  padding: calc(9 * var(--px)) calc(17 * var(--px));
+  border: 0.5px solid var(--accent);
+  border-radius: 999px;
+  background: rgba(var(--accent-rgb), 0.13);
+  font: inherit;
+  color: var(--accent);
+  transition: background 200ms linear, box-shadow 200ms linear;
+}
+
+.mech-deck[data-playing='true'] .mech-deck-pill {
+  background: rgba(var(--accent-rgb), 0.2);
+  box-shadow: 0 0 calc(20 * var(--px) * var(--g, 1)) rgba(var(--accent-rgb), calc(0.3 * var(--g, 1)));
+}
+
+.mech-deck-pill-empty {
+  display: inline-flex;
+  align-items: center;
+  color: var(--mid);
+  letter-spacing: calc(1.2 * var(--type));
+}
+
+.mech-deck-lines {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(1 * var(--px));
+  min-width: 0;
+}
+
+.mech-deck-title {
+  max-width: calc(126 * var(--px));
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: 'Audiowide', 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: calc(13 * var(--type));
+  line-height: 1.3;
+  letter-spacing: calc(0.2 * var(--type));
+  color: var(--accent);
+}
+
+.mech-deck-by {
+  font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-weight: 300;
+  font-size: calc(10 * var(--type));
+  line-height: 1.2;
+  color: rgba(var(--accent-rgb), 0.82);
+}
+
+/* Play is a triangle; pause is the same box with two bars cut into it.
+   `clip-path` for the triangle, a pair of gradients for the bars. */
+.mech-deck-play {
+  flex: none;
+  width: calc(15 * var(--px));
+  height: calc(16 * var(--px));
+  background: var(--accent);
+  clip-path: polygon(4% 0%, 100% 50%, 4% 100%);
+  filter: drop-shadow(0 0 calc(6 * var(--px) * var(--g, 1)) rgba(var(--accent-rgb), calc(0.55 * var(--g, 1))));
+}
+
+.mech-deck[data-playing='true'] .mech-deck-play {
+  clip-path: none;
+  background:
+    linear-gradient(var(--accent), var(--accent)) left / calc(36%) 100% no-repeat,
+    linear-gradient(var(--accent), var(--accent)) right / calc(36%) 100% no-repeat;
+}
+
+/* ---- the mixer ----
+
+   Three sliders behind a toggle, sat to the interior side of the pill so it
+   grows away from the frame edge. The music, the synth effects and a clip's
+   own audio, on one scale — see `levels` in `sound.ts`. */
+
+.mech-deck-mix-toggle {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: calc(3 * var(--px));
+  width: calc(30 * var(--px));
+  height: calc(30 * var(--px));
+  padding: calc(8 * var(--px));
+  border: 0.5px solid var(--accent);
+  border-radius: 999px;
+  background: rgba(var(--accent-rgb), 0.13);
+  cursor: pointer;
+  transition: background 200ms linear;
+}
+
+.mech-deck-mix-toggle i {
+  display: block;
+  height: 0.5px;
+  background: var(--accent);
+}
+
+.mech-deck-mix-toggle i:nth-child(1) {
+  width: 100%;
+}
+.mech-deck-mix-toggle i:nth-child(2) {
+  width: 55%;
+}
+.mech-deck-mix-toggle i:nth-child(3) {
+  width: 78%;
+}
+
+.mech-deck[data-mix='true'] .mech-deck-mix-toggle {
+  background: rgba(var(--accent-rgb), 0.26);
+}
+
+.mech-deck-mix {
+  position: absolute;
+  top: calc(100% + 10 * var(--px));
+  right: 0;
+  z-index: 4;
+  width: calc(176 * var(--px));
+  padding: calc(12 * var(--px)) calc(14 * var(--px)) calc(10 * var(--px));
+  display: flex;
+  flex-direction: column;
+  gap: calc(9 * var(--px));
+  border: 0.5px solid var(--accent);
+  border-radius: calc(8 * var(--px));
+  background: rgba(0, 0, 0, 0.86);
+  box-shadow: 0 0 calc(22 * var(--px) * var(--g, 1)) rgba(var(--accent-rgb), calc(0.18 * var(--g, 1)));
+}
+
+.mech-deck-mix-row {
+  display: grid;
+  grid-template-columns: calc(46 * var(--px)) 1fr;
+  align-items: center;
+  gap: calc(9 * var(--px));
+  font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-weight: 300;
+  font-size: calc(10 * var(--type));
+  letter-spacing: calc(0.4 * var(--type));
+  color: rgba(var(--accent-rgb), 0.85);
+}
+
+.mech-deck-mix-row input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: calc(3 * var(--px));
+  border-radius: 999px;
+  background: rgba(var(--accent-rgb), 0.25);
+  cursor: pointer;
+}
+
+.mech-deck-mix-row input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: calc(11 * var(--px));
+  height: calc(11 * var(--px));
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 calc(6 * var(--px) * var(--g, 1)) rgba(var(--accent-rgb), calc(0.6 * var(--g, 1)));
+}
+
+.mech-deck-mix-row input::-moz-range-thumb {
+  width: calc(11 * var(--px));
+  height: calc(11 * var(--px));
+  border: none;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.mech-deck-mix-reset {
+  align-self: flex-end;
+  margin-top: calc(1 * var(--px));
+  padding: calc(3 * var(--px)) calc(10 * var(--px));
+  border: 0.5px solid rgba(var(--accent-rgb), 0.4);
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(var(--accent-rgb), 0.7);
+  font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-weight: 300;
+  font-size: calc(9 * var(--type));
+  letter-spacing: calc(1 * var(--type));
+  cursor: pointer;
+  transition: color 160ms linear, border-color 160ms linear;
+}
+
+.mech-deck-mix-reset:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ---- footer ---- */
+
+.mech-foot {
+  position: absolute;
+  left: calc(101 * var(--px));
+  right: calc(101 * var(--px));
+  bottom: calc(30 * var(--px));
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  /* Both ends are always occupied now — the tally moved off this line
+     entirely (see `Alarm.tsx`) — so the two corners can hold each other
+     apart honestly instead of one faking it with `margin-left: auto`. */
+  justify-content: space-between;
+  /* Same voice as the intro paragraph (`.mech-profile` in MechCluster.css) —
+     the panel's system-text face, not the site's body font, since this line
+     is one more thing the panel is printing rather than a caption pasted
+     under it. */
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* Same size as the intro paragraph (`.mech-profile`), not the site's own
+     footer scale — one more reading in the panel's system-text voice should
+     print at the size that voice already reads at elsewhere on the page. */
+  font-size: calc(var(--profile-size, 11) * var(--type));
+  color: var(--mid);
+}
+
+.mech-foot a {
+  color: var(--mid);
+  text-decoration: none;
+  transition: color 160ms linear;
+}
+
+.mech-foot a:hover {
+  color: #fff;
+}
+
+/* ---- comms, and the credit ----
+
+   Two plain lines now, not a bordered strip — "comms" as a label next to its
+   own value was the one readout on the page that was not a fact the machine
+   reports or the pointer's own colour, and the box read as more chrome than
+   a mailto: link earns. Each line carries a small dot, flickering on its own
+   loop — the panel's one bit of purely decorative life, doing nothing and
+   reporting nothing, which is exactly why it sits down here rather than
+   anywhere near an instrument that does. */
+
+.mech-comms,
+.mech-credit {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(8 * var(--px));
+  margin: 0;
+}
+
+.mech-credit span {
+  color: var(--mid);
+}
+
+/* Both lines are typed a character at a time (see the footer in Mech.tsx), and
+   a box that grows from nothing drags whatever it is pinned to along with it:
+   the credit is held against the right edge by `space-between`, so its dot
+   walked leftward one character per keystroke and the address pushed nothing
+   but still snapped its own width about. Boxed to the finished line from the
+   first frame instead. This line is set in the panel's monospace, so `ch` is
+   literally the character count — the two numbers are the two strings' own
+   lengths and have to be changed with them. */
+.mech-comms-to,
+.mech-credit span {
+  display: inline-block;
+}
+
+.mech-comms-to {
+  width: 21ch;
+}
+
+.mech-credit span {
+  width: 25ch;
+}
+
+/* The one warm reading down here — the address is the way to reach the
+   person the name at the top of the page belongs to, so it takes the name's
+   own colour and its own glow (`.mech-ident-name` in MechCluster.css),
+   scaled down to a footer line rather than a headline. */
+.mech-comms-to {
+  color: var(--warn);
+  text-shadow: 0 0 calc(6 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.4 * var(--g)));
+}
+
+.mech-comms:hover .mech-comms-to {
+  color: #fff;
+  text-shadow: none;
+}
+
+/* Named `-foot-` and not the bare `.mech-dot` the reticle's own hotspot
+   already owns (`MechCursor`'s crosshair centre) — same word, two unrelated
+   circles, and the class collision silently mixed their rules the first
+   time this was tried. */
+.mech-foot-dot {
+  flex: none;
+  width: calc(3 * var(--px));
+  height: calc(3 * var(--px));
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 calc(4 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.5 * var(--g)));
+  animation: mech-dot-flicker 4.8s ease-in-out infinite;
+}
+
+/* The comms dot matches its own line, not the panel's default green. */
+.mech-comms .mech-foot-dot {
+  background: var(--warn);
+  box-shadow: 0 0 calc(4 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.5 * var(--g)));
+}
+
+.mech-credit .mech-foot-dot {
+  animation-delay: 1.4s;
+}
+
+@keyframes mech-dot-flicker {
+  0%, 18%, 21%, 51%, 55%, 100% {
+    opacity: 1;
+  }
+  19%, 53% {
+    opacity: 0.12;
+  }
+  36% {
+    opacity: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mech-leader,
+  .mech-leader-card,
+  .mech-leader-label,
+  .mech-leader-value,
+  .mech-side,
+  .mech-flat,
+  .mech-bare {
+    animation-duration: 1ms;
+  }
+
+  .mech-ring,
+  .mech-pin,
+  .mech-foot-dot,
+  .mech-bare-lock .lock-shackle,
+  .mech-bare-lock .lock-keyhole {
+    animation: none;
+  }
+
+  .mech-stage {
+    transition-duration: 1ms;
+  }
+}
+
+
+/* A thumb is not a reticle. Both creatures are drawn at the size they should
+   *look*, and on a touch screen that is well under what anyone can reliably
+   hit — so on a coarse pointer each one gets an invisible box around it to be
+   pressed by. `quarry.radius` already gives the *bolt* the same generosity;
+   this is the same idea one step earlier, on the press. */
+@media (pointer: coarse) {
+  .mech-bird::before,
+  .mech-moth::before {
+    content: '';
+    position: absolute;
+    inset: -14px;
+  }
+}
+
+/* ---- the moth ----
+
+   The other animal. Where the bird crosses the sky on a clean arc and can be
+   led, this one is already on the panel and has to be found — it sits still
+   with its wings shut until the reticle comes near, and then it panics. Two
+   different shots, which is the only reason to have a second creature at all.
+
+   Cool where the bird is warm: it reads as one more mark on a green readout
+   until it moves, which is exactly what a moth on a lit panel should look
+   like. See `MechMoth.tsx`. */
+
+.mech-moths {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+
+  --beat: 0.08333s;
+}
+
+.mech-moth-wrap {
+  position: absolute;
+  left: 0;
+  top: 0;
+  will-change: transform;
+  transition: opacity 260ms linear;
+}
+
+.mech-moths[data-mode='away'] .mech-moth-wrap {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.mech-moth {
+  position: relative;
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  pointer-events: auto;
+  color: rgba(var(--moth-rgb), 0.75);
+  transition: color 200ms linear;
+}
+
+.mech-moth svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  filter: drop-shadow(0 0 4px rgba(var(--moth-rgb), 0.35));
+}
+
+.mech-moth path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Perched, it is dim and shut — a shape you could take for part of the
+   readout, which is the whole trick. */
+.mech-moths[data-mode='perched'] .mech-moth {
+  color: rgba(var(--moth-rgb), 0.45);
+}
+
+.mech-moths[data-mode='perched'] .mech-moth-wing {
+  transform: scaleX(0.34);
+  transform-origin: 12px 10px;
+}
+
+.mech-moth-wing {
+  transition: transform 140ms cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+/* And in the air it is lit, and beating — stepped, at the same twelve frames
+   a second as the bird's wings and everything else drawn by hand here. */
+.mech-moths[data-mode='flying'] .mech-moth {
+  color: var(--moth);
+}
+
+.mech-moths[data-mode='flying'] .mech-moth-left {
+  animation: mech-moth-beat calc(var(--beat) * 2) steps(2, end) infinite;
+  transform-origin: 12px 10px;
+}
+
+.mech-moths[data-mode='flying'] .mech-moth-right {
+  animation: mech-moth-beat calc(var(--beat) * 2) steps(2, end) infinite;
+  animation-delay: calc(var(--beat) * -0.5);
+  transform-origin: 12px 10px;
+}
+
+@keyframes mech-moth-beat {
+  0% {
+    transform: scaleX(1);
+  }
+  50% {
+    transform: scaleX(0.45);
+  }
+}
+
+.mech-moths[data-mode='hit'] .mech-moth {
+  color: var(--shot);
+}
+
+.mech-moths[data-mode='hit'] .mech-burst {
+  animation: mech-burst 520ms cubic-bezier(0.1, 0.7, 0.3, 1) forwards;
+  border-color: var(--shot);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mech-moth-wing {
+    animation: none !important;
+  }
+}
+
+/* ---- the tally ----
+
+   What you have shot, across every screen and across a reload. Hidden at
+   zero — a counter saying nothing has happened is a counter advertising a
+   feature. See `kills.ts`.
+
+   Two readings of the same store, never both mounted at once — see `Tally`
+   in Tally.tsx. `[data-inline='false']`, the default, is `Mech.tsx`'s own
+   copy: `position: fixed` and centred, off the footer's own flex line — it
+   used to sit at the far left of the footer, on the same baseline as the
+   contact address, which put "what you have shot" a whole screen away from
+   the reticle that does the shooting. `[data-inline='true']` is `Alarm`'s
+   copy in Alarm.tsx: a plain flex child sitting in the gap `.mech-alarm`
+   reserves between `SHOOT` and `STOP` — same size as the default reading now,
+   not enlarged; a bigger number here read as louder than the keys either
+   side of it once the whole row came down in scale. */
+
+.mech-tally {
+  position: fixed;
+  left: 50%;
+  top: calc(18 * var(--px));
+  transform: translateX(-50%);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  font-size: calc(12.5 * var(--type));
+  letter-spacing: calc(1.5 * var(--type));
+  color: rgba(var(--accent-rgb), 0.7);
+  text-shadow: 0 0 calc(9 * var(--px)) rgba(var(--accent-rgb), 0.5);
+}
+
+/* The middle of the warning row — the reading the two lamps either side of it
+   are about. No fill and no border of its own: it is a reading, not a switch,
+   and the housings belong to the lamps.
+
+   As tall as a lamp and no taller, and wide enough for three cells at that
+   height. It is always mounted now (see `Tally`), so this width is the row's
+   width from the first frame and nothing in it ever moves. */
+.mech-tally[data-inline='true'] {
+  position: static;
+  left: auto;
+  top: auto;
+  transform: none;
+  z-index: auto;
+  height: var(--lamp);
+  justify-content: center;
+}
+
+.mech-tally[data-inline='true'] .mech-tally-n {
+  width: calc(38 * var(--px));
+  padding: 0;
+}
+
+/* The number is the segment display, the same one the counts on home are
+   drawn with — a count of something should look the same wherever this panel
+   prints one, and tabular figures in Helvetica were not that. No border any
+   more — see `.mech-display` in MechCluster.css for the same change made to
+   every other reading on the panel. */
+.mech-tally-n {
+  display: block;
+  width: calc(44 * var(--px));
+  padding: calc(4 * var(--px)) calc(6 * var(--px));
+}
+
+/* ---- narrow viewports ----
+
+   Everything above this point is drawn in a 1920×1080 frame with room either
+   side of a centred 16:9 stage: `.mech-side` (title, tagline, folds) and
+   `.mech-rail-wrap` (the tile strip) are absolutely positioned in those
+   margins, and `--px` — one frame coordinate in real pixels — is the unit all
+   of it is written in.
+
+   None of that survives a phone, and the first pass at this only moved the
+   boxes. What it left alone was the unit, and the unit is where the damage
+   was: `--px` is `min(0.0749rem, 0.0520833vw, 0.0925926vh)`, so on a 390-point
+   window the `vw` term wins at a fifth of a pixel. Every gutter, every gap and
+   every bracket in the file is a multiple of that fifth — a 28-unit gutter
+   comes out at five real pixels — while `--type` is floored at a rem and
+   holds. Type at full size on a layout with no space left in it is what the
+   screenshot was: a title split across two lines, three leader labels stacked
+   on each other over a subject the size of a thumbnail, and the chrome sitting
+   in whatever was left.
+
+   So narrow re-bases the unit rather than fighting it. `--px` becomes a
+   fraction of the window (a 500-unit frame instead of a 1920-unit one), which
+   puts every ratio in the file back where it was drawn, and `--type` keeps a
+   floor of its own so the words stay readable while the drawing shrinks. From
+   there the layout is one column, top to bottom, in this order:
+
+     the header, sticky, folded into one control (see `MechMenu.tsx`)
+     the title and the line under it
+     the subject, large — the reason anyone opened the page — with its
+       leader lines, the same as the wide layout has
+     the tile strip, sideways
+     the write-up, one section open at a time
+     the contact line
+     the deck, floating over all of it at the bottom of the window
+
+   The subject is the change worth naming. The stage is no longer a 16:9
+   island: it is a tall box the width of the window, the model's `fill` is
+   multiplied on the way in (`narrowTuning.ts`), and a picture fills the box
+   rather than sitting in a 780-unit rectangle inside it. The leaders are on,
+   and drawn into a canvas with the stage's own proportions — a 1920×1080
+   viewBox stretched onto a 390×409 box squashes every label flat sideways,
+   which is what had them stacked on each other over the face. See `Space` in
+   leaders.ts.
+
+   Nothing above this rule is affected: every property here is scoped under
+   `.mech[data-narrow='true']`, which is only ever true below the breakpoint
+   in `NARROW_QUERY`. */
+
+.mech[data-narrow='true'] {
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+
+  /* The frame coordinate, re-based. 500 rather than 1920, so a number written
+     for the wide layout keeps roughly the proportion of the window it was
+     drawn with — the same reason `--px` is a fraction of the viewport at all.
+     Still capped by the rem, so the unit stops growing at the top of the
+     range instead of turning a small tablet into a poster. */
+  --px: min(0.0749rem, 100vw / 500);
+  /* Type's own floor, lower than the wide layout's: at this width the frame
+     unit and the type unit are close enough that the rem cap was setting a
+     46-unit title at fifty-five real pixels in a 390-point window. */
+  --type: max(var(--px), 0.065rem);
+  --gutter: calc(30 * var(--px));
+}
+
+/* A flex column, so the pieces can be put in an order that has nothing to do
+   with the order the markup needs. The wide layout wants the title, the
+   tagline and the write-up as one column beside the stage — which is exactly
+   what `.mech-side` is — and the narrow one wants the name *above* the
+   picture and the write-up *below* the tile strip. `display: contents` on
+   `.mech-side` (below) dissolves the wrapper so its two children become items
+   of this flex box in their own right, and `order` puts each where it goes. */
+.mech[data-narrow='true'] .mech-frame {
+  width: 100%;
+  height: auto;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  /* Clears the deck floating at the bottom of the window, plus the home
+     indicator on a phone that has one. */
+  padding-bottom: calc(150 * var(--px) + env(safe-area-inset-bottom, 0px));
+}
+
+.mech[data-narrow='true'] .mech-head {
+  order: 0;
+}
+
+.mech[data-narrow='true'] .mech-lede {
+  order: 1;
+}
+
+.mech[data-narrow='true'] .mech-stage {
+  order: 2;
+}
+
+/* 3 is the fact deck's, set on `.mech-facts` in its own stylesheet — the notes
+   on the picture belong under the picture and above the way to the next one.
+   See `MechFacts.css`. */
+.mech[data-narrow='true'] .mech-rail-wrap {
+  order: 4;
+}
+
+.mech[data-narrow='true'] .mech-folds-wrap {
+  order: 5;
+}
+
+/* Last, after the bank. It was 6 with nothing below it; a project screen
+   puts the projects rail at the foot of the column now (`.mech-bank-col` in
+   MechCluster.css) and the contact line belongs under that rather than
+   between the write-up and the list of everything else. */
+.mech[data-narrow='true'] .mech-foot {
+  order: 7;
+}
+
+/* The name on a phone, and the taller home stage the line-up needed, are both
+   gone with the line-up. The cluster is one of `.mech-frame`'s flex items here
+   and stacks its own three bands — see `narrow viewports` at the foot of
+   `MechCluster.css`. Home mounts no stage at all now.
+
+/* ---- the header, folded ---- */
+
+/* Sticky rather than static: the way to every other project is behind this
+   one control now, and a control you have to scroll back up to is a control
+   you stop using. No scrim of its own: `.mech-alarm` sits fixed at the same
+   top row, and an opaque header behind it read as the warning pair going
+   dark under a second vignette. */
+.mech[data-narrow='true'] .mech-head {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  /* The same `flex-end` the wide header uses, and for the same reason: home
+     has no signature to sit opposite, and `space-between` with one child left
+     in it put the index key against the left edge. The signature pushes
+     itself over with `margin-right: auto` when there is one. */
+  justify-content: flex-end;
+  padding: calc(16 * var(--px)) var(--gutter) calc(14 * var(--px));
+}
+
+.mech[data-narrow='true'] .mech-wordmark {
+  font-size: calc(17 * var(--type));
+}
+
+/* Down to the foot of the window, centred, with the deck. The wide layout
+   floats the warning pair on the header's own row — there is width to spare
+   either side of the index key there. A phone header is the wordmark and one
+   control filling the line, and everything below it is the work; a lamp about
+   whether there is something to shoot at belongs with the other floating
+   control rather than in front of the project's title. Stacked directly over
+   `.mech-deck-slot`, which is fixed at 18 off the same edge and about forty
+   tall, so the two read as one column of chrome. */
+.mech[data-narrow='true'] .mech-alarm {
+  top: auto;
+  /* Clear of the deck rather than sat on its top edge: the pill is about
+     `46 * var(--type)` tall (its type has a rem floor, so it does not shrink
+     with `--px`), and the old `76 * var(--px)` — a few real pixels on a phone
+     — put the lower lamp behind it. */
+  bottom: calc(18 * var(--px) + 52 * var(--type) + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  justify-content: center;
+  /* Above the deck (`z-index: 8`): the pill's translucent green must never
+     wash over the count. */
+  z-index: 9;
+}
+
+/* Three rules of the same weight as everything else drawn on this panel. */
+.mech-menu-key {
+  display: grid;
+  justify-items: end;
+  align-content: center;
+  gap: calc(6 * var(--px));
+  width: calc(52 * var(--px));
+  height: calc(44 * var(--px));
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.mech-menu-key i {
+  display: block;
+  height: calc(2 * var(--px));
+  min-height: 1.5px;
+  background: var(--accent);
+  box-shadow: 0 0 calc(8 * var(--px)) rgba(var(--accent-rgb), 0.6);
+}
+
+.mech-menu-key i:nth-child(1) {
+  width: calc(34 * var(--px));
+}
+
+.mech-menu-key i:nth-child(2) {
+  width: calc(23 * var(--px));
+}
+
+.mech-menu-key i:nth-child(3) {
+  width: calc(34 * var(--px));
+}
+
+/* The way back into the tour — a plain query key in the bottom-right corner,
+   clear of the compass on wide and the deck pill on narrow. Same phosphor as
+   the rest of the machine's own readings; it reports nothing, it is a
+   control, but a warm one here would read as an alert. */
+.mech-tour-key {
+  position: fixed;
+  right: calc(24 * var(--px));
+  bottom: calc(24 * var(--px));
+  z-index: 31;
+  display: grid;
+  place-items: center;
+  width: calc(30 * var(--px));
+  height: calc(30 * var(--px));
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0;
+  border: 1px solid rgba(var(--accent-rgb), 0.55);
+  border-radius: 50%;
+  background: rgba(var(--accent-rgb), 0.06);
+  color: var(--accent);
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: calc(15 * var(--px));
+  line-height: 1;
+  cursor: pointer;
+  transition: box-shadow 160ms linear, border-color 160ms linear;
+}
+
+.mech-tour-key:hover {
+  border-color: rgba(var(--accent-rgb), 0.9);
+  box-shadow:
+    0 0 calc(10 * var(--px)) rgba(var(--accent-rgb), 0.45),
+    inset 0 0 calc(10 * var(--px)) rgba(var(--accent-rgb), 0.12);
+}
+
+.mech[data-boot='true'] .mech-tour-key {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ---- the sheet ---- */
+
+.mech-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: calc(18 * var(--px));
+  padding: calc(20 * var(--px)) var(--gutter) calc(40 * var(--px) + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  /* Opaque, not nearly-opaque. Under the sheet is a lit face, a phosphor
+     grid and a bloom, and three per cent of all of that is still a face. */
+  background: #040b09;
+  animation: mech-menu-in 220ms var(--ease) both;
+}
+
+@keyframes mech-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(-10 * var(--px)));
+  }
+}
+
+.mech-menu-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: calc(12 * var(--px));
+  border-bottom: 1px solid rgba(var(--accent-rgb), 0.2);
+  font-size: calc(13 * var(--type));
+  letter-spacing: calc(1.4 * var(--type));
+  color: var(--dim);
+}
+
+.mech-menu-close {
+  background: none;
+  border: 0;
+  padding: calc(6 * var(--px)) 0 calc(6 * var(--px)) calc(20 * var(--px));
+  font: inherit;
+  color: var(--accent);
+}
+
+.mech-menu-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.mech-menu-list button {
+  display: flex;
+  align-items: baseline;
+  gap: calc(14 * var(--px));
+  width: 100%;
+  padding: calc(13 * var(--px)) 0;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  background: none;
+  text-align: left;
+  font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-weight: 400;
+  font-size: calc(21 * var(--type));
+  color: var(--mid);
+}
+
+.mech-menu-n {
+  flex: none;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: calc(11.5 * var(--type));
+  letter-spacing: calc(1 * var(--type));
+  font-variant-numeric: tabular-nums;
+  color: var(--dim);
+}
+
+.mech-menu-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.mech-menu-year {
+  flex: none;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: calc(11.5 * var(--type));
+  font-variant-numeric: tabular-nums;
+  color: var(--dim);
+}
+
+.mech-menu-list button[aria-current='true'] {
+  color: var(--accent);
+  text-shadow: 0 0 calc(10 * var(--px)) rgba(var(--accent-rgb), 0.45);
+}
+
+.mech-menu-list button[aria-current='true'] .mech-menu-n {
+  color: var(--accent);
+}
+
+.mech-menu-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(10 * var(--px)) calc(14 * var(--px));
+}
+
+.mech-menu-tags button {
+  padding: calc(7 * var(--px)) calc(13 * var(--px));
+  border: 1px solid rgba(var(--accent-rgb), 0.28);
+  background: none;
+  font: inherit;
+  font-size: calc(12.5 * var(--type));
+  color: var(--mid);
+}
+
+.mech-menu-home {
+  align-self: flex-start;
+  padding: calc(9 * var(--px)) calc(20 * var(--px));
+  border: 1px solid var(--accent);
+  background: rgba(var(--accent-rgb), 0.08);
+  font: inherit;
+  font-size: calc(13 * var(--type));
+  letter-spacing: calc(1.4 * var(--type));
+  color: var(--accent);
+}
+
+/* ---- the subject, front and centre ---- */
+
+/* A tall box the width of the window instead of a 16:9 island in the middle
+   of a wide frame — the one thing a phone has plenty of is height, and the
+   subject is what the screen is for. Capped against the viewport as well as
+   the width so a short window (a phone held sideways, a small tablet) does
+   not hand the whole screen to the picture and push the title off the end. */
+.mech[data-narrow='true'] .mech-stage {
+  position: relative;
+  left: auto;
+  top: auto;
+  transform: none;
+  width: 100%;
+  height: min(56vh, calc(100vw * 1.05));
+  margin: 0;
+}
+
+/* The picture fills the stage rather than sitting at `mediaBox()`'s
+   coordinates inside it — those are frame coordinates, and there is no frame
+   here. `Flat` in Mech.tsx drops its inline `left/top/width/height` when
+   narrow, which is what leaves this rule anything to set. `contain`, not
+   `cover`: a portrait phone capture cropped to a landscape box is most of the
+   picture missing. */
+.mech[data-narrow='true'] .mech-housing {
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  transform: scale(var(--media-scale, 1));
+}
+
+.mech[data-narrow='true'] .mech-media {
+  object-fit: contain;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* The strip and the transport hang above and below the picture in the wide
+   layout, in the air either side of it. Here the picture is the whole stage
+   and there is no air, so both come inside — over the picture's own edges,
+   on a scrim dark enough to read against anything. */
+.mech[data-narrow='true'] .mech-housing-label {
+  top: var(--label-gap);
+  bottom: auto;
+}
+
+.mech[data-narrow='true'] .mech-transport {
+  top: auto;
+  bottom: var(--label-gap);
+  padding: calc(6 * var(--px)) calc(10 * var(--px));
+  border-radius: calc(8 * var(--px));
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* The corner brackets are drawn thirteen units outside the picture. Outside
+   the picture is outside the window now. */
+.mech[data-narrow='true'] .mech-corner {
+  display: none;
+}
+
+/* ---- the tile strip, above the title ---- */
+
+/* Sideways, and above the words rather than below them: on a phone the
+   picture and the way to the next picture belong together, and putting the
+   strip under a screen of copy is putting it somewhere nobody scrolls back
+   to. */
+.mech[data-narrow='true'] .mech-rail-wrap {
+  position: static;
+  right: auto;
+  top: auto;
+  transform: none;
+  bottom: auto;
+  left: auto;
+  max-width: none;
+  margin: calc(22 * var(--px)) 0 0;
+  padding: 0 var(--gutter);
+}
+
+/* Sideways is the base case now — see *the media strip* in this file. What is
+   left down here is the phone's own numbers, and the snap: a strip you flick
+   with a thumb should come to rest on a picture rather than between two. */
+.mech[data-narrow='true'] .mech-rail {
+  gap: calc(12 * var(--px));
+  padding: calc(12 * var(--px));
+  scroll-snap-type: x proximity;
+}
+
+/* Rail tiles are a fraction of the frame like everything else on this page,
+   which is right for a composition and wrong for a touch target. Real pixels
+   with a floor, the same reasoning as `--type`'s. */
+.mech[data-narrow='true'] .mech-tile {
+  width: max(92px, calc(120 * var(--px)));
+  height: max(68px, calc(88 * var(--px)));
+  border-radius: calc(10 * var(--px));
+  scroll-snap-align: center;
+  opacity: 0.72;
+}
+
+/* The wide layout marks the current tile by flooding it with a 60-unit inset
+   shadow, which at the wide frame's `--px` is a wash over a 58-unit tile. At
+   this width that number is most of a *bigger* tile, so the thumbnail — the
+   only thing that tells one tile from another — disappears under it. A ring
+   instead, which is what the wash was standing in for. */
+.mech[data-narrow='true'] .mech-tile[aria-pressed='true'] {
+  opacity: 1;
+  box-shadow:
+    inset 0 0 0 calc(2 * var(--px)) var(--accent),
+    0 0 calc(20 * var(--px)) rgba(var(--accent-rgb), 0.35);
+}
+
+/* ---- the title and the write-up ---- */
+
+/* The column itself goes away. `display: contents` leaves its two children
+   — the name and the write-up — as items of the frame's own flex box, which
+   is what lets one sit above the picture and the other below the tile strip.
+   Its padding and its entry animation move onto them. */
+.mech[data-narrow='true'] .mech-side {
+  display: contents;
+}
+
+.mech[data-narrow='true'] .mech-lede {
+  padding: calc(36 * var(--px)) var(--gutter) calc(14 * var(--px));
+}
+
+/* `display: contents` generates no box, so an animation on `.mech-side` itself
+   does nothing down here — both directions have to move onto the two children
+   that became the frame's own flex items. The attribute still matches on the
+   wrapper, boxless or not, so the flag is read in exactly one place either
+   way. The fold column leaves and the title leaves; only the title comes back
+   on its own, because the list under it is below the fold on this layout and
+   `useReveal` is already what draws it in. */
+.mech[data-narrow='true'] .mech-side[data-transiting='false'] .mech-lede {
+  animation: mech-in 620ms var(--ease) both;
+}
+
+.mech[data-narrow='true'] .mech-side[data-transiting='true'] .mech-lede,
+.mech[data-narrow='true'] .mech-side[data-transiting='true'] .mech-folds-wrap {
+  animation: mech-side-out 240ms 360ms var(--ease) both;
+}
+
+.mech[data-narrow='true'] .mech-folds-wrap {
+  flex: none;
+  padding: calc(10 * var(--px)) var(--gutter) 0;
+}
+
+/* The same cap as `.mech-title`, against a different width: narrow, the title
+   has the window rather than a 380-unit column, and a lower ceiling to start
+   from. Everything about why it is a count and not a measurement is written
+   up there. */
+/* The window, not the wide layout's deliberate overhang: narrow has no column
+   for the title to reach out of, and 620 frame units on a phone is the display
+   running off the right edge. Nothing to *cap*, though — the size formula that
+   used to live here, and its twin above, are what `TITLE_CELLS` replaced. */
+/* Same cell-to-pixel ratio as `.mech-fold > button .mech-seg` below, so the
+   title prints at the same size as "Challenges" and every other fold heading
+   under it rather than filling the window at whatever size that cell count
+   happens to stretch to. */
+.mech[data-narrow='true'] .mech-title {
+  width: calc(var(--title-cells, 21) * 16 * var(--px));
+  max-width: 100%;
+}
+
+.mech[data-narrow='true'] .mech-tagline {
+  margin-top: calc(12 * var(--px));
+  min-height: 0;
+  font-size: calc(12 * var(--type));
+  line-height: 1.65;
+}
+
+/* The fold list is a scroll box on the desktop layout because it lives in a
+   column of fixed height. Here the page scrolls and it does not. */
+.mech[data-narrow='true'] .mech-folds-wrap::before,
+.mech[data-narrow='true'] .mech-folds-wrap::after {
+  display: none;
+}
+
+.mech[data-narrow='true'] .mech-folds {
+  flex: none;
+  overflow: visible;
+  margin: 0;
+  padding: 0;
+}
+
+/* Nothing folds. Every section stands open under its own heading with a rule
+   above it — the shape v2's project page had, and the thing worth keeping out
+   of it: on one column with nothing competing for the space, a row of closed
+   drawers is a row of things you have to ask for. */
+.mech[data-narrow='true'] .mech-fold {
+  margin-top: calc(20 * var(--px));
+  padding-top: calc(18 * var(--px));
+  border-top: 1px solid rgba(var(--accent-rgb), 0.16);
+}
+
+.mech[data-narrow='true'] .mech-fold h2 {
+  display: flex;
+  align-items: center;
+  gap: calc(9 * var(--px));
+  margin: 0;
+  font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-weight: 400;
+  font-size: calc(18 * var(--type));
+  line-height: calc(26 * var(--type));
+  color: var(--accent);
+  text-shadow: 0 0 calc(9 * var(--px)) rgba(var(--accent-rgb), 0.4);
+}
+
+.mech[data-narrow='true'] .mech-fold h2 .mech-pip {
+  transform: rotate(45deg) scale(1.3);
+}
+
+/* Sized to a cell here too, not to the room. Narrower than the wide layout's
+   cell (`* 12`) would print if it were copied across, because `--px` is
+   re-based bigger on this layout — but the correction was overdone twice
+   running: at `* 7` and then at `* 9.5` these read as captions under the body
+   copy rather than as headings over it. A phone has one column and nothing
+   competing for it, so a section marker can take most of the width; what it
+   must not do is reach the gutters, where it stops being a readout in a panel
+   and becomes a headline. */
+.mech[data-narrow='true'] .mech-fold > button .mech-seg {
+  flex: none;
+  width: calc(var(--fold-cells, 19) * 16 * var(--px));
+  max-width: 100%;
+  min-width: 0;
+}
+
+.mech[data-narrow='true'] .mech-fold-body > div {
+  padding-left: 0;
+}
+
+.mech[data-narrow='true'] .mech-fold-body p {
+  /* Monospace runs wider per character than the sans this used to be, and a
+     phone column has no room to spare — so the step up from the wide layout
+     is a point rather than the point and a half it was. */
+  font-size: calc(12 * var(--type));
+  line-height: 1.65;
+  padding-bottom: 0;
+}
+
+/* ---- arriving ----
+
+   Only on this layout. The wide one has the whole page on screen at once —
+   there is nothing below a fold to arrive from, and the boot sequence already
+   brings every part of it up in order. A phone is a scroll, and a scroll
+   where everything is simply already there reads as a document rather than as
+   a panel coming up.
+
+   The attribute is flipped by `reveal.ts`; this is the whole of the motion.
+   It is `data-arrive` and not the obvious `data-reveal` because that one is
+   already taken: v2's own scroll-reveal claims `[data-reveal]` globally in
+   `src/site/base.css`, and both stylesheets are in the same bundle. A bare
+   `data-*` attribute is a shared namespace across every stylesheet a page
+   loads, which is easy to forget in a repo that is two sites at once.
+   `SplitReveal` does the same for lines of type — it holds its cascade until
+   the line can be seen, so the title of a section draws itself as you reach
+   it rather than having finished three screens ago. */
+.mech[data-narrow='true'] [data-arrive] {
+  opacity: 0;
+  transform: translateY(calc(16 * var(--px)));
+  transition: opacity 520ms var(--ease), transform 640ms var(--ease);
+}
+
+.mech[data-narrow='true'] [data-arrive][data-arrived='true'] {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mech[data-narrow='true'] [data-arrive] {
+    transition-duration: 1ms;
+    transform: none;
+  }
+}
+
+/* ---- the contact line ---- */
+
+/* Narrow, the footer is a block in the scroll rather than a strip across the
+   bottom of a window — but it is still the same line, held apart at the same
+   two corners. It was stacked and centred for a while, on the argument that
+   two things at opposite ends of a 390-point line are two things nowhere near
+   each other; what that actually produced was a centred credit block, which
+   is a sign-off, where every other layout has a machine's footer.
+
+   What made the row fit is the size. Both halves are boxed in `ch` against
+   their own character counts (see `.mech-comms-to`), so the pair costs exactly
+   46 monospace advances and nothing about the layout can shrink it — the only
+   knob is the font. At the wide layout's 11 that is wider than a small phone;
+   at 8.5 the two ends clear each other with room to spare on a 320-point
+   window, and it prints at very nearly the size the wide footer already does,
+   because `--type` has bottomed out on its rem floor by then either way. */
+.mech[data-narrow='true'] .mech-foot {
+  position: static;
+  justify-content: space-between;
+  align-items: center;
+  gap: calc(10 * var(--px));
+  font-size: calc(8.5 * var(--type));
+  margin-top: calc(34 * var(--px));
+  padding: calc(26 * var(--px)) var(--gutter) calc(10 * var(--px));
+}
+
+
+/* ---- the deck, floating ---- */
+
+/* Centred at the bottom of the window rather than docked in the frame's top
+   right corner: it is the one control on this screen that has nothing to do
+   with where you are in the page, and the top right belongs to the way out of
+   it. Fixed, so it stays put while the page scrolls under it. */
+.mech[data-narrow='true'] .mech-deck-slot {
+  position: fixed;
+  left: 50%;
+  right: auto;
+  top: auto;
+  bottom: calc(18 * var(--px) + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  margin: 0;
+  z-index: 8;
+}
+
+/* The pill's glow is scaled by the room's `--g` (5 on this screen), a radius
+   tuned for instruments read across a wide frame. On a phone the deck is one
+   control floating over the work at arm's length, and a 20-unit green halo
+   around it — alpha clamped to fully opaque — reads as a lit box rather than
+   a glow, and washes up over the warning pair. `--g: 1` on the pill's subtree
+   drops it to an ordinary soft edge; nothing else about the pill changes. */
+.mech[data-narrow='true'] .mech-deck-pill {
+  --g: 1;
+}
+
+/* No floor behind it. A darkened band under the pill — radial or linear, at
+   any opacity tried — read as a box sitting behind the control on a dark
+   page. The pill carries its own border and a soft glow, and that is enough
+   to hold it off a headline scrolling under it. */
+
+/* ---- the dashboard, quieted ---- */
+
+/* The compass and its coordinate readout only ever say anything with a fine
+   pointer over the page — see the `matchMedia` guard in MechHud.tsx. On a
+   phone they are a static "000" and a pair of zeroed coordinates sitting
+   across the bottom of the window, which is exactly where the deck now
+   floats. */
+.mech[data-narrow='true'] .mech-strip,
+.mech[data-narrow='true'] .mech-coords {
+  display: none;
+}
+
+/* ---- home ----
+
+   Home is the same machine with three of its slots filled differently: the
+   cast on the stage, the readout in the side column, the index across the
+   bottom. Everything else on this page — the grid, the bloom, the compass,
+   the header, the footer, the tally — is the same DOM in the same place, and
+   is never told that anything happened. That is the whole trick, and it is
+   why there is no flicker: there is nothing to repaint.
+
+   See the note on `Props.id` in Mech.tsx. */
+
+/* ---- the exchange ----
+
+   This slot along the bottom of the screen used to hold two controls, one per
+   screen: a project's tile strip, and home's row of twelve named boxes. Home
+   no longer puts anything here — the objects on the stage are its index now
+   (see the note where that row was, in Mech.tsx) — so the slot is a project's
+   alone and the exchange is with nothing.
+
+   The rule stays because the reason for it does: the strip is a different set
+   of tiles on the other side of a retarget, so it has to be gone before
+   `shownId` changes underneath it and come back after. It is never caught
+   mid-swap, and it does not have to know which direction the move was.
+
+   **`data-transiting`, not `data-covered`.** This is the one thing on the
+   screen that must tell a *screen* changing from a *picture* changing, and
+   `covered` cannot: `phase` goes to `out` for both, so keyed off the cover the
+   strip faded out and back in every time you stepped along it to a different
+   still or clip — the control you were using, blinking at you for using it,
+   while the tiles in it never changed. `transiting` is set in the retarget
+   effect alone and cleared on the beat `shownId` changes, which is exactly the
+   window where these tiles are about to be replaced. Stepping the strip leaves
+   it alone entirely, live and lit under the pointer, and the swap happens on
+   the stage where it belongs. Same distinction the wordmark makes for the same
+   reason — see `transiting` in Mech.tsx. */
+.mech-rail-wrap {
+  transition: opacity 300ms var(--ease);
+}
+
+.mech[data-transiting='true'] .mech-rail-wrap {
+  opacity: 0;
+  pointer-events: none;
+  transition-duration: 240ms;
+}
+
+/* ---- the index ----
+
+   Twelve boxes ran along the bottom of the home screen: a project's name and
+   its number, on one line, sized so all twelve came out the width of the
+   longest name. It is gone, and what replaced it is not a smaller version of
+   it — it is the line-up on the stage. Point at an object and that object's
+   box comes up on a line drawn to it, in the same design, one at a time; the
+   projects with no object are behind the index key in the header.
+
+   `.mech-cast-box` at the foot of this file is where the box itself now
+   lives, and it is deliberately the same rounded rectangle, the same border
+   and the same number in the same place. `.mech-index-gauge`, which measured
+   every name at zero height so the boxes could match, went with the row —
+   there is one box on screen at a time now and it is as wide as its own
+   name. `git show 4a322c0` has all of it. */
+
+/* Home has no side column any more — `.mech-side` is only mounted for a
+   project. What it used to hold on this screen (the name, the line under it,
+   the paragraph, and then a stack of folds) is the cluster's business now:
+   the name is `.mech-ident-name` in the middle, the paragraph is
+   `.mech-profile` down the left. See `MechCluster.css`.
+
+/* ---- nothing to show ----
+
+   A project in the index with no material — Visa, under an NDA; Solomon,
+   whose write-up is still to come. The card says so in the panel's own voice
+   rather than the stage being left empty, which reads as a failure to load.
+   See `MENU` in model.ts for why a project with no media is in the index.
+
+   `[data-locked]` is the NDA case rather than the unfinished one: it centres
+   its head, shows a lock, and reads "not yet disclosable" — see `.mech-bare`
+   in Mech.tsx and `restricted` on the Visa entry in projects.ts. */
+
+/* Its own entrance rather than `mech-in`. This card centres itself with a
+   translate, and `mech-in`'s rest frame is `transform: translateY(0)` held by
+   `animation-fill-mode: both` — which overwrites that translate and drops the
+   card down and right by half its own size. Same trap as every reused keyframe
+   on this screen; the fix is a keyframe that carries the centring offset in
+   both frames. */
+@keyframes mech-bare-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 10 * var(--px)));
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+
+.mech-bare {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(560 * var(--px));
+  /* Narrow re-bases `--px` to the window, and the widest a phone can be is
+     still under this card's frame width — cap it so it never runs off. */
+  max-width: calc(100vw - 32px);
+  padding: calc(30 * var(--px)) calc(34 * var(--px));
+  border: 1px solid rgba(var(--accent-rgb), 0.28);
+  border-radius: var(--round);
+  background: rgba(0, 0, 0, 0.5);
+  box-shadow: inset 0 0 calc(40 * var(--px)) rgba(var(--accent-rgb), 0.05);
+  animation: mech-bare-in 620ms var(--ease) both;
+}
+
+.mech-bare[data-locked='true'] {
+  width: calc(600 * var(--px));
+  text-align: center;
+}
+
+.mech-bare-tag {
+  display: block;
+  margin-bottom: calc(14 * var(--px));
+  font-size: calc(10.5 * var(--type));
+  letter-spacing: calc(1.8 * var(--type));
+  text-transform: uppercase;
+  color: var(--warn);
+}
+
+.mech-bare p {
+  font-size: calc(14 * var(--type));
+  line-height: 1.6;
+  color: var(--mid);
+  /* The note can run to a few short paragraphs — keep its blank lines. */
+  white-space: pre-line;
+}
+
+.mech-bare[data-locked='true'] p {
+  margin-top: calc(16 * var(--px));
+  text-align: left;
+}
+
+/* The lock on an NDA card. Phosphor, because it is the machine reporting a
+   state the pointer cannot change; it gives the shackle a small tug and
+   settles back, so it reads as held shut rather than as an ornament. */
+.mech-bare-lock {
+  display: block;
+  width: calc(46 * var(--px));
+  height: calc(46 * var(--px));
+  margin: 0 auto calc(20 * var(--px));
+  color: var(--accent);
+}
+
+.mech-bare-lock svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.mech-bare-lock .lock-body,
+.mech-bare-lock .lock-shackle {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  filter: drop-shadow(
+    0 0 calc(6 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.55 * var(--g)))
+  );
+}
+
+.mech-bare-lock .lock-shackle {
+  transform-box: fill-box;
+  animation: mech-lock-tug 4.6s var(--ease) infinite;
+}
+
+.mech-bare-lock .lock-keyhole {
+  fill: currentColor;
+  animation: mech-lock-pulse 2.8s ease-in-out infinite;
+}
+
+@keyframes mech-lock-tug {
+  0%,
+  80%,
+  100% {
+    transform: translateY(0);
+  }
+  86% {
+    transform: translateY(calc(-2 * var(--px)));
+  }
+  92% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes mech-lock-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ---- the wave's layer ----
+
+   Full window, not the frame. `.mech-frame` is 1920 coordinates wide and
+   `--px` takes the smaller of a width term and a height term, so on anything
+   wider than 16:9 the frame is letterboxed — and the wave, drawn inside it,
+   stopped dead at the black bars while the grid behind it ran to the edges.
+
+   Fixed and inset like `.mech-hud`, at the same stacking level and earlier in
+   the DOM, so the grid, the bloom and the sweep all still paint over it. It
+   takes no pointer: the gun and the reticle have to reach the page through
+   it. See `MechWave.tsx`. */
+.mech-wave-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  /* Fades with the retarget, the same as everything else that belongs to
+     home — so opening a project takes the ground out with the cast rather
+     than cutting it. */
+  opacity: 1;
+  transition: opacity 700ms var(--ease);
+}
+
+.mech[data-covered='true']:not([data-boot='true']) .mech-wave-layer {
+  opacity: 0;
+}
+
+.mech-wave-layer canvas {
+  display: block;
+}
+
+/* ---- the dev panel ----
+
+   One window, tabbed, and it scrolls. What it replaces was four Leva panels
+   stacked down this edge — a panel grows to its content and the page behind
+   it does not scroll, so anything past the bottom of the window was simply
+   unreachable. Capped at the viewport with its own scroller, and the tab
+   strip stays put at the top of it.
+
+   Development only. See `MechPanel.tsx`. */
+.mech-panel {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+  width: min(340px, calc(100vw - 20px));
+  display: flex;
+  flex-direction: column;
+  /* Never taller than the window, so there is always a way to reach the
+     bottom of a long tab. */
+  max-height: calc(100vh - 20px);
+  border-radius: 6px;
+  overflow: hidden;
+  background: #141414;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.mech-panel-tabs {
+  flex: none;
+  display: flex;
+  border-bottom: 1px solid #272727;
+  background: #1b1b1b;
+}
+
+.mech-panel-tabs button {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 8px 6px;
+  border: 0;
+  border-right: 1px solid #272727;
+  background: transparent;
+  color: #7a7a7a;
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 120ms linear, background-color 120ms linear;
+}
+
+.mech-panel-tabs button:last-child {
+  border-right: 0;
+}
+
+.mech-panel-tabs button:hover {
+  color: #d0d0d0;
+}
+
+/* The one you are on, marked along its bottom edge — inside the strip, so
+   switching tabs does not move anything. */
+.mech-panel-tabs button[aria-selected='true'] {
+  color: var(--accent);
+  background: #141414;
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.mech-panel-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.mech-panel-body[hidden] {
+  display: none;
+}
+
+/* The close key, in the tab strip rather than floated over the panel — one
+   more tab-sized button, so it does not need a stacking context of its own.
+   H does the same thing, and the title on both buttons says so. */
+.mech-panel-hide {
+  flex: none !important;
+  width: 28px;
+  color: #7a7a7a;
+  font-size: 14px !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+.mech-panel-hide:hover {
+  color: #d0d0d0;
+}
+
+/* What is left once the panel is minimised — a small pill in the same
+   corner, so pressing H (or this) always brings back the same panel in the
+   same place rather than a full re-mount finding its own spot. */
+.mech-panel-restore {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: #141414;
+  color: #7a7a7a;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+  transition: color 120ms linear;
+}
+
+.mech-panel-restore:hover {
+  color: #d0d0d0;
+}
+
+/* ---- the tag on a subject ----
+
+   Hovering a subject on the home stage names the project it opens, in the
+   same hand the project screen's leaders are drawn in: a ring on the thing, a
+   line off it, the name at the end. Drawn as DOM through drei's `Html` and
+   anchored at the subject's own origin, so it travels with the float and the
+   lean rather than being pinned to a screen position the subject drifts away
+   from. */
+.mech-tag-anchor {
+  pointer-events: none;
+}
+
+.mech-tag {
+  display: flex;
+  align-items: center;
+  gap: calc(7 * var(--px));
+  /* Up and to the right of the subject's middle, clear of the body. */
+  transform: translate(calc(34 * var(--px)), calc(-64 * var(--px)));
+  white-space: nowrap;
+  animation: mech-tag-in 220ms var(--ease) both;
+}
+
+@keyframes mech-tag-in {
+  from {
+    opacity: 0;
+    transform: translate(calc(26 * var(--px)), calc(-64 * var(--px)));
+  }
+}
+
+.mech-tag-ring {
+  width: calc(9 * var(--px));
+  height: calc(9 * var(--px));
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 calc(8 * var(--px)) rgba(var(--accent-rgb), 0.8);
+}
+
+.mech-tag-line {
+  width: calc(30 * var(--px));
+  height: 1px;
+  background: var(--accent);
+  box-shadow: 0 0 calc(6 * var(--px)) rgba(var(--accent-rgb), 0.6);
+}
+
+.mech-tag-name {
+  font-family: 'Clash Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: calc(17 * var(--type));
+  letter-spacing: calc(-0.3 * var(--type));
+  text-transform: uppercase;
+  color: var(--accent);
+  text-shadow: 0 0 calc(10 * var(--px)) rgba(var(--accent-rgb), 0.6);
+}
+
+/* Only where pressing actually goes somewhere. */
+.mech-tag-go {
+  padding: calc(2 * var(--px)) calc(7 * var(--px));
+  border: 1px solid rgba(var(--accent-rgb), 0.45);
+  border-radius: calc(3 * var(--px));
+  font-size: calc(9 * var(--type));
+  letter-spacing: calc(1.4 * var(--type));
+  text-transform: uppercase;
+  color: rgba(var(--accent-rgb), 0.85);
+}
+
+/* ---- the tag on a cast subject ----
+
+   Two pieces, one gesture. The leader — ring, hairline, elbow — is SVG in the
+   stage's own coordinates, sharing every `.mech-leader-*` rule with the lines
+   a project screen draws, so it is not a second design that resembles the
+   first. The label at the end of it is HTML, and it is the index box: the
+   same rounded rectangle, the same border, the same name on the left and the
+   same number on the right that used to run twelve-across the bottom of this
+   screen. That row is gone and the objects on the stage took its job, so its
+   design is what names one.
+
+   The order is the whole thing. The line draws itself out to the elbow, the
+   box opens along it like a drawer being pulled, and only then is the name
+   typed into it. A label that arrives whole is a tooltip; a box that opens
+   empty and is then filled in is an instrument acquiring something. Out is
+   the same list backwards — the name backspaces (`Typed`'s `back`, in
+   Mech.tsx), the box shuts, the line retracts — and the numbers below add up
+   to just inside `TAG_OUT`, which is how long the tag stays mounted after
+   the pointer has gone.
+
+   The exits are the `data-covered` rules from `entries, and their inverses`,
+   rescoped to this tag's own flag. They cannot be shared: `data-covered`
+   belongs to the stage and is true for a frame swap and the whole of the
+   boot, neither of which has anything to do with a pointer leaving a subject.
+
+   Its own keyframes, never the entry reversed — an animation is only
+   restarted when its `animation-name` changes, so `mech-draw reverse` would
+   leave the finished entry running and the line would simply be gone on the
+   next frame. Same reasoning, at length, beside the rules it comes from. */
+
+/* Quicker in than a project's leaders. Those are the last beat of a machine
+   booting and can take their time; this one answers a pointer, and anything
+   that answers a pointer has to be under way before you have finished
+   arriving. */
+.mech-cast-tag .mech-leader {
+  animation-duration: 300ms;
+}
+
+.mech-cast-tag .mech-leader-mark,
+.mech-cast-tag .mech-leader-core {
+  animation-delay: calc(var(--d) + 120ms);
+}
+
+.mech-cast-tag .mech-leader-ping {
+  animation-delay: calc(var(--d) + 220ms);
+}
+
+.mech-cast-tag[data-off='true'] .mech-leader-mark,
+.mech-cast-tag[data-off='true'] .mech-leader-core {
+  animation: mech-out 260ms var(--ease) both;
+}
+
+.mech-cast-tag[data-off='true'] .mech-leader-ping {
+  animation: mech-out 220ms var(--ease) both;
+}
+
+.mech-cast-tag[data-off='true'] .mech-leader {
+  animation: mech-undraw 300ms var(--ease) 460ms both;
+}
+
+/* ---- the label at the end of it ----
+
+   A box the size of the stage, holding a point that is moved every frame,
+   holding the box itself. Three elements because there are three different
+   jobs: `.mech-cast-label` is the coordinate space (the stage's own, so a
+   fraction of it is a fraction of `space`), `.mech-cast-label-at` is where the
+   subject is *right now* — written from the same rAF that moves the leader,
+   off `aim`, so the tag rides the float — and `.mech-cast-box` is the offset
+   that hangs the box off the correct side of that point. Splitting the last
+   two apart is what lets the per-frame transform be written without having to
+   carry the static one along with it every time. */
+.mech-cast-label {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.mech-cast-label-at {
+  position: absolute;
+  left: 0;
+  top: 0;
+  will-change: transform;
+}
+
+.mech-cast-box {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  align-items: baseline;
+  gap: calc(30 * var(--px));
+  padding: calc(7 * var(--px)) calc(13 * var(--px));
+  border: 1px solid var(--accent);
+  border-radius: var(--round);
+  /* Nearly opaque, because there is a lit surface behind this — the wave runs
+     under the whole stage (`MechWave.tsx`) and a subject's own key light is
+     right beside it. A 55% black lets the purple through far enough to grey
+     out the name. */
+  background: rgba(0, 0, 0, 0.82);
+  box-shadow:
+    0 0 calc(22 * var(--px)) rgba(var(--accent-rgb), 0.28),
+    inset 0 0 calc(30 * var(--px)) rgba(var(--accent-rgb), 0.08);
+  white-space: nowrap;
+  /* `translate` rather than `transform`, so the keyframes below can animate
+     the box open without having to restate the offset in every frame of it —
+     the two are separate properties and compose on their own. */
+  translate: 0 -50%;
+  animation: mech-box-in 220ms var(--ease) 250ms both;
+}
+
+/* Hanging off the left of the line instead: the box's right edge meets the
+   end of the bar, and it opens from that edge rather than the other one. */
+.mech-cast-box[data-side='left'] {
+  translate: -100% -50%;
+  animation-name: mech-box-in-left;
+}
+
+/* Wiped open along the line, rather than scaled or faded. A clip keeps the
+   corners and the border at full crispness the whole way — a box scaled from
+   nothing has a radius that grows with it, which reads as a balloon. */
+@keyframes mech-box-in {
+  from {
+    clip-path: inset(0 100% 0 0 round var(--round));
+  }
+  to {
+    clip-path: inset(0 0 0 0 round var(--round));
+  }
+}
+
+@keyframes mech-box-in-left {
+  from {
+    clip-path: inset(0 0 0 100% round var(--round));
+  }
+  to {
+    clip-path: inset(0 0 0 0 round var(--round));
+  }
+}
+
+/* Held open while the name backspaces itself out, then shut the way it came.
+   250 is a little longer than the longest name in the index takes to delete
+   at `backSpeed`. */
+.mech-cast-label[data-off='true'] .mech-cast-box {
+  animation: mech-box-out 200ms var(--ease) 300ms both;
+}
+
+.mech-cast-label[data-off='true'] .mech-cast-box[data-side='left'] {
+  animation-name: mech-box-out-left;
+}
+
+@keyframes mech-box-out {
+  from {
+    clip-path: inset(0 0 0 0 round var(--round));
+  }
+  to {
+    clip-path: inset(0 100% 0 0 round var(--round));
+  }
+}
+
+@keyframes mech-box-out-left {
+  from {
+    clip-path: inset(0 0 0 0 round var(--round));
+  }
+  to {
+    clip-path: inset(0 0 0 100% round var(--round));
+  }
+}
+
+/* The name, in the index box's own type — not the leader's Clash Display
+   label. This is a box in a list of boxes, one at a time, and the list set
+   its names in the page's Helvetica at 9.5. */
+.mech-cast-name {
+  font-size: calc(9.5 * var(--type));
+  letter-spacing: calc(0.2 * var(--type));
+  line-height: 1.1;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+/* And its place in the index, on the right of the box, quieter than the name
+   — exactly where the row used to put it. */
+.mech-cast-n {
+  font-size: calc(8 * var(--type));
+  letter-spacing: calc(1.4 * var(--type));
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  opacity: 0.75;
+}
+
+/* A minimum, so a two-letter name and a twenty-one-letter one do not open
+   into wildly different shapes — and so the box has somewhere to put the
+   number while the name is still being typed into it. */
+.mech-cast-name {
+  display: inline-block;
+  min-width: calc(120 * var(--px));
+}
+
+/* The rules that re-shaped `.mech-side` for home went with home's side
+   column — see the note above `.mech-bare`. */

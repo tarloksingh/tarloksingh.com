@@ -1,0 +1,26 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+
+# 3D models for the unmounted scenes (DanceFloorScene, Door) — kept local
+# only. Product models used by the live page are tracked.
+public/models/dance/
+public/models/medieval-door.glb
+
+# macOS
+.DS_Store
+
+# logs
+*.log
+npm-debug.log*
+
+# editor
+.vscode/
+.idea/
+
+# env
+.env
+.env.local
+.env.*.local

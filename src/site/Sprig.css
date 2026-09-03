@@ -1,0 +1,105 @@
+/* See Sprig.tsx. Everything that moves here is one transition on a dash
+   offset, which is why there is no component loop behind it. */
+
+/* The pair. Laid over the host rather than beside it, so adding a sprig never
+   changes where the host sits or how wide it is — the two drawings hang off
+   its edges from here. */
+.sp {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* How many strokes there are, for the reversed delay below. Kept here rather
+     than written per element: `SPRIG` is one drawing and every instance of it
+     has the same number of lines. */
+  --sp-n: 5;
+  /* An undrawn stroke is not invisible. The pen is round-capped, so a dash
+     offset of the whole path length still paints the cap at the point the pen
+     would have started — five full stops sitting in mid-air beside every word
+     on the page, which is what this looked like before the opacity was here.
+     The fade is far too quick to read as a fade; it only has to outrun the
+     first stroke's own start. On the way back out it waits for the whole
+     retraction — the last delay plus the transition, see below — so the
+     drawing is genuinely gone before this takes the dots with it. */
+  opacity: 0;
+  transition: opacity 0.15s linear calc(var(--sp-t, 0.5s) + (var(--sp-n) - 1) * 0.05s);
+}
+
+.u-vine:hover .sp,
+.u-vine:focus-visible .sp,
+.u-vine[data-on='true'] .sp {
+  opacity: 1;
+  transition: opacity 0.1s linear;
+}
+
+.sp svg {
+  position: absolute;
+  top: 50%;
+  /* On the host's own type size, so a sprig beside the menu and a sprig beside
+     a button are each in proportion to the word they belong to rather than
+     both being some number of pixels. */
+  width: var(--sp-w, 2.6em);
+  height: auto;
+  overflow: visible;
+}
+
+/* The drawing runs left to right off an anchor on its own left edge, so the
+   left-hand one is the same drawing turned over: both grow away from the word
+   rather than both pointing the same way. `0.727` is where that anchor sits in
+   the box (y=32 of 44), which is what puts the runner on the word's middle
+   instead of the box's. */
+.sp-l {
+  right: 100%;
+  margin-right: var(--sp-gap, 0.55em);
+  transform: translateY(-72.7%) scaleX(-1);
+}
+
+.sp-r {
+  left: 100%;
+  margin-left: var(--sp-gap, 0.55em);
+  transform: translateY(-72.7%);
+}
+
+.sp path {
+  fill: none;
+  stroke: currentColor;
+  /* In the drawing's own units, not pixels: the box is 100 wide and rendered
+     at a couple of ems, so this comes out a little over a hairline at menu
+     size and scales with the type. Asking for pixels through
+     `vector-effect: non-scaling-stroke` would put the dash and the path into
+     two different spaces — the same trap documented at the top of
+     ProjectFrame.tsx. */
+  stroke-width: var(--sp-pen, 2.6);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  /* `pathLength="1"` on the element, so this is a fraction of each stroke's
+     own length: 1 is undrawn, 0 is drawn. */
+  stroke-dashoffset: 1;
+  transition: stroke-dashoffset var(--sp-t, 0.5s) var(--ease-out);
+  /* Retracting. The list runs backwards on the way out — the bud at the tip
+     goes first and the runner it stands on goes last, which is the only order
+     that does not leave a flower hanging in the air off nothing. */
+  transition-delay: calc((var(--sp-n) - 1 - var(--sp-i, 0)) * 0.05s);
+}
+
+/* Growing. Hovered, held by the keyboard, or marked as the place you are
+   standing in — the same three states `.u-link` draws its rule for, so a sprig
+   and that rule never disagree about whether something is current.
+
+   The class is on the *host* rather than on `.sp`, because the trigger is the
+   host's own hover: a sprig sits outside the host's box and cannot be hovered
+   itself, and it should not be — a flourish is not a hit target. */
+.u-vine:hover .sp path,
+.u-vine:focus-visible .sp path,
+.u-vine[data-on='true'] .sp path {
+  stroke-dashoffset: 0;
+  transition-delay: calc(var(--sp-i, 0) * 0.07s);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The drawing is the whole of what this says, so with it gone there is
+     nothing to show — and a sprig that simply appeared would be a flourish
+     blinking on beside a word, which is worse than no flourish. */
+  .sp {
+    display: none;
+  }
+}

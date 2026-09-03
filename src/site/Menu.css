@@ -1,0 +1,100 @@
+/* See Menu.tsx. The internal look of a menu item — type, hover colour, the
+   flower standing in for an underline — every screen that uses this component
+   gets for free; where the nav itself sits on the page is left to that
+   screen's own stylesheet, via `className`. */
+
+.mn {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 18px;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  color: var(--ink-faint);
+}
+
+.mn-item {
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: inherit;
+  /* A form control does not inherit either of the two properties above from
+     its ancestors on its own — the UA stylesheet gives it its own — so a
+     button among these three would otherwise sit mixed-case next to a
+     lowercase link. */
+  text-transform: lowercase;
+  color: inherit;
+  transition: color var(--t-fast) var(--ease-out);
+}
+
+.mn-item:hover,
+.mn-item:focus-visible,
+.mn-item[data-on='true'] {
+  color: var(--ink);
+}
+
+/* The underline, and the only mark a menu item makes: a vine the width of the
+   word, hung just under its baseline. The width is the item's own, so the
+   drawing ends where the word does and the bud at its tip sits just past the
+   last letter — see `MENU_VINE` in frames.ts. */
+.mn-vine {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  margin-top: 0.12em;
+  width: 100%;
+  height: auto;
+  /* The bud reaches a little past the box on both axes. */
+  overflow: visible;
+  pointer-events: none;
+  color: var(--ink);
+  /* Guards the round-cap dot the way Sprig.css does: an undrawn stroke still
+     paints its cap at rest, so this opacity carries visibility and the dash
+     offset below only ever carries the drawing. The fade out waits for the
+     last stroke to have retracted; the fade in only has to outrun the
+     first. */
+  opacity: 0;
+  transition: opacity 0.15s linear 0.34s;
+}
+
+.mn-item:hover .mn-vine,
+.mn-item:focus-visible .mn-vine,
+.mn-item[data-on='true'] .mn-vine {
+  opacity: 1;
+  transition: opacity 0.08s linear;
+}
+
+.mn-vine path {
+  fill: none;
+  stroke: currentColor;
+  /* In the drawing's own units — the box is 100 across and rendered at the
+     width of a word, so this lands a little over a hairline, the same way
+     `.sp path` does. */
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dashoffset: 1;
+  transition: stroke-dashoffset 0.34s var(--ease-out);
+  /* Retracting runs the list backwards: the bud at the tip goes first and the
+     runner it stands on goes last, so no leaf is ever left hanging in the air
+     off nothing. The same order Sprig.css takes them off in. */
+  transition-delay: calc((4 - var(--sp-i, 0)) * 0.04s);
+}
+
+.mn-item:hover .mn-vine path,
+.mn-item:focus-visible .mn-vine path,
+.mn-item[data-on='true'] .mn-vine path {
+  stroke-dashoffset: 0;
+  transition-delay: calc(var(--sp-i, 0) * 0.05s);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The drawing is the whole of what this says: a vine that simply appeared
+     under a word is a flourish blinking on, which is worse than none. */
+  .mn-vine {
+    display: none;
+  }
+}

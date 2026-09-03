@@ -1,0 +1,171 @@
+/* The opening. See Intro.tsx for the sequence and for why it runs at 24fps.
+
+   Almost nothing here animates: every value that moves is written as an inline
+   style by the one loop in the component, because a CSS transition would
+   interpolate on the display's clock and this screen deliberately has a
+   slower one of its own. What is left is layout, colour, and the two or three
+   properties that only ever hold still. */
+
+.in {
+  position: fixed;
+  inset: 0;
+  z-index: 98;
+  overflow: hidden;
+  color: #fff;
+  --flicker: 1;
+}
+
+/* The ground the whole sequence is lit against. No background on `.in`
+   itself: the veil is the only thing hiding the page, and it is not faded
+   away but burned through — a hole grows out of `mask-image`, sized in JS
+   by how far the visitor has scrolled. The rule here is just the resting
+   state, before the loop has painted its first frame. */
+.in-veil {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: #1a1a1a;
+  /* No mask here on purpose: at rest this is a solid sheet of black, and the
+     hole is written onto it by the loop only while something is actually
+     burning through (see `paint` in Intro.tsx). Any resting gradient with a
+     hole in it, however small, is a speck of the page showing through under
+     the name. */
+  will-change: mask-image;
+}
+
+/* The light at the burning edge — a ring that brightens as the hole opens
+   and dims again once the room is fully lit, so it reads as a scorch
+   passing through rather than a glow that only ever grows. `--burn-r` is
+   the same radius the veil's own hole uses, written by the same loop. */
+.in-burn {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  mix-blend-mode: screen;
+  --burn-r: 0vmax;
+  background: radial-gradient(
+    circle at 50% 56%,
+    transparent calc(var(--burn-r) - 8vmax),
+    rgba(255, 244, 214, 0.95) var(--burn-r),
+    rgba(255, 120, 24, 0.55) calc(var(--burn-r) + 7vmax),
+    transparent calc(var(--burn-r) + 15vmax)
+  );
+  will-change: opacity;
+}
+
+/* ---- the type ---- */
+
+.in-stack {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  text-align: center;
+  /* Shared with `.in-artist`, which has to know it to hang the right distance
+     above a signature it is no longer laid out against. Matched by
+     `--sig-hero-*` on `.hm-sig` in Home.css — the page draws this same mark
+     at this same size, and the handover has to be the black lifting off it. */
+  --sig-w: clamp(15rem, 19vw, 26rem);
+  /* The gate weave and the lamp, both written per film frame. */
+  --weave: 0px, 0px;
+  transform: translate3d(var(--weave), 0);
+  filter: brightness(var(--flicker));
+}
+
+/* Out of flow, so what this column centres is the signature by itself.
+
+   In flow it was one of two items in a centred stack, which put the *pair* on
+   the screen's middle and the signature a little below it — and the page this
+   hands to centres the signature alone, so the mark stepped down by half a
+   rubric at the handover. Hung off the middle instead: half the signature's
+   own height (its viewBox is 4839 x 1137, so half of that is width / 8.512)
+   plus the gap.
+
+   Both numbers below are the page's, not this screen's own.
+
+   They used to be written independently — a `0.7rem` gap here against a
+   proportional one there, and a `clamp()` here whose floor and ceiling did not
+   land where the page's did. Two formulas that agree at one window width and
+   nowhere else, so the word moved and resized as the film came off it, at
+   every width but about 1450px. There is nothing to tune here: the page draws
+   this same mark at this same size, and this word has to be the same word in
+   the same place. `--sig-w` is the same clamp `.hm-sig`'s hero size is solved
+   from, and `0.056` / `0.0406` are the two products `.hm-sig-artist` works out
+   to once the signature's transform has been applied to it. */
+.in-artist {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 50%;
+  margin-bottom: calc(var(--sig-w) / 8.512 + var(--sig-w) * 0.0406);
+  font-family: var(--font-display);
+  font-size: calc(var(--sig-w) * 0.056);
+  letter-spacing: 0.01em;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.92);
+  opacity: 0;
+}
+
+.in-name {
+  /* The signature is geometry, not type — sized by how wide it should sit on
+     the screen, which is the only measurement that matters for a mark. */
+  width: var(--sig-w);
+  /* The halo in the design is a blurred copy of the letterforms, so it has to
+     be taken off the drawn result rather than laid behind it: a drop-shadow
+     of the masked path glows only where the pen has already been, which means
+     the light writes itself in along with the ink. */
+  filter: drop-shadow(0 0 11px rgba(255, 255, 255, 0.4));
+  will-change: opacity, transform;
+}
+
+.in-name svg {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.in-marks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* A hair in the gate. */
+.in-scratch {
+  position: absolute;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.55);
+  opacity: 0;
+}
+
+/* One frame of dust, never the same twice. */
+.in-dust {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.6);
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The sequence still runs — the loop checks the same query and jumps the
+     writing and the fades straight to their finished state — but the grain,
+     the weave and the flicker are the parts that actually make someone ill,
+     and they are all that is switched off here. */
+  .in-grain,
+  .in-marks,
+  .in-burn {
+    display: none;
+  }
+
+  .in-stack {
+    transform: none;
+    filter: none;
+  }
+
+}

@@ -1,5 +1,9 @@
 # Project Structure Guide
 
+> **Legacy — describes the previous Vue site, not the current codebase.**
+> Kept for reference to the old project data. See `README.md` for how the
+> site works now.
+
 ## How to Add/Edit Projects
 
 ### 1. Basic Project Structure

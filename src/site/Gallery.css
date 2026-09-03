@@ -1,0 +1,306 @@
+/* The gallery. Geometry and reasoning live in Gallery.tsx. */
+
+.gl {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-panel);
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+  /* How far right the exhibit sits. The case is at the 3D scene's own centre
+     (world x = 0, screen 50%) and the label stands to its left, so the pair —
+     which is what you actually look at — sits left of the window's centre.
+
+     This is the label's half of the correction only. The row's half happens
+     inside the scene, in world units, and *must*: this element clips to the
+     window, so translating the canvas instead would cut the far edge off it
+     and pieces would vanish a fraction early on their way out of frame.
+
+     Gallery.tsx writes this inline from `layout.shiftW`, in `vh` now (see
+     `REF_ASPECT` in room.ts) — the value here is only the resting pose
+     before the first write (STAGE_SHIFT + the label's own 0.255, times
+     REF_ASPECT). */
+  --stage-shift: 52vh;
+  /* The wall label's own size — see Gallery.tsx, which writes these from the
+     tuning panel (`panelW`/`panelH` in `room.ts`), in `vh`. The values here
+     are only the resting pose before the first write, and match the
+     defaults there. */
+  --panel-w: 35.2vh;
+  --panel-h: 0vh;
+  /* Narrow-only — the cap `.gl[data-narrow='true'] .gl-panel` uses below,
+     also written by Gallery.tsx from the tuning panel's Mobile group. */
+  --panel-max-ch: 38ch;
+  /* The width the room is actually being laid out in. `100vw` everywhere
+     except under the phone preview, where the site is in a column of its own
+     and `vw` still reports the desktop window around it — see the
+     `[data-mobile-preview]` block in Site.css. The gallery is otherwise sized
+     in `vh` throughout and so needs this in exactly one place, below. */
+  --stage-w: 100vw;
+}
+
+html[data-mobile-preview='true'] .gl {
+  --stage-w: var(--preview-w, 390px);
+}
+
+/* The room: one canvas, the full window, holding every case in the row. It
+   sits behind the copy so a piece can pass behind a wall label rather than
+   over it — a case is furniture in the room, the label is on the glass.
+
+   Full-bleed and never transformed. See --stage-shift above. */
+.gl-room {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.gl-room > .ch-model,
+.gl-room canvas {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* ---- the wall label ----
+
+   Left of the case and level with it. Placed from the window's own centre
+   rather than laid out in a grid: the copy has to travel the same distance
+   the case does, and the case is positioned in a 3D scene that knows nothing
+   about a grid. One number — the step — is shared by both. */
+
+.gl-panel {
+  position: absolute;
+  z-index: 1;
+  /* `--stage-shift` is `vh` now, not a percentage of the live width — see
+     the effect that sets it, in Gallery.tsx — so the label holds its place
+     beside the case on a width-only resize, and travels with it, in step,
+     on a height-only one. */
+  left: calc(50% - var(--stage-shift));
+  top: 50%;
+  /* Placed by JS every frame; this is only the resting pose before the
+     first. `-50%` in the Y slot is baked into the written transform too. */
+  transform: translate3d(0, -50%, 0);
+  /* `--panel-w` is what the tuning panel actually drives; 25ch is only a
+     floor under it, so a narrow setting never gets so tight the copy wraps
+     onto itself. Was `min(...)` — which made 25ch a *ceiling* instead, so
+     the tuning slider could never push the panel past it. */
+  width: max(25ch, var(--panel-w));
+  min-height: var(--panel-h);
+  padding: clamp(20px, 3.84vh, 32px);
+  border-radius: var(--radius-card);
+  background: transparent;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  will-change: transform, opacity;
+}
+
+/* Sized in `vh`, never `vw`: the case's own on-screen size is height-driven
+   (one world unit is one viewport height — see `RoomLens`, Gallery3D.tsx),
+   so the label has to grow and shrink with it in lockstep or the two drift
+   out of proportion — see `--stage-shift` above, which is where that showed
+   up as outright overlap at a height the pairing hadn't been tuned for. A
+   width-only resize still leaves every one of these untouched. */
+
+.gl-client {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: clamp(0.95rem, 1.92vh, 1.2rem);
+  line-height: 1.2;
+  letter-spacing: -0.05em;
+  color: var(--ink);
+}
+
+.gl-year {
+  margin-top: 2px;
+  font-family: 'Times New Roman', Times, serif;
+  font-size: clamp(0.85rem, 1.68vh, 1.05rem);
+  line-height: 1.2;
+  letter-spacing: -0.05em;
+  color: #b1b1b1;
+}
+
+.gl-title {
+  margin-top: clamp(14px, 2vh, 26px);
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(1.7rem, 4.3vh, 2.15rem);
+  line-height: 0.95;
+  letter-spacing: -0.05em;
+  color: var(--ink);
+}
+
+.gl-role {
+  margin-top: clamp(12px, 1.8vh, 22px);
+  font-family: 'Times New Roman', Times, serif;
+  font-style: italic;
+  font-size: clamp(0.9rem, 1.76vh, 1.1rem);
+  line-height: 1.3;
+  letter-spacing: -0.05em;
+  color: #919191;
+}
+
+.gl-lead {
+  margin-top: clamp(8px, 1.2vh, 14px);
+  font-family: 'Times New Roman', Times, serif;
+  font-size: clamp(0.9rem, 1.68vh, 1.05rem);
+  line-height: 1.45;
+  letter-spacing: -0.05em;
+  color: #919191;
+  /* A wall label is a paragraph you read standing up. Past about eight lines
+     nobody does, and the rest is in the case study. */
+  display: -webkit-box;
+  -webkit-line-clamp: 8;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Solid ink, square. The one piece of interface in the room, and it should
+   look like a printed button on a card rather than a link in a page. */
+.gl-open {
+  /* The sprigs either side of it are absolutely positioned against this, and
+     hang outside it — see Sprig.css. */
+  position: relative;
+  margin-top: clamp(16px, 2.6vh, 32px);
+  padding: 10px 18px 11px;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-display);
+  font-size: clamp(1.05rem, 2.05vh, 1.3rem);
+  line-height: 1;
+  transition:
+    background var(--t-fast) var(--ease-out),
+    transform var(--t-fast) var(--ease-out);
+}
+
+.gl-open:hover {
+  background: var(--accent);
+  transform: translateY(-1px);
+}
+
+/* Not `currentColor`. Inside this button the current colour is the paper it is
+   printed on, and the sprigs grow *outside* it, onto that same paper — left to
+   inherit they would be paper on paper. They are drawn in ink, on the wall the
+   label is standing on. */
+.gl-open .sp {
+  color: var(--ink);
+  --sp-w: 2.9em;
+  --sp-gap: 0.7em;
+}
+
+/* ---- narrow ----
+   The copy cannot sit beside the case on a phone — there is no beside. It
+   goes under it, and the case takes the top of the screen. */
+
+/* Keyed off an attribute rather than a media query, because the breakpoint is
+   a live setting: room.ts's `NARROW_AT`, adjustable from the tuning panel so
+   that where a two-column layout actually gives out can be found by dragging
+   a window edge rather than guessed at.
+
+   Gallery.tsx has to make that decision in JS regardless — it writes the
+   label's transform every frame, and a stacked label rests differently from
+   one standing beside the case. A media query here would hold a *second*
+   opinion about the same breakpoint, and at any width between the two the
+   label would be laid out one way and placed the other. So there is one
+   opinion, and this follows it. It is set on the first render from the
+   window's width, so there is no unstyled frame to flash. */
+.gl[data-narrow='true'] {
+  --stage-shift: 0vh;
+}
+
+.gl[data-narrow='true'] .gl-panel {
+  left: 50%;
+  top: auto;
+  bottom: calc(var(--gutter) + 64px);
+  width: min(var(--panel-max-ch), calc(var(--stage-w) - var(--gutter) * 2));
+  align-items: center;
+  text-align: center;
+  /* No `transform` here — Gallery.tsx writes it every frame and knows about
+     this breakpoint, because a rule here would only survive until the next
+     one. */
+}
+
+.gl[data-narrow='true'] .gl-lead {
+  -webkit-line-clamp: 3;
+}
+
+/* ---- the old-film experiment ----
+
+   A look to try, not a shipped mode — see `noir` in Gallery.tsx, and the one
+   toggle for it in Site.tsx. Same register as the opening (`Intro.css`): a
+   dark room, grain, a vignette.
+
+   Only the grain steps to a real wall-clock 12fps. The row's position and the
+   panels' — everything that is a direct readout of where the scroll actually
+   is — stays at the display's own framerate on purpose: stepping the thing a
+   visitor is actively scrolling to move read as lag, not as film, when it was
+   tried. The 3D row is desaturated with a CSS `filter: grayscale()` on the
+   canvas (`Gallery3D.tsx`), not by touching any material — the renderer still
+   lights and shades in full colour underneath, and still renders every
+   display frame. */
+
+.gl-grain,
+.gl-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.gl-grain {
+  top: -120px;
+  left: -120px;
+  width: calc(100% + 240px);
+  height: calc(100% + 240px);
+  background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 220px 220px;
+  will-change: transform, opacity;
+}
+
+.gl-vignette {
+  box-shadow: inset 0 0 220px 60px #000;
+}
+
+.gl[data-noir='true'] {
+  background: #1a1a1a;
+}
+
+.gl[data-noir='true'] .gl-grain {
+  opacity: 0.14;
+}
+
+.gl[data-noir='true'] .gl-vignette {
+  opacity: 1;
+}
+
+.gl[data-noir='true'] .gl-panel {
+  background: rgba(20, 20, 20, 0.86);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+
+.gl[data-noir='true'] .gl-client,
+.gl[data-noir='true'] .gl-title {
+  color: #fff;
+}
+
+.gl[data-noir='true'] .gl-year,
+.gl[data-noir='true'] .gl-role,
+.gl[data-noir='true'] .gl-lead {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.gl[data-noir='true'] .gl-open {
+  background: #fff;
+  color: #1a1a1a;
+}
+
+.gl[data-noir='true'] .gl-open:hover {
+  background: rgba(255, 255, 255, 0.82);
+}
+
+/* Ink is ink on a dark stage too — the same correction the frame around each
+   piece gets (`.pf path`, ProjectFrame.css). */
+.gl[data-noir='true'] .gl-open .sp {
+  color: rgba(255, 255, 255, 0.82);
+}

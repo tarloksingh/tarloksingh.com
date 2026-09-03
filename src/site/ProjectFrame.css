@@ -1,0 +1,226 @@
+/* See ProjectFrame.tsx. Nothing here transitions: the draw is a readout of
+   scroll position and the wobble is on its own 12fps clock, and a CSS
+   transition on either would interpolate on the display's clock instead and
+   put a lag between the scroll and the line. */
+
+/* The travelling box. Gallery.tsx writes its transform every frame, the same
+   step along the row it writes onto this project's wall label, so the frame
+   goes where its piece goes. The inset is what holds it off the piece — drawn
+   hard against the window a frame reads as browser chrome rather than as
+   something pencilled around the exhibit. */
+.gl-frame {
+  position: absolute;
+  /* Held off all four edges, and held *in* on a wide one. The vertical inset
+     is the larger of the two on purpose: the crest rises above the line it is
+     hung on, so the drawing stands a little taller than this box does, and
+     what is left under it is the room the footer's date line needs. Capped in
+     px so a tall monitor does not push the frame into a letterbox.
+
+     Horizontally it stands on the same two lines as everything else on the
+     stage: `--rail-inset` is what the signature, the menu and the footer's
+     date line are pinned to (Home.css), so the frame is exactly as wide as
+     the chrome above and below it — and it inherits the same 1200px ceiling,
+     which is what stops it growing into a border around the browser on a wide
+     monitor. A phone keeps its own inset: the rail is only the gutter at that
+     width, and a frame drawn that hard against the edges of a small screen
+     has nowhere to breathe. */
+  top: clamp(64px, 17vh, 190px);
+  bottom: clamp(64px, 17vh, 190px);
+  left: 7vw;
+  right: 7vw;
+  z-index: 1;
+  pointer-events: none;
+  will-change: transform;
+}
+
+@media (min-width: 761px) {
+  .gl-frame {
+    left: var(--rail-inset);
+    right: var(--rail-inset);
+  }
+}
+
+.pf {
+  position: absolute;
+  inset: 0;
+  /* The gate weave, held for two or three display frames at a time — the
+     component writes these on its own clock. */
+  transform: translate3d(var(--pf-x, 0px), var(--pf-y, 0px), 0) rotate(var(--pf-r, 0deg));
+}
+
+.pf-c,
+.pf-k,
+.pf-r {
+  position: absolute;
+  overflow: visible;
+}
+
+/* `--pf-corner` and `--pf-crest` are written by the component off the box
+   this frame is drawn around, not off the viewport — see the note on `size`
+   in ProjectFrame.tsx. Everything below is laid out in corner units: one unit
+   is `--pf-corner / 160`, the ornaments' own scale, which is what lets an
+   arm's y and a rail's y be the same number and land on the same line. */
+.pf-c {
+  width: var(--pf-corner);
+  height: var(--pf-corner);
+}
+
+/* One drawing, flipped. Top-left is the one the paths are written for. */
+.pf-c--tl {
+  top: 0;
+  left: 0;
+}
+.pf-c--tr {
+  top: 0;
+  right: 0;
+  transform: scaleX(-1);
+}
+.pf-c--br {
+  right: 0;
+  bottom: 0;
+  transform: scale(-1);
+}
+.pf-c--bl {
+  bottom: 0;
+  left: 0;
+  transform: scaleY(-1);
+}
+
+/* The crest sits in the middle of its edge, hung so that its two outer ends
+   land on the rail rather than somewhere above or below it: `--pf-arm` is
+   where the line runs in corner units and `--pf-crest-arm` is where the crest
+   meets it in its own, and the offset is the difference between the two once
+   both are in pixels. Which is why the ornament pushes up out of the box —
+   the crest rises off the edge line, it does not float over it. */
+.pf-k {
+  left: 50%;
+  width: var(--pf-crest);
+  height: calc(var(--pf-crest) * 0.35);
+  --pf-hang: calc(
+    (var(--pf-arm, 8) * var(--pf-corner) - var(--pf-crest-arm, 40) * var(--pf-crest)) / 160
+  );
+}
+.pf-k--t {
+  top: var(--pf-hang);
+  transform: translateX(-50%);
+}
+.pf-k--b {
+  bottom: var(--pf-hang);
+  transform: translateX(-50%) scaleY(-1);
+}
+
+/* The rails: the plain run of each edge, from where the corner's arm ends to
+   where the crest begins — and, down the sides, from one corner to the other.
+   Their long axis is whatever is left over, which is the reason they are
+   stretched rather than scaled; their short axis is 32 corner units, so the
+   line inside sits at exactly the y its arm does. */
+.pf-r svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.pf-r--h {
+  height: calc(var(--pf-corner) * 0.2);
+}
+.pf-r--v {
+  width: calc(var(--pf-corner) * 0.2);
+}
+/* 0.95 is where an arm reaches the corner box's own edge. */
+.pf-r--tl {
+  top: 0;
+  left: calc(var(--pf-corner) * 0.95);
+  right: calc(50% + var(--pf-crest) / 2);
+}
+.pf-r--tr {
+  top: 0;
+  right: calc(var(--pf-corner) * 0.95);
+  left: calc(50% + var(--pf-crest) / 2);
+  transform: scaleX(-1);
+}
+.pf-r--bl {
+  bottom: 0;
+  left: calc(var(--pf-corner) * 0.95);
+  right: calc(50% + var(--pf-crest) / 2);
+  transform: scaleY(-1);
+}
+.pf-r--br {
+  bottom: 0;
+  right: calc(var(--pf-corner) * 0.95);
+  left: calc(50% + var(--pf-crest) / 2);
+  transform: scale(-1);
+}
+.pf-r--l {
+  left: 0;
+  top: calc(var(--pf-corner) * 0.95);
+  bottom: calc(var(--pf-corner) * 0.95);
+}
+.pf-r--r {
+  right: 0;
+  top: calc(var(--pf-corner) * 0.95);
+  bottom: calc(var(--pf-corner) * 0.95);
+  transform: scaleX(-1);
+}
+
+.pf path {
+  stroke: var(--ink);
+  /* A constant weight on screen however large the ornament is drawn — a
+     flourish that thickens with the viewport stops reading as a pen. */
+  /* Written by the component, in this drawing's own units rather than in
+     pixels: the draw is a dash walked along a path normalised to a length of
+     1, and a stroke measured in pixels after the drawing has been scaled puts
+     the dash and the path into two different spaces — which comes out as a
+     line broken into ticks, and worse the larger the frame is drawn. See the
+     note at the top of ProjectFrame.tsx. */
+  stroke-width: var(--pf-w, 1.4);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  /* `pathLength="1"` on the element normalises every path, so this is in
+     fractions of each stroke's own length and nothing has to be measured.
+
+     Each stroke takes `--pf-hold` of the draw to put itself down, and their
+     starts are spread across whatever is left — so the frame is still being
+     drawn most of the way into a project rather than snapping complete the
+     moment one is near, and it assembles corner-outward and then along the
+     edges instead of every line unrolling at once.
+
+     The stagger is solved from `--pf-n`, the number of strokes in this
+     variant, rather than fixed: fixed, the sparse variants would finish long
+     before the visitor arrived and the ornate ones would still be drawing
+     after they had. This way every frame lands on the last stroke exactly as
+     the piece comes square-on, whatever it is made of.
+
+     `--pf-hold` is half by default, which is the right split for a frame drawn
+     in three seconds: at that pace the lines overlap and the whole thing
+     arrives as one movement. A drawing given twenty seconds wants the opposite
+     — a small hold, so the starts spread right across the draw and one thing
+     happens at a time. The vine around the name sets it down to about a sixth
+     (see `.hm-vine` in Home.css). */
+  stroke-dashoffset: clamp(
+    0,
+    calc(
+      1 -
+        (
+          var(--pf-draw, 0) - var(--pf-i, 0) *
+            ((1 - var(--pf-hold, 0.5)) / max(1, var(--pf-n, 1) - 1))
+        ) / var(--pf-hold, 0.5)
+    ),
+    1
+  );
+  /* The last of the ink arrives a moment after the line does. Without this a
+     frame barely begun is a scatter of faint stubs, which reads as a rendering
+     fault rather than as a drawing in progress. */
+  opacity: clamp(0, calc(var(--pf-draw, 0) * 4), 1);
+}
+
+/* The crest is drawn larger than the corners are — see `CREST_SCALE` — so it
+   needs a proportionally finer pen to come out the same weight on screen. */
+.pf-k path {
+  stroke-width: var(--pf-w-k, 1.4);
+}
+
+/* Ink is ink on a dark stage too — the film experiment inverts the room, so
+   the frame has to follow it or it disappears into the floor. */
+.gl[data-noir='true'] .pf path {
+  stroke: rgba(255, 255, 255, 0.82);
+}

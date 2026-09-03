@@ -1,0 +1,407 @@
+import type { Frame } from './model'
+import type { Note } from './notes'
+
+/* ---- the leaders ----
+
+   The lines that fan out of the subject and name its parts. A note can carry
+   its own two points — where the line touches and where the text lands, both
+   as fractions of the subject's box — and one that carries neither falls into
+   the next slot of the fan traced off the Figma. See `notes.ts`, and press P
+   on a project screen to place them by hand.
+
+   **All of that is the wide layout's.** A phone gets `tipsFor` at the foot of
+   this file and nothing else: the marks on the picture, and the sentences in
+   a deck under it. The reason is a sum. On a phone `--px` is `100vw / 500`,
+   so a card capped at `min(CARD.w, 0.6 × stage)` is about 240 real pixels
+   wide — and the type inside it is on `--type`, which has a rem floor and
+   therefore does *not* halve when the window does. Any device that scales its
+   text at all (iOS's per-site text size, Dynamic Type, browser zoom) pushes
+   the sentence past the box it was allotted, `width: max-content` overflows
+   the `foreignObject`, and the card is clipped mid-word and printed over the
+   next one. Turn the sum round and it is worse news than a bug: a readable
+   sentence needs ~70% of a phone's width, so a phone fits *one* card, not
+   three. The fan is not a thing that can be tuned onto a phone, which is why
+   there is a deck instead of a font size in here. See `MechFacts.tsx`. */
+
+/* ---- a note is a card now ----
+
+   It used to be a key and a value stacked on a horizontal rule — "tool" in
+   accent over "blender" in white — with the line elbowing into the rule's far
+   end. Two words was all it could ever hold: a third turned the rule into a
+   ruler, and a sentence was out of the question, because SVG text does not
+   wrap and there was nothing for it to wrap inside.
+
+   So the label is a box, and the line runs straight into the corner of it.
+   Which corner is the one *facing* the subject, and the box grows away from
+   there — up and to the left of a tip on its lower right, and so on round. It
+   is the one anchoring rule that needs no measurement: the corner the line has
+   to reach is a corner we placed, so the geometry here stays a pure function
+   of two points and the line never has to wait for a layout pass to know where
+   it ends. The card's own size is left to the text, inside a `max-width`. */
+
+/** The card, in frame units.
+ *
+ *  `w` is the widest it may be set and `min` the narrowest it will be squeezed
+ *  to against a gutter. `h` is not a height — the card's height is its text's
+ *  — but the room *reserved* for one, and it is deliberately far more than any
+ *  card needs: `foreignObject` clips to its own rectangle, so anything past
+ *  this is cut off mid-sentence with the border still drawn around what is
+ *  left, which looks like a wrapping bug and is not one. It has to cover the
+ *  worst case, which is the narrowest window this layout is ever drawn at,
+ *  where type sits on its rem floor and is half again the size in frame units
+ *  that it is at the cap.
+ *  Reserving it costs nothing: the seat inside is `pointer-events: none` and
+ *  the card is pinned to a corner of it, so the extra never moves anything.
+ *
+ *  `room` is the smaller number the vertical flip is decided against — what a
+ *  card usually wants rather than what it may take. `glow` is the slack left
+ *  around the card on every side, for the same clipping reason.
+ *
+ *  `round` is the corner radius, and it is here rather than only in the
+ *  stylesheet because the leader has to know it. A rounded corner is *not* at
+ *  the corner: the border curves away from that point, so a line drawn to the
+ *  card's mathematical corner stops short of the stroke with a gap you can see.
+ *  The line is aimed a little way inside instead — see `touch` in Mech.tsx.
+ *  Keep this and `border-radius` on `.mech-leader-card` the same number. */
+export const CARD = { w: 340, min: 168, h: 340, room: 130, glow: 34, round: 8 }
+
+/** Where a leader leaves its subject and where its card is seated, for a note
+ *  that does not say.
+ *
+ *  `at` is a fraction of the subject's box and `seat` the corner's offset from
+ *  that tip, in frame units. Traced off the Figma's takahashi frame and reused
+ *  for every subject — a still gets the same arms the model does. */
+const SLOTS = [
+  { at: [0.94, 0.08], seat: [172, -60] },
+  { at: [0.0, 0.285], seat: [-180, -34] },
+  { at: [0.02, 0.764], seat: [-188, 50] }
+] as const
+
+/** A fourth unpinned note starts the fan again a line lower, and so on down.
+ *  Three was the Figma and is still the shape of the thing; a picture with
+ *  eight things worth naming should be pinned, and this is what it gets in
+ *  the meantime. */
+const TIER = 66
+
+/** How far in from the frame's edges a card may land — clear of the left
+ *  column on one side and the rail on the other. A wide still pushes its
+ *  seats outward, and without this the "made in" card would be set on top of
+ *  the project overview.
+ *
+ *  A card *grows* to its gutter where a line of type merely ended at one, so
+ *  the right-hand number matters far more than it used to: at 1450 every card
+ *  on that side came out three lines deep in a column half the width it
+ *  should be. It is out at the rail now.
+ *
+ *  The left is not free the same way and was already right. Both columns are
+ *  laid out in `--type`, which has a rem floor, so they are *widest in frame
+ *  units on the smallest window* — measured there, the fold list reaches 486
+ *  and the rail starts at 1710. These clear both with a little to spare, and
+ *  moving either one in the hope of a wider card puts a sentence over the
+ *  project overview. */
+const GUTTER = { left: 500, right: 1660 }
+
+/** And how far from the top and bottom of the canvas, which is the whole
+ *  window: the top has a header and a music deck across it and the bottom has
+ *  the compass and the footer. A two-word label cleared those by being small;
+ *  a card has to be told. */
+const EDGE = { top: 172, bottom: 108 }
+
+/** How far clear of its own tip a card is pushed when it has no choice but to
+ *  reach back across it. */
+const CLEAR = 34
+
+/* ---- the space the lines are drawn in ----
+
+   On the wide layout it is the 1920×1080 frame, and the stage is exactly that
+   box, so one SVG user unit is one `--px` and `preserveAspectRatio="none"`
+   maps them one to one.
+
+   Narrow, the stage is a box of its own — the width of the window and about
+   as tall — and drawing a 1920×1080 viewBox onto it with `none` scales x and
+   y by different amounts. Text does not survive that: at 390 by 409 the two
+   scales differ by nearly two to one, which is a row of labels squashed flat
+   sideways. It is *the* reason the lines were switched off on a phone, and
+   the fix is not to reach for a font size — it is to give the canvas a
+   viewBox with the stage's own proportions.
+
+   Measured in frame units, so one user unit stays one `--px` on both layouts.
+   Which means every fixed offset in this file, every radius in the
+   stylesheet, and `18px * var(--type-k)` all keep rendering at the size they
+   were drawn at, with nothing overridden anywhere. */
+export interface Space {
+  /** The canvas's coordinate box, in frame units. */
+  w: number
+  h: number
+  narrow: boolean
+}
+
+export const FRAME_SPACE: Space = { w: 1920, h: 1080, narrow: false }
+
+/** The subject's box on a narrow stage, in fractions of it.
+ *
+ *  Not the model's true bounding box — a *target*. The subject fills most of
+ *  the stage there, and tips laid on the edges of what it actually occupies
+ *  land in the air beside a face rather than on it. A little inside is what
+ *  a leader is for. */
+const NARROW_SUBJECT = { w: 0.56, h: 0.7 }
+
+const centred = (space: Space, w: number, h: number): Box => ({
+  x: (space.w - w) / 2,
+  y: (space.h - h) / 2,
+  w,
+  h
+})
+
+/** The subject's box in frame coordinates. The model's is measured off the
+ *  Figma; a still's is wherever the media actually lands, which is the same
+ *  sum the CSS makes so the two can never disagree. */
+export const MODEL_BOX = { x: 769, y: 269, w: 403, h: 529 }
+const MEDIA_MAX = { w: 780, h: 730 }
+
+export const mediaBox = (aspect: number) => {
+  const w = Math.min(MEDIA_MAX.w, MEDIA_MAX.h * aspect)
+  const h = w / aspect
+  return { x: 960 - w / 2, y: 540 - h / 2, w, h }
+}
+
+export type Box = { x: number; y: number; w: number; h: number }
+
+export const boxOf = (frame: Frame, space: Space = FRAME_SPACE): Box => {
+  if (!space.narrow) return frame.kind === 'flat' ? mediaBox(frame.aspect) : MODEL_BOX
+  if (frame.kind !== 'flat') return centred(space, space.w * NARROW_SUBJECT.w, space.h * NARROW_SUBJECT.h)
+  /* A picture is `object-fit: contain` in the stage on this layout, so where
+     it actually lands is the same sum the browser is doing — whichever of the
+     two dimensions runs out first. */
+  const stage = space.w / space.h
+  const wide = frame.aspect >= stage
+  return centred(
+    space,
+    wide ? space.w : space.h * frame.aspect,
+    wide ? space.w / frame.aspect : space.h
+  )
+}
+
+/** A fraction of the subject's box, in frame coordinates. */
+export const pointIn = (box: Box, at: readonly [number, number]) => [box.x + at[0] * box.w, box.y + at[1] * box.h]
+
+const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n))
+
+/* A rough height for a card, in frame units. Only wanted when a forced flip
+   has stood the card on the tip's own side and the leader has to reach across
+   it to the far corner — everywhere else the line meets `anchor` itself and no
+   height is guessed. Clash Display runs about 8.4 units to the glyph at the
+   card's 14-unit body, the line box is 1.32 of that, and the padding plus both
+   borders come to ~22. `.mech-leader-card` in Mech.css is the source of truth
+   for all three. */
+const cardHeight = (value: string, w: number) => {
+  const perLine = Math.max(1, Math.round(w / 8.4))
+  const lines = clamp(Math.ceil(value.length / perLine), 1, 4)
+  return lines * 14 * 1.32 + 22
+}
+
+type Gutter = { left: number; right: number }
+
+/* Where the leader actually meets the card.
+
+   The corner it is anchored on is a rounded one, so there is no stroke at that
+   point — the border has curved away to an arc of radius `CARD.round`, centred
+   that far inside the corner in both directions. Cutting the line at the arc
+   is the one answer that holds at every angle. Pulling it back by a fixed
+   amount along the diagonal instead — which is what this was first — lands it
+   short of the border on a steep approach and pushes it *through* the border
+   and out the other side on a shallow one, and a leader has both.
+
+   Standard ray-circle: the first crossing coming from the tip. No crossing
+   means the line is running alongside an edge rather than into the corner, and
+   the corner is then as good a place to stop as any. */
+export const meetsCard = (tip: number[], anchor: number[], sx: number, sy: number) => {
+  const r = CARD.round
+  // The arc's centre sits that far inside the corner in both directions, which
+  // is the one place `sx` and `sy` are needed after the card has been placed.
+  const centre = [anchor[0] + sx * r, anchor[1] + sy * r]
+  const to = [anchor[0] - tip[0], anchor[1] - tip[1]]
+  const len = Math.hypot(to[0], to[1])
+  if (len < 1) return anchor
+  const unit = [to[0] / len, to[1] / len]
+  const from = [tip[0] - centre[0], tip[1] - centre[1]]
+  const half = from[0] * unit[0] + from[1] * unit[1]
+  const gap = half * half - (from[0] * from[0] + from[1] * from[1] - r * r)
+  if (gap < 0) return anchor
+  // Past the anchor by up to a radius and a half: on a diagonal approach the
+  // arc is *inside* the corner, so the crossing is always a little further
+  // along the ray than the point the card hangs off.
+  const at = -half - Math.sqrt(gap)
+  return at > 0 && at < len + r * 1.5 ? [tip[0] + unit[0] * at, tip[1] + unit[1] * at] : anchor
+}
+
+/* Two points in, a card out. `seat` is where the line meets the box; `sx` and
+   `sy` are which way the box grows from there, which is always *away* from the
+   tip — a card laid over its own leader is a card pointing at itself.
+
+   Both directions can be overruled by the room actually available. A seat
+   dragged hard against the rail has nothing to its right whichever side of the
+   subject it started on, and a card that hangs off the frame is worse than one
+   on the wrong side of its own corner.
+
+   `free` turns all of that off, and it is on for every note that carries its
+   own two points. The clamps and flips below exist to rescue a card whose
+   position was *derived* — the auto fan is one shape traced off the Figma and
+   reused for every subject and every window, so it has to be talked out of the
+   edges it walks into. A hand-placed note is not derived: somebody dragged it
+   to that spot and watched where it landed. Overruling that is the editor
+   fighting the person using it, which is exactly what it felt like — a label
+   that jumps somewhere else as you let go of it. */
+const seated = (
+  note: Note,
+  tip: number[],
+  want: number[],
+  gutter: Gutter,
+  space: Space,
+  free = false
+) => {
+  const most = CARD.w
+  const least = Math.min(CARD.min, most)
+  const edge = EDGE
+  const floor = space.h - edge.bottom
+
+  const anchor = free
+    ? [want[0], want[1]]
+    : [clamp(want[0], gutter.left, gutter.right), clamp(want[1], edge.top, floor)]
+
+  const side = { left: anchor[0] - gutter.left, right: gutter.right - anchor[0] }
+  let sx = anchor[0] < tip[0] ? -1 : 1
+  /* Which corner the line runs into is the one *facing* the tip, and normally
+     that is `anchor` itself — the box grows away from the tip. But the two
+     flips below can be forced by the room actually available, and then the box
+     grows *towards* the tip on that axis: `anchor` becomes the far corner and
+     the line has to reach across the card to the near one. `sx0`/`sy0` remember
+     the un-overruled sense so `meets` can be walked to the right corner. */
+  const sx0 = sx
+  if (!free) {
+    if (sx === 1 && side.right < least && side.left > side.right) sx = -1
+    else if (sx === -1 && side.left < least && side.right > side.left) sx = 1
+  }
+
+  const room = { up: anchor[1] - edge.top, down: floor - anchor[1] }
+  let sy = anchor[1] <= tip[1] ? -1 : 1
+  const sy0 = sy
+  if (!free) {
+    if (sy === 1 && room.down < CARD.room && room.up > room.down) sy = -1
+    else if (sy === -1 && room.up < CARD.room && room.down > room.up) sy = 1
+  }
+
+  /** The widest this card may be set here, which is whatever is left between
+   *  its corner and the gutter it is growing towards. */
+  const w = clamp(sx === 1 ? side.right : side.left, least, most)
+
+  /* A card must never be laid over the spot it is pointing at — a label
+     covering the thing it names, with its leader disappearing under it. There
+     is room beside the subject on this frame, so it takes a wide still and a
+     seat dragged well inside the picture to reach here at all; when it does,
+     dropping the card clear vertically is the move that has somewhere to go.
+     The anchor moves; the line simply follows it. */
+  const across =
+    !free &&
+    (sx === 1 ? tip[0] > anchor[0] - CLEAR && tip[0] < anchor[0] + w : tip[0] < anchor[0] + CLEAR && tip[0] > anchor[0] - w)
+  if (across) {
+    const held = clamp(tip[1] + sy * CLEAR, edge.top, floor)
+    // Only if the side it was pushed to is the side it actually landed on —
+    // against the top or the bottom of the canvas the clamp wins and the card
+    // would be dragged back over the tip rather than away from it.
+    if ((held - tip[1]) * sy > 0) anchor[1] = held
+  }
+
+  /* And the card itself has to stay inside those same two lines, not just the
+     corner it hangs off. This is the one place a height is guessed at, because
+     the only thing that knows the real one is the browser after it has laid
+     the sentence out — `CARD.room` is what a card of two or three lines
+     usually comes to, and the guard is what keeps a `--warn`-lit card off the
+     deck in the corner of the header. */
+  const head = sy === -1 ? anchor[1] - CARD.room : anchor[1]
+  const foot = sy === -1 ? anchor[1] : anchor[1] + CARD.room
+  if (!free) {
+    if (head < edge.top) anchor[1] += edge.top - head
+    else if (foot > floor) anchor[1] -= foot - floor
+  }
+
+  /* When a flip put the card on the tip's own side of `anchor`, step across to
+     the far edge — `w` wide, `cardHeight` tall — to land on the corner that
+     actually faces the tip, and hand `meetsCard` the interior direction from
+     *there*, which is back the way we came. `CARD.room` is the reserved figure
+     and three times too tall for a two-line caption, which dropped the meet
+     into open space below the card; `cardHeight` estimates the real box off
+     the sentence. */
+  const meet = [
+    sx !== sx0 ? anchor[0] + sx * w : anchor[0],
+    sy !== sy0 ? anchor[1] + sy * cardHeight(note.value, w) : anchor[1]
+  ]
+  const mx = sx !== sx0 ? -sx : sx
+  const my = sy !== sy0 ? -sy : sy
+  return { ...note, tip, anchor, sx, sy, w, free, meets: meetsCard(tip, meet, mx, my) }
+}
+
+/* Hand-placed, and therefore `free`: somebody dragged both ends of this one
+   and watched where it landed. */
+const pinned = (note: Note, box: Box, gutter: Gutter, space: Space) =>
+  seated(note, pointIn(box, note.at!), pointIn(box, note.to!), gutter, space, true)
+
+const slotted = (note: Note, index: number, box: Box, gutter: Gutter, space: Space) => {
+  const slot = SLOTS[index % SLOTS.length]
+  const tier = Math.floor(index / SLOTS.length) * TIER
+  const from = pointIn(box, slot.at)
+  // The whole arm drops a line, tip included — two lines leaving the same
+  // point is one line with two labels. The tip stays on the picture, which is
+  // what the clamp is for on the slots that already sit near the bottom.
+  const tip = [from[0], Math.min(from[1] + tier, box.y + box.h)]
+  return seated(note, tip, [tip[0] + slot.seat[0], tip[1] + slot.seat[1]], gutter, space)
+}
+
+/** The wide layout's readout: a line and a card for every note. */
+export const leadersFor = (notes: Note[], box: Box, space: Space = FRAME_SPACE) =>
+  notes.map((note, i) =>
+    note.at && note.to
+      ? pinned(note, box, GUTTER, space)
+      : slotted(note, i, box, GUTTER, space)
+  )
+
+/* ---- the narrow layout: marks, and nothing else ----
+
+   No line and no card. What a phone gets is the ring on the spot and the
+   sentence in the deck under the picture (`MechFacts.tsx`), so the only
+   geometry left to work out is where the ring goes — and a ring, unlike a
+   card, has no width to be squeezed and nothing to collide with.
+
+   `atNarrow` first, then the wide `at`, then the fan's own slot. The fallbacks
+   are worth keeping even though a wide `at` was placed against a 16:9 island:
+   a tip is a fraction of the subject's box on both layouts, so a point put on
+   an eyebrow is still on that eyebrow here. It is the *card* the wide
+   coordinates could never carry across, and there is no card.
+
+   With one correction. A wide tip is routinely set a little *past* the edge of
+   the picture — 1.02 of the way across is a common one — because out there it
+   is on the frame's margin, in the air beside a 16:9 island, next to the card
+   it belongs to. On a phone the picture is the whole stage, so past its edge
+   is past the window, and a note pinned only for the desktop simply had no
+   mark at all. So a fraction that was not placed on this layout is pulled back
+   onto the picture; one that was is left exactly where it was dropped. */
+const EDGES: [number, number] = [0.04, 0.96]
+
+export const tipsFor = (notes: Note[], box: Box) =>
+  notes.map((note, i) => {
+    if (note.atNarrow) return { note, point: pointIn(box, note.atNarrow) }
+    if (note.at)
+      return {
+        note,
+        point: pointIn(box, [
+          clamp(note.at[0], ...EDGES),
+          clamp(note.at[1], ...EDGES)
+        ])
+      }
+    const slot = SLOTS[i % SLOTS.length]
+    const tier = Math.floor(i / SLOTS.length) * TIER
+    const from = pointIn(box, slot.at)
+    return { note, point: [from[0], Math.min(from[1] + tier, box.y + box.h)] }
+  })
+
+export type Tip = ReturnType<typeof tipsFor>[number]
