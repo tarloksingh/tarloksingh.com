@@ -172,3 +172,49 @@ export const sound = {
     tone({ type: 'triangle', from: 1480, gain: 0.04, length: 0.12, delay: 0.9 })
   }
 }
+
+/* ---- levels ----
+
+   The three things that can make noise on the page, on one scale so nothing
+   arrives louder than the music by accident: a synth effect is punctuation
+   (MASTER, above), the music sits under everything, and a clip with its own
+   audio track is the one thing you have actually asked to listen to — so
+   while one is playing the music steps back to MUSIC_DUCK and comes back up
+   when it stops. */
+
+export const LEVELS = {
+  /** The deck's own volume, and what it returns to when no clip is talking. */
+  music: 0.6,
+  /** The deck while a clip with sound is playing — under it, not silent. */
+  musicDuck: 0.22,
+  /** Every clip's audio track. Tamed off the raw 1.0 a <video> plays at, and
+   *  a shade above the music so dialogue stays intelligible over it. */
+  clip: 0.72
+}
+
+let claims = 0
+const duckListeners = new Set<(ducked: boolean) => void>()
+
+export const music = {
+  /** A clip with audio calls this while it plays and calls the returned
+   *  function when it stops. Ref-counted: several clips, one dip. */
+  claim() {
+    claims += 1
+    if (claims === 1) duckListeners.forEach((fn) => fn(true))
+    let released = false
+    return () => {
+      if (released) return
+      released = true
+      claims -= 1
+      if (claims === 0) duckListeners.forEach((fn) => fn(false))
+    }
+  },
+
+  /** The deck subscribes; called with `true` when the music should duck. */
+  onDuck(fn: (ducked: boolean) => void) {
+    duckListeners.add(fn)
+    return () => {
+      duckListeners.delete(fn)
+    }
+  }
+}

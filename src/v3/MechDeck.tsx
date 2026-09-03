@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, memo } from 'react'
 import { tracks } from '../data/tracks'
-import { sound } from './sound'
+import { sound, music, LEVELS } from './sound'
 
 /* The deck.
 
@@ -12,8 +12,6 @@ import { sound } from './sound'
    It never plays uninvited. With no file in `src/assets/audio/` the pill says
    `no signal` rather than vanishing. Wide layout only, as before. */
 
-const VOLUME = 0.6
-
 function MechDeck() {
   const audio = useRef<HTMLAudioElement>(null)
   const [playing, setPlaying] = useState(false)
@@ -21,7 +19,11 @@ function MechDeck() {
   const track = tracks[0]
 
   useEffect(() => {
-    if (audio.current) audio.current.volume = VOLUME
+    if (audio.current) audio.current.volume = LEVELS.music
+    // A clip with its own sound pulls the music down while it plays.
+    return music.onDuck((ducked) => {
+      if (audio.current) audio.current.volume = ducked ? LEVELS.musicDuck : LEVELS.music
+    })
   }, [])
 
   const toggle = () => {

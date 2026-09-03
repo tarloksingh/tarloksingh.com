@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import type { Entry, Frame } from './model'
+import { music, LEVELS } from './sound'
 import { pieceFor } from './productTuning'
 
 const ModelFrame = lazy(() => import('./ModelFrame'))
@@ -41,6 +42,17 @@ function Video({ frame, active }: { frame: Extract<Frame, { kind: 'flat' }>; act
       el.currentTime = 0
     }
   }, [active])
+
+  useEffect(() => {
+    if (ref.current) ref.current.volume = LEVELS.clip
+  }, [])
+
+  // While this clip is the one on screen and has its own audio, the music
+  // steps back for it.
+  useEffect(() => {
+    if (!active || !frame.hasSound || !playing) return
+    return music.claim()
+  }, [active, frame.hasSound, playing])
 
   const toggle = () => {
     const el = ref.current
