@@ -1,6 +1,7 @@
 import { button, useControls, useCreateStore } from 'leva'
 import { useEffect } from 'react'
 import { copyText } from './clipboard'
+import { resetAllTuning } from './tuningStore'
 
 /* ---- the name behind the cast ----
 
@@ -80,7 +81,8 @@ export function useNameTuning() {
         void copyText(text)
         // eslint-disable-next-line no-console
         console.log(`[name] paste over NAME_DEFAULTS in src/v3/nameTuning.ts:\n\n${text}`)
-      })
+      }),
+      Reset: button(() => resetAllTuning())
     },
     { store }
   ) as unknown as NameTuning

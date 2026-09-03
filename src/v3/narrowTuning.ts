@@ -1,3 +1,4 @@
+import { resetAllTuning } from './tuningStore'
 import { button, useControls, useCreateStore } from 'leva'
 import { useEffect, useRef } from 'react'
 import { copyText } from './clipboard'
@@ -129,8 +130,7 @@ export function useNarrowTuning(projectId: string) {
         console.log(`[narrow] paste over NARROW_TUNING in src/v3/narrowTuning.ts:\n\n${text}`)
       }),
       Reset: button(() => {
-        window.localStorage.removeItem(STORE_KEY)
-        window.location.reload()
+        resetAllTuning()
       })
     }),
     { store }

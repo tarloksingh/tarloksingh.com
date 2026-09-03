@@ -1,3 +1,4 @@
+import { resetAllTuning } from './tuningStore'
 import { button, folder, useControls, useCreateStore } from 'leva'
 import { useEffect } from 'react'
 import { copyText } from './clipboard'
@@ -93,8 +94,7 @@ export function useStationTuning() {
         console.log(`[station] paste over STATION_DEFAULTS in src/v3/stationParts.ts:\n\n${text}`)
       }),
       Reset: button(() => {
-        window.localStorage.removeItem(STORE_KEY)
-        window.location.reload()
+        resetAllTuning()
       }),
       [LABELS.register]: partFolder('register'),
       [LABELS.reader]: partFolder('reader'),

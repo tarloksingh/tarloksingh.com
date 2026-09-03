@@ -1,3 +1,4 @@
+import { resetAllTuning } from './tuningStore'
 import { button, folder, useControls, useCreateStore } from 'leva'
 import { copyText } from './clipboard'
 import { useEffect, useRef } from 'react'
@@ -471,8 +472,7 @@ export function useModelTuning(
       )
     }),
     Reset: button(() => {
-      window.localStorage.removeItem(STORE_KEY)
-      window.location.reload()
+      resetAllTuning()
     }),
 
     /* Where it stands. First, because on anything that is not a face it is

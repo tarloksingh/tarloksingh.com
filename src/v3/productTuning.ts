@@ -1,3 +1,4 @@
+import { resetAllTuning } from './tuningStore'
 import { button, folder, useControls, useCreateStore } from 'leva'
 import { useEffect, useRef } from 'react'
 import { copyText } from './clipboard'
@@ -346,8 +347,7 @@ export function useProductTuning(projectId: string) {
         console.log(`[pieces] paste over PRODUCT_DEFAULTS and PIECE_DEFAULTS in src/v3/productTuning.ts:\n\n${text}`)
       }),
       Reset: button(() => {
-        window.localStorage.removeItem(STORE_KEY)
-        window.location.reload()
+        resetAllTuning()
       }),
 
       'This piece': folder(

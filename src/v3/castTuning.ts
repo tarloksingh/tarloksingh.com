@@ -1,3 +1,4 @@
+import { resetAllTuning } from './tuningStore'
 import { button, folder, useControls, useCreateStore } from 'leva'
 import { useEffect } from 'react'
 import { copyText } from './clipboard'
@@ -363,8 +364,7 @@ export function useCastTuning() {
         console.log(`[cast] paste over the four constants in src/v3/castTuning.ts:\n\n${text}`)
       }),
       Reset: button(() => {
-        window.localStorage.removeItem(STORE_KEY)
-        window.location.reload()
+        resetAllTuning()
       }),
 
       /* Everything at once, so a composition can be moved without re-placing
@@ -514,8 +514,7 @@ export function useWaveTuning() {
          until it is cleared. Having the only way to do that on a different
          tab is how a panel comes to look broken. */
       Reset: button(() => {
-        window.localStorage.removeItem(STORE_KEY)
-        window.location.reload()
+        resetAllTuning()
       }),
       on: { value: startWave.on, label: 'On' },
       grid: { value: startWave.grid, label: 'Flat grid' },

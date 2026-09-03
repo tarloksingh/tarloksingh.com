@@ -1,3 +1,4 @@
+import { resetAllTuning } from './tuningStore'
 import { button, folder, useControls } from 'leva'
 import { copyText } from './clipboard'
 import { useEffect } from 'react'
@@ -115,8 +116,7 @@ export function useWallTuning(): WallTuning {
       )
     }),
     Reset: button(() => {
-      window.localStorage.removeItem(STORE_KEY)
-      window.location.reload()
+      resetAllTuning()
     }),
 
     Grid: folder(

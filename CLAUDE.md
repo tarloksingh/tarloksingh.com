@@ -142,9 +142,12 @@ larger than about 1600. Use `MediaItem.still` and `MediaItem.thumb`, never
 - **A panel's scratchpad beats source.** Every tuning hook keeps its values in
   `localStorage`, and those are merged *over* the `_DEFAULTS` constants. So
   pasting a fresh set of numbers into source and reloading changes nothing
-  until you press **Reset** on any tab (it clears the whole key and reloads).
-  This is the single most confusing thing about the panels — if a tab looks
-  dead, it is almost always a stale scratchpad, not a broken control.
+  until you press **Reset** on any tab — which now clears **every** panel's
+  scratchpad (`TUNING_KEYS` / `resetAllTuning` in `src/v3/tuningStore.ts`), not
+  just the tab you pressed it on, and reloads. Every tab has a Reset now,
+  including Cluster and Name. This is the single most confusing thing about the
+  panels — if a tab looks dead, it is almost always a stale scratchpad, not a
+  broken control.
 - **Leva's `set()` throws on a key with no input, and that unmounts the app.**
   Reseeding a per-item folder passes a whole tuning object, so every field on
   it must exist in the schema — and the schema is now conditional (no Eyes
