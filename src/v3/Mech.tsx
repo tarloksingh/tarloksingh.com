@@ -812,8 +812,21 @@ function Flat({ frame, index, count, narrow, onReady }: FrameProps) {
 
   const toggleFull = () => {
     sound.select()
-    if (document.fullscreenElement) void document.exitFullscreen()
-    else void shell.current?.requestFullscreen().catch(() => {})
+    if (document.fullscreenElement) {
+      void document.exitFullscreen()
+      return
+    }
+    const el = shell.current
+    /* iOS Safari has no Element Fullscreen API at all — `requestFullscreen`
+       is undefined on every element, so the housing can never go full. The
+       one thing a phone *will* take fullscreen is a `<video>`, through
+       `webkitEnterFullscreen`, so a clip falls back to that. */
+    if (el?.requestFullscreen) {
+      void el.requestFullscreen().catch(() => {})
+      return
+    }
+    const v = video.current as (HTMLVideoElement & { webkitEnterFullscreen?: () => void }) | null
+    v?.webkitEnterFullscreen?.()
   }
 
   const togglePlay = () => {

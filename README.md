@@ -4458,6 +4458,13 @@ tell the full screen control from the mute one, which is the only thing either
 of them has to say. They are SVG now, at the same weight of line as the reticle
 and the bird, in a hit target you can actually hit.
 
+**Full screen on a phone means the `<video>`, not the housing.** iOS Safari
+ships no Element Fullscreen API — `requestFullscreen` is undefined on every
+element — so the housing div can never go full there and the button read as
+dead. `toggleFull` now checks for `requestFullscreen` and, when it is missing,
+falls back to the clip's own `webkitEnterFullscreen`, which is the one thing a
+phone will take fullscreen. A still still can't; the ask was about clips.
+
 **The two halves are split by what they are for.** Placing a label wants to be
 over the picture; getting one out does not. The overlay lives inside `.mech`,
 where the native cursor is hidden and every press is a placement — a text field
