@@ -35,8 +35,8 @@ type Step = {
 
 const STEPS: Record<Flow, Step[]> = {
   home: [
-    { target: '.mech-work-rail', label: 'Projects — press one' },
-    { target: '.mech-alarm', label: 'Shoot anything', demo: true }
+    { target: '.mech-work-rail', label: 'Projects I worked on' },
+    { target: '.mech-alarm', label: 'Feel free to shoot the animals', demo: true }
   ],
   project: [
     { target: '.mech-folds', label: 'Project details' },
