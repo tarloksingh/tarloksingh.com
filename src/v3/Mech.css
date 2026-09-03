@@ -4298,6 +4298,8 @@
   font-size: calc(14 * var(--type));
   line-height: 1.6;
   color: var(--mid);
+  /* The note can run to a few short paragraphs — keep its blank lines. */
+  white-space: pre-line;
 }
 
 .mech-bare[data-locked='true'] p {
