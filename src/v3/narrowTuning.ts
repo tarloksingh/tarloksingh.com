@@ -48,6 +48,10 @@ export interface NarrowTuning {
   /** Degrees of extra pitch, narrow only, added on top of the subject's own
    *  `tilt`. */
   tilt: number
+  /** Multiplies the subject's `focalLength`, narrow only. The camera backs
+   *  off to hold `fill`, so this changes the perspective — how wide or long
+   *  the lens reads — without changing how big the subject sits. */
+  lens: number
 }
 
 /** What a project scales to when it has no entry of its own. */
@@ -57,7 +61,8 @@ export const NARROW_FALLBACK: NarrowTuning = {
   offsetY: 0,
   media: 1,
   spin: 0,
-  tilt: 0
+  tilt: 0,
+  lens: 1
 }
 
 /** Per-project overrides, pasted back from the panel's copy button. */
@@ -116,6 +121,7 @@ export function useNarrowTuning(projectId: string) {
       media: { value: seed.media, min: 0.4, max: 1.6, step: 0.01, label: 'Pictures' },
       spin: { value: seed.spin, min: -180, max: 180, step: 1, label: 'Rotate Y' },
       tilt: { value: seed.tilt, min: -90, max: 90, step: 1, label: 'Rotate X' },
+      lens: { value: seed.lens, min: 0.3, max: 3, step: 0.01, label: 'Lens' },
       'Copy for source': button(() => {
         const text = asSource()
         void copyText(text)
@@ -135,7 +141,15 @@ export function useNarrowTuning(projectId: string) {
      record the moment anything is dragged. */
   useEffect(() => {
     const next = tunings[projectId] ?? NARROW_FALLBACK
-    setValues({ model: next.model, offsetX: next.offsetX, offsetY: next.offsetY, media: next.media, spin: next.spin, tilt: next.tilt })
+    setValues({
+      model: next.model,
+      offsetX: next.offsetX,
+      offsetY: next.offsetY,
+      media: next.media,
+      spin: next.spin,
+      tilt: next.tilt,
+      lens: next.lens
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId])
 

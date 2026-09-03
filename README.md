@@ -3628,6 +3628,12 @@ was framed to. For a model they fold into the `tuning` handed to `MechModel`
 `MechProduct`, layered under the pointer sway in `Swing` rather than added to
 `PieceTuning` (which has no pitch field). Both `undefined`/absent on desktop.
 
+**And the Scale tab sets the lens.** `lens` — **Lens** — multiplies the
+subject's `focalLength` on the way into `MechModel` / `MechProduct`. The camera
+backs off through `distanceFor` to hold `fill`, so this moves the perspective —
+wide and near, or long and flat — without changing how large the subject sits
+in the stage. Narrow-only; desktop reads the rig's own `focalLength` untouched.
+
 **`SHOOT`/`STOP` sits at the foot of the window, not the head.** On the wide
 frame the warning pair floats on the header's own row, where there is width to
 spare either side of the index key. A phone header is the wordmark and one

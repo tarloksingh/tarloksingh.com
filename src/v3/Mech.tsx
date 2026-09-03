@@ -2011,6 +2011,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
                       ? {
                           ...tuning,
                           fill: tuning.fill * narrowScale.model,
+                          focalLength: tuning.focalLength * narrowScale.lens,
                           turn: tuning.turn + narrowScale.spin,
                           tilt: tuning.tilt + narrowScale.tilt
                         }
@@ -2044,6 +2045,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
                       ? {
                           ...pieces.piece,
                           size: pieces.piece.size * narrowScale.model,
+                          focalLength: pieces.piece.focalLength * narrowScale.lens,
                           turn: pieces.piece.turn + narrowScale.spin
                         }
                       : pieces.piece
