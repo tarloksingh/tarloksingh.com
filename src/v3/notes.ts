@@ -94,9 +94,9 @@ export const NOTES: Record<string, Note[]> = {
     { label: '', value: 'Marketing material for the app store.', at: [1.0342, 0.2053], to: [1.0742, 0.0188] }
   ],
   'capsule-c1/model': [
-    { label: 'label', value: '3D model of the Capsule c1.', at: [0.8248, 0.1634], to: [0.9567, 0.0471] },
-    { label: 'label', value: 'Designed in blender with precise sizing to fit a raspberry pi and phone.', at: [0.0731, 0.2371], to: [-0.0151, 0.1096] },
-    { label: 'label', value: 'Designed to hold your phone and raspberry pi and maintiain proper airflow. ', at: [0.8606, 0.7134], to: [1.0024, 0.8171] }
+    { label: 'label', value: '3D model of the Capsule c1.', at: [0.7203, 0.3546], to: [1.0053, 0.1936] },
+    { label: 'label', value: 'Designed in blender with precise sizing to fit a raspberry pi and phone.', at: [0.2786, 0.3215], to: [0.1904, 0.2364] },
+    { label: 'label', value: 'Designed to hold your phone and raspberry pi and maintiain proper airflow. ', at: [0.8606, 0.7134], to: [0.9001, 0.8178] }
   ],
   'capsule-c1/Demo_Video.mp4': [
     { label: 'label', value: 'Filmed with the Black magic ursa mini 4.6k.', at: [0.9618, 0.2654], to: [1.0262, 0.0593] },
