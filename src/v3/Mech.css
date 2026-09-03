@@ -4153,20 +4153,24 @@
 
 /* A soft floor under it. Anything fixed over a scrolling page eventually
    lands on a headline, and a lit key sitting directly on a title reads as
-   two things fighting; this is the shadow the key casts on the page. */
+   two things fighting; this darkens the foot of the window under it.
+
+   Edge to edge and a straight vertical fade — a radial blob centred on the
+   pill read as a black box sitting behind it. Nothing here has a shape: it
+   is the bottom of the screen getting darker. */
 .mech[data-narrow='true'] .mech-deck-slot::before {
   content: '';
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
-  height: calc(150 * var(--px) + 40 * var(--type));
+  height: calc(120 * var(--px) + 44 * var(--type));
   z-index: -1;
   pointer-events: none;
-  background: radial-gradient(
-    120% 100% at 50% 100%,
-    rgba(0, 0, 0, 0.92) 0%,
-    rgba(0, 0, 0, 0.72) 42%,
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.55) 0%,
+    rgba(0, 0, 0, 0.34) 40%,
     rgba(0, 0, 0, 0) 100%
   );
 }
