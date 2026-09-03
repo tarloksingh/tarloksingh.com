@@ -3654,13 +3654,12 @@ whole fix: an ordinary soft edge, nothing else about the pill touched. (An
 earlier attempt also laid a dark gradient under the pill's tint — it turned a
 faint translucent control into a solid slab and was reverted.)
 
-**The deck's floor is a fade, not a blob.** `.mech-deck-slot::before` darkens
-the foot of the window so the fixed pill does not fight a headline scrolling
-under it. It was a `radial-gradient` centred bottom-middle, which on a dark
-page read as a black box behind the pill; it is a full-bleed
-`linear-gradient(to top)` now at about half the old opacity — edge to edge and
-purely vertical, so there is no shape to it, just the bottom of the screen
-getting darker.
+**The deck has no floor behind it.** `.mech-deck-slot::before` used to darken
+the foot of the window so the fixed pill would not fight a headline scrolling
+under it — a `radial-gradient` first, then a softer full-bleed
+`linear-gradient`. Every version read as a box sitting behind the control on a
+dark page, so it is gone: the pill's own border and soft glow hold it off the
+page well enough.
 
 **The fold headings are sized to a cell here too.** They are the same
 fourteen-segment display the wide layout uses, and `Segment` scales by width —
