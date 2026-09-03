@@ -342,11 +342,19 @@ export const MODEL_RIGS: Record<string, ModelTuning> = {
 
   /* A flat card. `fit` normalises by height, so at a face's fill it comes out
      as tall as the stage — the same trap the guns hit. Starter numbers; tune
-     on the Subject tab. */
+     on the Subject tab.
+
+     **`lean: 0`, for the same reason as Capsule C1.** A card is not a head:
+     swinging it toward the pointer reads as the page grabbing at the cursor
+     rather than as a subject looking up. It has no morph targets either, so
+     the eye controls above it are writing to nothing whatever they say —
+     `Lean` in `MechModel` was the only thing turning it, and `watchBird:
+     false` had already taken the bird out of that gaze. Zero takes the
+     pointer out too and the card just floats. */
   'wyte-card': {
     ...MODEL_DEFAULTS,
     fill: 0.37,
-    lean: 8.5,
+    lean: 0,
     turn: 79.5,
     tilt: -18.5,
     liftY: 0.03,
