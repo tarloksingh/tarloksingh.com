@@ -16,9 +16,10 @@ import { quarry } from './subject'
    `.mech-head`) rather than tied to wherever home's cluster happens to sit.
 
    So it is a pair rather than a single lamp, and only one of them is ever
-   lit: the red one while there is nothing in the air, the green one the
-   moment there is. Two states of one instruction, which is what a shift
-   light is.
+   lit: the right one while there is nothing in the air, the left one the
+   moment there is. Both are the panel's own green — this row reports machine
+   state, and machine state is green everywhere else on the readout — so the
+   report is which dot is burning, not which colour.
 
    It asks `quarry` rather than being told. The gun already walks that set
    several times a frame to find out what a bolt has hit; this is the same
@@ -82,7 +83,7 @@ export default function Alarm() {
     <div className="mech-alarm" aria-hidden>
       <i className="mech-alarm-key" data-on={up} />
       <Tally inline />
-      <i className="mech-alarm-key" data-warn data-on={!up} />
+      <i className="mech-alarm-key" data-on={!up} />
     </div>
   )
 }

@@ -1,28 +1,33 @@
 import { useEffect, useRef, useState, memo } from 'react'
 import { tracks } from '../data/tracks'
 import { sound, levels, type Levels } from './sound'
+import { useNarrow } from './narrow'
 
 /* The deck.
 
    One song, on loop. A pill: the track's name in the panel's display face
    over "Tarlok Singh" in the light weight of the title face, and a play /
-   pause triangle. No track list, no scrubber, no meter — there is nothing to
-   choose and nothing to scrub.
+   pause triangle.
 
-   Alongside it, a small mixer: three sliders — the music, the synth effects
-   and a clip's own audio — behind a toggle, so the balance can be set by ear
-   from the page rather than in `sound.ts`. Values persist per browser.
+   The music wants to be on. `wantPlay` starts false only because a browser
+   will not let audio play before the first interaction — the effect below
+   catches that first gesture anywhere on the page (the deck's own pill
+   excepted, since pressing it is already a choice) and starts the song. From
+   then on the pill is a normal toggle.
 
-   The deck and a clip are never heard together. `wantPlay` is what the pill
-   says — the visitor's intent — and the reconcile effect below plays the
-   element only when that is set *and* no clip with sound is up (`clipAudible`
-   in `sound.ts`). A clip starting pauses the deck; the clip ending resumes it
-   where it left off, because a paused `<audio>` keeps its `currentTime`.
+   The deck and a clip are never heard together. The reconcile effect plays
+   the element only when `wantPlay` is set *and* no clip with sound is up
+   (`clipAudible` in `sound.ts`); a clip starting pauses the deck, the clip
+   ending resumes it where it left off.
 
-   It never plays uninvited. With no file in `src/assets/audio/` the pill says
-   `no signal` rather than vanishing. Docked top-right on wide; on a phone it
-   floats fixed at the bottom of the window (`.mech-deck-slot` narrow rules in
-   `Mech.css`), where the compass would be if a phone drew one. */
+   On wide there is also a small mixer — music / effects / clips sliders
+   behind a toggle, persisted per browser (see `levels`). It is off on a
+   phone: the sliders want a pointer and the panel wants room the layout does
+   not have there.
+
+   Docked top-right on wide; on a phone it floats fixed at the bottom of the
+   window (`.mech-deck-slot` narrow rules in `Mech.css`). With no file in
+   `src/assets/audio/` the pill says `no signal` rather than vanishing. */
 
 const MIX_ROWS: [keyof Levels, string][] = [
   ['music', 'Music'],
@@ -32,15 +37,33 @@ const MIX_ROWS: [keyof Levels, string][] = [
 
 function MechDeck() {
   const audio = useRef<HTMLAudioElement>(null)
+  const narrow = useNarrow()
   const [wantPlay, setWantPlay] = useState(false)
   const [mixOpen, setMixOpen] = useState(false)
   const [mix, setMix] = useState<Levels>(() => levels.get())
 
   const track = tracks[0]
 
-  // One reconcile, run on mount, on every intent change, and on every `levels`
-  // change (a slider, or a clip starting / stopping): the element plays only
-  // when the visitor wants it and nothing is talking over it.
+  // Start the music on the first interaction anywhere — a browser will not let
+  // it play before one. The pill is left out: pressing it is already an
+  // explicit choice, handled by `toggle`.
+  useEffect(() => {
+    if (wantPlay) return
+    const start = (event: Event) => {
+      if ((event.target as Element | null)?.closest?.('.mech-deck')) return
+      sound.wake()
+      setWantPlay(true)
+    }
+    window.addEventListener('pointerdown', start, { passive: true })
+    window.addEventListener('keydown', start, { passive: true })
+    return () => {
+      window.removeEventListener('pointerdown', start)
+      window.removeEventListener('keydown', start)
+    }
+  }, [wantPlay])
+
+  // One reconcile: run on mount, on intent changes, and on every `levels`
+  // change (a slider, or a clip starting / stopping).
   useEffect(() => {
     const el = audio.current
     if (!el) return
@@ -84,42 +107,46 @@ function MechDeck() {
         <span className="mech-deck-play" aria-hidden />
       </button>
 
-      <button
-        className="mech-deck-mix-toggle"
-        onClick={() => {
-          sound.wake()
-          setMixOpen((was) => !was)
-        }}
-        aria-label="Sound levels"
-        aria-expanded={mixOpen}
-      >
-        <i />
-        <i />
-        <i />
-      </button>
-
-      {mixOpen && (
-        <div className="mech-deck-mix">
-          {MIX_ROWS.map(([key, label]) => (
-            <label key={key} className="mech-deck-mix-row">
-              <span>{label}</span>
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.01}
-                value={mix[key]}
-                onChange={(event) => {
-                  sound.wake()
-                  levels.set({ [key]: Number(event.target.value) })
-                }}
-              />
-            </label>
-          ))}
-          <button className="mech-deck-mix-reset" onClick={() => levels.reset()}>
-            Reset
+      {!narrow && (
+        <>
+          <button
+            className="mech-deck-mix-toggle"
+            onClick={() => {
+              sound.wake()
+              setMixOpen((was) => !was)
+            }}
+            aria-label="Sound levels"
+            aria-expanded={mixOpen}
+          >
+            <i />
+            <i />
+            <i />
           </button>
-        </div>
+
+          {mixOpen && (
+            <div className="mech-deck-mix">
+              {MIX_ROWS.map(([key, label]) => (
+                <label key={key} className="mech-deck-mix-row">
+                  <span>{label}</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={mix[key]}
+                    onChange={(event) => {
+                      sound.wake()
+                      levels.set({ [key]: Number(event.target.value) })
+                    }}
+                  />
+                </label>
+              ))}
+              <button className="mech-deck-mix-reset" onClick={() => levels.reset()}>
+                Reset
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   )

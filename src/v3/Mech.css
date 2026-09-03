@@ -49,6 +49,13 @@
   user-select: none;
   -webkit-user-select: none;
 
+  /* No grey box flashed over a button when it is tapped. Every control on
+     this screen is drawn to sit under the reticle; the browser's own tap
+     highlight is a rounded rectangle that has nothing to do with any of them
+     and reads as a stray panel around whatever was pressed — most visibly
+     the deck's pill on a phone. */
+  -webkit-tap-highlight-color: transparent;
+
   /* One Figma pixel, in real ones. Three terms, and whichever is smallest
      wins: a rem so browser zoom actually enlarges the readout (rem is a fixed
      count of CSS pixels, and zoom magnifies those), and the two viewport
@@ -439,22 +446,17 @@
   flex: none;
   width: var(--lamp);
   height: var(--lamp);
-  border-radius: calc(4 * var(--px));
-  /* Unlit: the lamp's own colour at housing strength. A dark cell with a
-     coloured rim reads as wired and off, which is exactly what it is —
-     nothing here ever goes properly dead, because both states are real
-     readings and one of the two is always burning. */
+  /* Round — a dot, not a housing. Both lamps are the panel's own green now;
+     the report is which of the two is burning, not a colour. (There was a
+     red one, on a shift-light metaphor — but this row reports machine state,
+     and machine state is green everywhere else on the readout.) */
+  border-radius: 999px;
   border: 1px solid rgba(var(--accent-rgb), 0.26);
   background: rgba(var(--accent-rgb), 0.08);
   transition: border-color 200ms linear, background-color 200ms linear, box-shadow 200ms linear;
 }
 
-.mech-alarm-key[data-warn] {
-  border-color: rgba(var(--warn-rgb), 0.26);
-  background: rgba(var(--warn-rgb), 0.08);
-}
-
-/* Lit: the housing fills with its own colour and bleeds off `--g` like every
+/* Lit: the dot fills with the panel's green and bleeds off `--g` like every
    other lit thing in the room. */
 .mech-alarm-key[data-on='true'] {
   border-color: rgba(var(--accent-rgb), 0.8);
@@ -462,14 +464,6 @@
   box-shadow:
     0 0 calc(9 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.4 * var(--g))),
     0 0 calc(24 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.2 * var(--g)));
-}
-
-.mech-alarm-key[data-warn][data-on='true'] {
-  border-color: rgba(var(--warn-rgb), 0.9);
-  background: rgba(var(--warn-rgb), 0.8);
-  box-shadow:
-    0 0 calc(10 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.44 * var(--g))),
-    0 0 calc(28 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.22 * var(--g)));
 }
 
 /* The subject arrives out of nothing rather than out of a cover — on the
@@ -4107,13 +4101,6 @@
     rgba(0, 0, 0, 0.72) 42%,
     rgba(0, 0, 0, 0) 100%
   );
-}
-
-/* The mixer opens upward here — below the pill would run it off the bottom
-   of the window. */
-.mech[data-narrow='true'] .mech-deck-mix {
-  top: auto;
-  bottom: calc(100% + 10 * var(--px));
 }
 
 /* ---- the dashboard, quieted ---- */

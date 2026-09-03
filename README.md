@@ -1601,6 +1601,15 @@ glyph sizing that scaled `STOP` and `SHOOT` to the same height in different
 viewBoxes, and the white-on-glow rules that kept a lit word legible over a
 filled housing. Neither has anything left to size or to light.
 
+**And a pass after that made the two lamps green dots.** The right one was
+`--warn` red, on the shift-light reading — but a shift light *instructs*, and
+this row reports (which is the whole reason the words came off it), so a warm
+lamp on it was the same argument in a new form. Both are `--accent` now and
+`border-radius: 999px` rather than a 4-unit corner: the report is which of the
+two dots is burning, not a colour. `.mech-alarm-key[data-warn]` and its lit
+variant are deleted from `Mech.css` and the `data-warn` attribute from
+`Alarm.tsx` — one rule now covers both dots.
+
 **`ROLE_CELLS` now equals `CELLS`.** The role reel under the counts and the
 project title over the bank are boxed to the same width (`--count-w` and
 `--flank-w` are the same variable), and `Segment` scales by *width* — two
@@ -4876,10 +4885,16 @@ effects start at `0.3`, the music at `0.6`, and a clip's own audio track at
 `0.72` — tamed off the raw `1.0` a `<video>` plays at, a shade above the music
 so speech stays over it.
 
+**The music wants to be on.** `wantPlay` in `MechDeck.tsx` starts false only
+because a browser will not let audio play before the first interaction — an
+effect catches that first `pointerdown` or `keydown` anywhere on the page (the
+deck's own pill excepted, since pressing it is already a choice) and sets it.
+From then on the pill is a normal toggle. There is no autoplay attribute doing
+this and there cannot be; it is a deferred start, not a played-on-load.
+
 **A clip and the music are never heard together.** Not a duck — the deck
-pauses. `wantPlay` in `MechDeck.tsx` is what the pill says (the visitor's
-intent); a reconcile effect plays the `<audio>` element only when that is set
-*and* `levels.clipAudible()` is false. `claimAudio()` is ref-counted (several
+pauses. A reconcile effect plays the `<audio>` element only when `wantPlay` is
+set *and* `levels.clipAudible()` is false. `claimAudio()` is ref-counted (several
 clips, one hold), `Flat` in `Mech.tsx` and `Video` in `Stage.tsx` each hold one
 while they are audible, and every hold and release runs the reconcile through
 `levels.subscribe`. A paused `<audio>` keeps its `currentTime`, so the song
@@ -4889,8 +4904,10 @@ never touches any of this.
 
 The panel is the three-bar toggle next to the deck pill (`MechDeck.tsx`,
 `.mech-deck-mix` in `Mech.css`) — three sliders and a Reset, `v3.levels.v1` in
-`localStorage`. It is the *only* audio control on the page; there is no global
-mute (see below). Wide layout only, with the rest of the deck.
+`localStorage`. **Wide only** (`useNarrow()` in `MechDeck`): the sliders want a
+pointer and the panel wants room the phone layout has not got, and on a phone
+the deck is one tap to start the song and one to stop it, nothing else. It is
+the only audio control anywhere; there is no global mute (see below).
 
 
 Everything is synthesised in `sound.ts` — oscillators, one noise buffer, a

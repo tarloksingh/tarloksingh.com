@@ -315,7 +315,7 @@ export const MODEL_RIGS: Record<string, ModelTuning> = {
     ...MODEL_DEFAULTS,
     fill: 0.27,
     lean: 0,
-    turn: 35,
+    turn: 36,
     tilt: -1,
     liftY: 0.035,
     floatRange: 0.2,
@@ -326,15 +326,14 @@ export const MODEL_RIGS: Record<string, ModelTuning> = {
        specular, so the lamps do the work and there is very little diffuse
        response to fall back on — hence a key at 80, with the metalness taken
        all the way up rather than the roughness taken down. */
-    exposure: 0.07,
-    envIntensity: 2.1,
+    exposure: 0.18,
     keyIntensity: 80,
-    keyX: 12,
-    keyY: -11.15,
-    fillIntensity: 31.5,
-    fillX: -12,
-    fillY: -0.93,
-    fillZ: 1.41,
+    keyX: 11.19,
+    keyY: 8.27,
+    fillIntensity: 12,
+    fillX: -1.18,
+    fillY: -1.04,
+    fillZ: 4.19,
     roughnessBoost: -0.68,
     metalnessBoost: 1,
     watchBird: false
