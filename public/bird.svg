@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-5.55 -21.35 56.1 56.1">
+  <!--
+    The tab icon: the same bird that crosses every screen, drawn from the same
+    path data. Not a new mark — `BIRD_BODY` and `BIRD_WING_UP` in
+    `src/site/frames.ts`, copied rather than imported because a favicon is a
+    static file the browser fetches before any JavaScript runs.
+
+    Three things differ from the bird on screen, and each is about being 16
+    pixels wide rather than forty:
+
+    - **The wing is up and there is only one.** On the page the two wings
+      alternate on a stepped cycle to read as a wingbeat; a still needs the
+      pose with the clearest silhouette, and that is the upstroke.
+    - **The stroke is 4 rather than 2.2.** At a tab's size the authored weight
+      renders under a pixel and the bird disappears. 4 and not more: the body
+      is two curves about twelve units apart, and a heavier line closes the gap
+      between them so the bird fills in solid at 16 pixels.
+    - **It sits on a black tile.** A line drawing on transparent is at the
+      mercy of whatever colour the browser puts behind it. The tile is the
+      readout's own background and matches the `theme-color` in `index.html`.
+
+    The viewBox is the bird's real bounds centred in a square, measured by
+    sampling the curves rather than read off the path data: x -1..46 and
+    y -8..21.39, centre (22.5, 6.7). Plus the stroke either side and ten per
+    cent of air, that is 56.1 units starting at (-5.55, -21.35). The bird is
+    1.6:1, so in a square it fills the width and about two thirds of the
+    height; that is the most a wide mark can do in a square tile. `#e0562b` is the readout's warm token, which is
+    what the bird is drawn in on the page — warm, so that it is not another
+    green thing on a green panel.
+  -->
+  <rect x="-5.55" y="-21.35" width="56.1" height="56.1" rx="11" fill="#000" />
+  <g fill="none" stroke="#e0562b" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M41 12 C37 7 30 6 24 9 C18 11 11 14 6 16" />
+    <path d="M41 12 C43 14 42 18 38 19 C31 21 23 22 16 21 C11 20 9 18 6 16" />
+    <path d="M6 16 C3 14 1 12 -1 10" />
+    <path d="M41 12 L46 13 L41 15" />
+    <path d="M26 11 C20 2 14 -4 6 -8 C11 0 14 7 17 12" />
+  </g>
+</svg>
