@@ -157,7 +157,7 @@ const drafts: Draft[] = [
     locked: true,
     lockNote: 'in development',
     restricted:
-      'Currently in development. Solo-developed, launching soon on iOS and Android. Email me to play the demo.\n\nA boss-rush game: ride a motorcycle down an Akira-style avenue toward a giant god-beast and dodge its attacks. One hit, instant restart. Black and white, one red accent.\n\nBuilt with Three.js and hand-written WebGL — procedural art, a cinematic post-processing stack, and a live tuning console that balances the whole game from a phone.',
+      'Currently in development. Solo-developed, launching soon on iOS and Android. Email me to play the demo.\n\nBuilt with Three.js and hand-written WebGL — procedural art, a cinematic post-processing stack, and a live tuning console that balances the whole game from a phone.',
     intro:
       'A boss-rush game — ride down an Akira-style avenue toward a giant god-beast and dodge its attacks. One hit, instant restart. Currently in development, solo, launching soon on iOS and Android.',
     sections: []
