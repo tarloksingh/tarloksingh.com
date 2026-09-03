@@ -185,13 +185,13 @@ const drafts: Draft[] = [
   {
     id: 'slider-engine',
     title: 'Slider Engine',
-    tagline: 'Zero Code Game Engine',
+    tagline: 'A Game Engine With No Code In It',
     role: 'Founder & Product Designer',
     company: 'Openup Technologies Inc.',
     timeline: '2025',
     accent: '#2f7d52',
     intro:
-      'Slider Engine was our attempt to reimagine how games could be built without code. The project began when my cofounder and I considered making a game for fun, but after our experiences with Unity and other engines, we saw a bigger opportunity to design a new engine that was simpler, more intuitive, and AI-assisted.\n\nOur vision was to allow anyone to create games using logical building blocks instead of scripts, enabling millions of people to become game developers. The business opportunity and mission seemed grand, so we began in March 2025.',
+      'Slider Engine is a game engine with no code in it. Programming becomes four visual mechanics — triggers, conditions, actions, and properties — that you wire together like a synth patch, with the game running live as you build.\n\nMy cofounder and I shipped it to 200+ creators. The landing page that tested the idea drew 112 sign-ups in two hours.',
     hero: { v: 'hero.mp4', label: 'Demo — created by Tarlok Singh' },
     sections: [
       {
@@ -237,7 +237,7 @@ const drafts: Draft[] = [
       {
         id: 'challenges',
         title: 'Challenges',
-        text: 'The main challenge was designing an engine that could do everything a normal game engine could do (focusing on indie game developers). We underestimated how long it would take to develop a working engine, even a simplified one too.\n\nAfter months, we still had a prototype riddled with bugs, and something that was still too difficult to understand, and our limited resources forced us to pause. Despite this, the project was a breakthrough for me as a designer. I learned how to translate complex, abstract systems into usable tools by non technical humans.',
+        text: 'The main challenge was building an engine that could do everything a normal game engine could, aimed at indie developers. We underestimated how long even a simplified one would take.\n\nAfter months we had a working prototype, but it was still too buggy and too hard to learn, and our runway ran out before we closed that gap. The project was still a breakthrough for me as a designer: I learned how to translate complex, abstract systems into tools non-technical people can use.',
         links: [
           { kind: 'demo', label: 'Try Slider Engine', url: 'https://sliderengine.com/' },
           { kind: 'download', label: 'Download the pitch deck', url: '/downloads/Slider_Engine_ Pitch_Deck.pdf' }
@@ -254,7 +254,7 @@ const drafts: Draft[] = [
     timeline: '2025',
     accent: '#4d4d4d',
     intro:
-      'Wyte Card was our attempt to build a premium digital business card, designed for speed of contact sharing, elegance, and data insights. The idea stemmed directly from an earlier experiment, Gala-Reel, where we used NFC cards and app clips at weddings to share the reception gallery. Participants could also take photos and videos and upload them instantly.\n\nWhile Gala-Reel taught us how seamless NFC interactions could feel, we struggled to find customers in general. We did a three day project called “By The People” as well that used the same technology to share photos and videos but for college campuses to test out the technology. From all that experience, we pivoted the core technology into a more practical, everyday product, digital business cards.',
+      'Wyte Card is a digital business card: tap it to a phone and your details open instantly, no app to install.\n\nIt grew out of Gala-Reel, an NFC experiment we ran at weddings and on college campuses to share event galleries. The tap felt seamless, the market didn’t — so we pointed the same technology at something people use every day.',
     hero: { v: 'hero.mp4', label: 'Promotional video' },
     sections: [
       {
@@ -304,7 +304,7 @@ const drafts: Draft[] = [
     timeline: '2025',
     accent: '#d1502f',
     intro:
-      'Block Builder was a simple iPad game we created for my son, inspired by the idea of bringing a LEGO-style building experience into a digital form. At the time, we noticed there wasn’t a block-building game designed for young children on tablets, so we built one in under a week. The goal was something fun for my son and as a quick experiment in game development for us in Unity.',
+      'Block Builder is a LEGO-style building game for iPad, built in under a week for my four-year-old son. Nothing like it existed for kids that young on a tablet — and it became our test of how fast one designer and one engineer could ship a real game in Unity.',
     hero: { v: 'hero.mp4', label: 'Modular system demonstration' },
     sections: [
       {
@@ -325,20 +325,20 @@ const drafts: Draft[] = [
       {
         id: 'branding',
         title: 'Branding & Insights',
-        text: 'Block Builder didn’t have a formal brand system, but its identity came from its colorful blocks, playful interactions, and a child-friendly tone. It was less about creating a polished product and more about creating a sandbox that felt inviting and easy to explore.\n\nBlock Builder showed us how quickly we could develop and ship a working game, it’s much easier than I thought it would be for a designer and an engineer.'
+        text: 'Block Builder didn’t have a formal brand system, but its identity came from its colorful blocks, playful interactions, and a child-friendly tone. It was less about creating a polished product and more about creating a sandbox that felt inviting and easy to explore.\n\nA designer and one engineer shipped a playable game in under a week — faster than either of us expected.'
       }
     ]
   },
   {
     id: 'capsule-c1',
     title: 'Capsule C1',
-    tagline: 'Teleportation Calling',
+    tagline: 'TV-to-TV Video Calling',
     role: 'Founder & Product Designer',
     company: 'Openup Technologies Inc.',
     timeline: '2024 — 2025',
     accent: '#3a5a8c',
     intro:
-      'Capsule C1 is a hardware and software product that turned the largest screen (your TV) into a window to your loved ones. This project was personal to us. My cofounder and I live far away from our families and video or phone calls were never good enough.\n\nI wanted my mother to feel as if she was sitting in the same room with her grandchildren and I. Capsule was our attempt to make distance feel like teleportation.',
+      'Capsule C1 turns your TV into a window to your family. A 3D-printed enclosure holds a Raspberry Pi 5 and your phone, and calls run TV-to-TV at a resolution a phone can’t reach.\n\nMy cofounder and I both live far from home. This was us trying to make the distance feel like teleportation — I wanted my mother in the same room as her grandchildren. We tested it in five homes and sold $800 of hardware before pausing it.',
     hero: { v: 'Demo_Video.mp4', label: 'Demo — filmed and edited by Tarlok Singh', sound: true },
     sections: [
       {
@@ -404,13 +404,13 @@ const drafts: Draft[] = [
   {
     id: 'mr-takahashi',
     title: 'Mr. Takahashi',
-    tagline: 'AI Japanese Language Teacher',
+    tagline: 'A 3D AI Tutor for Japanese',
     role: 'Founder & Product Designer',
     company: 'Openup Technologies Inc.',
     timeline: '2024',
     accent: '#c2452f',
     intro:
-      'Mr. Takahashi is an AI Japanese language tutor designed to make learning feel like a conversation with a friendly teacher rather than a textbook. The project began as a pivot from our earlier conversational friend AI, Adam, which told the news and answered questions, but was not much more useful.\n\nMy cofounder and I had struggled with staying motivated on language learning apps, and we believed a more human, entertaining tutor could change that. Instead of flashcards or static lessons, learners could talk directly to Mr. Takahashi, a 3D-animated teacher who responded with personality and humor.',
+      'Mr. Takahashi is a 3D AI tutor that teaches Japanese by talking to you — a teacher with a face, a personality, and a sense of humor, modeled and animated in Blender.\n\nHe started as a pivot from Adam, our conversational-AI earpiece. Adding structured lessons and tuning his voice took first-week retention from 2% to 30%.',
     hero: { v: 'MrTakahashi_Demo.mp4', label: 'Demo — filmed and edited by Tarlok Singh', sound: true },
     sections: [
       {
@@ -471,13 +471,13 @@ const drafts: Draft[] = [
   {
     id: 'stitchfam',
     title: 'Stitchfam',
-    tagline: 'Build a Family Tree Together',
+    tagline: 'A Family Tree That Passes Itself Around',
     role: 'Founder & Product Designer',
     company: 'Openup Technologies Inc.',
     timeline: '2024',
     accent: '#b07a4e',
     intro:
-      'StitchFam is a collaborative family tree designed to grow organically through shared contributions. The idea came from how I wanted to map out my family history but I didn’t know everyone’s name, didn’t have photos and had no idea how to reach my extended members in India and their extended members.\n\nSo I searched for a way to simply “stitch” it together digitally, where each family member could add their piece, their members and pass it on. It didn’t seem to exist, so that is how StitchFam was born.',
+      'StitchFam is a family tree that builds itself by being passed around. Each relative adds their branch and forwards one link to the next.\n\nI wanted to map my family across India and couldn’t — I didn’t have the names, the photos, or a way to reach everyone. No tool worked this way, so we built one.',
     hero: { v: 'Desktop_1.mp4', label: 'Traveling through the family tree' },
     sections: [
       {
@@ -515,13 +515,13 @@ const drafts: Draft[] = [
   {
     id: 'mecha-station',
     title: 'Mecha Station',
-    tagline: 'Point of Sale',
+    tagline: 'Point of Sale for Grocery Stores',
     role: 'Founder & Product Designer',
     company: 'Openup Technologies Inc.',
     timeline: '2023 — 2024',
     accent: '#4a7c3f',
     intro:
-      'Mecha Station was a point-of-sale (POS) designed for small grocery stores. My parents were store owners for over 20 years, so I understood the problems grocers faced daily. Also after many years focused on consumer products, we wanted to try solving problems in B2B.\n\nThese businesses needed speed, clarity, and reliability catered to their unique workflows. Mecha Station set out to give them something that would save them hundreds of hours monthly.',
+      'Mecha Station is a point-of-sale system for small grocery stores. My parents ran one for 20+ years, so I knew the shift: checkout that can’t stall with a line waiting, an interface a new hire reads in seconds.\n\nI field-researched 70+ owners, shipped to 3 stores, trained 20+ staff, and cleared $1K+ MRR.',
     hero: { i: 'Hero.jpg', label: 'Showcasing the entire product together' },
     sections: [
       {
@@ -572,7 +572,7 @@ const drafts: Draft[] = [
       {
         id: 'challenges',
         title: 'Challenges',
-        text: 'The biggest challenge wasn’t design, it was adoption. Many store owners were locked into existing systems and reluctant to switch, feeling it would take too much time to learn no matter how simple we made Mecha Station to be. Over three months, I pitched the product to more than 70 store owners in person, landing just one customer.\n\nIt became clear that the changes we made felt incremental to many customers and it wasn’t enough to drive a switch in this market. While traction was limited, the project taught me how to design and fix under the pressures of real-world retail, and to focus more on real big pain points in B2B markets.'
+        text: 'The biggest challenge wasn’t design, it was adoption. Store owners were locked into existing systems and reluctant to switch. Over three months I pitched more than 70 owners in person and landed one customer.\n\nThe improvements we made read as incremental to most of them — not enough to drive a switch in this market. While traction was limited, the project taught me how to design and fix under the pressures of real-world retail, and to focus more on real big pain points in B2B markets.'
       }
     ]
   },
@@ -585,7 +585,7 @@ const drafts: Draft[] = [
     timeline: '2020 — 2023',
     accent: '#6f57a3',
     intro:
-      'OpenUp began with a problem I had while living in New York City. Making great friends in a city with 8 million people is extremely hard (I thought at the time, not anymore). I asked myself in 2015 while working at Rockstar Games in New York: Why isn’t there a product for making friends the way there are for making relationships?\n\nI wanted to design a product that solved that loneliness. In 2017, I started teaching myself how I could bring the idea to life. Over the years, OpenUp went through four major redesigns as I searched for the right way to help people build real friendships online.',
+      'Plus One is an app for making friends, not dates. I started it in 2015 while working at Rockstar Games in New York, asking why every product for finding a partner had no equivalent for finding a friend.\n\nFour full redesigns over seven years, chasing one hard question: what makes a friendship form, and can that happen online?',
     hero: { v: 'hero.mp4', label: 'Demo — created by Tarlok Singh' },
     sections: [
       {

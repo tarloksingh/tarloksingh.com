@@ -104,7 +104,7 @@ const RELEASE_MS = 2400
 const NAME = 'Tarlok Singh'
 
 const PROFILE =
-  'Artist with 10+ years building 0→1 developer tools, AI applications, and consumer products and films. In love with building and designing beautiful things.'
+  'Designer, engineer, and filmmaker. I’ve taken 12 products from zero to shipped — consumer, B2B, AI, hardware — designing, building, and deploying each one. Ten years in, still building.'
 
 /** Cells in the role reel over the counts, and in the `INTRO` cap beside it.
  *  It is the bank head's own count (`CELLS` in `MechBank.tsx`) rather than a

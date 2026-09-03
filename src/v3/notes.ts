@@ -71,8 +71,8 @@ export const NOTES: Record<string, Note[]> = {
     { label: 'still', value: 'The home screen which shows the lesson plan in weeks. ', at: [0.9438, 0.0181], to: [0.9724, -0.0842] }
   ],
   'mr-takahashi/Process_00.webp': [
-    { label: 'still', value: 'Early version of an ear piece I designed for conversating with Adam. Learn more about Adam in the process section', at: [0.8536, 0.3932], to: [0.9805, 0.3311] },
-    { label: '', value: 'We wanted a custom ear piece you can wear all day to conversate any time with Adam', at: [0.4446, 0.3614], to: [0.9826, 0.1893] }
+    { label: 'still', value: 'Early version of an ear piece I designed for conversing with Adam. Learn more about Adam in the process section', at: [0.8536, 0.3932], to: [0.9805, 0.3311] },
+    { label: '', value: 'We wanted a custom ear piece you can wear all day to talk any time with Adam', at: [0.4446, 0.3614], to: [0.9826, 0.1893] }
   ],
   'mr-takahashi/Process_0.webp': [
     { label: 'p', value: 'Designing Takahashi in Blender.', at: [0.8983, 0.1433], to: [1.0468, -0.0109] }
@@ -96,7 +96,7 @@ export const NOTES: Record<string, Note[]> = {
   'capsule-c1/model': [
     { label: 'label', value: '3D model of the Capsule c1.', at: [0.7203, 0.3546], to: [1.0053, 0.1936] },
     { label: 'label', value: 'Designed in blender with precise sizing to fit a raspberry pi and phone.', at: [0.2786, 0.3215], to: [0.1904, 0.2364] },
-    { label: 'label', value: 'Designed to hold your phone and raspberry pi and maintiain proper airflow. ', at: [0.8606, 0.7134], to: [0.9001, 0.8178] }
+    { label: 'label', value: 'Designed to hold your phone and raspberry pi and maintain proper airflow. ', at: [0.8606, 0.7134], to: [0.9001, 0.8178] }
   ],
   'capsule-c1/Demo_Video.mp4': [
     { label: 'label', value: 'Filmed with the Black magic ursa mini 4.6k.', at: [0.9618, 0.2654], to: [1.0262, 0.0593] },
@@ -145,7 +145,7 @@ export const NOTES: Record<string, Note[]> = {
     { label: '', value: 'Promotional content', at: [0.8707, 0.4549], to: [1.0301, 0.2406] }
   ],
   'slider-engine/piece': [
-    { label: '', value: 'Breathing animation of "The Alcholic Fish"', at: [0.7921, 0.3659], to: [0.8984, 0.2735] },
+    { label: '', value: 'Breathing animation of "The Alcoholic Fish"', at: [0.7921, 0.3659], to: [0.8984, 0.2735] },
     { label: 'label', value: 'Designed in Figma, animated in After effects. ', at: [0.27, 0.5066], to: [0.075, 0.411] }
   ],
   'slider-engine/hero.mp4': [
@@ -166,7 +166,7 @@ export const NOTES: Record<string, Note[]> = {
     { label: 'made in', value: 'Inspired by Brett Victor and Figma.', fold: 'tools', at: [0.6511, 0.1572], to: [0.7845, -0.1073] }
   ],
   'slider-engine/Game_0.mp4': [
-    { label: 'clip', value: 'A scene from the unfinished game "The Alcholic Fish.', at: [0.7561, 0.0428], to: [0.9604, -0.1007] }
+    { label: 'clip', value: 'A scene from the unfinished game "The Alcoholic Fish.', at: [0.7561, 0.0428], to: [0.9604, -0.1007] }
   ],
   'slider-engine/Game_1.mp4': [
     { label: 'clip', value: 'Early test of Solomon game.', at: [0.5024, 0.1679], to: [0.612, -0.1332] },
@@ -179,7 +179,7 @@ export const NOTES: Record<string, Note[]> = {
     { label: 'clip', value: 'Unfinished marketing video made in After Effects.', at: [0.5833, 0.1749], to: [0.4244, -0.0886] }
   ],
   'mecha-station/piece': [
-    { label: 'piece', value: '3D interperation of the cash register, card terminal and the POS software. ', at: [0.94, 0.08], to: [0.9706, 0.0022] }
+    { label: 'piece', value: '3D interpretation of the cash register, card terminal and the POS software. ', at: [0.94, 0.08], to: [0.9706, 0.0022] }
   ],
   'mecha-station/Hero.jpg': [
     { label: 'still', value: 'Still showcasing the entire pieces together.', at: [0.94, 0.08], to: [1.0205, -0.1622] }
@@ -221,37 +221,37 @@ export const NOTES: Record<string, Note[]> = {
     { label: 'still', value: 'Shelf label in use at a grocery store.', at: [0.8248, 0.3973], to: [1.0337, 0.284] }
   ],
   'red-dead-redemption-2/model': [
-    { label: '', value: 'Western Gun used as a representation of Red Dead 2. ', at: [0.6002, 0.2388], to: [0.9271, 0.0122] }
+    { label: '', value: 'A revolver, standing in for Red Dead Redemption 2.', at: [0.6002, 0.2388], to: [0.9271, 0.0122] }
   ],
   'red-dead-redemption-2/Explosion.mp4': [
-    { label: 'made in', value: 'Camera work done in  Autodesk MotionBuilder.', fold: 'tools', at: [0.6208, 0.0179], to: [0.6807, -0.0763] }
+    { label: 'made in', value: 'Camera work done in Autodesk MotionBuilder.', fold: 'tools', at: [0.6208, 0.0179], to: [0.6807, -0.0763] }
   ],
   'red-dead-redemption-2/Guns Out.mp4': [
-    { label: 'label', value: 'Thought deeply in every scene about why it should be told in this manner. ', at: [0.4511, 0.1056], to: [0.5144, -0.0761] }
+    { label: 'label', value: 'Every scene got the same question first: why tell it this way?', at: [0.4511, 0.1056], to: [0.5144, -0.0761] }
   ],
   'red-dead-redemption-2/Darkness.mp4': [
-    { label: 'label', value: 'Camera work done in  Autodesk MotionBuilder.', at: [1.0633, 0.47], to: [1.1362, 0.4166] }
+    { label: 'label', value: 'A night scene — camera blocked and cut in Autodesk MotionBuilder.', at: [1.0633, 0.47], to: [1.1362, 0.4166] }
   ],
   'red-dead-redemption-2/Knifetoneck.mp4': [
-    { label: 'label', value: 'Camera work done in  Autodesk MotionBuilder.', at: [0.828, 0.5711], to: [1.0297, 0.4156] }
+    { label: 'label', value: 'Holding the shot tight through a standoff.', at: [0.828, 0.5711], to: [1.0297, 0.4156] }
   ],
   'red-dead-redemption-2/Saved_Micah.mp4': [
-    { label: 'label', value: 'Camera work done in  Autodesk MotionBuilder.', at: [0.9948, 0.4302], to: [1.039, 0.362] }
+    { label: 'label', value: 'The rescue of Micah — staged and edited by me.', at: [0.9948, 0.4302], to: [1.039, 0.362] }
   ],
   'red-dead-redemption-2/Mansionburning.mp4': [
-    { label: 'label', value: 'Camera work done in  Autodesk MotionBuilder.', at: [0.9755, 0.4879], to: [1.0786, 0.3946] }
+    { label: 'label', value: 'The mansion burns — camera and pacing mine.', at: [0.9755, 0.4879], to: [1.0786, 0.3946] }
   ],
   'red-dead-redemption-2/Shootout.mp4': [
-    { label: 'label', value: 'Camera work done in  Autodesk MotionBuilder.', at: [1.0135, 0.4845], to: [1.1077, 0.3953] }
+    { label: 'label', value: 'A shootout, cut for rhythm in Avid.', at: [1.0135, 0.4845], to: [1.1077, 0.3953] }
   ],
   'red-dead-redemption-2/Savemyson.mp4': [
-    { label: 'label', value: 'Camera work done in  Autodesk MotionBuilder.', at: [0.9751, 0.4545], to: [1.0798, 0.3726] }
+    { label: 'label', value: 'A father pleads for his son — coverage and edit mine.', at: [0.9751, 0.4545], to: [1.0798, 0.3726] }
   ],
   'red-dead-redemption-2/talking.mp4': [
-    { label: 'label', value: 'Camera work done in  Autodesk MotionBuilder.', at: [1.0102, 0.4287], to: [1.0607, 0.3545] }
+    { label: 'label', value: 'A dialogue scene — where to cut, and when to hold.', at: [1.0102, 0.4287], to: [1.0607, 0.3545] }
   ],
   'openup/piece': [
-    { label: 'piece', value: 'Deisgned in Figma', at: [0.7914, 0.1744], to: [0.9282, 0.0654] },
+    { label: 'piece', value: 'Designed in Figma', at: [0.7914, 0.1744], to: [0.9282, 0.0654] },
     { label: 'made in', value: 'Final version of plus one / openup app. ', fold: 'tools', at: [0.1413, 0.3924], to: [-0.1305, 0.2301] }
   ],
   'openup/hero.mp4': [
@@ -264,7 +264,7 @@ export const NOTES: Record<string, Note[]> = {
     { label: 'clip', value: 'The messaging section of Plus One.', at: [0.5071, 0.1267], to: [0.5818, -0.1239] }
   ],
   'openup/Three.mp4': [
-    { label: 'clip', value: 'Version 3 of the app called Bonjour that had a map showing you were people were somewhat located.', at: [0.565, 0.0596], to: [0.631, -0.1051] }
+    { label: 'clip', value: 'Version 3 of the app called Bonjour that had a map showing you where people were located.', at: [0.565, 0.0596], to: [0.631, -0.1051] }
   ],
   'openup/Four.mp4': [
     { label: 'clip', value: 'Promotional  content made in After effects.', at: [0.7844, 0.0419], to: [0.7965, -0.1086] },
@@ -281,23 +281,23 @@ export const NOTES: Record<string, Note[]> = {
     { label: 'made in', value: 'Version one (Openup).', fold: 'tools', at: [0.4038, 0.0371], to: [0.3133, -0.0673] }
   ],
   'grand-theft-auto-v/model': [
-    { label: 'model', value: 'A modern weapon to represent GTA V', at: [0.6377, 0.2168], to: [0.7516, -0.0066] }
+    { label: 'model', value: 'A modern rifle, standing in for GTA V.', at: [0.6377, 0.2168], to: [0.7516, -0.0066] }
   ],
   'grand-theft-auto-v/5.2.mp4': [
     { label: 'clip', value: 'Scene I filmed for GTA DLC.', at: [0.3469, 0.0257], to: [0.274, -0.1452] },
-    { label: 'made in', value: 'Made in Autodesk MotionBuilder.', fold: 'tools', at: [0.7568, 0.0294], to: [0.8172, -0.1316] }
+    { label: 'made in', value: 'Camera and edit done in Autodesk MotionBuilder.', fold: 'tools', at: [0.7568, 0.0294], to: [0.8172, -0.1316] }
   ],
   'grand-theft-auto-v/1.2.mp4': [
-    { label: 'clip', value: 'Made in Autodesk MotionBuilder.', at: [0.9729, 0.2831], to: [1.0455, 0.127] }
+    { label: 'clip', value: 'Open-world freedom — a scene I shot for the DLC.', at: [0.9729, 0.2831], to: [1.0455, 0.127] }
   ],
   'grand-theft-auto-v/3.mp4': [
-    { label: 'clip', value: 'Made in Autodesk MotionBuilder.', at: [1.0106, 0.2785], to: [1.1605, -0.0568] }
+    { label: 'clip', value: 'A heist mission, camera and cut mine.', at: [1.0106, 0.2785], to: [1.1605, -0.0568] }
   ],
   'grand-theft-auto-v/4.mp4': [
-    { label: 'clip', value: 'Made in Autodesk MotionBuilder.', at: [0.985, 0.2842], to: [1.0498, 0.0932] }
+    { label: 'clip', value: 'A character-switch scene, staged in MotionBuilder.', at: [0.985, 0.2842], to: [1.0498, 0.0932] }
   ],
   'grand-theft-auto-v/hero.mp4': [
-    { label: 'clip', value: 'Made in Autodesk MotionBuilder.', at: [0.9705, 0.2791], to: [1.0612, 0.119] }
+    { label: 'clip', value: 'A GTA DLC scene — cinematography and edit by me.', at: [0.9705, 0.2791], to: [1.0612, 0.119] }
   ],
   'block-builder/hero.mp4': [
     { label: 'clip', value: 'Modular system demonstration.', at: [0.5666, 0.0644], to: [0.48, -0.0929] }
@@ -312,7 +312,7 @@ export const NOTES: Record<string, Note[]> = {
     { label: 'clip', value: 'Random design in Block Builder.', at: [1.0211, 0.1523], to: [1.1605, -0.0226] }
   ],
   'block-builder/piece': [
-    { label: 'piece', value: 'Block builder representiation. ', at: [0.7359, 0.461], to: [0.9157, 0.2602] }
+    { label: 'piece', value: 'Block Builder representation. ', at: [0.7359, 0.461], to: [0.9157, 0.2602] }
   ],
   'stitchfam/piece': [
     { label: 'piece', value: 'GIF made for the home screen of Stitchfam.', at: [0.8197, 0.1723], to: [0.9819, 0.044] }
