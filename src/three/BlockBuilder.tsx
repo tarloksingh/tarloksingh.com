@@ -214,8 +214,27 @@ export default function BlockBuilder({ scale = 1 }: BlockBuilderProps) {
   // were lying on rather than a different plane.
   const floorY = -(BLOCK_COUNT * BLOCK_HEIGHT) / 2 + BLOCK_HEIGHT / 2
 
+  // The volume the whole build→hold→collapse→hold cycle travels through,
+  // centred on the origin. drei's <Center>/<Resize> measure their subtree
+  // once, at mount, and without a constant to lock onto they catch the flat
+  // ground scatter — so <Center> pins that pose's low centre to the origin
+  // and the tower, rising to +0.6, climbs straight out of frame. This is why
+  // the piece showed nothing on the project stage. An invisible-but-drawn box
+  // (Box3.setFromObject skips `visible={false}`) gives them a stable measure.
+  const spanX = ((BLOCK_COUNT - 1) / 2) * STEP_X + JITTER_X
+  const spanZ = ((BLOCK_COUNT - 1) / 2) * STEP_Z + JITTER_Z
+  const bounds: [number, number, number] = [
+    2 * (spanX * spread + BLOCK_SIZE / 2),
+    BLOCK_COUNT * BLOCK_HEIGHT,
+    2 * (spanZ * spread + BLOCK_SIZE / 2)
+  ]
+
   return (
     <group scale={scale}>
+      <mesh>
+        <boxGeometry args={bounds} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} />
+      </mesh>
       {COLORS.map((color, i) => (
         <Block
           key={i}

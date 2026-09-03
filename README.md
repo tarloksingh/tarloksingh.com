@@ -2219,9 +2219,16 @@ and `MechProduct`'s was quoting the shared `PRODUCT_DEFAULTS.fill` raw, with
 no `piece.size` in it. Every piece is sized, so every piece drew one frame at
 the wrong distance before the `Lens` effect corrected it. It is
 `distanceFor(piece.focalLength, piece.fill * piece.size)` now, which is exact
-for seven of the eight. Block Builder is the exception and always will be:
-its `fill` of 1.728 is past what `Lens` will allow at any normal window shape,
-and that cap needs an aspect ratio the canvas does not have until it exists.
+for seven of the eight. Block Builder is the exception: its blocks fly apart
+and stack, so `Resize`/`Center` used to lock onto whatever pose was on screen
+at mount — the flat ground scatter — and `Center` then pinned that pose's low
+midpoint to the origin, sending the tower straight out of frame. It carries an
+invisible box the size of its whole travel volume now (`BlockBuilder.tsx`), so
+the measure is a constant. **And its values were coming back undefined in a
+build:** `BlockBuilder` calls `useControls('Objects', { … })` — the named-folder
+string form — and `leva-prod.tsx` only handled `useControls(schema)`, so it
+flattened the *string* and every slider read `undefined`, which walked the
+block positions to `NaN` and drew nothing. The stub takes the string form now.
 
 **And the two GLB models** were both running on `MODEL_DEFAULTS` — a rig built
 around a face, with an enclosure tuned to look acceptable under it. That is

@@ -102,7 +102,24 @@ export function useControls(
   options?: unknown,
   deps?: unknown[]
 ): [Values, (next: Values) => void]
-export function useControls(schema: Schema | (() => Schema), _options?: unknown, deps?: unknown[]) {
+export function useControls(
+  schema: string | Schema | (() => Schema),
+  a?: unknown,
+  b?: unknown[]
+) {
+  /* Leva also takes `useControls('Folder name', schema, …)` — the string form
+     groups the controls under a named folder in the panel. There is no panel,
+     so the name is dropped and the real schema slides forward a slot.
+     `BlockBuilder.tsx` is the caller that uses it; without this the stub
+     flattened the *string* and every value came back undefined. */
+  const [realSchema, deps] =
+    typeof schema === 'string'
+      ? [a as Schema | (() => Schema), b]
+      : [schema, b ?? (Array.isArray(a) ? (a as unknown[]) : undefined)]
+  return useControlsImpl(realSchema, deps)
+}
+
+function useControlsImpl(schema: Schema | (() => Schema), deps?: unknown[]) {
   const fn = typeof schema === 'function'
   const [values, setValues] = useState<Values>(() => flatten(fn ? schema() : schema))
 

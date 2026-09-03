@@ -2046,10 +2046,9 @@ export default function Mech({ id, onProject, onHome }: Props) {
             <div className="mech-model-layer" data-on={current?.kind === 'piece'}>
               <Suspense fallback={null}>
                 <MechProduct
-                  /* See the note on `MechModel` above. Block Builder in
-                     particular renders nothing until its own bug is fixed, and
-                     without this key that broken canvas was the one the next
-                     piece project opened into. */
+                  /* See the note on `MechModel` above. The key also stops a
+                     piece that fails to frame from leaving the shared canvas
+                     in a state the next piece project inherits. */
                   key={pieceFrame.project}
                   project={pieceFrame.project}
                   tuning={pieces.studio}
