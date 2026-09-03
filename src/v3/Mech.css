@@ -3605,10 +3605,17 @@
    tall, so the two read as one column of chrome. */
 .mech[data-narrow='true'] .mech-alarm {
   top: auto;
-  bottom: calc(76 * var(--px) + env(safe-area-inset-bottom, 0px));
+  /* Clear of the deck rather than sat on its top edge: the pill is about
+     `46 * var(--type)` tall (its type has a rem floor, so it does not shrink
+     with `--px`), and the old `76 * var(--px)` — a few real pixels on a phone
+     — put the lower lamp behind it. */
+  bottom: calc(18 * var(--px) + 52 * var(--type) + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%);
   justify-content: center;
+  /* Above the deck (`z-index: 8`): the pill's translucent green must never
+     wash over the count. */
+  z-index: 9;
 }
 
 /* Three rules of the same weight as everything else drawn on this panel. */
@@ -4122,6 +4129,26 @@
   z-index: 8;
 }
 
+/* The pill's bloom is scaled by the room's `--g` (5 on this screen), a radius
+   tuned for instruments read across a wide frame. On a phone the deck is one
+   control floating over the work at arm's length, and a 20-unit opaque-green
+   halo around it reads as a box, not a glow — and it bleeds over the warning
+   pair above. Quieten `--g` for the pill's subtree only, and give the pill a
+   dark base under its green tint so a note card scrolling past behind it does
+   not show through as a second outline. */
+.mech[data-narrow='true'] .mech-deck-pill {
+  --g: 1.3;
+  background:
+    linear-gradient(rgba(4, 12, 9, 0.62), rgba(4, 12, 9, 0.62)),
+    rgba(var(--accent-rgb), 0.13);
+}
+
+.mech[data-narrow='true'] .mech-deck[data-playing='true'] .mech-deck-pill {
+  background:
+    linear-gradient(rgba(4, 12, 9, 0.58), rgba(4, 12, 9, 0.58)),
+    rgba(var(--accent-rgb), 0.2);
+}
+
 /* A soft floor under it. Anything fixed over a scrolling page eventually
    lands on a headline, and a lit key sitting directly on a title reads as
    two things fighting; this is the shadow the key casts on the page. */
@@ -4131,13 +4158,13 @@
   left: 0;
   right: 0;
   bottom: 0;
-  height: calc(150 * var(--px));
+  height: calc(150 * var(--px) + 64 * var(--type));
   z-index: -1;
   pointer-events: none;
   background: radial-gradient(
-    120% 100% at 50% 100%,
+    130% 100% at 50% 100%,
     rgba(0, 0, 0, 0.92) 0%,
-    rgba(0, 0, 0, 0.72) 42%,
+    rgba(0, 0, 0, 0.72) 46%,
     rgba(0, 0, 0, 0) 100%
   );
 }

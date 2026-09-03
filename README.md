@@ -3640,7 +3640,19 @@ spare either side of the index key. A phone header is the wordmark and one
 control filling the line, and the pair printed straight over both — then over
 the project's title when it was moved down a row. It is stacked over
 `.mech-deck-slot` instead, so the two floating controls read as one column of
-chrome rather than two things that happen to be fixed.
+chrome rather than two things that happen to be fixed. It clears the deck by a
+real gap now — `bottom: 18 * --px + 52 * --type`, the pill's own height, since
+`--px` is a couple of real pixels on a phone and the old `76 * --px` left the
+lower lamp behind the pill — and sits at `z-index: 9`, above the deck, so the
+pill's translucent green never washes over the count.
+
+**The deck's bloom is a phone-sized radius on a phone.** `--g` (the room's
+bloom multiplier, `5` on this screen) is tuned for instruments read across a
+wide frame; on the floating pill it drew a 20-unit opaque-green halo that read
+as a box and bled over the warning pair above. Narrow overrides `--g` to `1.3`
+for the pill's subtree, and lays a dark gradient under the green tint so a fact
+card scrolling past behind the fixed pill does not show through as a second
+outline. The `::before` floor grew to match the taller stack.
 
 **The fold headings are sized to a cell here too.** They are the same
 fourteen-segment display the wide layout uses, and `Segment` scales by width —
