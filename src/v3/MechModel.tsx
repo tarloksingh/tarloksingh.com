@@ -512,11 +512,15 @@ function Lens({ focalLength, fill }: { focalLength: number; fill: number }) {
 export default function MechModel({
   src,
   tuning = MODEL_DEFAULTS,
-  live = true
+  live = true,
+  offset
 }: {
   src: string
   tuning?: ModelTuning
   live?: boolean
+  /** A narrow-only pan, [x, y] in frame heights, added on top of the rig's
+   *  own `liftY`. The desktop layout never passes it. See `narrowTuning.ts`. */
+  offset?: readonly [number, number]
 }) {
   /* From the tuning actually in force, not from the shipped constant.
  
@@ -566,7 +570,11 @@ export default function MechModel({
           `Placed` in MechCast.tsx. */}
       <group
         rotation={[MathUtils.degToRad(tuning.tilt), MathUtils.degToRad(tuning.turn), 0]}
-        position={[0, tuning.liftY / tuning.fill, 0]}
+        position={[
+          (offset?.[0] ?? 0) / tuning.fill,
+          (tuning.liftY + (offset?.[1] ?? 0)) / tuning.fill,
+          0
+        ]}
       >
         <FaceScene src={src} tuning={tuning} />
       </group>

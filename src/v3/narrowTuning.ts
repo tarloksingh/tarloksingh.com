@@ -31,8 +31,14 @@ import { copyText } from './clipboard'
 
 export interface NarrowTuning {
   /** Multiplies the subject's `fill` — how much of the stage's height it
-   *  fills — on narrow layouts only. */
+   *  fills — on narrow layouts only. The zoom, in other words. */
   model: number
+  /** Nudges the subject left / right in the narrow stage, in frame heights,
+   *  scaled with the zoom so it reads as a camera pan. */
+  offsetX: number
+  /** Nudges the subject up / down, same units. Added to whatever `liftY` the
+   *  subject's own rig already carries. */
+  offsetY: number
   /** Scales the picture and its housing inside the narrow stage. */
   media: number
 }
@@ -40,6 +46,8 @@ export interface NarrowTuning {
 /** What a project scales to when it has no entry of its own. */
 export const NARROW_FALLBACK: NarrowTuning = {
   model: 1.5,
+  offsetX: 0,
+  offsetY: 0,
   media: 1
 }
 
@@ -93,7 +101,9 @@ export function useNarrowTuning(projectId: string) {
 
   const [values, setValues] = useControls(
     () => ({
-      model: { value: seed.model, min: 0.4, max: 3.5, step: 0.05, label: 'Subject' },
+      model: { value: seed.model, min: 0.4, max: 3.5, step: 0.05, label: 'Zoom' },
+      offsetX: { value: seed.offsetX, min: -1.5, max: 1.5, step: 0.02, label: 'Pan X' },
+      offsetY: { value: seed.offsetY, min: -1.5, max: 1.5, step: 0.02, label: 'Pan Y' },
       media: { value: seed.media, min: 0.4, max: 1.6, step: 0.01, label: 'Pictures' },
       'Copy for source': button(() => {
         const text = asSource()
@@ -114,7 +124,7 @@ export function useNarrowTuning(projectId: string) {
      record the moment anything is dragged. */
   useEffect(() => {
     const next = tunings[projectId] ?? NARROW_FALLBACK
-    setValues({ model: next.model, media: next.media })
+    setValues({ model: next.model, offsetX: next.offsetX, offsetY: next.offsetY, media: next.media })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId])
 

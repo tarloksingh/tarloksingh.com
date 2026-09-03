@@ -3609,6 +3609,16 @@ carries, because `setValues` does not land until a render later and without it
 one project's numbers get saved under the next one's id). The **Scale** tab is
 hidden on home, which has no subject to scale.
 
+**The Scale tab also pans the subject.** `model` is the zoom (labelled **Zoom**
+now, not **Subject**); `offsetX` / `offsetY` — **Pan X** / **Pan Y** — nudge it
+left/right and up/down in the tall stage, in frame heights, added on top of
+whatever `liftY` (and, for a piece, `liftX`) the subject's own rig already
+carries and divided by the same `fill` so the pan holds its screen position as
+the zoom changes. It reaches the subject as an `offset` prop on `MechModel` and
+`MechProduct` — narrow-only, `undefined` on desktop, so the group position
+there resolves to exactly the expression it always was. Every field is
+per-project and pasted back through the same **Copy for source** button.
+
 **`SHOOT`/`STOP` sits at the foot of the window, not the head.** On the wide
 frame the warning pair floats on the header's own row, where there is width to
 spare either side of the index key. A phone header is the wordmark and one

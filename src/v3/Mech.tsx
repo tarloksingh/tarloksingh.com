@@ -1936,6 +1936,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
                   key={modelFrame.src}
                   src={modelFrame.src}
                   tuning={narrow ? { ...tuning, fill: tuning.fill * narrowScale.model } : tuning}
+                  offset={narrow ? [narrowScale.offsetX, narrowScale.offsetY] : undefined}
                   live={current?.kind === 'model'}
                 />
               </Suspense>
@@ -1959,6 +1960,7 @@ export default function Mech({ id, onProject, onHome }: Props) {
                   project={pieceFrame.project}
                   tuning={pieces.studio}
                   piece={narrow ? { ...pieces.piece, size: pieces.piece.size * narrowScale.model } : pieces.piece}
+                  offset={narrow ? [narrowScale.offsetX, narrowScale.offsetY] : undefined}
                   live={current?.kind === 'piece'}
                 />
               </Suspense>

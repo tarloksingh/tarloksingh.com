@@ -330,12 +330,16 @@ export default function MechProduct({
   project,
   tuning = PRODUCT_DEFAULTS,
   piece = PIECE_FALLBACK,
-  live = true
+  live = true,
+  offset
 }: {
   project: string
   tuning?: ProductTuning
   piece?: PieceTuning
   live?: boolean
+  /** A narrow-only pan, [x, y] in frame heights, added on top of the piece's
+   *  own `liftX` / `liftY`. The desktop layout never passes it. */
+  offset?: readonly [number, number]
 }) {
   const fill = piece.fill * piece.size
   const distance = distanceFor(piece.focalLength, fill)
@@ -377,7 +381,13 @@ export default function MechProduct({
       <directionalLight position={[piece.fillX, piece.fillY, piece.fillZ]} intensity={piece.fillIntensity} />
 
       <Suspense fallback={null}>
-        <group position={[piece.liftX / fill, piece.liftY / fill, 0]}>
+        <group
+          position={[
+            (piece.liftX + (offset?.[0] ?? 0)) / fill,
+            (piece.liftY + (offset?.[1] ?? 0)) / fill,
+            0
+          ]}
+        >
           <Float
             speed={tuning.floatSpeed}
             rotationIntensity={tuning.floatRotation}
