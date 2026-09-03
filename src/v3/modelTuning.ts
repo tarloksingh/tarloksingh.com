@@ -184,7 +184,7 @@ const start: ModelTuning = { ...MODEL_DEFAULTS, ...(typeof window === 'undefined
 /** Every model's rig, by project id. Anything not named here falls back to
  *  the defaults, so adding a third GLB needs no entry until it wants one. */
 export const MODEL_RIGS: Record<string, ModelTuning> = {
-  'mr-takahashi': { ...MODEL_DEFAULTS },
+  'mr-takahashi': { ...MODEL_DEFAULTS, fill: 0.47, liftY: 0.055 },
   /* An enclosure, and for a while an enclosure wearing a face's rig. It was
      `{ ...MODEL_DEFAULTS, watchBird: false }`, which is this file's whole
      argument undone: `MODEL_DEFAULTS` *is* Mr. Takahashi's rig, so spreading
