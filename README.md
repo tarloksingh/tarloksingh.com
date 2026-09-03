@@ -4872,11 +4872,18 @@ by the deck (`<audio>` volume), by `audio()` (the effects master gain, live)
 and by every clip (`<video>` volume, live via `levels.subscribe`). The synth
 effects start at `0.3`, the music at `0.6`, and a clip's own audio track at
 `0.72` — tamed off the raw `1.0` a `<video>` plays at, a shade above the music
-so speech stays over it. While a clip with sound is playing the music ducks to
-`DUCK_RATIO` of whatever it is set to and comes back when the clip stops:
-`claimAudio()` is ref-counted (several clips, one dip), and `Flat` in `Mech.tsx`
-and `Video` in `Stage.tsx` both hold a claim while they are audible. A silent
-screen capture, which is most of them, never touches any of this.
+so speech stays over it.
+
+**A clip and the music are never heard together.** Not a duck — the deck
+pauses. `wantPlay` in `MechDeck.tsx` is what the pill says (the visitor's
+intent); a reconcile effect plays the `<audio>` element only when that is set
+*and* `levels.clipAudible()` is false. `claimAudio()` is ref-counted (several
+clips, one hold), `Flat` in `Mech.tsx` and `Video` in `Stage.tsx` each hold one
+while they are audible, and every hold and release runs the reconcile through
+`levels.subscribe`. A paused `<audio>` keeps its `currentTime`, so the song
+resumes where it left off; the pill keeps showing pause throughout, because the
+visitor never asked it to stop. A silent screen capture, which is most of them,
+never touches any of this.
 
 The panel is the three-bar toggle next to the deck pill (`MechDeck.tsx`,
 `.mech-deck-mix` in `Mech.css`) — three sliders and a Reset, `v3.levels.v1` in

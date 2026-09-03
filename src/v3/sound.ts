@@ -175,16 +175,14 @@ export const sound = {
    Three things make noise on the page: the synth effects (punctuation), the
    music, and a clip's own audio track. One store behind a small panel on the
    deck, persisted per browser, so the balance can be set by ear without a
-   rebuild. While a clip with sound is playing the music ducks to a fraction
-   of whatever it is set to and comes back when the clip stops. */
+   rebuild. A clip and the music are never heard at once — while a clip with
+   sound is playing the deck pauses, and resumes where it left off when the
+   clip stops (the deck watches `clipAudible`). */
 
 export type Levels = { music: number; effects: number; clip: number }
 
 export const LEVELS_DEFAULT: Levels = { music: 0.6, effects: 0.3, clip: 0.72 }
 const LEVELS_KEY = 'v3.levels.v1'
-
-/** The music, while a clip is talking, as a fraction of its set level. */
-const DUCK_RATIO = 0.37
 
 const clampLevel = (value: unknown, fallback: number): number =>
   typeof value === 'number' && value >= 0 && value <= 1 ? value : fallback
@@ -211,9 +209,9 @@ export const levels = {
   /** The set values, for the panel to draw. */
   get: (): Levels => current,
 
-  /** The music volume to apply right now: the set level, or a fraction of it
-   *  while a clip with its own audio is playing. */
-  music: (): number => (claims > 0 ? current.music * DUCK_RATIO : current.music),
+  /** Whether a clip with its own audio is playing right now. The deck pauses
+   *  itself while this is true. */
+  clipAudible: (): boolean => claims > 0,
 
   set(patch: Partial<Levels>) {
     current = { ...current, ...patch }

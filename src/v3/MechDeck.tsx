@@ -11,8 +11,13 @@ import { sound, levels, type Levels } from './sound'
 
    Alongside it, a small mixer: three sliders — the music, the synth effects
    and a clip's own audio — behind a toggle, so the balance can be set by ear
-   from the page rather than in `sound.ts`. Values persist per browser and the
-   music ducks under a talking clip automatically; see `levels` in `sound.ts`.
+   from the page rather than in `sound.ts`. Values persist per browser.
+
+   The deck and a clip are never heard together. `wantPlay` is what the pill
+   says — the visitor's intent — and the reconcile effect below plays the
+   element only when that is set *and* no clip with sound is up (`clipAudible`
+   in `sound.ts`). A clip starting pauses the deck; the clip ending resumes it
+   where it left off, because a paused `<audio>` keeps its `currentTime`.
 
    It never plays uninvited. With no file in `src/assets/audio/` the pill says
    `no signal` rather than vanishing. Wide layout only, as before. */
@@ -25,35 +30,33 @@ const MIX_ROWS: [keyof Levels, string][] = [
 
 function MechDeck() {
   const audio = useRef<HTMLAudioElement>(null)
-  const [playing, setPlaying] = useState(false)
+  const [wantPlay, setWantPlay] = useState(false)
   const [mixOpen, setMixOpen] = useState(false)
   const [mix, setMix] = useState<Levels>(() => levels.get())
 
   const track = tracks[0]
 
+  // One reconcile, run on mount, on every intent change, and on every `levels`
+  // change (a slider, or a clip starting / stopping): the element plays only
+  // when the visitor wants it and nothing is talking over it.
   useEffect(() => {
-    const apply = () => {
-      setMix(levels.get())
-      if (audio.current) audio.current.volume = levels.music()
-    }
-    apply()
-    return levels.subscribe(apply)
-  }, [])
-
-  const toggle = () => {
     const el = audio.current
     if (!el) return
+    const sync = () => {
+      setMix(levels.get())
+      el.volume = levels.get().music
+      const shouldPlay = wantPlay && !levels.clipAudible()
+      if (shouldPlay && el.paused) void el.play().catch(() => {})
+      if (!shouldPlay && !el.paused) el.pause()
+    }
+    sync()
+    return levels.subscribe(sync)
+  }, [wantPlay])
+
+  const toggle = () => {
     sound.wake()
     sound.select()
-    if (el.paused) {
-      void el
-        .play()
-        .then(() => setPlaying(true))
-        .catch(() => setPlaying(false))
-    } else {
-      el.pause()
-      setPlaying(false)
-    }
+    setWantPlay((was) => !was)
   }
 
   if (!track) {
@@ -65,18 +68,12 @@ function MechDeck() {
   }
 
   return (
-    <div className="mech-deck" data-playing={playing} data-mix={mixOpen}>
-      <audio
-        ref={audio}
-        src={track.src}
-        loop
-        onPlay={() => setPlaying(true)}
-        onPause={() => setPlaying(false)}
-      />
+    <div className="mech-deck" data-playing={wantPlay} data-mix={mixOpen}>
+      <audio ref={audio} src={track.src} loop />
       <button
         className="mech-deck-pill"
         onClick={toggle}
-        aria-label={playing ? `Pause ${track.title}` : `Play ${track.title}`}
+        aria-label={wantPlay ? `Pause ${track.title}` : `Play ${track.title}`}
       >
         <span className="mech-deck-lines">
           <span className="mech-deck-title">{track.title}</span>
