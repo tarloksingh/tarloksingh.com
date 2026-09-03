@@ -64,7 +64,7 @@ const PIECE_SET: ReadonlySet<string> = new Set(PIECE_IDS)
 /** Whether a project has a piece built for it at all. */
 export const hasPiece = (project: string) => PIECE_SET.has(project)
 
-/** Whether a project has anything at all to stand in its slot. Visa is the
- *  only one that does not, and its slot says "no signal" rather than being
- *  left out of the bank — see `SlotBox` in MechCluster.tsx. */
+/** Whether a project has anything built to stand in its slot. Visa has
+ *  nothing; Solomon has the rider but `bank.ts` also gates the slot on
+ *  `locked`, so its bay reads "no signal" while the game is in development. */
 export const hasSubject = (id: string) => Boolean(GLBS[id]) || hasPiece(id)

@@ -1715,10 +1715,12 @@ export default function Mech({ id, onProject, onHome }: Props) {
      note on its own card, in place of the subject. See `MENU` in `model.ts`
      for why a project with no media is in the index at all. */
   const bare = !home && !current
-  /* Solomon has no frames, so it would fall through to the "no material" card
-     — but the rider *is* the material until the write-up lands. See
-     `MechRider.tsx`. */
-  const riderStage = bare && project?.id === 'a-game'
+  /* Solomon has no frames, so it would fall through to the card — and the
+     rider (`MechRider.tsx`) is built to stand in for one. It is held back
+     while the project is `locked` ("in development"), which is what puts the
+     Visa-style card up instead; drop `locked` in projects.ts and the rider
+     returns here and in the bank. */
+  const riderStage = bare && project?.id === 'a-game' && !project?.locked
   /* Computed after the two above, because whether the overview fold is worth
      opening depends on whether the card under it already said the same thing.
      See `foldsFor`. */
@@ -1986,7 +1988,9 @@ export default function Mech({ id, onProject, onHome }: Props) {
                   </svg>
                 </span>
               )}
-              <span className="mech-bare-tag">{project.locked ? 'not yet disclosable' : 'no material'}</span>
+              <span className="mech-bare-tag">
+                {project.locked ? (project.lockNote ?? 'not yet disclosable') : 'no material'}
+              </span>
               <p>{project.restricted ?? project.intro}</p>
             </div>
           )}

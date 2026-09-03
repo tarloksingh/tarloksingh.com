@@ -132,8 +132,9 @@ export const byYear = (visible: Entry[]): Array<{ year: number; entries: Entry[]
    that has none. It is the wrong rule for an index. Visa is the largest piece
    of work here and it is under an NDA, so it has no media and never will — it
    still belongs in a list of the work, and a filter that reads `media.length`
-   cannot know that. (Solomon is held out of the list for now, write-up
-   pending.)
+   cannot know that. Solomon is the same case — in development, no frames yet —
+   and sits at 06 with its slot reading "no signal" and a locked card behind
+   it (`locked` on the project, gated in `bank.ts` and `Mech.tsx`).
 
    So the order is a decision, and it lives here as one. A project named in
    this list opens whether or not it has frames — see the restricted card in
@@ -145,6 +146,7 @@ const MENU_IDS = [
   'capsule-c1',
   'mecha-station',
   'slider-engine',
+  'a-game',
   'red-dead-redemption-2',
   'openup',
   'grand-theft-auto-v',

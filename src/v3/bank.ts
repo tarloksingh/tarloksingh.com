@@ -80,8 +80,8 @@ export interface Slot {
    *  real work, and a gap at position 01 would read as a bug. */
   restricted: boolean
   /** Whether there is a subject to stand in the slot — a model or a piece.
-   *  Visa is the only one without, and its slot says so rather than being left
-   *  out of the bank. */
+   *  Visa is one without; Solomon has a rider built but is `locked` while it
+   *  is still in development, so its slot reads "no signal" too. */
   solid: boolean
 }
 
@@ -98,7 +98,7 @@ export const SLOTS: Slot[] = MENU.map((item) => ({
   fields: [...new Set(item.project.tags.map((tag) => FIELD_OF[tag]).filter(Boolean))],
   roles: rolesOf(item.project.role),
   restricted: Boolean(item.project.restricted),
-  solid: hasSubject(item.project.id)
+  solid: hasSubject(item.project.id) && !item.project.locked
 }))
 
 /** Where a project sits in the bank, or `null` if it is not in it. */

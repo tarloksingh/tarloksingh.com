@@ -26,7 +26,7 @@ export type Tag = (typeof TAGS)[number]
    tagging can be read, and re-cut, in one screen. */
 const PROJECT_TAGS: Record<string, Tag[]> = {
   '3d-printing': ['3d', 'hardware'],
-  'a-game': ['video games', '3d'],
+  'a-game': ['video games', '3d', 'tools'],
   'mr-grocery': ['tools'],
   visa: ['work', 'tools', 'motion'],
   'slider-engine': ['work', 'video games'],
@@ -79,6 +79,9 @@ export interface Project {
   /** `restricted` is an NDA rather than an unwritten case study — the v3 card
    *  shows a lock and reads "not yet disclosable" instead of "no material". */
   locked?: boolean
+  /** Overrides the locked card's tag — "not yet disclosable" is an NDA
+   *  framing, and Solomon's lock is "still being built", not "cannot show". */
+  lockNote?: string
   /** `'work'` (the default) rides the main vitrine row and the home page's
    *  work timeline; `'side'` skips the row entirely and appears only on the
    *  smaller side-projects timeline beside it. Still a full case study
@@ -106,6 +109,7 @@ interface Draft {
   hero?: Ref
   restricted?: string
   locked?: boolean
+  lockNote?: string
   category?: 'work' | 'side'
   sections: Array<{
     id: string
@@ -144,14 +148,18 @@ const drafts: Draft[] = [
   {
     id: 'a-game',
     title: 'Solomon',
-    tagline: 'Personal Project',
-    role: 'Designer & Developer',
+    tagline: 'A Boss Fight in the Browser',
+    role: 'Solo — Design, Code, Art Direction, Tools',
     company: 'Independent',
     timeline: '2015 — Present',
-    accent: '#4a4a52',
+    accent: '#c23b3b',
     category: 'side',
-    restricted: "No write-up yet — this one's been on and off since 2015, and it's still mine to finish.",
-    intro: "A game I've been building on my own time, on and off, since 2015.",
+    locked: true,
+    lockNote: 'in development',
+    restricted:
+      'A boss-rush game that runs at a URL — no engine, no download. You ride a motorcycle down a rain-soaked Akira avenue toward one giant god-beast and learn its attacks: nine patterns, one hit, instant restart. Hand-written WebGL, procedural art, a cinematic post stack — all black and white with a single red accent, the bike’s taillight. Every parameter tunes live on a phone, and a simulation harness proves each attack is fully dodgeable before it ships. Built solo. The write-up lands when the game does.',
+    intro:
+      'A boss-rush game that runs at a URL: ride an Akira avenue toward a giant god-beast, read nine attack patterns, die in one hit, restart instantly. Hand-written WebGL, procedural art, black and white with one red accent. Built solo — design, code, art direction, and a live console that balances the whole game from a phone.',
     sections: []
   },
   {
@@ -761,6 +769,7 @@ const build = (draft: Draft): Project => {
     accent: draft.accent,
     restricted: draft.restricted,
     locked: draft.locked,
+    lockNote: draft.lockNote,
     category: draft.category ?? 'work',
     tags: PROJECT_TAGS[draft.id] ?? [],
     year: yearOf(draft.timeline),
