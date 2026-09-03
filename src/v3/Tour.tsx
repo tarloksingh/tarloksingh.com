@@ -3,28 +3,28 @@ import { createPortal } from 'react-dom'
 import { BIRD_BODY, BIRD_WING_DOWN, BIRD_WING_UP } from '../site/frames'
 import { sound } from './sound'
 import { kills } from './kills'
+import { quarry, type Creature } from './subject'
 import { markTourSeen, type Flow } from './tourState'
 import './Tour.css'
 
 /* ---- pointing a few things out ----
 
    Not a modal and nothing to click through — the same idea as the subject's
-   leader labels, one at a time: a dot lands on a thing, a short line draws out
-   to a word, it holds for a breath, and it leaves. The whole layer is
-   `pointer-events: none`, so a visitor is never boxed in; if they ignore it
-   and start pressing things, that is the point.
+   leader labels, one at a time: a dot lands on a thing, a line draws out at a
+   slight angle to a word, the word folds in, it holds a breath, it folds out.
+   The whole layer is `pointer-events: none`, so a visitor is never boxed in;
+   if they ignore it and start pressing things, that is the point. Wide only —
+   `Mech.tsx` does not start a run on a phone.
 
    Two runs. `home` points at the rail of work and then at the range — where a
-   bird flies in and the panel shoots it down on its own, so "shoot anything"
-   is shown rather than only said. `project` points at the write-up and then
-   at the media strip. Each label's target is found by selector when its turn
-   comes; a missing one (a locked project with no strip) is skipped, and a run
-   with nothing left to point at marks itself seen and ends.
+   bird flies in and the real gun shoots it down (a dispatched `pointerdown`
+   on `.mech`, so it is the same bolt the visitor would fire, not a lookalike
+   drawn here). `project` points at the write-up and then at the media strip.
 
    Portalled to `body` with its own colours — the accent tokens live on
    `.mech` and none of this is inside it, the same reason `.mech-source`
-   carries its own. It starts only once `Mech.tsx` says the boot and the
-   opening animations are done. */
+   carries its own. It starts four seconds after the boot, so it lands well
+   clear of the opening animations. */
 
 type Step = {
   target: string
@@ -44,17 +44,22 @@ const STEPS: Record<Flow, Step[]> = {
   ]
 }
 
-const HOLD = 1650
-const HOLD_DEMO = 2800
-const ENTER = 340
-const LEAVE = 240
+const HOLD = 1900
+const HOLD_DEMO = 3000
+const ENTER = 460
+const LEAVE = 320
+
+/** How far the line runs out from the mark, and how far it leans along the
+ *  edge — the lean is what keeps it from being a plain perpendicular tick. */
+const OUT = 40
+const LEAN = 24
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
 const near = (a: number, b: number) => Math.abs(a - b) < 0.5
 
 export default function Tour({ flow, onClose }: { flow: Flow; onClose: () => void }) {
   /* Only the labels whose target is on the screen when the run starts. It
-     starts after everything has settled, so a missing target here is a
+     starts well after everything has settled, so a missing target here is a
      genuinely absent one — a locked project with no folds and no strip. */
   const [steps] = useState(() =>
     STEPS[flow].filter((s) => {
@@ -84,8 +89,7 @@ export default function Tour({ flow, onClose }: { flow: Flow; onClose: () => voi
     if (steps.length === 0) finish()
   }, [steps, finish])
 
-  /* Each label: settle onto its mark, draw in, hold, draw out, hand over. No
-     buttons — the sequence runs itself. */
+  /* Each label: settle onto its mark, draw in, hold, fold out, hand over. */
   useEffect(() => {
     if (!step) return
     setBox(null)
@@ -149,9 +153,9 @@ export default function Tour({ flow, onClose }: { flow: Flow; onClose: () => voi
     return () => window.removeEventListener('keydown', onKey)
   }, [finish])
 
-  /* Which edge of the target the label hangs off — whichever side has the
-     most room — and the point the line runs out from. */
-  const pointer = useMemo(() => {
+  /* The mark on the target's roomiest edge, and the angled line running from
+     it to where the chip anchors. */
+  const geom = useMemo(() => {
     if (!box) return null
     const vw = window.innerWidth
     const vh = window.innerHeight
@@ -164,13 +168,30 @@ export default function Tour({ flow, onClose }: { flow: Flow; onClose: () => voi
     const side = (['left', 'right', 'top', 'bottom'] as const).reduce((best, s) =>
       room[s] > room[best] ? s : best
     )
+
     let x = box.left + box.width / 2
     let y = box.top + box.height / 2
     if (side === 'left') x = box.left
     if (side === 'right') x = box.right
     if (side === 'top') y = box.top
     if (side === 'bottom') y = box.bottom
-    return { side, x: clamp(x, 26, vw - 26), y: clamp(y, 48, vh - 48) }
+    const dot = { x: clamp(x, 24, vw - 24), y: clamp(y, 46, vh - 46) }
+
+    const offset =
+      side === 'left'
+        ? { x: -OUT, y: -LEAN }
+        : side === 'right'
+          ? { x: OUT, y: -LEAN }
+          : side === 'top'
+            ? { x: LEAN, y: -OUT }
+            : { x: LEAN, y: OUT }
+    const anchor = {
+      x: clamp(dot.x + offset.x, 140, vw - 140),
+      y: clamp(dot.y + offset.y, 58, vh - 58)
+    }
+    const len = Math.hypot(anchor.x - dot.x, anchor.y - dot.y)
+    const angle = (Math.atan2(anchor.y - dot.y, anchor.x - dot.x) * 180) / Math.PI
+    return { side, dot, anchor, len, angle }
   }, [box])
 
   if (!step) return null
@@ -178,76 +199,133 @@ export default function Tour({ flow, onClose }: { flow: Flow; onClose: () => voi
   return createPortal(
     <div className="mech-tour" data-anim={vis} aria-hidden>
       {step.demo && <Demo />}
-      {pointer && (
-        <div
-          className="mech-tour-tag"
-          data-side={pointer.side}
-          style={{ left: pointer.x, top: pointer.y }}
-        >
-          <span className="mech-tour-dot" />
-          <span className="mech-tour-line" />
-          <span className="mech-tour-chip">{step.label}</span>
-        </div>
+      {geom && (
+        <>
+          <span className="mech-tour-dot" style={{ left: geom.dot.x, top: geom.dot.y }} />
+          <span
+            className="mech-tour-line"
+            style={{ left: geom.dot.x, top: geom.dot.y, width: geom.len, ['--a' as string]: `${geom.angle}deg` }}
+          />
+          <span
+            className="mech-tour-chip"
+            data-side={geom.side}
+            style={{ left: geom.anchor.x, top: geom.anchor.y, ['--n' as string]: step.label.length }}
+          >
+            {step.label.split('').map((ch, n) => (
+              <span key={n} className="mech-tour-glyph" style={{ ['--gi' as string]: n }}>
+                {ch === ' ' ? ' ' : ch}
+              </span>
+            ))}
+          </span>
+        </>
       )}
     </div>,
     document.body
   )
 }
 
-/* The scripted kill. A bird crosses the top of the window and a bolt leaves
-   the bottom edge to meet it — the real `sound.shot()` / `sound.hit()` and
-   the real `kills.add()`, so the tally in the header actually ticks. Pure
-   CSS motion; the bolt is one element placed by transform and removed. */
+/* The scripted kill. A bird crosses the top of the window under its own frame
+   loop; the demo registers it with `quarry` like any other creature, then at
+   the halfway mark it stalls and dispatches a real `pointerdown` on `.mech` at
+   its position — so `MechLaser` fires its own bolt and its own hit test brings
+   this bird down. The bolt that hits it is the same bolt the visitor would
+   fire, not a second one drawn here. `kills.add()` / `sound.hit()` run from
+   the creature's `hit`, exactly as `MechBird` does it. */
 function Demo() {
-  const layer = useRef<HTMLDivElement>(null)
-  const [phase, setPhase] = useState<'wait' | 'fly' | 'hit'>('wait')
+  const wrap = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    const t: number[] = []
-    t.push(window.setTimeout(() => setPhase('fly'), 400))
+    const vw = window.innerWidth
+    const vh = window.innerHeight
 
-    t.push(
-      window.setTimeout(
-        () => {
-          const host = layer.current
-          if (host) {
-            const from = { x: window.innerWidth / 2, y: window.innerHeight - 2 }
-            const to = { x: window.innerWidth * 0.5, y: window.innerHeight * 0.2 }
-            const len = Math.hypot(to.x - from.x, to.y - from.y)
-            const angle = (Math.atan2(to.y - from.y, to.x - from.x) * 180) / Math.PI
-            const bolt = document.createElement('i')
-            bolt.className = 'mech-tour-bolt'
-            bolt.style.left = `${from.x}px`
-            bolt.style.top = `${from.y}px`
-            bolt.style.width = `${len}px`
-            bolt.style.transform = `rotate(${angle}deg)`
-            host.appendChild(bolt)
-            window.setTimeout(() => bolt.remove(), 320)
-          }
-          sound.shot()
-        },
-        calm ? 500 : 1500
-      )
-    )
+    const pos = { x: -vw * 0.12, y: vh * 0.17 }
+    const aimAt = vw * 0.6
+    const cruise = (aimAt - pos.x) / (calm ? 0.5 : 1.35) // px/s to reach the stall point
+    let vx = cruise
+    let vy = 0
+    let spin = 0
+    let stage: 'fly' | 'brace' | 'fall' = 'fly'
+    let shot = false
+    let shotAt = 0
+    let alive = true
+    let elapsed = 0
+    let last = performance.now()
 
-    t.push(
-      window.setTimeout(
-        () => {
-          sound.hit()
-          kills.add()
-          setPhase('hit')
-        },
-        calm ? 650 : 1680
-      )
-    )
+    const self: Creature = {
+      at: () => (alive ? { x: pos.x, y: pos.y } : null),
+      hit: () => {
+        if (!alive) return false
+        alive = false
+        sound.hit()
+        kills.add()
+        stage = 'fall'
+        vx = (Math.random() - 0.3) * 120
+        vy = -60
+        return true
+      }
+    }
+    quarry.creatures.add(self)
 
-    return () => t.forEach((id) => window.clearTimeout(id))
+    const draw = () => {
+      const el = wrap.current
+      if (el) {
+        el.dataset.stage = stage
+        el.style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0) rotate(${spin}deg)`
+      }
+    }
+
+    let raf = 0
+    const tick = (now: number) => {
+      raf = requestAnimationFrame(tick)
+      const dt = Math.min(0.05, (now - last) / 1000)
+      last = now
+      elapsed += dt
+
+      if (stage === 'fly') {
+        pos.x += vx * dt
+        pos.y = vh * 0.17 + Math.sin(elapsed * 3) * 10
+        if (!shot && pos.x >= aimAt) {
+          shot = true
+          shotAt = elapsed
+          stage = 'brace'
+          vx = 0
+          document.querySelector('.mech')?.dispatchEvent(
+            new PointerEvent('pointerdown', {
+              pointerType: 'mouse',
+              button: 0,
+              clientX: pos.x,
+              clientY: pos.y,
+              bubbles: true
+            })
+          )
+        }
+      } else if (stage === 'brace') {
+        pos.y = vh * 0.17 + Math.sin(elapsed * 3) * 10
+        // If the real bolt has not connected by the time it would have
+        // crossed the screen, bring the bird down anyway — the point is the
+        // demonstration, not the ballistics.
+        if (elapsed - shotAt > 0.6) self.hit()
+      } else {
+        vy += 1500 * dt
+        pos.x += vx * dt
+        pos.y += vy * dt
+        spin += 520 * dt
+      }
+      draw()
+    }
+    raf = requestAnimationFrame(tick)
+
+    return () => {
+      alive = false
+      quarry.creatures.delete(self)
+      cancelAnimationFrame(raf)
+    }
   }, [])
 
   return (
-    <div className="mech-tour-demo" ref={layer} data-phase={phase} aria-hidden>
-      <div className="mech-tour-bird">
+    <div className="mech-tour-demo" aria-hidden>
+      <div className="mech-tour-bird" ref={wrap} data-stage="fly">
         <svg viewBox="0 0 44 30" fill="none" focusable="false">
           {BIRD_BODY.map((d) => (
             <path key={d} d={d} />

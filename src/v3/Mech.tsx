@@ -1350,21 +1350,21 @@ export default function Mech({ id, onProject, onHome }: Props) {
   }, [shownId])
 
   useEffect(() => {
-    if (!home || booting || !primed || homeTourFired.current || tourSeen('home')) return
+    // Wide only: a phone gets the boot and the shooting to discover on its
+    // own, without a label layer over a screen that is already tight.
+    if (narrow || !home || booting || !primed || homeTourFired.current || tourSeen('home')) return
     homeTourFired.current = true
-    // After the boot and the cluster's own arrival — the labels are a second
-    // layer of motion and land once the first has finished.
-    const t = window.setTimeout(() => setTour('home'), 1600)
+    // Four seconds past the boot, well clear of the opening animations.
+    const t = window.setTimeout(() => setTour('home'), 4000)
     return () => window.clearTimeout(t)
-  }, [home, booting, primed])
+  }, [narrow, home, booting, primed])
 
   useEffect(() => {
-    if (home || booting || phase !== 'in' || projectTourFired.current || tourSeen('project')) return
+    if (narrow || home || booting || phase !== 'in' || projectTourFired.current || tourSeen('project')) return
     projectTourFired.current = true
-    // Past the cover lift and the first fold opening itself (`OVERVIEW_MS`).
-    const t = window.setTimeout(() => setTour('project'), 1700)
+    const t = window.setTimeout(() => setTour('project'), 4000)
     return () => window.clearTimeout(t)
-  }, [home, booting, phase])
+  }, [narrow, home, booting, phase])
 
   /* The "?" key cleared a flag and bumped the signal — start the run that
      fits the screen we are on. */
@@ -1859,8 +1859,9 @@ export default function Mech({ id, onProject, onHome }: Props) {
       )}
 
       {/* The way back into the tour. Off during the boot, like the rest of the
-          chrome; a press starts the run that fits the screen. */}
-      {!booting && (
+          chrome, and off on a phone, where the run does not play. A press
+          starts the run that fits the screen. */}
+      {!booting && !narrow && (
         <button
           className="mech-tour-key"
           aria-label="Show me around"

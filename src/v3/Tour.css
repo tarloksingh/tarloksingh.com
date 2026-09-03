@@ -2,7 +2,8 @@
    itself and never blocks. The whole layer is inert; only the marks are
    drawn. Portalled to `body`, so it carries its own colours the way
    `.mech-source` does. Sits above the readout (z 20–30), below the dev panel
-   (1000). */
+   (1000). Warm, like the reticle and the bird — the pointer's colour, not the
+   machine's. */
 
 .mech-tour {
   position: fixed;
@@ -10,33 +11,22 @@
   z-index: 900;
   pointer-events: none;
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --tour: #e0562b;
+  --tour-rgb: 224, 86, 43;
 }
 
-/* ---- one label: a dot, a line out to a chip ----
-
-   `.mech-tour-tag` is a zero-size anchor sitting on the chosen edge of the
-   target. The dot centres on it; the line runs `--l` out from it; the chip
-   sits `--l + --g` beyond, centred on the far axis. */
-
-.mech-tour-tag {
-  position: fixed;
-  width: 0;
-  height: 0;
-  --l: 44px;
-  --g: 9px;
-}
+/* ---- the mark ---- */
 
 .mech-tour-dot {
-  position: absolute;
-  left: -3.5px;
-  top: -3.5px;
-  width: 7px;
-  height: 7px;
+  position: fixed;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
   border-radius: 50%;
-  background: #9df0c6;
-  box-shadow: 0 0 8px 1px rgba(134, 226, 180, 0.8);
+  background: #ff7a4d;
+  box-shadow: 0 0 9px 1px rgba(var(--tour-rgb), 0.85);
   transform: scale(0);
-  transition: transform 220ms cubic-bezier(0.2, 0.8, 0.3, 1);
+  transition: transform 380ms cubic-bezier(0.16, 0.84, 0.36, 1);
 }
 
 /* The ping — a ring that opens out of the dot and goes, the same read the
@@ -44,42 +34,69 @@
 .mech-tour-dot::after {
   content: '';
   position: absolute;
-  inset: -2px;
+  inset: -3px;
   border-radius: 50%;
-  border: 1px solid rgba(134, 226, 180, 0.85);
+  border: 1px solid rgba(var(--tour-rgb), 0.9);
   opacity: 0;
 }
 
+/* ---- the line ---- */
+
 .mech-tour-line {
-  position: absolute;
-  background: rgba(134, 226, 180, 0.9);
-  box-shadow: 0 0 6px rgba(134, 226, 180, 0.45);
-  transition: transform 260ms cubic-bezier(0.3, 0.7, 0.2, 1);
+  position: fixed;
+  height: 1.5px;
+  margin-top: -0.75px;
+  transform-origin: left center;
+  transform: rotate(var(--a)) scaleX(0);
+  background: linear-gradient(
+    to right,
+    rgba(var(--tour-rgb), 0) 0%,
+    rgba(var(--tour-rgb), 0.55) 22%,
+    rgba(var(--tour-rgb), 1) 100%
+  );
+  box-shadow: 0 0 7px rgba(var(--tour-rgb), 0.5);
+  transition: transform 420ms cubic-bezier(0.16, 0.84, 0.36, 1);
 }
 
-.mech-tour-chip {
+/* A bright head that runs along as the line draws in. */
+.mech-tour-line::after {
+  content: '';
   position: absolute;
+  right: -1px;
+  top: -1.75px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #ffd9c8;
+  box-shadow: 0 0 8px 1px rgba(var(--tour-rgb), 0.9);
+  opacity: 0;
+  transition: opacity 160ms linear;
+}
+
+/* ---- the chip ---- */
+
+.mech-tour-chip {
+  position: fixed;
   white-space: nowrap;
-  padding: 5px 9px 4px;
+  padding: 5px 10px 4px;
   font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: #bff3d8;
-  background: rgba(4, 12, 10, 0.94);
-  border: 1px solid rgba(134, 226, 180, 0.7);
+  color: #ffe4d7;
+  background: rgba(14, 6, 3, 0.94);
+  border: 1px solid rgba(var(--tour-rgb), 0.75);
   border-radius: 3px;
   box-shadow:
     0 6px 22px rgba(0, 0, 0, 0.55),
-    0 0 16px rgba(134, 226, 180, 0.18);
+    0 0 16px rgba(var(--tour-rgb), 0.22);
   opacity: 0;
+  perspective: 320px;
   transition:
-    opacity 200ms linear,
-    transform 240ms cubic-bezier(0.2, 0.8, 0.3, 1);
+    opacity 260ms linear,
+    transform 380ms cubic-bezier(0.16, 0.84, 0.36, 1);
 }
 
-/* A hairline scan across the chip — the readout it labels is drawn the same
-   way. */
 .mech-tour-chip::before {
   content: '';
   position: absolute;
@@ -87,69 +104,37 @@
   border-radius: inherit;
   background: repeating-linear-gradient(
     to bottom,
-    rgba(134, 226, 180, 0.06) 0,
-    rgba(134, 226, 180, 0.06) 1px,
+    rgba(var(--tour-rgb), 0.07) 0,
+    rgba(var(--tour-rgb), 0.07) 1px,
     transparent 1px,
     transparent 3px
   );
 }
 
-/* ---- placement, per edge ---- */
-
-.mech-tour-tag[data-side='left'] .mech-tour-line {
-  left: calc(-1 * var(--l));
-  top: -0.75px;
-  width: var(--l);
-  height: 1.5px;
-  transform-origin: right center;
-  transform: scaleX(0);
-}
-.mech-tour-tag[data-side='left'] .mech-tour-chip {
-  left: calc(-1 * (var(--l) + var(--g)));
-  top: 0;
-  transform: translate(-100%, -50%) translateX(9px);
+/* Fold text — every glyph hangs down from its top edge and swings up into
+   place, one after the next; on the way out it swings the other way. */
+.mech-tour-glyph {
+  display: inline-block;
+  transform-origin: 50% 0;
+  transform: rotateX(-92deg);
+  opacity: 0;
+  transition:
+    transform 360ms cubic-bezier(0.2, 0.75, 0.3, 1),
+    opacity 220ms linear;
 }
 
-.mech-tour-tag[data-side='right'] .mech-tour-line {
-  left: 0;
-  top: -0.75px;
-  width: var(--l);
-  height: 1.5px;
-  transform-origin: left center;
-  transform: scaleX(0);
+/* Anchor the chip by the corner the line meets, per edge. */
+.mech-tour-chip[data-side='left'] {
+  transform: translate(-100%, -50%) scale(0.96);
 }
-.mech-tour-tag[data-side='right'] .mech-tour-chip {
-  left: calc(var(--l) + var(--g));
-  top: 0;
-  transform: translate(0, -50%) translateX(-9px);
+.mech-tour-chip[data-side='right'] {
+  transform: translate(0, -50%) scale(0.96);
 }
-
-.mech-tour-tag[data-side='top'] .mech-tour-line {
-  left: -0.75px;
-  top: calc(-1 * var(--l));
-  width: 1.5px;
-  height: var(--l);
-  transform-origin: center bottom;
-  transform: scaleY(0);
+.mech-tour-chip[data-side='top'] {
+  transform: translate(-50%, -100%) scale(0.96);
 }
-.mech-tour-tag[data-side='top'] .mech-tour-chip {
-  left: 0;
-  top: calc(-1 * (var(--l) + var(--g)));
-  transform: translate(-50%, -100%) translateY(9px);
-}
-
-.mech-tour-tag[data-side='bottom'] .mech-tour-line {
-  left: -0.75px;
-  top: 0;
-  width: 1.5px;
-  height: var(--l);
-  transform-origin: center top;
-  transform: scaleY(0);
-}
-.mech-tour-tag[data-side='bottom'] .mech-tour-chip {
-  left: 0;
-  top: calc(var(--l) + var(--g));
-  transform: translate(-50%, 0) translateY(-9px);
+.mech-tour-chip[data-side='bottom'] {
+  transform: translate(-50%, 0) scale(0.96);
 }
 
 /* ---- entering ---- */
@@ -158,60 +143,71 @@
   transform: scale(1);
 }
 .mech-tour[data-anim='show'] .mech-tour-dot::after {
-  animation: mech-tour-ping 1.9s cubic-bezier(0.2, 0.7, 0.35, 1) 280ms infinite;
+  animation: mech-tour-ping 2s cubic-bezier(0.2, 0.7, 0.35, 1) 320ms infinite;
 }
 .mech-tour[data-anim='show'] .mech-tour-line {
-  transition-delay: 60ms;
+  transform: rotate(var(--a)) scaleX(1);
+  transition-delay: 90ms;
 }
-.mech-tour[data-anim='show'] .mech-tour-tag[data-side='left'] .mech-tour-line,
-.mech-tour[data-anim='show'] .mech-tour-tag[data-side='right'] .mech-tour-line {
-  transform: scaleX(1);
-}
-.mech-tour[data-anim='show'] .mech-tour-tag[data-side='top'] .mech-tour-line,
-.mech-tour[data-anim='show'] .mech-tour-tag[data-side='bottom'] .mech-tour-line {
-  transform: scaleY(1);
+.mech-tour[data-anim='show'] .mech-tour-line::after {
+  opacity: 1;
+  transition-delay: 90ms, 420ms;
 }
 .mech-tour[data-anim='show'] .mech-tour-chip {
   opacity: 1;
-  transition-delay: 150ms;
+  transition-delay: 300ms;
 }
-.mech-tour[data-anim='show'] .mech-tour-tag[data-side='left'] .mech-tour-chip {
-  transform: translate(-100%, -50%);
+.mech-tour[data-anim='show'] .mech-tour-chip[data-side='left'] {
+  transform: translate(-100%, -50%) scale(1);
 }
-.mech-tour[data-anim='show'] .mech-tour-tag[data-side='right'] .mech-tour-chip {
-  transform: translate(0, -50%);
+.mech-tour[data-anim='show'] .mech-tour-chip[data-side='right'] {
+  transform: translate(0, -50%) scale(1);
 }
-.mech-tour[data-anim='show'] .mech-tour-tag[data-side='top'] .mech-tour-chip {
-  transform: translate(-50%, -100%);
+.mech-tour[data-anim='show'] .mech-tour-chip[data-side='top'] {
+  transform: translate(-50%, -100%) scale(1);
 }
-.mech-tour[data-anim='show'] .mech-tour-tag[data-side='bottom'] .mech-tour-chip {
-  transform: translate(-50%, 0);
+.mech-tour[data-anim='show'] .mech-tour-chip[data-side='bottom'] {
+  transform: translate(-50%, 0) scale(1);
+}
+.mech-tour[data-anim='show'] .mech-tour-glyph {
+  transform: rotateX(0deg);
+  opacity: 1;
+  transition-delay: calc(360ms + var(--gi) * 26ms);
 }
 
-/* ---- leaving: quicker, and reversed — chip, then line, then dot, the same
-   order the leaders undo in ---- */
+/* ---- leaving: quicker, and reversed — the word folds away last-first, then
+   the line, then the dot ---- */
 
+.mech-tour[data-anim='leave'] .mech-tour-glyph {
+  transform: rotateX(88deg);
+  opacity: 0;
+  transition-duration: 200ms;
+  transition-delay: calc((var(--n) - var(--gi)) * 16ms);
+}
 .mech-tour[data-anim='leave'] .mech-tour-chip {
   opacity: 0;
-  transition-duration: 140ms;
+  transition-delay: 150ms;
+  transition-duration: 180ms;
 }
 .mech-tour[data-anim='leave'] .mech-tour-line {
-  transition-delay: 70ms;
-  transition-duration: 160ms;
+  transform: rotate(var(--a)) scaleX(0);
+  transition-delay: 130ms;
+  transition-duration: 220ms;
 }
 .mech-tour[data-anim='leave'] .mech-tour-dot {
-  transition-delay: 150ms;
-  transition-duration: 140ms;
+  transform: scale(0);
+  transition-delay: 220ms;
+  transition-duration: 180ms;
 }
 
 @keyframes mech-tour-ping {
   from {
     opacity: 0.8;
-    transform: scale(0.6);
+    transform: scale(0.55);
   }
   to {
     opacity: 0;
-    transform: scale(3.4);
+    transform: scale(3.6);
   }
 }
 
@@ -221,27 +217,17 @@
   position: fixed;
   inset: 0;
   pointer-events: none;
-  --fly: 2.4s;
 }
 
 .mech-tour-bird {
-  position: absolute;
-  top: 17vh;
-  left: -12vw;
+  position: fixed;
+  left: 0;
+  top: 0;
   width: 46px;
   height: 31px;
+  margin: -15px 0 0 -23px;
   color: #e0562b;
-  transform: translateX(0);
-  transition: transform var(--fly) linear;
-}
-
-.mech-tour-demo[data-phase='fly'] .mech-tour-bird {
-  transform: translateX(126vw);
-}
-
-.mech-tour-demo[data-phase='hit'] .mech-tour-bird {
-  transform: translateX(84vw) translateY(82vh) rotate(230deg);
-  transition: transform 1s cubic-bezier(0.5, 0, 0.9, 0.6);
+  will-change: transform;
 }
 
 .mech-tour-bird svg {
@@ -251,9 +237,9 @@
   filter: drop-shadow(0 0 5px rgba(224, 86, 43, 0.5));
 }
 
-.mech-tour-demo[data-phase='hit'] .mech-tour-bird svg {
+.mech-tour-bird[data-stage='fall'] svg {
   opacity: 0;
-  transition: opacity 700ms 160ms linear;
+  transition: opacity 700ms 150ms linear;
 }
 
 .mech-tour-bird path {
@@ -264,11 +250,12 @@
   stroke-linejoin: round;
 }
 
-.mech-tour-demo[data-phase='fly'] .mech-wing-up {
+.mech-tour-bird[data-stage='fly'] .mech-wing-up,
+.mech-tour-bird[data-stage='brace'] .mech-wing-up {
   animation: mech-beat 0.1666s steps(1, end) infinite;
 }
-
-.mech-tour-demo[data-phase='fly'] .mech-wing-down {
+.mech-tour-bird[data-stage='fly'] .mech-wing-down,
+.mech-tour-bird[data-stage='brace'] .mech-wing-down {
   animation: mech-beat-alt 0.1666s steps(1, end) infinite;
 }
 
@@ -284,36 +271,15 @@
   opacity: 0;
 }
 
-.mech-tour-demo[data-phase='hit'] .mech-tour-burst {
+.mech-tour-bird[data-stage='fall'] .mech-tour-burst {
   animation: mech-burst 520ms cubic-bezier(0.1, 0.7, 0.3, 1) forwards;
 }
 
-.mech-tour-bolt {
-  position: fixed;
-  height: 3px;
-  transform-origin: left center;
-  background: linear-gradient(to right, rgba(134, 226, 180, 0), #d7fff0);
-  box-shadow: 0 0 10px 1px rgba(134, 226, 180, 0.8);
-  border-radius: 2px;
-  animation: mech-tour-bolt 300ms ease-out forwards;
-}
-
-@keyframes mech-tour-bolt {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .mech-tour-demo {
-    --fly: 0.4s;
-  }
   .mech-tour-dot,
   .mech-tour-line,
-  .mech-tour-chip {
+  .mech-tour-chip,
+  .mech-tour-glyph {
     transition-duration: 1ms;
   }
   .mech-tour[data-anim='show'] .mech-tour-dot::after {

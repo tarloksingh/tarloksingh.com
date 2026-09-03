@@ -4812,48 +4812,56 @@ Someone opened the page and did not know there was anything to do. The rail of
 work is pressable, the range is shootable, the reticle is a real reticle — and
 none of it says so. `Tour.tsx` (`Tour.css`, and `tourState.ts` for the flags)
 says so once, the same way the subject's leaders do: a dot lands on a thing, a
-short line draws out to a word, it holds for a breath, and it leaves. One
+line draws out to a word at a slight lean — not a plain perpendicular tick —
+the word folds in a glyph at a time, it holds a breath, and it folds out. One
 label at a time, the sequence runs itself, and **the whole layer is
 `pointer-events: none`** — a visitor is never boxed in, and if they ignore it
-and start pressing things, that was the idea. The first version of this dimmed
-the screen and put a card with a Next button over a spotlit hole; it was a
-modal in an interface that has no other modals, and it read wrong.
+and start pressing things, that was the idea. Warm, like the reticle and the
+bird: this is the pointer's colour, not the machine's. The first version of
+this dimmed the screen and put a card with a Next button over a spotlit hole;
+it was a modal in an interface that has no other modals, and it read wrong.
 
-**Two runs, one per screen kind.** `home` points at the rail of work
-(`.mech-work-rail`) and then at the range (`.mech-alarm`); `project` points at
-the write-up (`.mech-folds`) and then at the media strip (`.mech-rail-wrap`).
-Each is a `{ target, label }` in `STEPS`. A label whose target is missing or
-collapsed when the run starts is dropped (the `useState` initialiser filters
-on `getBoundingClientRect`), so a locked project with no folds and no strip
-gets a shorter run or none — an empty run marks itself seen and ends.
+**Two runs, one per screen kind, wide only.** `home` points at the rail of
+work (`.mech-work-rail`) and then at the range (`.mech-alarm`); `project`
+points at the write-up (`.mech-folds`) and then at the media strip
+(`.mech-rail-wrap`). A phone gets neither — the screen is already tight and
+the boot and the shooting are there to be found. Each label is a
+`{ target, label }` in `STEPS`; one whose target is missing or collapsed when
+the run starts is dropped (the `useState` initialiser filters on
+`getBoundingClientRect`), so a locked project with no folds and no strip gets
+a shorter run or none — an empty run marks itself seen and ends.
 
 **Once per browser.** `tourSeen` / `markTourSeen` in `tourState.ts` keep a
 `done` flag per run in `localStorage`, next to `v3.kills.v1`. `Mech.tsx` starts
-`home` 1600ms after `!booting` and `project` 1700ms after `phase === 'in'` —
-past the boot and the opening animations, so the labels are a second layer of
-motion landing after the first has settled — each behind a `useRef` latch and
-the flag. `tour` is the live run and is cleared on every navigation
+each run **four seconds** after the boot (`!booting` / `phase === 'in'`), well
+clear of the opening animations, behind a `useRef` latch, the flag, and
+`!narrow`. `tour` is the live run and is cleared on every navigation
 (`[shownId]`) so a run never outlives its screen. The `?` key in the
-bottom-right corner (`.mech-tour-key`, off during the boot like the rest of
-the chrome) clears the flag for the screen you are on and starts that run
-again — `replayTour` bumps a signal `Mech.tsx` watches.
+bottom-right corner (`.mech-tour-key`, off during the boot and on a phone)
+clears the flag for the screen you are on and starts that run again —
+`replayTour` bumps a signal `Mech.tsx` watches.
 
 **It is portalled to `body`,** above the readout (z 900) and below the dev
-panel, with its own colours — the accent tokens live on `.mech` and none of
-this is inside it, the same reason `.mech-source` carries its own. `Tour`
-picks the edge of the target with the most room around it, drops a zero-size
-anchor there, and CSS draws the dot, the line and the chip off it per
-`data-side`; a per-label effect steps `enter → show → leave` on timers, and
-one rAF loop follows the current target's rect (a per-label effect kept being
-torn down by `Mech`'s re-renders before its frame landed).
+panel, with its own colours. `Tour` picks the target edge with the most room,
+puts the mark on it, and computes the anchor a short way out *and* along the
+edge so the connector runs at an angle; the line is one `<span>` rotated by
+that angle with `scaleX` for the draw-in, and the chip's word is split to one
+`<span>` per glyph, each folded up from its top edge on a staggered delay
+(reversed on the way out). A per-label effect steps `enter → show → leave` on
+timers; one rAF loop follows the current target's rect, because a per-label
+follow was torn down by `Mech`'s re-renders before its frame landed.
 
-**Home's second label shoots for you.** `Demo` in `Tour.tsx` flies a bird
-across the top of the window on a CSS transform and sends a bolt up from the
-muzzle to meet it — the real `sound.shot()` / `sound.hit()` and a real
-`kills.add()`, so the tally in the header ticks over while the "shoot
-anything" label is up. It is self-contained: none of `MechBird` /
-`MechLaser` / `quarry` is touched, because a scripted kill wants timing a
-registered creature cannot give it.
+**Home's second label shoots for you, with the real gun.** `Demo` in
+`Tour.tsx` flies a bird across the top of the window under its own frame loop
+and registers it with `quarry` like any other creature. At the halfway mark
+the bird stalls and the demo dispatches a real `pointerdown` on `.mech` at its
+position — so `MechLaser` fires *its* bolt and *its* hit test brings the bird
+down. The bolt that kills it is the one the visitor would fire, not a
+lookalike drawn here; `kills.add()` / `sound.hit()` run from the creature's
+`hit`, exactly as `MechBird` does it, and the tally in the header ticks over
+while the "shoot anything" label is up. The stall is what makes it land: a
+demo cannot lead a target the way a player does, so the bird holds still for
+the third of a second the bolt is in the air.
 
 ### Nothing stutters on a swap
 
