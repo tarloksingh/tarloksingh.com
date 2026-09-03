@@ -433,29 +433,16 @@
 .mech-profile {
   margin: calc(7 * var(--px)) 0 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  /* Pulled toward the phosphor rather than neutral white. Plain white on this
-     panel is the one colour nothing else is, and it made the block read as a
-     different document sitting on the screen.
-
-     **Lit, not printed.** It sat at caption weight — 0.58 alpha, no glow, the
-     same as `GAL. UNLEADED FUEL ONLY` under a gauge — and this is the only
-     prose on the site: the one block that says what I actually do. It burns
-     near full strength now (`profileInk` 0.92) with the same bleed off `--g`
-     every lit thing on this panel carries, so
-     it reads as something the display is showing rather than something
-     silkscreened onto the housing beside it. `--profile-ink` is still the
-     knob and still rides the bleed with it.
-
-     **Its own hue, not the panel's.** `#A2F3D6` — the client-supplied
-     `#8FE2CB` opened up brighter and greener, because at readout strength on
-     a dark panel the pastel original read as a dull grey-green. Still a shade
-     cooler than `--accent` here (`#a2e0cc`). Written as a local token so
-     the alpha and the glow can both be built off one pair, the same way every
-     other colour on this panel is; and declared on this rule alone, because
-     it is one block's colour and not a change to what the panel is lit in. */
-  --profile-rgb: 162, 243, 214;
-  color: rgba(var(--profile-rgb), var(--profile-ink, 0.92));
-  text-shadow: 0 0 calc(12 * var(--px) * var(--g)) rgba(var(--profile-rgb), calc(0.5 * var(--profile-ink, 0.92) * var(--g)));
+  /* The panel's own phosphor, and the same treatment as a gauge label
+     (`.mech-gauge-label` — MILEAGE / RANGE / PULSE): solid `--accent`, no
+     tint of its own. It used to sit at caption weight (0.58 alpha, no glow)
+     like `GAL. UNLEADED FUEL ONLY`, then at a bespoke cooler green — both
+     read as a dull grey-green next to the lit readings. This is the only
+     prose on the site, the one block that says what I actually do, and it
+     should burn exactly as bright as the words beside it. `--profile-ink`
+     still pulls it back and rides the `--g` bleed, but idles at 1. */
+  color: rgba(var(--accent-rgb), var(--profile-ink, 1));
+  text-shadow: 0 0 calc(12 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.4 * var(--profile-ink, 1) * var(--g)));
   font-size: calc(var(--profile-size, 11) * var(--type));
   line-height: 1.6;
 }

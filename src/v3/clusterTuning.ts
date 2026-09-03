@@ -84,7 +84,7 @@ export const CLUSTER_DEFAULTS: ClusterTuning = {
   tach: 1030,
   introY: 0,
   profileSize: 11,
-  profileInk: 0.92,
+  profileInk: 1,
   bayFade: 30,
   bayBlur: 3,
   roleSize: 0.8,
