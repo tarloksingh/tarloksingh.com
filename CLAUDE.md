@@ -5,10 +5,20 @@ real documentation** — this file is the map for finding things in it.
 
 ## Where you are
 
-- Work happens on **`redesign-v3`** (this branch). `redesign-v2` is the
-  previous pass; `main` still holds the old Vue site.
-- Nothing here is live. The domain is served from a **different, private
-  repo** (`tarloksingh/my-portfolio`) via Vercel. Pushing this deploys nothing.
+- **`main` is v3, and v3 is the site.** `/` is home, `/index` is the browse
+  view, `/p/<id>` is a project. `redesign-v3` is the branch it was built on and
+  `redesign-v2` the pass before; both are still pushed.
+- **v1 and v2 are out of the build and still on disk.** `App.tsx` renders `V3`
+  and nothing else, so nothing under `src/site/` (v2) or `src/archive/` can
+  reach a visitor and Rollup emits no chunk for them. Two small modules are
+  genuinely shared and still imported — see **v3 is the site** in `README.md`.
+  Don't "clean up" either directory.
+- **Deployment is the one thing not wired up here.** The domain is still served
+  from a different repo (`tarloksingh/my-portfolio`, the old Vue site) via
+  Vercel, so pushing this still deploys nothing until that Vercel project's
+  connected repo is switched to `tarloksingh/tarloksingh.com`. `vercel.json` is
+  in place for when it is: the routes above are real URLs and 404 on a hard
+  load without its rewrite.
 - `git fetch` first if a branch seems missing — the local clone can be behind.
 
 ## Running it
