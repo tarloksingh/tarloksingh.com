@@ -4,6 +4,7 @@ import Typed from './Typed'
 import { useNarrow } from './narrow'
 import MechBank, { CELLS as BANK_CELLS } from './MechBank'
 import { SLOTS, FIELDS, FIELD_LABEL, type Field } from './bank'
+import { bankPick, useBankPick } from './bankPick'
 import type { ClusterTuning } from './clusterTuning'
 import './MechCluster.css'
 
@@ -94,12 +95,6 @@ const TITLES: Array<{ title: string; field: Field }> = [
  *  left display cycles the titles, and with a project up it cycles whatever I
  *  actually did on that project — "founder", then "product designer". */
 const TITLE_MS = 2600
-
-/** How long the display keeps a project after the pointer has left the bank
- *  before it falls back to the titles. Long enough to move the pointer away
- *  and look at what it said; short enough that the screen does not sit on a
- *  stale reading. Mouse only — a tap has no "leaving". */
-const RELEASE_MS = 2400
 
 const NAME = 'Tarlok Singh'
 
@@ -935,13 +930,16 @@ interface Props {
 }
 
 export default function MechCluster({ onProject, covered, leaving, tuning }: Props) {
-  /* Which slot is selected. It persists rather than following the pointer:
-     a preset bank holds the preset you pressed, and on a phone there is no
+  /* Which slot is selected. It persists rather than following the pointer: a
+     preset bank holds the preset you pressed, and on a phone there is no
      "leaving" for it to be cleared by. What does release it is the pointer
-     leaving the bank on a mouse, after a beat — see `RELEASE_MS`. */
-  const [picked, setPicked] = useState<number | null>(null)
+     leaving the bank on a mouse, after a beat.
+
+     It lives in `bankPick.ts` rather than here, because the rail that sets it
+     is mounted from `Mech.tsx` now and this component only reads it — see the
+     note at the top of that file. */
+  const picked = useBankPick()
   const [step, setStep] = useState(0)
-  const release = useRef(0)
   const narrow = useNarrow()
   const identRef = useRef<HTMLElement>(null)
   const nameProbe = useRef<HTMLHeadingElement>(null)
@@ -1012,23 +1010,30 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reel.length, slot?.id])
 
-  useEffect(() => () => window.clearTimeout(release.current), [])
-
   /* The arrow keys step the bank, the same as the tile rail on a project
      screen. Not while something is being typed into — the dev panel is one
-     keypress away and its fields are real. */
+     keypress away and its fields are real.
+
+     Still here rather than in `MechBank`: it is home's behaviour, and the rail
+     is on a project screen too now, where the arrows belong to the tile rail.
+     Unmounting with home is exactly the scoping this wants. */
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const on = event.target as HTMLElement | null
       if (on && (on.tagName === 'INPUT' || on.tagName === 'TEXTAREA' || on.isContentEditable)) return
       const step = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0
       if (!step) return
-      window.clearTimeout(release.current)
-      setPicked((was) => (was === null ? (step > 0 ? 0 : SLOTS.length - 1) : (was + step + SLOTS.length) % SLOTS.length))
+      bankPick.step(step)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
+
+  /* Home leaves nothing behind. The pick is module state now, so without this
+     opening a project and coming back would arrive with a slot still lit and
+     the counts still reporting it, under a pointer that is nowhere near the
+     rail. */
+  useEffect(() => () => bankPick.reset(), [])
 
   const reading = reel[at] ?? ''
   /* What the scale marks. With a project up it is every field that project
@@ -1036,13 +1041,6 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
      reason it is a scale and not a single needle. Otherwise it is the one
      field the current title falls under. */
   const marked = slot ? slot.fields : [TITLES[at % TITLES.length].field]
-
-  const hold = () => window.clearTimeout(release.current)
-  const letGo = (event: React.PointerEvent) => {
-    if (event.pointerType !== 'mouse') return
-    window.clearTimeout(release.current)
-    release.current = window.setTimeout(() => setPicked(null), RELEASE_MS)
-  }
 
   const identity = (
     <section className="mech-ident" ref={identRef}>
@@ -1249,16 +1247,16 @@ export default function MechCluster({ onProject, covered, leaving, tuning }: Pro
         <MechBank
           picked={picked}
           onPick={(n) => {
-            hold()
-            setPicked(n)
+            bankPick.hold()
+            bankPick.set(n)
           }}
           onOpen={onProject}
           up={up}
           covered={covered}
           narrow={narrow}
           title={slot ? slot.title : null}
-          onHold={hold}
-          onRelease={letGo}
+          onHold={() => bankPick.hold()}
+          onRelease={(event) => bankPick.letGo(event.pointerType)}
         >
           {/* The scale, under the bank — see `FieldGauge` above. Handed in as
               children rather than living in `MechBank`: the dials report on
