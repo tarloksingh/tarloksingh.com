@@ -3619,6 +3619,15 @@ the zoom changes. It reaches the subject as an `offset` prop on `MechModel` and
 there resolves to exactly the expression it always was. Every field is
 per-project and pasted back through the same **Copy for source** button.
 
+**The Scale tab also rotates the subject.** `spin` / `tilt` — **Rotate Y** /
+**Rotate X**, degrees — are added on top of the subject's own `turn` and
+`tilt`, so a phone can meet a different face of a thing than the desktop rig
+was framed to. For a model they fold into the `tuning` handed to `MechModel`
+(`turn`/`tilt` on the placement group); for a piece `spin` folds into
+`piece.turn` and `tilt` arrives as its own narrow-only `tilt` prop on
+`MechProduct`, layered under the pointer sway in `Swing` rather than added to
+`PieceTuning` (which has no pitch field). Both `undefined`/absent on desktop.
+
 **`SHOOT`/`STOP` sits at the foot of the window, not the head.** On the wide
 frame the warning pair floats on the header's own row, where there is width to
 spare either side of the index key. A phone header is the wordmark and one

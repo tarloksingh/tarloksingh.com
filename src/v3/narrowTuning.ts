@@ -41,6 +41,13 @@ export interface NarrowTuning {
   offsetY: number
   /** Scales the picture and its housing inside the narrow stage. */
   media: number
+  /** Degrees of extra yaw, narrow only, added on top of the subject's own
+   *  `turn`. A phone frames one face of a thing where a desktop was tuned to
+   *  frame another. */
+  spin: number
+  /** Degrees of extra pitch, narrow only, added on top of the subject's own
+   *  `tilt`. */
+  tilt: number
 }
 
 /** What a project scales to when it has no entry of its own. */
@@ -48,7 +55,9 @@ export const NARROW_FALLBACK: NarrowTuning = {
   model: 1.5,
   offsetX: 0,
   offsetY: 0,
-  media: 1
+  media: 1,
+  spin: 0,
+  tilt: 0
 }
 
 /** Per-project overrides, pasted back from the panel's copy button. */
@@ -105,6 +114,8 @@ export function useNarrowTuning(projectId: string) {
       offsetX: { value: seed.offsetX, min: -1.5, max: 1.5, step: 0.02, label: 'Pan X' },
       offsetY: { value: seed.offsetY, min: -1.5, max: 1.5, step: 0.02, label: 'Pan Y' },
       media: { value: seed.media, min: 0.4, max: 1.6, step: 0.01, label: 'Pictures' },
+      spin: { value: seed.spin, min: -180, max: 180, step: 1, label: 'Rotate Y' },
+      tilt: { value: seed.tilt, min: -90, max: 90, step: 1, label: 'Rotate X' },
       'Copy for source': button(() => {
         const text = asSource()
         void copyText(text)
@@ -124,7 +135,7 @@ export function useNarrowTuning(projectId: string) {
      record the moment anything is dragged. */
   useEffect(() => {
     const next = tunings[projectId] ?? NARROW_FALLBACK
-    setValues({ model: next.model, offsetX: next.offsetX, offsetY: next.offsetY, media: next.media })
+    setValues({ model: next.model, offsetX: next.offsetX, offsetY: next.offsetY, media: next.media, spin: next.spin, tilt: next.tilt })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId])
 

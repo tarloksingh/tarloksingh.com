@@ -85,7 +85,7 @@ function Drift({ fill }: { fill: number }) {
 /** Turns the piece a few degrees toward the pointer, on top of whatever face
  *  it was set to. Not the face's lean — that tips a head; this swings a
  *  product on its stand, which is the gesture a thing in a case makes. */
-function Swing({ turn, sway, children }: { turn: number; sway: number; children: React.ReactNode }) {
+function Swing({ turn, tilt, sway, children }: { turn: number; tilt: number; sway: number; children: React.ReactNode }) {
   const ref = useRef<Group>(null)
   const to = useRef({ x: 0, y: 0 })
   const at = useRef({ x: 0, y: 0 })
@@ -120,7 +120,7 @@ function Swing({ turn, sway, children }: { turn: number; sway: number; children:
     at.current.x = MathUtils.lerp(at.current.x, target.x, k)
     at.current.y = MathUtils.lerp(at.current.y, target.y, k)
     group.rotation.y = MathUtils.degToRad(turn) + at.current.x * 0.34 * sway
-    group.rotation.x = -at.current.y * 0.12 * sway
+    group.rotation.x = MathUtils.degToRad(tilt) - at.current.y * 0.12 * sway
   })
 
   return <group ref={ref}>{children}</group>
@@ -331,7 +331,8 @@ export default function MechProduct({
   tuning = PRODUCT_DEFAULTS,
   piece = PIECE_FALLBACK,
   live = true,
-  offset
+  offset,
+  tilt = 0
 }: {
   project: string
   tuning?: ProductTuning
@@ -340,6 +341,8 @@ export default function MechProduct({
   /** A narrow-only pan, [x, y] in frame heights, added on top of the piece's
    *  own `liftX` / `liftY`. The desktop layout never passes it. */
   offset?: readonly [number, number]
+  /** Degrees of extra pitch, narrow only, on top of the pointer sway. */
+  tilt?: number
 }) {
   const fill = piece.fill * piece.size
   const distance = distanceFor(piece.focalLength, fill)
@@ -396,7 +399,7 @@ export default function MechProduct({
           >
             <Drift fill={fill} />
             <Sheen piece={piece}>
-              <Swing turn={piece.turn} sway={piece.sway}>
+              <Swing turn={piece.turn} tilt={tilt} sway={piece.sway}>
                 <Piece project={project} />
               </Swing>
             </Sheen>

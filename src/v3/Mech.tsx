@@ -2006,7 +2006,16 @@ export default function Mech({ id, onProject, onHome }: Props) {
                      rail still keeps the context. */
                   key={modelFrame.src}
                   src={modelFrame.src}
-                  tuning={narrow ? { ...tuning, fill: tuning.fill * narrowScale.model } : tuning}
+                  tuning={
+                    narrow
+                      ? {
+                          ...tuning,
+                          fill: tuning.fill * narrowScale.model,
+                          turn: tuning.turn + narrowScale.spin,
+                          tilt: tuning.tilt + narrowScale.tilt
+                        }
+                      : tuning
+                  }
                   offset={narrow ? [narrowScale.offsetX, narrowScale.offsetY] : undefined}
                   live={current?.kind === 'model'}
                 />
@@ -2030,8 +2039,17 @@ export default function Mech({ id, onProject, onHome }: Props) {
                   key={pieceFrame.project}
                   project={pieceFrame.project}
                   tuning={pieces.studio}
-                  piece={narrow ? { ...pieces.piece, size: pieces.piece.size * narrowScale.model } : pieces.piece}
+                  piece={
+                    narrow
+                      ? {
+                          ...pieces.piece,
+                          size: pieces.piece.size * narrowScale.model,
+                          turn: pieces.piece.turn + narrowScale.spin
+                        }
+                      : pieces.piece
+                  }
                   offset={narrow ? [narrowScale.offsetX, narrowScale.offsetY] : undefined}
+                  tilt={narrow ? narrowScale.tilt : undefined}
                   live={current?.kind === 'piece'}
                 />
               </Suspense>
