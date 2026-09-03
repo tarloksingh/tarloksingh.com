@@ -1601,14 +1601,13 @@ glyph sizing that scaled `STOP` and `SHOOT` to the same height in different
 viewBoxes, and the white-on-glow rules that kept a lit word legible over a
 filled housing. Neither has anything left to size or to light.
 
-**And a pass after that made the two lamps green dots.** The right one was
-`--warn` red, on the shift-light reading — but a shift light *instructs*, and
-this row reports (which is the whole reason the words came off it), so a warm
-lamp on it was the same argument in a new form. Both are `--accent` now and
-`border-radius: 999px` rather than a 4-unit corner: the report is which of the
-two dots is burning, not a colour. `.mech-alarm-key[data-warn]` and its lit
-variant are deleted from `Mech.css` and the `data-warn` attribute from
-`Alarm.tsx` — one rule now covers both dots.
+**A pass after that rounded the lamps to dots but kept the pair red/green.**
+`border-radius: 999px` rather than a 4-unit corner — a dot, not a housing —
+but the right lamp stays `--warn` red on the shift-light reading: left green
+while there is something in the air, right red while there is not.
+`.mech-alarm-key[data-warn]` and its lit variant carry the red; a brief
+all-green pass (both `--accent`) was reverted because the colour *is* the
+report at a glance on a phone, where the two dots sit small and close.
 
 **`ROLE_CELLS` now equals `CELLS`.** The role reel under the counts and the
 project title over the bank are boxed to the same width (`--count-w` and
@@ -3646,13 +3645,14 @@ real gap now — `bottom: 18 * --px + 52 * --type`, the pill's own height, since
 lower lamp behind the pill — and sits at `z-index: 9`, above the deck, so the
 pill's translucent green never washes over the count.
 
-**The deck's bloom is a phone-sized radius on a phone.** `--g` (the room's
+**The deck's glow is a phone-sized radius on a phone.** `--g` (the room's
 bloom multiplier, `5` on this screen) is tuned for instruments read across a
-wide frame; on the floating pill it drew a 20-unit opaque-green halo that read
-as a box and bled over the warning pair above. Narrow overrides `--g` to `1.3`
-for the pill's subtree, and lays a dark gradient under the green tint so a fact
-card scrolling past behind the fixed pill does not show through as a second
-outline. The `::before` floor grew to match the taller stack.
+wide frame; on the floating pill it drew a 20-unit green halo — alpha clamped
+to fully opaque — that read as a lit box rather than a glow and washed up over
+the warning pair. Narrow sets `--g: 1` on the pill's subtree, which is the
+whole fix: an ordinary soft edge, nothing else about the pill touched. (An
+earlier attempt also laid a dark gradient under the pill's tint — it turned a
+faint translucent control into a solid slab and was reverted.)
 
 **The fold headings are sized to a cell here too.** They are the same
 fourteen-segment display the wide layout uses, and `Segment` scales by width —
