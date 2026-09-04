@@ -407,6 +407,54 @@ in the entrance came back 46ms `(program)` and 29ms `(idle)` — three quarters
 of a "frame" in which the main thread had nothing to do. Long tasks are main
 thread by definition. `intro.mjs` prints both.
 
+### The desktop crossings did not get worse — measured against the old build
+
+Reported after the deploy: *"on desktop the performance has degraded going
+from page to page — home to project is bad, project to home is bad, project to
+project is fine."* The second half of that is a real and useful observation.
+The first half is not what happened.
+
+**Both builds were served side by side** — the deployed one (`2398cb5`) on
+:8101 out of a second worktree, the new one on :8100 — and driven through the
+same four crossings. Desktop, unthrottled, frames over 33ms:
+
+```
+                        old (2398cb5)   new
+  project -> project         0            0
+  project -> home            3            4
+  home -> project            7            7
+  project -> home (2)        4            2
+```
+
+Identical within the run-to-run spread, at 4× as well. **The crossings that
+touch home have always been the expensive ones** — they are the two that mount
+or unmount the instrument cluster, which is the largest block of DOM on the
+site — and nothing in the three commits moved them.
+
+Two things were ruled out chasing it, and both are worth not repeating:
+
+- **`getBoundingClientRect` is not it, at 600 calls a second.** A profile of a
+  crossing put it top of the JS list — 315ms of a 4.5s leg, doubling from the
+  156ms an idle screen pays. It is drei's `<View>`: each of the ten mounted
+  bays reads its own `.mech-slot-shot` rect once a frame to compute its scissor
+  box. Patching a per-element per-frame cache in at the page level — the
+  ceiling of any fix — changed **nothing at all** (6 frames over 50ms before
+  and after). The reads are cheap because nothing between two views writes to
+  layout; only the first of the ten forces anything.
+- **`Track` was already once a frame.** It looked like it must be running ten
+  times for the same reason `<View>` does, and a `document.timeline.currentTime`
+  guard was written for it. Counted: 300 canvas reads over 300 frames, in both
+  builds. The change was reverted — it bought a guard against a thing that was
+  not happening.
+
+**And the frame gaps themselves are headless artifacts.** Tracing the dropped
+frames on both home legs shows 2–4ms of `UpdateLayoutTree` inside a 58–70ms
+gap and nothing else: the main thread is *idle* for the whole of it. That is
+trap 4, and it is the second time this page has been fooled by it. Whatever a
+real machine is doing on those two crossings, this harness cannot see it — the
+next step is a Performance recording taken on the machine that feels it, not
+another candidate from here.
+
 ### There is already a loading gate. Do not add a second one.
 
 `primed` in `Mech.tsx` holds the boot until `document.fonts` resolves and the
@@ -420,31 +468,60 @@ the site strictly slower, whatever it looks like while it is doing it.
 
 # Open work
 
-## 1. Confirm the intro fix on a real phone — **it has not been**
+## 1. The ripple's fill rate — **the one cost never measured on the right GPU**
 
-The stall is gone from the measurements. Nobody has seen it gone. Those are
-different claims and this page has confused them before.
+**The intro fix is confirmed on a handset.** Reported after the deploy:
+*"intro staggers still during the ripple only, everything else is fine on
+mobile."* That closes the morph-target item — the entrance itself, where the
+name types in and the blocks come up, is clean on a device — and it narrows
+what is left to a window of about a second.
 
-What was measured: `intro.mjs phone 4`, median of nine, entrance long tasks
-**184ms → 0** and whole-load **244ms → 50ms**, on headless Chrome with a 4×
-throttle and an M-series GPU. What that transfers to a handset is main-thread
-milliseconds — see trap 3 — which is exactly what a long task is, so the
-finding *should* hold. But the report after the work was **"still the same,
-staggered pixels"** on a phone, and at the time that was said the phone was
-looking at an undeployed build. Until someone reloads a deployed one, the
-honest status of the entire intro item is *unverified on device*.
+**And it is the one class of cost this whole apparatus cannot see.** Trap 3
+says it in one line: resolutions, samples, bytes and main-thread milliseconds
+transfer to a phone, **fill rate and raster do not**. Every clearing of the
+ripple on this page — all five — was a main-thread finding, and every one of
+them is still right. The main thread is quiet during the ripple: 17ms median
+across 512 cells, one frame over 33ms. What was never tested anywhere but on
+an M-series GPU is what a handset is being asked to *paint*:
 
-Two things that will make it look unchanged even after a deploy:
+- ~500 cells, each carrying a **blurred `box-shadow`** (a 10-unit glow),
+- animating `opacity` and `transform` for 420ms each,
+- under a **`mask-image`**, which makes the subtree one rasterised layer — so
+  it cannot composite, and the **whole viewport is re-rasterised every frame**
+  with five hundred blurred shadows in it, at **dpr 3**.
 
-- **Trap 1, the browser scratchpad.** A phone that has ever had a tuning panel
-  open renders the stored numbers. `localStorage.clear()` on the device.
-- **"Staggered pixels" may not be the long task at all.** It is a good
-  description of the boot ripple's own cell grid, which is a *deliberate*
-  effect and has been cleared as a cost five times (see **ruled out**). If the
-  complaint survives a deployed build with an empty scratchpad, get a
-  description of *when* it happens — during the ripple, or after it, while the
-  name is typing — before touching anything. Those are two different windows
-  and `frames.mjs` bands them separately for exactly this reason.
+The one control that was ever run against this — the glow removed, raster
+1539ms → 1498ms, 2.7%, "inside noise" — was run on the wrong GPU, so it
+settled nothing. Ten to thirty times slower on the fragment side is exactly
+the gap between "inside noise" and "the only thing on screen stutters".
+
+**`?ripple=a|b|c|d` is committed**, and comparing them is a job for the
+handset, not for this folder:
+
+| | glow | mask | what it is testing |
+|---|---|---|---|
+| **a** | yes | yes | what ships. The control. |
+| **b** | no | yes | the per-cell blur radius |
+| **c** | yes | no | the full-viewport re-raster |
+| **d** | no | no | both |
+
+Load `tarloksingh.com/?ripple=d` on the phone and reload between letters.
+**If `d` is smooth and `a` is not, it is fill rate and this table says which
+half.** If all four stagger identically, it is not paint, and the next move is
+a trace off the device itself rather than another candidate from here.
+
+Everything is one declaration each (`.mech-tiles[data-ripple=…]` in
+`Mech.css`), on purpose: nothing touches the timing, the pitch or the
+keyframes, so what is being compared is the same effect paid for differently.
+The pitch has already been ruled out twice and is not on this table.
+
+**This flag ships rather than being deleted at the end of the session**, which
+is the correction to what item 7 in **Done** admits went wrong with `?intro=`:
+the variants were built, measured headless, compared as desktop screenshots,
+decided and deleted in one working tree, leaving nothing in git to go back and
+look at. Measuring picks the fastest; only looking picks the acceptable one.
+Delete this block when a variant has been chosen and pasted into the defaults
+— not before.
 
 ## 2. The subject's hitbox on a phone — **found, fixed, and it is a route**
 

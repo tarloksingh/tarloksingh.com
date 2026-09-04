@@ -2054,6 +2054,34 @@
   }
 }
 
+/* ---- the four ripples, on the address bar ----
+
+   `?ripple=b|c|d`. See the block above `RIPPLES` in `MechTiles.tsx` for what
+   each one is testing and why it is being tested by looking rather than by
+   measuring: this is a **fill-rate** question, and trap 3 in `PERFORMANCE.md`
+   says raster is the one cost that does not transfer from the headless GPU
+   the harness runs on. `a` is what ships and needs no rule.
+
+   Both of these are one declaration each on purpose. A variant that touches
+   the timing, the pitch or the keyframes is a different effect being compared
+   rather than the same effect being paid for differently, and the pitch has
+   already been ruled out twice. */
+
+/* No outer glow — the blur radius is what is paid per cell per frame. The
+   inset edge stays, because the note above says the edge is what carries it. */
+.mech-tiles[data-ripple='b'] i,
+.mech-tiles[data-ripple='d'] i {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+/* No mask — the subtree can composite, which is what the top of
+   `MechTiles.tsx` always assumed was happening. Costs the falloff into the
+   corners, which is the whole reason the mask is there. */
+.mech-tiles[data-ripple='c'],
+.mech-tiles[data-ripple='d'] {
+  mask-image: none;
+}
+
 /* The front of the ring, drawn once as one element rather than inferred from
    a thousand. It is what makes the cells read as being *struck* by something
    travelling outwards instead of merely taking their turn. */

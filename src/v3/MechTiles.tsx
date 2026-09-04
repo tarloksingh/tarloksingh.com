@@ -86,6 +86,52 @@ const MOST = 1600
  *  is invisible either way. */
 const LIFE = 1900
 
+/* ---- four ripples, on the address bar ----
+
+   **`?ripple=a|b|c|d`, and it is committed on purpose.** Every measurement in
+   `PERFORMANCE.md` says the ripple is not a main-thread cost — five times now,
+   and all five are right. What none of them tested is **fill rate**, because
+   the harness runs headless on an M-series GPU and trap 3 says raster is the
+   one class of cost that does not transfer to a handset. The one control that
+   was run (cells with the outer glow removed, raster 1539ms → 1498ms, 2.7%)
+   was run on that same wrong GPU, so it settled nothing about a phone.
+
+   What a phone is actually asked for here is ~500 cells, each carrying a
+   blurred `box-shadow`, animating under a `mask-image` — and a masked subtree
+   cannot composite, so the whole viewport is re-rasterised every frame with
+   five hundred blurred shadows in it, at dpr 3. That is a fill-rate bill, it
+   lands in exactly the window the stagger is reported in, and it is invisible
+   to every script in `scripts/perf/`.
+
+   So the variants ship, and are compared by editing the address bar on the
+   handset itself. This is the half of the process `PERFORMANCE.md` says was
+   skipped last time and calls a mistake in as many words: the `?intro=`
+   variants were built, measured headless, decided and deleted in one working
+   tree, leaving nothing to go back and look at. Measuring picks the fastest;
+   only looking picks the acceptable one.
+
+   - **a** — what ships. The control.
+   - **b** — no outer glow. Keeps the inset edge, which is what the note on
+     `.mech-tiles i` says carries the effect; drops the blur radius that is
+     paid per cell per frame.
+   - **c** — no mask. The subtree can composite, so the cells tick off the
+     main thread as the note at the top of this file always intended. Costs
+     the falloff into the corners.
+   - **d** — both.
+
+   Delete the whole block once a variant has been chosen and pasted into the
+   defaults — but not before, and not by tidying it away unread. */
+const RIPPLES = new Set(['a', 'b', 'c', 'd'])
+
+const variant = () => {
+  try {
+    const v = new URLSearchParams(window.location.search).get('ripple')
+    return v && RIPPLES.has(v) ? v : 'a'
+  } catch {
+    return 'a'
+  }
+}
+
 function MechTiles() {
   const box = useRef<HTMLDivElement>(null)
   const [grid, setGrid] = useState<{ cols: number; rows: number; cell: number } | null>(null)
@@ -130,6 +176,9 @@ function MechTiles() {
       className="mech-tiles"
       ref={box}
       aria-hidden
+      /* Read once, off the address bar. See `RIPPLES` above — `a` is what
+         ships and is what an ordinary visit gets. */
+      data-ripple={variant()}
       /* The column count and the cell size are the two things the stylesheet
          cannot work out for itself — one is measured, the other follows from
          it — so they are handed over as custom properties and the grid is laid
