@@ -69,6 +69,25 @@ export const diagLog = (text: string): void => {
   p.scrollTop = p.scrollHeight
 }
 
+/** Long tasks (>50ms of unbroken main-thread work) during the fps watch.
+ *  Distinguishes "the main thread is busy" from "the main thread is idle and
+ *  something else is slow" — the earlier investigation of this same fault
+ *  found zero long tasks under a *different* measurement window (headless,
+ *  4x throttle, the entrance's first ~2s); this reports whatever actually
+ *  happens for as long as `?diag=fps` runs, throttle-free, on a real tab. */
+const startLongTaskWatch = (): void => {
+  if (typeof PerformanceObserver === 'undefined') return
+  try {
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) {
+        diagLog(`longtask ${entry.duration.toFixed(0)}ms  start=${entry.startTime.toFixed(0)}ms`)
+      }
+    }).observe({ entryTypes: ['longtask'] })
+  } catch {
+    // longtask isn't observable in every browser; the fps panel still works.
+  }
+}
+
 /** `?diag=fps` — item 1b in PERFORMANCE.md. Reports a rolling one-second
  *  window rather than raw gaps, and says outright when the tab is hidden
  *  instead of letting a suspended rAF loop read as a smooth one. Started
@@ -77,6 +96,7 @@ let started = false
 export const startFrameWatch = (): void => {
   if (started || !diagOn('fps') || typeof window === 'undefined') return
   started = true
+  startLongTaskWatch()
 
   let last = performance.now()
   let frames = 0
