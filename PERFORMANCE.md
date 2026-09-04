@@ -5,13 +5,13 @@ human or model, and it assumes you have not seen any of it before. Everything
 below is either **done** and says what it bought, **ruled out** and says why
 not to spend it again, or **open** and says exactly what to change.
 
-**Read this before anything else.** The two commits below `2398cb5` are on
-local `main` and **have never been pushed**. Vercel builds this repo's `main`,
-so `tarloksingh.com` and every phone on the tailnet are still serving the build
-from *before* the intro work. Every "after" number on this page was taken off
-`dist/` through `scripts/perf/serve.mjs` on the machine it was written on, and
-**not one of them has been confirmed on a handset**. If the site looks
-unchanged on a phone, that is why, and it is the first thing to check:
+**Read this before anything else.** Every "after" number on this page was
+taken off `dist/` through `scripts/perf/serve.mjs` on the machine it was
+written on, and **not one of them has been confirmed on a handset**. Vercel
+builds this repo's `main`, so a phone is only ever looking at what has been
+*pushed* — and for three commits it was not, which is the whole of why the
+intro work "changed nothing" on a device. Check it before believing anything a
+phone tells you:
 
 ```bash
 git log --oneline origin/main..main    # not empty = not deployed
@@ -446,23 +446,46 @@ Two things that will make it look unchanged even after a deploy:
   name is typing — before touching anything. Those are two different windows
   and `frames.mjs` bands them separately for exactly this reason.
 
-## 2. The subject's hitbox on a phone — reported, not diagnosed
+## 2. The subject's hitbox on a phone — **found, fixed, and it is a route**
 
-Reported on mobile: shooting Mr. Takahashi only registers on his forehead.
+*Was: reported, not diagnosed.* "Shooting Mr. Takahashi only registers on his
+forehead." It reproduced on **one route only** — home first, then open the
+project. A direct load of `/p/mr-takahashi` was always correct, which is why
+the arithmetic looked right every time it was checked.
 
-**It is not the morph-target change.** `quarry.subject.rect()` in `Mech.tsx`
-(~line 1548) builds a `DOMRect` in client pixels from the stage's own rect,
-`boxOf(current, space)` and `PAD` — no geometry, no raycaster, nothing that
-`stripMorphs` or `Precise` touches. Both of those live inside the bank's
-canvas; the stage subject is a different mount and reads the precise bounding
-box it always did.
+`useStageSpace` in `Mech.tsx` reads `stage.current` in an effect whose deps are
+`[stage, probe, narrow]`. **A ref is not a dependency.** Home does not mount
+`.mech-stage` until something has been opened (`stageOpened`), so on that route
+the effect ran once against `null` and never again, and `space` stayed at the
+wide `FRAME_SPACE`. `boxOf` then returns the wide `MODEL_BOX` (769, 269,
+403×529) scaled by 390/1920 — a 98×123 box over the top centre of a 390×410
+stage. That is the forehead, to the pixel. It was placing the picture's marks
+as well as the hitbox.
 
-The shape of the bug is a `space` / `PAD` mismatch on narrow, and there is
-already a comment on those exact lines about a previous version of it — the
-hitbox at the wrong scale and offset, so shots low on the stage landed below
-the box. A forehead-only hitbox is that symptom with the sign flipped. Start
-by logging `rect()` against the stage's rect on a 390-wide window; it is
-almost certainly arithmetic, not three.js.
+`stageUp` is passed in and added to the deps, so the measurement runs on the
+commit that puts the stage in the tree.
+
+Measured with a tap grid dispatched through CDP (`Input.dispatchTouchEvent`,
+phone, 9×9 over the stage, hit counted off the `.mech-impact` node the gun
+appends):
+
+```
+  home → Takahashi        direct load of /p/mr-takahashi
+  before      after       before = after
+  mmmHHHmHm   mHHHHHHHH   mHHHHHHHH
+  mmmHHHmmm   mHHHHHHHm   mHHHHHHHm
+  mmmHHHmHm   mHHHHHHHH   mHHHHHHHH
+  mmmHHHmmm   mHHHHHHHm   mHHHHHHHm
+  mmmmmmmmm   mHHHHHHHm   mHHHHHHHm
+  mmmmmmmmm   mHHHHHHHm   mHHHHHHHm
+  …           …           …
+```
+
+**The lesson is the route, not the box.** Every check this page had already
+done — logging `rect()` against the stage's rect, overlaying the computed box
+on a screenshot — was done on a direct load, where nothing is wrong. A bug that
+only exists on the way *in* from another screen cannot be found by loading the
+screen it shows up on. Full account in **The gun** in `README.md`.
 
 ## 3. `adam-face.glb` has 8-bit normals — **blocked on a re-export**
 
@@ -498,7 +521,7 @@ repo, and it is the only item on this list that is.
 
 ---
 
-**Do items 1 and 2 before anything else on this page.** Everything under
+**Item 1 is now the whole of what is next.** Everything under
 **Done** is measured; nothing under it is *confirmed on a device*, and one
 user-visible defect (the hitbox) arrived unexplained. A page of green numbers
 next to a phone that still feels wrong is the exact failure this file was

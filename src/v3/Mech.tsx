@@ -186,7 +186,19 @@ const useTypeScale = (root: RefObject<HTMLDivElement | null>, probe: RefObject<H
 const useStageSpace = (
   stage: RefObject<HTMLDivElement | null>,
   probe: RefObject<HTMLElement | null>,
-  narrow: boolean
+  narrow: boolean,
+  /** Whether the stage element is in the tree at all. A ref is not a
+   *  dependency — it never changes identity, so an effect that reads
+   *  `stage.current` and finds nothing there will *never* run again on its
+   *  own. Home does not mount `.mech-stage` until something has been opened
+   *  (`stageOpened` below), so on a phone that arrived from home this measured
+   *  nothing and `space` stayed at the wide 1920×1080 frame for the whole page
+   *  load — which put the subject's box, its marks and its hitbox at 1920
+   *  scale on a 390-wide stage. That is the forehead-only hitbox: the wide
+   *  `MODEL_BOX` scaled by 390/1920 lands on the top-centre eighth of the
+   *  picture. A direct load of `/p/<id>` mounts the stage on the first render
+   *  and never showed it. */
+  mounted: boolean
 ): Space => {
   const [space, setSpace] = useState<Space>(FRAME_SPACE)
 
@@ -215,7 +227,7 @@ const useStageSpace = (
     watch.observe(box)
     watch.observe(unit)
     return () => watch.disconnect()
-  }, [stage, probe, narrow])
+  }, [stage, probe, narrow, mounted])
 
   return space
 }
@@ -1190,7 +1202,6 @@ export default function Mech({ id, onProject, onHome }: Props) {
   const scale = useRef<HTMLElement>(null)
   useTypeScale(root, scale)
   const narrow = useNarrow()
-  const space = useStageSpace(stage, scale, narrow)
   /* Blocks draw themselves in as they are reached — narrow only, where the
      page scrolls and half of it starts below the fold. See `reveal.ts`. */
   useReveal(root, narrow)
@@ -1252,6 +1263,9 @@ export default function Mech({ id, onProject, onHome }: Props) {
   const stageOpened = useRef(false)
   if (!home) stageOpened.current = true
   const stageUp = !home || stageOpened.current
+  /* Below the latch, and not beside `narrow` above, because it takes
+     `stageUp`: the stage cannot be measured until it exists. */
+  const space = useStageSpace(stage, scale, narrow, stageUp)
 
   /* ---- load first, then play ----
 

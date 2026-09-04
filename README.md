@@ -5034,6 +5034,32 @@ actually moves the head through), and a bolt landing inside it goes to
 `MechModel`. A still is not a target — shooting a photograph of something is
 shooting a photograph.
 
+**A phone arrived from home with a forehead-sized hitbox, and the ref was
+why.** Reported as "shooting Mr. Takahashi only registers on his forehead", and
+it reproduced on exactly one route: home first, then a project. A direct load
+of `/p/<id>` was always fine, which is what made it look like a three.js
+problem rather than the two-line one it was.
+
+`useStageSpace` measures the stage in frame units so the narrow layout can
+draw its subject box, its marks and this hitbox as fractions of a real element
+instead of the wide 1920×1080 frame. Its effect read `stage.current` — and a
+**ref is not a dependency**. It never changes identity, so an effect that finds
+nothing there never runs again on its own. Home does not mount `.mech-stage`
+until something has been opened (`stageOpened`), so on that route the effect
+ran once against `null`, gave up, and `space` sat at `FRAME_SPACE` for the rest
+of the page load. `boxOf` then handed back the wide `MODEL_BOX` — 769,269
+403×529 — scaled by 390/1920, which is a 98×123 box over the top centre of a
+390×410 stage. That is the forehead, to the pixel, and it was also placing
+every mark on the picture.
+
+The fix is `stageUp` passed in as `mounted` and added to the dependency list,
+so the measurement runs on the commit that puts the stage in the tree. Verified
+with a tap grid dispatched over the stage through CDP: nine by nine, home →
+Takahashi, hits on one column in four rows before and on the whole subject
+after. **When a ref-reading effect can run before the element exists, the thing
+that mounts it has to be in the deps** — the same shape as every other "it
+works on a hard load and not from the app" bug.
+
 What he does about it: shuts his eyes, twitches twice, tips his head back, and
 saddens for a few seconds. The eyelids are one morph for the pair, so a wink is
 not available and the twitch is a flutter rather than one eye going.
