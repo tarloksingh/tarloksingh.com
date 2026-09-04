@@ -743,54 +743,89 @@ and leaves Chrome's animation untouched, confirmed by reading
 to imitating this more broadly; it wasn't tried, because Chrome was never
 broken and the entrance is worth keeping wherever it isn't.
 
-**That fix traded the disconnected line for a visible snap on a switch, and
-that is now also fixed.** Reported next: on Safari specifically, switching
-project or media (image, video, or model) — never on a first load — a
-label would jump to a different part of the screen partway through
-arriving. Same leaders, same fix, one step further, not a new bug.
+**That fix traded the disconnected line for a visible jump on a switch, and
+item 5 below is that fault, still open.**
 
-The first version of `LEADER_CARD_INSTANT` set the card to `opacity: 1`
-immediately, on mount, in place of `mech-card`'s animation. That is what
-removed the compositing layer that broke the line — but it also meant the
-card was visible from the very first frame, at whatever position `fitCards`
-had managed to compute *by then*. Normally that is already right. When it
-is not — the `fonts.ready` pass correcting a metrics guess taken before the
-face had loaded, most likely on a switch rather than a first load, when
-there is more competing for the main thread — the correction now had a
-fully visible card to move, with nothing left to hide the jump inside.
-Chrome never showed this because its card was still mid-fade at the point a
-correction usually lands; removing Safari's fade removed that cover too.
+## 5. A label jumps on switch, in Safari — **reported, one fix tried, confirmed not to work**
 
-Fixed by moving *when* the reveal happens rather than reintroducing the
-animation: the Safari card still starts at `opacity: 0`, but nothing times
-its arrival any more. `aimLeader` in `Mech.tsx` sets `opacity: 1` itself,
-directly, the first time it has actually corrected that card's position —
-so there is no longer a frame where a visible card is sitting at a guess
-waiting to be moved. A later correction (a second switch, a resize) still
-repositions it exactly as before; only the *first* reveal is gated.
+*Reported after item 4 landed: "labels are fixed and connect now, but when I
+change from project to project or image to image (or video or model) the
+label jumps to another part of the screen."* Safari only, every reload
+tried, and **never on a first load** — the fault in item 4 was closed by
+checking exactly that. This is a switch-only fault the fix above does not
+reach.
 
-Verified by reloading the fixed build fresh in Safari and confirming the
-original fault — the disconnected line — is still closed. **Not yet
-click-verified inside a live switch in Safari itself**: this tool has only
-screenshot access to Safari, not the ability to click or drive it, and by
-the time this was isolated the Chrome extension used for the rest of this
-page's testing had disconnected from repeated reloads. The fix follows
-directly from the mechanism above rather than from watching it happen, so
-it is worth switching project and media a few times in real Safari to
-confirm before calling this one closed for good.
+**One fix was tried and the report says plainly it did not work — do not
+re-try it as if it were new.** The reasoning was specific: item 4's fix
+(`LEADER_CARD_INSTANT`) reveals the Safari card at `opacity: 1` the moment
+`fitCards` mounts, in place of `mech-card`'s animation, which is what
+removed the stale compositing layer that broke the line. But that also means
+the card is visible from the very first frame, at whatever position
+`fitCards` has computed *by then* — normally already right, but if a later
+pass (most often `fonts.ready`, correcting a metrics guess taken before a
+font had actually loaded) corrects it afterward, that correction now has a
+fully visible card to move, with nothing left to hide the move inside — a
+theory that fit the symptom (worse on a switch, when more is competing for
+the main thread than on a quiet first load) and fit why Chrome never showed
+it (its card is usually still mid-fade at the point a correction lands).
+
+The fix that reasoning implied — `aimLeader` in `Mech.tsx` now sets
+`card.style.opacity = '1'` itself, directly, the first time it has actually
+corrected that card's position, instead of `mech-card`'s timer revealing it
+on a schedule blind to whether the position is right yet — is **already in
+the tree** (see the `LEADER_CARD_INSTANT` comment and `aimLeader`'s last
+line). It did not fix the jump. Reported back after testing: still jumps.
+
+**So the theory above is wrong, or incomplete, and that is the real
+starting point here — not a fresh guess.** Two things worth knowing before
+re-diagnosing:
+
+- **It was never click-verified while it was being written.** The Chrome
+  extension used for item 4's whole investigation disconnected partway
+  through (repeated reloads across many tabs — see item 1b's own apparatus
+  notes for the same class of problem), and this tool has only screenshot
+  access to Safari, never the ability to click or drive it. The fix shipped
+  on the strength of the mechanism reasoning above, not on watching a
+  switch happen and confirming the jump was gone. That gap is very likely
+  *why* it turned out wrong — a click-verified iteration loop would have
+  caught this before it was called done.
+- **The tooling from item 4 is the fastest way back in**, and none of it is
+  Safari-specific: a disposable `git worktree` (`git worktree add --detach
+  <path> HEAD`, symlink `node_modules` in, `npm run build`, serve `dist/`
+  with `PERF_PORT=<port> node scripts/perf/serve.mjs`) keeps experiments off
+  the working tree; an on-page diagnostic panel (plain DOM element, styled
+  fixed-position, written to with `element.textContent`) reports state as
+  *readable text* rather than requiring a live console, which is what makes
+  it checkable from a screenshot when Safari can't be driven. Item 4's
+  biggest wasted round-trip was trusting `getBoundingClientRect()` compared
+  against a bbox corner instead of the line's own transformed `x1,y1` (via
+  `svg.getScreenCTM()`) — re-read that section before building a new
+  measurement, the same mistake is easy to repeat.
+- **A real interaction is required to reproduce this one.** Item 4's fault
+  showed on a first load, reachable by a plain URL. This one is switch-only,
+  which means either a live person clicking through it in Safari with the
+  diagnostic panel on screen, or getting the Chrome extension reconnected
+  and using it to drive Chrome through the same switch while comparing
+  against what Safari does — Chrome not reproducing the jump is itself
+  data, not a reason to skip instrumenting it there too.
 
 ---
 
-**Item 1b is still the open fault, and this did not touch it.** Everything
-under **Done**, plus item 4 above, is measured and closed. What is not
-explained is a desktop's home entrance staggering — **not** a regression,
-**not** the main thread, **not** any of the seven things tried against it,
-and **not** the same bug as item 4: different browser (Chrome, not Safari),
-different symptom (frame pacing, not geometry), found on a completely
-separate investigation. The next round on it starts with the one asymmetry
-nobody has used: eight scene renders a frame on the layout that is slow
-against two on the layout that is not — measured by stopping the bank's loop,
-not by hiding its canvas.
+**Two faults are open now, on two different browsers, and neither is the
+other.** Everything under **Done**, plus item 4, is measured and closed.
+
+**Item 1b**: a desktop Chrome home entrance staggering — **not** a
+regression, **not** the main thread, **not** any of the seven things tried
+against it. The next round on it starts with the one asymmetry nobody has
+used: eight scene renders a frame on the layout that is slow against two on
+the layout that is not — measured by stopping the bank's loop, not by hiding
+its canvas.
+
+**Item 5**: a Safari label jumping on a project or media switch, closed line
+connection notwithstanding. One fix tried against a specific, reasoned
+mechanism; reported back as not working. Needs a live, click-driven
+reproduction — in Safari by a person, or in Chrome by the extension — before
+the next fix is anything more than another guess.
 
 A page of green numbers next to a machine that still feels wrong is the exact
 failure this file was written to stop. It happened again on 2026-09-04, three

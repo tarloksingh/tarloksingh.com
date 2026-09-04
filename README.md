@@ -4482,16 +4482,18 @@ its leader's cascade, just without the pop; Chrome, which never reproduced
 this, keeps the entrance. Full account, including the five fixes that were
 tried and failed before this one, in **item 4** of `PERFORMANCE.md`.
 
-**And that traded the disconnected line for a visible jump on a switch.**
-Revealing the Safari card on mount meant it was visible from the first
-frame at whatever position was known *by then* — usually right, but a
-`fonts.ready` correction landing after that point now had a fully visible
-card to move, with Chrome's still-fading card no longer around to hide the
-same correction inside. `aimLeader` reveals the Safari card itself now,
-directly, the first time it has actually corrected that card's position,
-rather than `mech-card`'s timer doing it on a schedule that knows nothing
-about whether the position is right yet. See the addendum to item 4 in
-`PERFORMANCE.md`.
+**And that traded the disconnected line for a visible jump on a switch —
+open, not fixed.** Switching project or media in Safari (never a first
+load) can jump a label to another part of the screen. `aimLeader` reveals
+the Safari card itself now, the first time it has actually corrected that
+card's position, instead of `mech-card`'s timer revealing it on a schedule
+blind to whether the position is right yet — a specific, reasoned attempt
+at a fix, already in the tree, and **reported back as not working**. Do not
+re-try that same idea as if it were untested. Item 5 in `PERFORMANCE.md`
+has the full reasoning, why it's suspected wrong, and what it would take to
+actually diagnose this one: a live, click-driven reproduction, which
+neither writing nor testing this fix had — only screenshot access to
+Safari was available, and the Chrome extension disconnected mid-session.
 
 ### The leaders, on a phone
 
