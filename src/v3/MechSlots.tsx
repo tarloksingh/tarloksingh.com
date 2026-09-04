@@ -28,6 +28,19 @@ const bankFrameloopOff = (() => {
   }
 })()
 
+/** `?skip=<slot id>` — item 1b again. Keeps one bay from ever building (its
+ *  GLB is never fetched, let alone decoded), to isolate which subject's
+ *  decode cost is behind the long tasks `?diag=fps` found landing right
+ *  after a model's download finishes. `?skip=mr-takahashi` is the first
+ *  thing worth trying: `adam-face.glb` is the heaviest thing home fetches. */
+const skipSlot = (() => {
+  try {
+    return new URLSearchParams(window.location.search).get('skip')
+  } catch {
+    return null
+  }
+})()
+
 /* ---- the subjects in the bank ----
 
    Every slot on the home screen holds the project's own subject, live: Mr.
@@ -392,7 +405,7 @@ function Environment() {
  *  grew into it. */
 export function SlotView({ id, live, arrive }: { id: string; live: boolean; arrive: boolean }) {
   const box = useRef<HTMLElement>(null)
-  const near = useNear(box)
+  const near = useNear(box) && id !== skipSlot
   const [mounted, setMounted] = useState(false)
 
   /* ---- and only the ones you could be looking at ----
