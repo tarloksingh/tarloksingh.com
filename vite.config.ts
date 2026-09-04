@@ -33,6 +33,24 @@ export default defineConfig(({ command }) => ({
     } as Record<string, string>
   },
 
+  /* **The `hls.js` alias has to be repeated here, and this is not
+     belt-and-braces.** Vite's own resolver understands a root-absolute
+     `/src/...` alias; **esbuild's dependency pre-bundler does not** — it reads
+     it as a filesystem path and dies with `Cannot read file:
+     /src/v3/hls-stub.ts` before the server ever listens. It only shows up when
+     the dep cache is cold (`node_modules/.vite` cleared, or a lockfile
+     change), so `npm run dev` can work for weeks and then refuse to start
+     after an unrelated `npm install` — which is exactly how it was found.
+     `npm run build` never hits it, because Rollup does the resolving there.
+
+     Excluding it from optimisation is what stops the scan resolving it at
+     all: drei's `useVideoTexture` imports one enum member statically, and by
+     the time anything runs, Vite's alias has already pointed that at the stub.
+     See `src/v3/hls-stub.ts`; every clip on this site is a local mp4. */
+  optimizeDeps: {
+    exclude: ['hls.js']
+  },
+
   server: {
     host: '0.0.0.0', // Bind to all network interfaces
     port: 5173,

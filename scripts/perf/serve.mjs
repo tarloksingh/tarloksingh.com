@@ -7,7 +7,20 @@
  *  **No compression, deliberately.** Adding gzip here would make the JS
  *  numbers look like production and the model numbers look like nothing
  *  changed; leaving it off keeps one honest half and one obviously-inflated
- *  half rather than two half-honest ones. See `fetches` in `cdp.mjs`. */
+ *  half rather than two half-honest ones. See `fetches` in `cdp.mjs`.
+ *
+ *  **Range requests are supported, and that is not optional.** This served
+ *  every response as a 200 with the whole body, `Range` header ignored.
+ *  Desktop Chrome tolerates that for `<video>`; **iOS Safari does not** — it
+ *  opens with `Range: bytes=0-1`, gets a 200, and refuses to decode. Nothing
+ *  errors. What you see is a media strip whose clips are blank and, worse,
+ *  three project subjects missing altogether: `mecha-station`, `openup` and
+ *  `stitchfam` are pieces whose material *is* a video texture
+ *  (`MechProduct.tsx`), so a clip that never decodes is a piece that never
+ *  appears. That reads exactly like a broken model and is a broken server.
+ *
+ *  Worth stating plainly because this file is what the site gets checked on
+ *  over the tailnet: a bug here impersonates a bug in the app, and it did. */
 import { createServer } from 'node:http'
 import { readFile, stat } from 'node:fs/promises'
 import { join, extname, dirname, resolve } from 'node:path'
@@ -35,8 +48,45 @@ createServer(async (req, res) => {
   }
   try {
     const body = await readFile(file)
-    res.writeHead(200, { 'content-type': TYPES[extname(file)] || 'application/octet-stream', 'cache-control': 'no-store' })
-    res.end(body)
+    const head = {
+      'content-type': TYPES[extname(file)] || 'application/octet-stream',
+      'cache-control': 'no-store',
+      /* Advertised on everything. Safari checks for it before it will treat a
+         resource as seekable at all. */
+      'accept-ranges': 'bytes'
+    }
+
+    /* `bytes=start-end`, either end optional. A suffix range (`bytes=-500`)
+       is the last N bytes, not a range starting at nothing — getting that
+       backwards serves the head of the file for a request for its tail, which
+       is how an MP4's moov atom goes missing. */
+    const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || '')
+    if (range) {
+      const [, rawStart, rawEnd] = range
+      let start
+      let end
+      if (rawStart === '') {
+        if (rawEnd === '') return res.writeHead(416).end()
+        start = Math.max(0, body.length - Number(rawEnd))
+        end = body.length - 1
+      } else {
+        start = Number(rawStart)
+        end = rawEnd === '' ? body.length - 1 : Math.min(Number(rawEnd), body.length - 1)
+      }
+      if (start > end || start >= body.length) {
+        return res.writeHead(416, { 'content-range': `bytes */${body.length}` }).end()
+      }
+      res.writeHead(206, {
+        ...head,
+        'content-range': `bytes ${start}-${end}/${body.length}`,
+        'content-length': end - start + 1
+      })
+      /* HEAD carries the headers and no body — Safari sends one first. */
+      return res.end(req.method === 'HEAD' ? undefined : body.subarray(start, end + 1))
+    }
+
+    res.writeHead(200, { ...head, 'content-length': body.length })
+    res.end(req.method === 'HEAD' ? undefined : body)
   } catch {
     res.writeHead(404)
     res.end('not found')

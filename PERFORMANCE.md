@@ -41,6 +41,44 @@ that turns on how expensive a fragment is has to be checked on the actual
 device over the tailnet (`npm run dev`, then the `.ts.net` address vite
 prints — see `README.md`).
 
+### The browser profile's scratchpad beats your source edit
+
+`CLAUDE.md` calls this the single most confusing thing about the panels and it
+is just as true of a *measurement* profile as of a person's browser. Every
+tuning hook merges `localStorage` **over** the `_DEFAULTS` in source, so a
+headless run with a persistent `--user-data-dir` is rendering whatever was
+last stored there — not what is in the file you just edited.
+
+It cost an afternoon here: a run of phone screenshots taken to check a change
+to the revolver's `focalLength` were all rendered at the **stored** 18, and
+the conclusion drawn from them — that neither the lens, the narrow scale nor
+the yaw did anything — was wrong three times over. `localStorage.clear()`
+before the navigation that matters, and check:
+
+```js
+Object.keys(localStorage)   // v3.model.tuning.v3.rigs, v3.narrow.tuning.v2, …
+```
+
+`TUNING_KEYS` in `src/v3/tuningStore.ts` is the full list. The **Reset** button
+on any panel tab clears all of them. It applies to a phone over the tailnet
+too: a device that has ever had a panel open on it will go on showing the
+stored numbers until it is reset.
+
+### `serve.mjs` must answer Range requests, or three subjects vanish
+
+Not a performance note, but it lives here because this file is what the site
+gets checked on over the tailnet, and a bug in the harness impersonates a bug
+in the app. The server used to answer every request with a 200 and the whole
+body, `Range` ignored. Desktop Chrome tolerates that for `<video>`; **iOS
+Safari does not** — it opens with `Range: bytes=0-1`, gets a 200, and refuses
+to decode, silently.
+
+What that looks like is not "a video does not play". `mecha-station`, `openup`
+and `stitchfam` are pieces whose material **is** a video texture
+(`MechProduct.tsx`), so a clip that never decodes is a **project subject that
+never appears** — which reads exactly like three broken models. It is fixed;
+the point of the note is that the failure did not look like its cause.
+
 ### Frame *counts* out of headless Chrome are junk
 
 The gaps come back as `STEP_BUFFER_SWAP_POST_SUBMIT` on `CrGpuMain`, a
@@ -164,6 +202,48 @@ the `mask-image` (measured, ~3%, reverted) and the cell count on narrow
 while taking exactly as long). **The stall people see is the 225ms frame
 immediately after the ripple**, where the bank builds its geometry; the
 ripple is simply what is on screen when it lands, and it wears the blame.
+
+### The entrance's worst frame is one subject's geometry. Two attempts, both reverted.
+
+`frames.mjs` puts a **~240ms frame** in the entrance band on a phone, and it
+lands while the ripple is still on screen — the ripple runs to ~2320ms and the
+cover lifts at ~1650ms — so what it looks like from outside is the ripple
+stopping dead and then finishing. That is the fourth time that effect has worn
+the blame for something scheduled on top of it.
+
+Two things were tried against it and **neither moved the number**:
+
+- **One geometry build per animation frame.** The note in `MechSlots.tsx` says
+  the builds "queue up nose to tail whatever the stagger says", which reads
+  like several builds landing in one frame. A module-level scheduler handing
+  out one `setMounted` per rAF measured 264/188/198ms against a 243ms
+  baseline — noise. The reason is that `arrive` *already* staggers them 55ms
+  apart, so the queue rarely holds more than one: it is not several builds
+  colliding, it is **one build that is itself a quarter of a second**.
+- **Gating `Track` on the ripple being gone.** A CPU profile of the whole load
+  put `getBoundingClientRect` second in self time (354ms), and `Track` runs it
+  once a frame on narrow, starting the moment the cover lifts — against a
+  document carrying 512 animating cells. Plumbing a `settled` flag through so
+  it waits measured 256/230/284ms. Also noise.
+
+What the frame actually is, from a CPU profile bucketed to the busiest 300ms
+window rather than averaged over the load:
+
+```
+  47ms  15.5%  r                     three.module  (toCreasedNormals)
+  56ms  ~19%   getX / getY / getZ    three.module  (BufferAttribute reads)
+  25ms   8.4%  fromBufferAttribute   three.module
+  19ms   6.2%  getProgramInfoLog     (shader link)
+  16ms   5.3%  texSubImage3D         (texture upload)
+   9ms   2.9%  getVertexPosition     (Box3.expandByObject)
+```
+
+So it is `toCreasedNormals` plus bounding-box computation plus a first shader
+link and texture upload — **one subject being built, lit and drawn for the
+first time**. Making that smaller is the only thing that will move it: a lower
+`BAY_DETAIL`, or not building the heaviest subject during the entrance at all.
+Scheduling it differently will not, and both of the obvious ways of doing so
+are now measured and in the history.
 
 ### There is already a loading gate. Do not add a second one.
 

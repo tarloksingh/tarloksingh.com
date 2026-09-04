@@ -36,6 +36,15 @@ node scripts/perf/models.mjs   # what is inside every model the bank fetches
 node scripts/compress-models.mjs   # Draco + WebP over the raw GLBs, in place
 ```
 
+**A stale scratchpad beats your source edit, on a phone too.** Every tuning
+hook merges `localStorage` over the `_DEFAULTS` in source, so a device — or a
+headless profile with a persistent `--user-data-dir` — that has ever had a
+panel open goes on rendering the *stored* numbers. Editing `modelTuning.ts`
+and reloading changes nothing until **Reset** (any tab; it clears every key in
+`TUNING_KEYS`) or `localStorage.clear()`. This is already flagged under *dev
+tools* below; it is repeated here because it silently invalidates
+screenshots and measurements, which is how it actually bites.
+
 **Never measure performance off `npm run dev`** — Vite serves unbundled
 modules and the boot is visibly worse there than in a build, always. The
 harness in `scripts/perf/` runs against `dist/`; see the top of

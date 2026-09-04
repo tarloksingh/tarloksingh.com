@@ -601,6 +601,21 @@
   pointer-events: none;
 }
 
+/* **And out of the flow, which `visibility` alone does not do.** On the wide
+   layout this element is already `position: absolute` and hiding it costs no
+   space. Narrow makes it `position: relative` with a real height — it is a
+   flex item in the column — so a hidden stage held its own `min(56vh, …)` and
+   home came back from a project with an empty half-screen between the dials
+   and PROJECTS. Absolute takes it out of the column while still giving it a
+   box to be laid out in, which is the half `display: none` would throw away
+   and the reason the canvas has a size to come back to.
+
+   Specificity, deliberately: `.mech[data-narrow='true'] .mech-stage` is three
+   selectors and would otherwise win. */
+.mech[data-narrow='true'] .mech-stage[data-home='true'] {
+  position: absolute;
+}
+
 /* The subject's own layer, so it can be taken off the stage without being
    taken down. `visibility` rather than `display`: a canvas in a box that has
    been laid out keeps its size, and one in `display: none` has none to come

@@ -281,20 +281,25 @@ export const MODEL_RIGS: Record<string, ModelTuning> = {
      Both are set by eye on the **Subject** tab from there, and the numbers
      below are that export. Two things in it are worth not tidying:
 
-     - **The revolver is on an 18mm lens** against everything else's 200. That
-       is the one subject on the site where the perspective is the point: a
-       long lens on a gun this size is an elevation drawing, and the wide one
-       throws the barrel away from you and puts the cylinder and the hammer in
-       your hand. `distanceFor` moves the camera in to hold the framing, so
-       the focal length is doing nothing but choosing how much foreshortening
-       there is.
+     - **The revolver is on an 85mm lens.** It was on 18, and the argument
+       for that is worth knowing because it is the one subject on the site
+       where perspective was doing any work: a long lens on a gun this size is
+       an elevation drawing, and a wide one throws the barrel away from you and
+       puts the cylinder and the hammer in your hand. In practice 18 was a
+       fisheye — the barrel flared at the viewer, and it read worst on a phone,
+       where the subject is largest in the frame. 55 was tried on the way here
+       and still bowed. `distanceFor` moves the camera in to hold the framing,
+       so this number chooses nothing but how much foreshortening there is, and
+       going higher is safe: 120 is flatter again if 85 still bows. Note
+       `NARROW` in narrowTuning.ts has `lens: 1` for this project, so a phone
+       gets exactly this number and not a multiple of it.
      - **Neither leans.** `lean: 0`, like Capsule C1 and unlike the face. A
        head turning to follow the pointer is a head; a gun doing it is a
        turret tracking you, which is a much louder gesture than this page
        wants. They drift and that is all. */
   'red-dead-redemption-2': {
     ...MODEL_DEFAULTS,
-    focalLength: 18,
+    focalLength: 85,
     fill: 0.25,
     lean: 0,
     turn: -127,
