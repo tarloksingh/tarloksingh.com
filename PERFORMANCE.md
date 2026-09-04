@@ -5,6 +5,18 @@ human or model, and it assumes you have not seen any of it before. Everything
 below is either **done** and says what it bought, **ruled out** and says why
 not to spend it again, or **open** and says exactly what to change.
 
+**Read this before anything else.** The two commits below `2398cb5` are on
+local `main` and **have never been pushed**. Vercel builds this repo's `main`,
+so `tarloksingh.com` and every phone on the tailnet are still serving the build
+from *before* the intro work. Every "after" number on this page was taken off
+`dist/` through `scripts/perf/serve.mjs` on the machine it was written on, and
+**not one of them has been confirmed on a handset**. If the site looks
+unchanged on a phone, that is why, and it is the first thing to check:
+
+```bash
+git log --oneline origin/main..main    # not empty = not deployed
+```
+
 Last worked 2026-09-04, against `main`. `README.md` explains *why* the code is
 the shape it is; this file says how fast it runs and what is left.
 
@@ -228,6 +240,18 @@ file predicted would win did nothing at all. That comparison is the reason the
 entry in **ruled out** below is as long as it is; read it before proposing any
 of them again.
 
+**The flag was never committed, and that was a mistake.** This page asked for
+one deployment with `?intro=a` … `?intro=e` on it so the variants could be
+compared on a real phone by editing the address bar, and said in as many words
+that measuring picks the fastest and only looking picks the acceptable one.
+What actually happened is that the variants were built, measured headless,
+compared as desktop screenshots, decided, and deleted in the same working tree
+— so **there is nothing in git to go back and look at**. The numbers in the
+table above are real and reproducible; the *looking* half of the process was
+skipped. If any of this needs revisiting, the variants have to be rebuilt from
+the description in **ruled out** below, which is why that entry names each one
+precisely enough to redo.
+
 ### 8. The load gate got a voice, and home stopped switching on twice
 
 Two design calls off the old open list, done in the same pass. Neither is
@@ -396,7 +420,51 @@ the site strictly slower, whatever it looks like while it is doing it.
 
 # Open work
 
-## 1. `adam-face.glb` has 8-bit normals — **blocked on a re-export**
+## 1. Confirm the intro fix on a real phone — **it has not been**
+
+The stall is gone from the measurements. Nobody has seen it gone. Those are
+different claims and this page has confused them before.
+
+What was measured: `intro.mjs phone 4`, median of nine, entrance long tasks
+**184ms → 0** and whole-load **244ms → 50ms**, on headless Chrome with a 4×
+throttle and an M-series GPU. What that transfers to a handset is main-thread
+milliseconds — see trap 3 — which is exactly what a long task is, so the
+finding *should* hold. But the report after the work was **"still the same,
+staggered pixels"** on a phone, and at the time that was said the phone was
+looking at an undeployed build. Until someone reloads a deployed one, the
+honest status of the entire intro item is *unverified on device*.
+
+Two things that will make it look unchanged even after a deploy:
+
+- **Trap 1, the browser scratchpad.** A phone that has ever had a tuning panel
+  open renders the stored numbers. `localStorage.clear()` on the device.
+- **"Staggered pixels" may not be the long task at all.** It is a good
+  description of the boot ripple's own cell grid, which is a *deliberate*
+  effect and has been cleared as a cost five times (see **ruled out**). If the
+  complaint survives a deployed build with an empty scratchpad, get a
+  description of *when* it happens — during the ripple, or after it, while the
+  name is typing — before touching anything. Those are two different windows
+  and `frames.mjs` bands them separately for exactly this reason.
+
+## 2. The subject's hitbox on a phone — reported, not diagnosed
+
+Reported on mobile: shooting Mr. Takahashi only registers on his forehead.
+
+**It is not the morph-target change.** `quarry.subject.rect()` in `Mech.tsx`
+(~line 1548) builds a `DOMRect` in client pixels from the stage's own rect,
+`boxOf(current, space)` and `PAD` — no geometry, no raycaster, nothing that
+`stripMorphs` or `Precise` touches. Both of those live inside the bank's
+canvas; the stage subject is a different mount and reads the precise bounding
+box it always did.
+
+The shape of the bug is a `space` / `PAD` mismatch on narrow, and there is
+already a comment on those exact lines about a previous version of it — the
+hitbox at the wrong scale and offset, so shots low on the stage landed below
+the box. A forehead-only hitbox is that symptom with the sign flipped. Start
+by logging `rect()` against the stage's rect on a 390-wide window; it is
+almost certainly arithmetic, not three.js.
+
+## 3. `adam-face.glb` has 8-bit normals — **blocked on a re-export**
 
 It stores normals as `i8 normalized` — 8 bits per axis, base mesh plus all 47
 morph targets, from a `gltfpack -vn 8` default. It is the only model in the set
@@ -430,7 +498,8 @@ repo, and it is the only item on this list that is.
 
 ---
 
-**That is the list empty except for one asset.** Everything else on this page
-is either done and measured or ruled out and explained. The next round should
-start by re-running the four commands at the top against a fresh build rather
-than by reading the numbers here — see *the one instruction*.
+**Do items 1 and 2 before anything else on this page.** Everything under
+**Done** is measured; nothing under it is *confirmed on a device*, and one
+user-visible defect (the hitbox) arrived unexplained. A page of green numbers
+next to a phone that still feels wrong is the exact failure this file was
+written to stop, so the next round starts on a handset, not in the harness.
