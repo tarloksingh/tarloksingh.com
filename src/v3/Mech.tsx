@@ -1227,6 +1227,26 @@ export default function Mech({ id, onProject, onHome }: Props) {
      `animation-fill-mode: both` until its delay runs out, which is the flash. */
   const leaving = phase === 'out'
 
+  /* **Has a project been open yet this session.** Latches on and never off.
+   *
+   *  The stage box below is mounted for as long as this is true, home
+   *  included, which is item 3 of `PERFORMANCE.md`: home used to sit inside
+   *  `{!home && ...}`, so going home threw away the renderer, its nineteen
+   *  compiled programs, the PMREM room and the face's morph-target texture —
+   *  and the next project paid the whole rebuild `MechStage.tsx` was written
+   *  to eliminate. Measured as `lose 1` on every trip home. That file's
+   *  argument for outliving a *project* applies just as well to outliving
+   *  *home*.
+   *
+   *  It is a latch rather than a plain `true` because `MechStage` is lazy and
+   *  drags `ModelFrame` and `MechProduct` behind it. Mounting it on a first
+   *  load of home would put ~110KB of chunk in front of a boot that currently
+   *  never asks for it — paying on the load to save on a crossing, which is
+   *  the wrong way round. Nothing is held until you open something. */
+  const stageOpened = useRef(false)
+  if (!home) stageOpened.current = true
+  const stageUp = !home || stageOpened.current
+
   /* ---- load first, then play ----
 
      Everything heavy about this page mounts on the same frame the boot starts
@@ -1960,10 +1980,20 @@ export default function Mech({ id, onProject, onHome }: Props) {
             frame's own child and needs no stage under it, and an empty 16:9
             box sitting in the middle of the cluster is a box that eats the
             pointer over half of it. */}
-        {!home && (
+        {stageUp && (
         <div
           className="mech-stage"
           ref={stage}
+          /* Hidden on home rather than unmounted — see `stageOpened` above for
+             what the unmount was costing. `visibility: hidden` and not
+             `display: none`: a hidden element is not hit-tested either, so it
+             answers the reason home has no stage box (an empty 16:9 box over
+             half the cluster eats the pointer) just as well — and it keeps the
+             box laid out, which `display: none` does not. That matters here
+             for the same reason it does on `.mech-model-layer` a few rules
+             down in Mech.css: a canvas in a box with no layout has no size to
+             come back to. */
+          data-home={home}
           data-covered={covered}
           data-leaving={leaving}
           data-kind={current?.kind ?? 'bare'}
@@ -2239,6 +2269,12 @@ export default function Mech({ id, onProject, onHome }: Props) {
           style={{ ['--cluster-slot' as string]: cluster.values.slot }}
           data-arrive
           data-transiting={transiting}
+          /* What the rail's own entrance is hung on. Deliberately not
+             `data-transiting`: that flips on every crossing, and an animation
+             restarts whenever its `animation-name` changes, so keying the deal
+             on it re-played the entrance each time you opened a project. This
+             one goes true→false exactly once per load. */
+          data-booting={booting}
           /* Home's entrance counts from the cover and a project's from the
              retarget — see the two blocks in MechCluster.css. Both attributes
              are always present; each screen's rules read the one that means
@@ -2254,17 +2290,29 @@ export default function Mech({ id, onProject, onHome }: Props) {
               home={home}
               picked={slotOf(shownId)}
               onOpen={onProject}
-              /* Down for the length of a retarget, not just the boot. `up` is
-                 what runs the deal — the timer that walks the subjects into
-                 their bays and, on the way out, back out of them — and the
-                 CSS beside it in MechCluster.css undeals the boxes on the
-                 same beats. Without this the bays kept their pictures while
-                 the boxes around them left, which is the one part of the
-                 handover a stylesheet cannot do.
+              /* **The boot, and nothing else.** `up` runs the deal — the
+                 timer that walks the subjects into their bays — and it also
+                 gates `frameloop` in MechSlots, so anything that puts this
+                 false stops the canvas dead.
 
-                 Home counts from its own cover instead: the panel's blocks all
-                 wait on `!covered` and the deal is one of them. */
-              up={home ? !covered : !booting && !transiting}
+                 It used to carry the crossing too (`!booting && !transiting`
+                 on a project, `!covered` on home), which froze the rail for
+                 1211ms project to project and 1145ms going home while the CSS
+                 beside it undealt every slot and dealt it back in. That is the
+                 opposite of why the rail was hoisted to this one mount site:
+                 it survives the crossing with its WebGL context intact, and
+                 was then told to switch itself off and on across it anyway.
+                 The rail is the one block on the page that is genuinely
+                 continuous — the same list of the same work, before and
+                 after — so it deals in once, when the cover lifts, and stays.
+
+                 The exit those rules were written for is real but narrower
+                 than it looked: it stops the bays keeping their pictures while
+                 the boxes around them leave, and that only happens to a column
+                 that is *leaving*. Crossing between two projects, or back to
+                 home, this column does not leave. Nothing else on the page
+                 waits on this. */
+              up={!booting}
               covered={home ? covered : covered && transiting}
               narrow={narrow}
             />

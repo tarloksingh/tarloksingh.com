@@ -1793,36 +1793,57 @@ entrance delay, which is the boot's number; on a project screen this component
 mounts on every arrival from home, so that delay played out as the rail
 blinking out and coming back a beat and a bit later, every time.
 
-**Project to project: it hands over the way home does.** This component is
-mounted once for the whole life of the project screen — picking another
-project re-picks a slot, it does not remount — so the block naming the thing
-you just changed was the one block on the page that did not move. Home has a
-whole choreography for this (`data-leaving`: the rail unfades, the slots
-undeal from the bottom up, the displays take their words off) and a project
-screen had none of it.
+**Project to project: it used to hand over the way home does, and that was
+a mistake.** This component is mounted once for the whole life of the project
+screen — picking another project re-picks a slot, it does not remount — so the
+block naming the thing you just changed was the one block on the page that did
+not move. Home has a whole choreography for this (`data-leaving`: the rail
+unfades, the slots undeal from the bottom up, the displays take their words
+off) and a project screen had none of it. So it got home's rules, keyed on
+`data-transiting` and hung on a shorter `--out`.
 
-It has home's rules now, in `MechCluster.css`, keyed on `data-transiting` —
-the flag `Mech.tsx` already leaves on for the length of a retarget, the same
-one the wordmark and the stage take — and hung on a much shorter `--out`
-(300ms against home's 560ms), because the first beat here is one display
-backspacing a word off rather than a name, an intro paragraph and three
-gauges running down.
-
-Two things about it are not optional. The delays match `BANK_IN` in
+**That is gone, and the reason is worth reading before putting any of it
+back.** The staggers were not optional: the delays had to match `BANK_IN` in
 `MechBank.tsx` cell for cell, because the *subjects* in the bays are dealt by
-a timer over there and a slot's CSS cannot carry a WebGL view with it — the
-two staggers have to be the same stagger, which is why `up` is
-`!booting && !transiting` rather than just `!booting`. And the exit has its
-own keyframes: `mech-cluster-out` leaving, `mech-cluster-in` arriving, never
-the entrance with `animation-direction: reverse`. An animation restarts only
-when its `animation-name` changes, so reusing the name leaves the finished
-entrance held and plays nothing — the same rule as the frame swap, and it
-catches everybody once.
+a timer over there and a slot's CSS cannot carry a WebGL view with it. Which
+meant `up` had to be `!booting && !transiting` rather than just `!booting`,
+so the two staggers stayed the same stagger.
 
-The entrance side of that is also the entrance the bank never had. On the
-first mount of a project screen `data-transiting` is already `false`, so
-arriving from home the eleven rows now deal themselves in instead of being
-found sitting there while everything around them comes up.
+And `up` is also what gates `frameloop` in `MechSlots`. So the whole
+arrangement, reasoned entirely about *appearance*, was switching the single
+WebGL canvas that holds all eleven subjects **off** for the length of every
+crossing — measured at 1211ms project to project and 1145ms going home, in
+`scripts/perf/nav.mjs`. The rail was hoisted to one mount site in `Mech.tsx`
+precisely so it would survive a crossing with its context, its geometry and
+its compiled programs intact, and it was then being told to freeze and re-deal
+across every one anyway. That is a large part of what made the site feel like
+it reloaded whenever you pressed something.
+
+The rail is the one element on the page that is genuinely continuous: the same
+list of the same work, before and after. So it deals in **once**, when the
+cover lifts, and after that it neither leaves nor stops. `up` is `!booting`.
+The entrance is a single pair of rules in `MechCluster.css` hung on
+`data-booting`, which both screens share, and there is no exit at all.
+
+Three things follow from that and each is a trap:
+
+- **The entrance cannot be keyed on `data-transiting`.** It flips on every
+  crossing, and an animation restarts whenever its `animation-name` changes,
+  so keying the deal on it is exactly what re-played it. `data-booting` goes
+  true→false once per load.
+- **It cannot be keyed on `data-covered` either**, which is what home's copy
+  used to use. `covered` is true during a tile-rail step and for the whole
+  boot; the first would re-deal the bank because you picked a different
+  photograph, and it is why home and a project needed two rules where they now
+  need one.
+- **The exit was answering something real.** Without it "the bays kept their
+  pictures while the boxes around them left" — the one part of the handover a
+  stylesheet cannot do on its own. But that only applies to a column that is
+  *leaving*, and on a crossing this column does not leave. Only the picture on
+  the stage does. If the rail is ever given an exit again, it belongs to home
+  going down, not to a retarget.
+
+Full numbers, before and after, in item 2 of `PERFORMANCE.md`.
 
 ### The bank, on a phone
 
@@ -2460,6 +2481,25 @@ and nowhere else is: `Typed.tsx` writes into a node it owns rather than
 re-rendering, which is why it is what the title, the wordmark, the fold
 headings and every `Segment` are drawn with.
 
+**`Typed` writes on the frame clock, not on a timer.** It ran on
+`setInterval`, and `speed` is *milliseconds per character* — so the intro
+paragraph at `speed={9}` was asking for 111 ticks a second against a display
+that presents 60. Two `textContent` writes on most frames, each one a layout
+invalidation on a paragraph, and about 40% of them discarded before anything
+was painted. It lands in the same 1.2s window as the tachometer sweep, twelve
+dial blocks and the bank's deal, which is the window the entrance's worst
+frame is measured in.
+
+Both directions are `requestAnimationFrame` now, and the fix is not simply
+"increment on a frame instead of a tick" — the count is computed from
+**elapsed time**: `floor((now - began) / speed)`. That is what keeps it
+frame-aligned *and* finishing at exactly the moment it always did, at exactly
+the authored pace, whatever the frame rate happens to be. Incrementing per
+frame would have quietly re-timed every typed line on the site to the display.
+It also skips the write on a frame where the count has not moved, for the same
+reason everything else in the next section does: a text node written with the
+value it already had still invalidates layout.
+
 ### What the page pays for every frame
 
 This screen is a dozen independent `requestAnimationFrame` loops — the
@@ -2993,6 +3033,101 @@ frame rates land between 0.9 and 3.1 fps and the run-to-run spread is larger
 than anything you are trying to see. What *is* trustworthy there is state you
 can read at a moment — cell counts, canvas backing stores, the inline styles a
 loop left behind — and that is what the numbers above were taken from.
+
+### The models were never compressed, and four of them are now
+
+The splitting above fixed what a phone fetches in *JavaScript*. It said, at the
+bottom, that "the ~18 MB of GLBs home fetches is a real number and untouched —
+it is not what the stutter was". That was accurate about the stutter and it let
+the number stand for far too long.
+
+`scripts/perf/models.mjs` puts the whole thing in two rows:
+
+```
+  capsule-c1.glb    0.44 MB    81,000 triangles      6 bytes/tri   Draco
+  akira-rider.glb   4.40 MB   136,000 triangles     33 bytes/tri   none
+```
+
+Four of the seven GLBs shipped exactly as they came out of Sketchfab: float32
+positions, float32 normals, float32 tangents, and uncompressed PNG for every
+surface — 3 MB of it on the rifle alone, for maps read at 75 pixels in a bay
+and maybe 900 on a project screen. `capsule-c1.glb` had been through Draco a
+long time ago and is the sharpest thing on the site.
+
+`scripts/compress-models.mjs` closes that gap and does nothing else:
+
+```
+  gta-v-rifle.glb              7.68 MB →   1.07 MB   −86%
+  iphone-17-pro-max.glb        5.07 MB →   0.71 MB   −86%
+  rdr2-revolver.glb            2.98 MB →   0.51 MB   −83%
+  akira-rider.glb              4.34 MB →   1.12 MB   −74%
+```
+
+22.7 MB → 6 MB across the set; home's cold fetch on a phone 12.0 MB → 4.4 MB;
+and the boot's worst single task, which was the 3D chunk parsing while four
+uncompressed models decoded on top of it, 1531ms → 266ms.
+
+**What it deliberately does not do** is the part worth defending:
+
+- **No `simplify`.** `gltf-transform optimize` would run one, and a decimated
+  mesh is a different model. Draco compresses the vertices that are already
+  there, which is what lets a bay and a project screen go on sharing one file
+  with no second pipeline to keep in step. A bay-specific LOD would only be
+  worth building if *decode* were the bottleneck, and 81k triangles arriving
+  in 439 KB says it is not — Draco decodes in a worker pool.
+- **No resize.** Every texture in the set was already 1024², which is sensible
+  for a surface seen at ~900px. WebP was the win; the pixel count was not the
+  problem.
+- **Not `adam-face.glb`.** It is meshopt + quantized already and carries 47
+  morph targets; Draco and morph targets are not a combination worth
+  discovering on a face. It is now the single heaviest thing home fetches
+  (2.2 of the 4.4 MB), and its own `-vn 8` normal artifact is a re-export
+  rather than a re-pack — see the loose ends in `PERFORMANCE.md`.
+- **Not the WebP pass on Akira.** Its textures already are WebP; re-encoding
+  would be a second lossy pass for no bytes. Its 4.4 MB was float32 geometry.
+
+Nothing in the app changed for any of it. `/draco/` is served locally and
+`useGLTF(src, DRACO_PATH)` was already wired in `MechSlots.tsx`,
+`MechModel.tsx` and `ModelFrame.tsx`.
+
+**Three traps, all of them quiet, all of them paid for once already.**
+
+- **gltf-transform picks its container off the file extension.** An
+  intermediate written to `foo.tmp` comes out as glTF *JSON*, with its buffers
+  and images as sibling files it then never writes — the model survives as a
+  few KB of scene graph pointing at nothing. The first run of this reported
+  `7.68 MB → 0.03 MB, −100%`, which reads as a spectacular compression ratio
+  and is total data loss. Every temp name ends in `.glb` for that reason.
+- **Nothing intermediate may live in `public/`.** Vite copies that directory
+  verbatim into `dist`, so anything left behind ships. When the run above
+  wrote glTF JSON it scattered a `.bin` and thirty loose PNG and WebP sidecars
+  next to the models — and `git checkout -- public/models/` restored the
+  models without touching *any* of them, because they were untracked. They sat
+  there through several builds. The script works in `os.tmpdir()` now and
+  makes exactly one write into `public/` per model.
+- **The "already compressed" guard has to read the whole JSON chunk.** Both
+  passes are lossy, so a second run over the same file quantizes the quantized
+  and re-encodes the re-encoded — no error, and a slightly *smaller* file. The
+  first guard sniffed the leading 8 KB for `KHR_draco_mesh_compression` and
+  failed open on `gta-v-rifle.glb`, because `extensionsUsed` is written after
+  the accessor and mesh tables. It parses the chunk off the GLB header now. A
+  guard that silently does not guard is worse than no guard.
+
+After any run, check triangle counts with `models.mjs` — they must be
+**identical** — and then look at the subjects.
+
+**And one thing the compression turned up rather than caused.** Checking the
+four subjects still rendered showed that one of them does not render at all:
+`/p/a-game` is Solomon, which is `locked: true`, so the project screen shows
+the lock card and the rail's bay says `no signal`. Both are correct.
+`MechRider.tsx` was calling `useGLTF.preload` at **module scope** regardless,
+and `MechBank.tsx` imports `RiderSlot` statically — so every page fetched
+`akira-rider.glb` for a subject nothing could put on screen. That was 4.4 MB
+of home's original 12, and still 1.1 MB after Draco. It is gated on the same
+`locked` flag both render sites already read, so unlocking Solomon brings the
+preload back along with the rendering. Home's cold fetch on a phone ended at
+**3.3 MB**. A module-scope `preload` is unconditional by construction and will
+outlive whatever made it reasonable; the others are worth a look.
 
 ### The panel coming alive
 
@@ -5035,6 +5170,32 @@ the rebuild — and an idle stage costs nothing, because an empty scene compiles
 nothing and `frameloop="never"` draws nothing. What an idle stage holds is the
 context and the room.
 
+**And it is mounted on home too, which took a second pass to notice.** All of
+the above was about outliving a *project*, and the box it lives in sat inside
+`{!home && ...}` — so going home threw away the renderer, the nineteen
+compiled programs, the PMREM room and the face's morph-target texture anyway,
+and the next project paid the whole rebuild this file exists to eliminate. It
+showed up as `lose 1` on the `project -> home` row of `scripts/perf/nav.mjs`
+and nowhere else. The argument for outliving a project applies just as well to
+outliving home.
+
+Two details, both of which look like details and are not:
+
+- **`stageOpened` is a latch, not `true`.** `MechStage` is lazy and pulls
+  `ModelFrame` and `MechProduct` behind it. Mounting it on a *first* load of
+  home would put ~110KB of chunk in front of a boot that never asks for it —
+  paying on the load to save on a crossing, which is the wrong way round, and
+  the exact mistake **the splitting that was not splitting** is about. So the
+  ref latches on the first project opened and never off.
+- **`visibility: hidden`, not `display: none`.** The reason home has no stage
+  box in the first place is that an empty 16:9 box in the middle of the
+  cluster eats the pointer over half of it, and `opacity: 0` does not answer
+  that. `display: none` does — but a hidden element is not hit-tested either,
+  so `visibility` answers it just as well *and* keeps the box laid out. That
+  second half is load-bearing for the same reason it is on
+  `.mech-model-layer[data-on='false']`: a canvas in a box with no layout has
+  no size to come back to.
+
 Two things fell out of it that are not obvious:
 
 - **`Studio` shrank to two writes.** `environmentIntensity` is the scene's and
@@ -5047,6 +5208,24 @@ Two things fell out of it that are not obvious:
   the narrow breakpoint leaves the sample count as it was until a reload. That
   was already true of both canvases this replaces, and it is not worth a
   context rebuild to fix.
+- **A phone gets the same samples as a desktop here, and it did not.** This
+  canvas shipped at `dpr` 1.5 with `antialias` off on narrow, reasoned from
+  the desktop intuition that a full-window multisampled canvas is the most
+  expensive thing on the screen. `scripts/perf/canvas.mjs phone` put that at
+  2.25 samples per CSS px² against the desktop's 16 — **seven times fewer** —
+  and worse than undersampled: at ratio 1.5 on a dpr-3 screen every rendered
+  pixel is magnified over four device pixels, which is why it read as
+  crisp-jagged rather than soft. Two things make the original reasoning wrong
+  for *this* canvas: it is a 390×410 box on a phone rather than the window,
+  and MSAA is comparatively cheap on the tile-based GPUs handsets use, which
+  resolve it in tile memory instead of round-tripping a resolve target through
+  bandwidth. It is `dpr={[1, 2]}` and `antialias: true` on both now.
+  **`MechSlots` deliberately did not follow.** The bank went to `dpr` 2 — 1
+  was magnifying each pixel over nine — but keeps MSAA off, because `View`
+  scissors what it *draws* while the *allocation* is the whole 343×1494
+  canvas, and 4× MSAA on a 686×2988 buffer is ~65MB, which is how a context
+  gets lost on iOS Safari. A lost context there takes all eleven subjects
+  with it.
 
 Counted after, at 1512×900:
 

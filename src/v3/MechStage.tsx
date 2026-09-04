@@ -4,7 +4,6 @@ import { ACESFilmicToneMapping, PMREMGenerator, SRGBColorSpace } from 'three'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import { ModelStage } from './MechModel'
 import { PieceStage } from './MechProduct'
-import { useNarrow } from './narrow'
 import type { ModelTuning } from './modelTuning'
 import type { PieceTuning, ProductTuning } from './productTuning'
 
@@ -120,24 +119,35 @@ export default function MechStage({
    *  work — and the scene, the shaders and the room all stay put. */
   live: boolean
 }) {
-  const narrow = useNarrow()
-
   return (
     <Canvas
-      /* **A phone does not get the desktop's sample count.** This is the one
-         full-window canvas on the screen, and at `devicePixelRatio` 2 with
-         multisampling on a handset it is several times the pixel work of
-         anything else the page does — paid every frame, behind a subject that
-         is drifting a few degrees. `MechSlots` already makes exactly this
-         trade for the bank (`dpr={narrow ? 1 : [1, 1.75]}`, no antialias); the
-         stage was the piece that never had it. 1.5 rather than 1 because
-         unlike a bay this is the thing being looked at.
+      /* **A phone gets the same treatment as a desktop here, and it did
+         not.** This canvas used to be capped at `dpr` 1.5 with `antialias`
+         off on narrow, reasoned from the desktop intuition that a
+         full-window multisampled canvas is the most expensive thing on the
+         screen. Measured (`scripts/perf/canvas.mjs phone`) that came out at
+         2.25 samples per CSS px² against the desktop's 16 — **seven times
+         fewer** — and worse than under-sampled: at ratio 1.5 on a dpr-3
+         screen every rendered pixel is magnified over four device pixels,
+         which is why it read as crisp-jagged rather than soft.
+
+         Two things make the original reasoning wrong for this canvas:
+
+         - It is not full-window on a phone. `.mech-stage` down there is a
+           390×410 box, small in fill and in memory, and it is the one thing
+           on the screen being looked at.
+         - MSAA is comparatively cheap on the tile-based GPUs handsets use —
+           Apple, Mali and Adreno resolve it in tile memory rather than
+           round-tripping a resolve target through bandwidth, which is the
+           desktop cost the old note was budgeting for.
+
+         The bank is the opposite case and keeps its own trade; the asymmetry
+         is deliberate and the reason is in `MechSlots.tsx`.
 
          `dpr` is reactive and `antialias` is not — it is a context creation
          attribute, so crossing the breakpoint leaves the sample count as it
-         was until a reload. That was true of both canvases this replaces and
-         is not worth a context rebuild to fix. */
-      dpr={narrow ? [1, 1.5] : [1, 2]}
+         was until a reload. Not worth a context rebuild to fix. */
+      dpr={[1, 2]}
       frameloop={live ? 'always' : 'never'}
       /* The camera is set here only so the first frame has one; both scenes
          carry a `Lens` that puts it where their own tuning says, in an effect,
@@ -145,7 +155,7 @@ export default function MechStage({
       camera={{ fov: 40, position: [0, 0, 3] }}
       gl={{
         alpha: true,
-        antialias: !narrow,
+        antialias: true,
         toneMapping: ACESFilmicToneMapping,
         outputColorSpace: SRGBColorSpace
       }}

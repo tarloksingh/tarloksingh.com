@@ -33,6 +33,7 @@ npm run dev      # vite, bound to 0.0.0.0 on :5173
 npm run build    # tsc -b && vite build — run this before committing
 node scripts/check-media.mjs   # every filename the project data quotes exists
 node scripts/perf/models.mjs   # what is inside every model the bank fetches
+node scripts/compress-models.mjs   # Draco + WebP over the raw GLBs, in place
 ```
 
 **Never measure performance off `npm run dev`** — Vite serves unbundled
@@ -271,14 +272,21 @@ scroll-the-lit-slot-into-view. `.mech-bank-col` has to re-declare the cluster's
 tokens *and its `--accent`*, and take `--cluster-slot` from JS. See **The bank
 is on every screen** in `README.md`.
 
-**The bank hands over on a project screen too.** `.mech-bank-col` stands at a
-fixed `--panel-h` centred with `margin: auto 0` (never a transform — the
-canvas has to stay the viewport), so it is the same size and place as home's,
-and its boot-length entrance delay is gone. Project to project it plays home's
-own exit and entrance, keyed on `data-transiting` with a shorter `--out`, and
-`up` is `!booting && !transiting` so the WebGL subjects undeal on the same
-beats the boxes do. Exits have their own keyframes. See **The bank is on every
-screen** in `README.md`.
+**The bank does not hand over any more — it deals in once and stays.**
+`.mech-bank-col` stands at a fixed `--panel-h` centred with `margin: auto 0`
+(never a transform — the canvas has to stay the viewport), so it is the same
+size and place as home's. It *used* to play home's own exit and entrance on
+every crossing, keyed on `data-transiting`, with `up` as
+`!booting && !transiting` so the subjects undealt on the same beats the boxes
+did. That froze the canvas — `up` gates `frameloop` too — for a measured
+**1211ms** project to project and **1145ms** going home, on the one element
+that was hoisted to a single mount site specifically so it would survive a
+crossing intact. `up` is `!booting` now, the entrance is hung on
+`data-booting`, and there is no exit. **Do not key the rail's entrance on
+`data-transiting`**: it flips on every crossing, and an animation restarts
+whenever its `animation-name` changes, which is precisely what re-played the
+deal. See **The bank is on every screen** in `README.md` and item 2 in
+`PERFORMANCE.md`.
 
 **The media strip drags, and two things about that bite.** The click/drag
 threshold is ten pixels, not four — under that an ordinary press reads as a
@@ -362,7 +370,8 @@ first, then play** in `README.md`. Don't re-derive the frame-rate findings;
 they are written up there. The ~18 MB of GLBs home fetches is a real number and
 untouched — it is not what the stutter was.
 
-**The bank's canvas does not render until the bank is up.**
+**The bank's canvas does not render until the bank is up — and "up" means
+the boot is over, nothing more.**
 `frameloop={up ? 'always' : 'never'}` in `MechSlots.tsx`. It used to draw
 eleven views into a viewport-sized canvas for the whole boot while the bank sat
 at `opacity: 0`, and on narrow that dragged `Track`'s per-frame
@@ -370,6 +379,40 @@ at `opacity: 0`, and on narrow that dragged `Track`'s per-frame
 was the frame drop on a phone. `Track` still costs one per frame *after* the
 boot and that is deliberate; read the note in `MechSlots.tsx` before trying to
 gate it on scroll, because the narrow reveal moves the canvas without one.
+
+**The stage outlives home, and the models are compressed.** Two things that
+were costing the most and are written up in full in `PERFORMANCE.md`:
+
+- `.mech-stage` is mounted for as long as a project has been opened this
+  session (`stageOpened` in `Mech.tsx`) and hidden on home with
+  `visibility: hidden`, not `display: none` — a hidden element is not
+  hit-tested, which is the reason home had no stage box, and it keeps the box
+  laid out, which a canvas needs to have a size to come back to. Home used to
+  destroy the renderer, its 19 compiled programs, the PMREM room and the
+  face's morph-target texture on every trip. It is a *latch* rather than
+  always-on because `MechStage` is lazy and drags ~110KB behind it; a first
+  load of home must not pay for it.
+- The four raw GLBs went through `scripts/compress-models.mjs` — Draco
+  geometry, WebP textures, **no simplify and no resize**, so a bay and a
+  project screen still share one file. 22.7 MB → 6 MB across the set, and
+  home's phone fetch 12.0 MB → 4.4 MB. `adam-face.glb` is deliberately
+  excluded (meshopt already, and 47 morph targets).
+
+**A module-scope `preload` is unconditional by construction.**
+`MechRider.tsx` preloaded `akira-rider.glb` at module scope, and
+`MechBank.tsx` imports `RiderSlot` statically — so every page fetched it,
+while Solomon being `locked: true` meant *neither* render site would mount it
+(the bay says `no signal`, the project screen shows the lock card). It is
+gated on that same flag now rather than deleted, so unlocking Solomon brings
+the preload back with the rendering.
+
+**Type it with the frame clock, not a timer.** `Typed.tsx` runs both
+directions on `requestAnimationFrame` with the character count computed from
+elapsed time rather than incremented per tick. On `setInterval` at
+`speed={9}` it was ~111 ticks a second against a 60Hz display — two
+`textContent` writes on most frames, ~40% of them never painted. It also
+skips the write when the count has not moved, because a text node written
+with the value it already had still invalidates layout.
 
 **The boot waits for its own weight.** `primed` in `Mech.tsx` gates the ripple
 and the `BOOT_MS` countdown until the fonts have resolved and three's loading

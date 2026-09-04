@@ -12,6 +12,7 @@ import {
   type MeshStandardMaterial
 } from 'three'
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js'
+import { projects } from '../data/projects'
 
 /* ---- Solomon's rider, the dark version ----
 
@@ -214,4 +215,17 @@ export function RiderStage({ live = true }: { live?: boolean }) {
   )
 }
 
-useGLTF.preload(SRC, DRACO_PATH)
+/* **Only if anything can actually draw it.** This is module scope, and
+   `MechBank.tsx` imports `RiderSlot` statically, so this line runs on every
+   page that mounts the bank — which is every page. Solomon is `locked: true`
+   in `projects.ts` today, and both of the places that would render the rider
+   check that same fact before mounting: the bay falls back to `no signal`
+   (`slot.solid` is `hasSubject(id) && !locked`) and the project screen shows
+   the lock card instead of the stage (`riderStage` in `Mech.tsx`). So the
+   preload was fetching a 4.4 MB model — 1.1 MB now that it is Draco — on
+   every load of home, for a subject nothing on the site could put on screen.
+
+   Reading the flag rather than deleting the line is what makes it
+   self-correcting: unlock Solomon and the preload comes back with the
+   rendering, because it is keyed on the same data both call sites are. */
+if (!projects.find((p) => p.id === 'a-game')?.locked) useGLTF.preload(SRC, DRACO_PATH)

@@ -581,6 +581,26 @@
   display: block;
 }
 
+/* Home keeps the stage in the tree and simply stops showing it. `MechStage`
+   owns the renderer every project screen draws into, and unmounting it on the
+   way home threw away the context, nineteen compiled programs, the PMREM room
+   and the face's morph-target texture — the whole rebuild that file exists to
+   eliminate, paid again on the next project you opened. See `stageOpened` in
+   Mech.tsx; the canvas is stopped (`frameloop="never"`), so an idle stage
+   costs a context and nothing per frame.
+
+   `visibility`, not `display`. Two reasons, and they pull the same way:
+   a hidden element is not hit-tested, which answers the objection this box
+   was unmounted for in the first place (an empty 16:9 box in the middle of
+   the cluster eats the pointer over half of it) — and it stays laid out, so
+   the canvas keeps a size to come back to. Same trade as
+   `.mech-model-layer[data-on='false']` above, for the same reason.
+   `pointer-events` is belt and braces. */
+.mech-stage[data-home='true'] {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 /* The subject's own layer, so it can be taken off the stage without being
    taken down. `visibility` rather than `display`: a canvas in a box that has
    been laid out keeps its size, and one in `display: none` has none to come

@@ -65,38 +65,74 @@ export default function Typed({
   /* The only thing state is used for here is the caret going out at the end. */
   const [done, setDone] = useState(false)
 
+  /* **Both directions run on rAF, and neither runs on a timer.**
+     `setInterval` at `speed={9}` — which is what the intro paragraph is
+     typed at — is 111 ticks a second against a display that presents 60.
+     That is two `textContent` writes on most frames, each one a layout
+     invalidation on a paragraph, and about 40% of them discarded unseen
+     before anything is painted. It lands in the same 1.2s window as the
+     tachometer sweep, twelve dial blocks and the bank's deal, which is the
+     window `PERFORMANCE.md` measures the 225ms frame in.
+
+     Driving it off the frame clock instead makes the character count a
+     function of elapsed time rather than of tick count, so the line still
+     spells itself out at exactly `speed` milliseconds a character and still
+     finishes at exactly the same moment — it simply does it in one write a
+     frame, and skips the write entirely on a frame where the count has not
+     moved. Visually identical; that is the whole point of computing the
+     count from the clock rather than incrementing it. */
   useEffect(() => {
     if (back) return
     setDone(false)
     at.current = 0
-    let timer = 0
     if (out.current) out.current.textContent = ''
     if (!start) return
+    let frame = 0
+    let began = 0
+    const step = (now: number) => {
+      if (!began) began = now
+      const n = Math.min(text.length, Math.floor((now - began) / speed))
+      /* Only when it has actually changed. A property or a text node written
+         with the value it already had still invalidates style and layout —
+         the same trap the deck's meter and the compass were both caught by;
+         see *what the page pays for every frame* in the README. */
+      if (n !== at.current) {
+        at.current = n
+        if (out.current) out.current.textContent = text.slice(0, n)
+      }
+      if (n >= text.length) return setDone(true)
+      frame = requestAnimationFrame(step)
+    }
     const open = window.setTimeout(() => {
-      timer = window.setInterval(() => {
-        at.current += 1
-        if (out.current) out.current.textContent = text.slice(0, at.current)
-        if (at.current >= text.length) {
-          window.clearInterval(timer)
-          setDone(true)
-        }
-      }, speed)
+      frame = requestAnimationFrame(step)
     }, delay * 1000)
     return () => {
       window.clearTimeout(open)
-      window.clearInterval(timer)
+      cancelAnimationFrame(frame)
     }
   }, [text, run, delay, speed, back, start])
 
+  /* The way out, on the same clock. It starts from wherever the line actually
+     got to — `at.current` on the frame `back` flipped — so the elapsed count
+     is subtracted from that rather than from the full length. */
   useEffect(() => {
     if (!back) return
     setDone(false)
-    const timer = window.setInterval(() => {
-      at.current = Math.max(0, at.current - 1)
-      if (out.current) out.current.textContent = text.slice(0, at.current)
-      if (at.current === 0) window.clearInterval(timer)
-    }, backSpeed)
-    return () => window.clearInterval(timer)
+    let frame = 0
+    let began = 0
+    const from = at.current
+    const step = (now: number) => {
+      if (!began) began = now
+      const n = Math.max(0, from - Math.floor((now - began) / backSpeed))
+      if (n !== at.current) {
+        at.current = n
+        if (out.current) out.current.textContent = text.slice(0, n)
+      }
+      if (n === 0) return
+      frame = requestAnimationFrame(step)
+    }
+    frame = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(frame)
   }, [back, text, backSpeed])
 
   return (

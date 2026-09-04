@@ -1097,84 +1097,50 @@
   );
 }
 
-/* ---- the bank's own handover, on a project screen ----
+/* ---- the bank deals in once, and then it stays ----
 
-   Home's bank leaves with the cluster: `data-leaving` runs the rail's fade
-   and undeals the slots from the bottom up, and the fresh `.mech-bank-col`
-   on the other side deals itself back in. Going from one project to another
-   had none of that. This component is mounted once for the whole life of the
-   project screen — picking a different project never remounts it, only
-   re-picks a slot — so the one block that never moved was the one naming the
-   thing you had just changed.
+   This block used to be a handover: `[data-transiting='true']` undealt every
+   slot from the bottom up and a matching entrance dealt it back in, on both
+   screens, every single crossing. It was measured at **1211ms** of stopped
+   canvas project to project and 1145ms going home — because `up` in Mech.tsx
+   gates `frameloop` as well as this stagger, so the rail was not merely
+   animating out and back, it was switched off for the length of it.
 
-   These are home's rules again, keyed on `data-transiting` (the flag the
-   stage and the wordmark already leave on for the length of a retarget — see
-   `transiting` in Mech.tsx) instead of `data-leaving`, and hung on a much
-   shorter `--out`: the first beat here is one display backspacing its word
-   off, not a name, an intro paragraph and three gauges running down.
+   That is the opposite of what the rail is for. It was hoisted to one mount
+   site in Mech.tsx precisely so it would survive a crossing with its WebGL
+   context, its geometry and its compiled programs intact — and then told to
+   freeze and re-deal on every crossing anyway. It is the one element on the
+   page that is genuinely continuous: the same list of the same work, before
+   and after. Freezing it is a large part of what made the site feel like it
+   reloaded on every press.
+
+   So there is one entrance now and no exit, hung on `data-booting`, which
+   goes true→false once per load. `data-transiting` cannot be used for it:
+   it flips on every crossing, and an animation restarts whenever its
+   `animation-name` changes, which is what re-played the deal.
 
    The delays match `BANK_IN` in MechBank.tsx cell for cell, because the
    subjects in the bays are dealt by a timer over there and a slot's CSS
    cannot carry a WebGL view with it — the two staggers have to be the same
-   stagger. `up` is what tells that timer to run, and it is false for exactly
-   this window. */
-.mech-bank-col {
-  --out: 300ms;
-}
+   stagger. `up` is what tells that timer to run, and it is now false for
+   exactly the boot.
 
-.mech-bank-col[data-transiting='true'] .mech-work-rail {
-  animation: mech-cluster-unfade 240ms calc(var(--out) + 30ms) linear both;
-}
+   Both screens share it. Home's copy used to be keyed on `data-covered`
+   because `transiting` is already false while the boot is running, which
+   would have dealt the whole bank out behind the cover; `data-booting` does
+   not have that problem, so the two rules are one rule.
 
-.mech-bank-col[data-transiting='true'] .mech-slot {
-  animation: mech-cluster-out 190ms var(--ease) both;
-  animation-delay: calc(var(--out) + (11 - var(--i, 0)) * 10ms);
-}
-
-/* And back in. On the first mount of a project screen `data-transiting` is
-   already false, so this is also the entrance the bank never had when it
-   arrived from home — it used to be simply *there*, eleven rows at rest,
-   while everything around it came up.
-
-   It is a separate keyframe set from the exit above and has to stay that
-   way: an animation only restarts when its `animation-name` changes, so
-   reusing the entrance with `animation-direction: reverse` would leave the
-   finished exit held and play nothing. Same rule as the frame swap. */
-.mech-bank-col[data-where='project'][data-transiting='false'] .mech-work-rail {
+   The exit these replaced was answering something real — without it the bays
+   kept their pictures while the boxes around them left — but that only
+   applies to a column that is *leaving*, and on a crossing this column does
+   not leave. Only the picture on the stage does. */
+.mech-bank-col[data-booting='false'] .mech-work-rail {
   animation: mech-cluster-fade 700ms 380ms var(--ease) both;
 }
 
-.mech-bank-col[data-where='project'][data-transiting='false'] .mech-slot {
+.mech-bank-col[data-booting='false'] .mech-slot {
   animation: mech-cluster-in 420ms var(--ease) both;
   animation-delay: calc(620ms + var(--i, 0) * 55ms);
-}
-
-/* ---- and home's entrance, which counts from the cover ----
-
-   The same two animations on the same two beats, hung off `data-covered`
-   instead. That difference is load-bearing rather than cosmetic: `transiting`
-   is already false when this column mounts on home, which is *during the
-   boot*, so the project screen's rules above would deal the whole bank out
-   behind the cover and the panel would come up with eleven slots already
-   sitting there. `covered` is the flag every other block on home waits for.
-
-   These were `.mech-cluster[data-covered='false'] .mech-work-rail` and
-   `.mech-slot` until the rail moved out of the cluster; same numbers, same
-   keyframes, one selector further out. */
-.mech-bank-col[data-where='home'][data-covered='false'] .mech-work-rail {
-  animation: mech-cluster-fade 700ms 380ms var(--ease) both;
-}
-
-.mech-bank-col[data-where='home'][data-covered='false'] .mech-slot {
-  animation: mech-cluster-in 420ms var(--ease) both;
-  animation-delay: calc(620ms + var(--i, 0) * 55ms);
-}
-
-/* Home leaves on the cluster's clock, not a project screen's — the rail is one
-   block of a panel going down and has to leave in step with the rest of it.
-   The exit rules above are shared; only `--out` differs. */
-.mech-bank-col[data-where='home'] {
-  --out: 560ms;
 }
 
 /* The rail fills whatever column it is given rather than declaring
@@ -1793,11 +1759,12 @@
   animation: mech-cluster-unfade 240ms var(--out) linear both;
 }
 
-/* The slots undeal from the bottom of the rail up — the deal backwards,
-   matching `dealt` in MechBank.tsx, which runs the subjects out of their bays
-   in the same order on the same beat. That rule is in the bank's own block
-   above for both screens (`[data-transiting='true'] .mech-slot`), because the
-   rail is no longer a descendant of this one; home only differs in `--out`. */
+/* The slots do not undeal with the panel. They used to — the deal backwards,
+   from the bottom of the rail up — and that rule is gone along with the rest
+   of the bank's handover; see *the bank deals in once* above for the 1211ms
+   it was costing. The rail is not a descendant of this element and no longer
+   leaves with it: the panel around it goes down, and the list of the work
+   stays up. */
 
 .mech-cluster[data-leaving='true'] .mech-tach {
   animation: mech-cluster-out 240ms calc(var(--out) + 60ms) var(--ease) both;

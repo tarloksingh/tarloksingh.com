@@ -501,11 +501,24 @@ export default function MechSlots({ up }: { up: boolean }) {
          begin dealing until 620ms, so the first rendered frame lands long
          before anything is transparent enough to show it missing. */
       frameloop={up ? 'always' : 'never'}
-      /* Down on a phone, and it stays down. This is not what fixed the
-         scrolling — see above — but twelve subjects on a handset is still
-         twelve subjects, and a bank of hundred-and-fifty-unit bays behind a
-         scan-line veil is not where anyone is counting samples. */
-      dpr={narrow ? 1 : [1, 1.75]}
+      /* **`dpr` 1 on a phone was not a low setting, it was a magnifying
+         glass.** Measured at ratio 1.0 on a dpr-3 screen (`canvas.mjs
+         phone`), every rendered pixel was being blown up over *nine* device
+         pixels — which is why the bays read as crisp-jagged rather than
+         soft, and it is a different defect from having no MSAA. 2 is the
+         floor at which a bay is merely undersampled instead of magnified.
+
+         **`antialias` stays off here, and that asymmetry with the stage is
+         the point.** drei's `View` scissors, so what this canvas *draws* is
+         only the bays actually on screen — but what it *allocates* is the
+         whole thing, and on narrow that is a 343×1494 element over the
+         scrolling bank. At `dpr` 2 that is a 686×2988 buffer; 4× MSAA on it
+         is roughly 65MB of driver-side memory, which is how a WebGL context
+         gets lost on iOS Safari. A lost context here takes all eleven
+         subjects with it. The stage is a 390×410 box and can afford the
+         samples this one cannot — see the note on its `dpr` in
+         `MechStage.tsx`. */
+      dpr={narrow ? 2 : [1, 1.75]}
       gl={{ antialias: !narrow, alpha: true, powerPreference: 'high-performance' }}
       camera={{ position: [0, 0, 3.1], fov: 34 }}
       onCreated={({ gl }) => {
