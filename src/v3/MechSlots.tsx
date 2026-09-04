@@ -1,11 +1,11 @@
-import { Suspense, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { Suspense, useContext, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Center, Resize, useGLTF, View } from '@react-three/drei'
-import { ACESFilmicToneMapping, PMREMGenerator, type Group, type Texture } from 'three'
+import { ACESFilmicToneMapping, BufferGeometry, Mesh, Object3D, PMREMGenerator, type Group, type Texture } from 'three'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import { Piece } from './MechProduct'
-import { Detail } from '../three/detail'
+import { Detail, Precise } from '../three/detail'
 /* The paths only — the map itself lives in a module that imports nothing, so
    that `bank.ts` can ask which projects have a subject without pulling this
    file, and three.js behind it, into the eager chunk. See `subjects.ts`. */
@@ -61,10 +61,13 @@ import { useNarrow } from './narrow'
 const DRACO_PATH = '/draco/'
 
 /** How finely a piece is tessellated *in a bay*, as a fraction of what it was
- *  authored with — see `src/three/detail.tsx`. Half: four facets around a
- *  bevel instead of eight, on a corner a few pixels across in a box seventy-five
- *  pixels tall, and an eighth of the geometry to build. */
-const BAY_DETAIL = 0.5
+ *  authored with — see `src/three/detail.tsx`. A quarter: two facets around a
+ *  bevel instead of eight, on a corner a few pixels across in a box
+ *  seventy-five pixels tall. Read the note in that file before moving it —
+ *  this number does nothing on a phone and is worth about 65ms of the
+ *  entrance on a wide window, which is the opposite of where it looks like it
+ *  should help. */
+const BAY_DETAIL = 0.25
 
 /** How large a subject sits in its slot, and how it is turned to face out of
  *  it.
@@ -102,12 +105,69 @@ const FALLBACK = { scale: 1, turn: 0.3, tilt: 0.05, lift: 0 }
  *  a plain clone copies the meshes without rebinding them to the copied
  *  skeleton — the bones move and the skin stays behind. `MechCast.tsx` has the
  *  same note and the same reason. */
+/* ---- what a bay does not need: forty-seven faces it will never pull ----
+
+   **This is the intro stall.** For a long time the entrance's ~190ms frame
+   was read as the bank's *geometry* — `toCreasedNormals` over eleven bevelled
+   solids — and `PERFORMANCE.md` proposed cheaper boxes and shared boxes as
+   the two candidates most likely to be free. Both were built, and on a phone
+   both measured as **exactly nothing**. What the long task actually contained
+   was one bay, and most of it was this.
+
+   `adam-face.glb` carries 47 morph targets over 113,502 vertices, and three
+   turns those into a `DataArrayTexture` — `WebGLMorphtargets.update` — on the
+   frame the mesh first renders. Packing it, and the `texSubImage3D` that
+   follows, is the largest single item in the entrance's long task, and it
+   also puts `USE_MORPHTARGETS` into the shader so the first link is bigger
+   too.
+
+   Nothing in a bay drives one. `Drift` above turns the subject, tilts it and
+   floats it, and never touches an influence; the eyes and the mouth belong to
+   the project screen, where `FaceScene` reads `gaze` and `drift`. So the bay's
+   copy simply does not carry them.
+
+   **The geometry has to be a new object, and its attributes must not be.**
+   `SkeletonUtils.clone` shares geometry with the original, so deleting
+   `morphAttributes` off it would take them off Mr. Takahashi's project screen
+   as well — he would arrive on the stage unable to blink. A fresh
+   `BufferGeometry` holding *the same* `BufferAttribute` objects costs nothing
+   to make and shares its GPU buffers with the original, because three keys
+   those off the attribute rather than off the geometry.
+
+   The bounding box is copied over too: it is what `precise={false}` reads
+   (see `Precise` in `src/three/detail.tsx`), and a geometry that has never
+   been measured would make the bay measure it again. */
+function stripMorphs<T extends Object3D>(root: T) {
+  root.traverse((node) => {
+    if (!(node instanceof Mesh)) return
+    const from = node.geometry as BufferGeometry
+    if (!from.morphAttributes || Object.keys(from.morphAttributes).length === 0) return
+
+    const to = new BufferGeometry()
+    to.name = from.name
+    for (const [name, attribute] of Object.entries(from.attributes)) to.setAttribute(name, attribute)
+    if (from.index) to.setIndex(from.index)
+    for (const g of from.groups) to.addGroup(g.start, g.count, g.materialIndex)
+    if (!from.boundingBox) from.computeBoundingBox()
+    to.boundingBox = from.boundingBox
+    to.boundingSphere = from.boundingSphere
+
+    node.geometry = to
+    node.morphTargetInfluences = undefined
+    node.morphTargetDictionary = undefined
+  })
+  return root
+}
+
 function Gltf({ src }: { src: string }) {
   const { scene } = useGLTF(src, DRACO_PATH)
-  const copy = useMemo(() => cloneSkinned(scene), [scene])
+  const copy = useMemo(() => stripMorphs(cloneSkinned(scene)), [scene])
+  /* Both of these walk every vertex by default, and one of these files is a
+     face with 47 morph targets — see `Precise` in `src/three/detail.tsx`. */
+  const precise = useContext(Precise)
   return (
-    <Center>
-      <Resize>
+    <Center precise={precise}>
+      <Resize precise={precise}>
         <primitive object={copy} />
       </Resize>
     </Center>
@@ -258,7 +318,12 @@ function Slot({ id, live, show }: { id: string; live: boolean; show: boolean }) 
               entrance, which is a second of main thread on the one beat the
               panel is coming up. */}
           <Detail.Provider value={BAY_DETAIL}>
-            {glb ? <Gltf src={glb} /> : <Piece project={id} />}
+            {/* And measured off the geometry rather than vertex by vertex —
+                the other half of what a bay asks for less of, and the larger
+                half. See `Precise` in `src/three/detail.tsx`. */}
+            <Precise.Provider value={false}>
+              {glb ? <Gltf src={glb} /> : <Piece project={id} />}
+            </Precise.Provider>
           </Detail.Provider>
         </Drift>
       </Suspense>

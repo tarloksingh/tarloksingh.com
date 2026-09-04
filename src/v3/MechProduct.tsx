@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef } from 'react'
+import { lazy, Suspense, useContext, useEffect, useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Center, Float, Resize } from '@react-three/drei'
 import { MathUtils, Vector3 } from 'three'
@@ -9,6 +9,7 @@ import { SpriteFlipbook } from '../three/CapsuleStage'
 import type { Mesh, MeshStandardMaterial } from 'three'
 import { drift, gaze } from './subject'
 import { PIECE_FALLBACK, PRODUCT_DEFAULTS, type PieceTuning, type ProductTuning } from './productTuning'
+import { Precise } from '../three/detail'
 import type { PieceId } from './subjects'
 import type { ReactNode } from 'react'
 import type { Group, PerspectiveCamera } from 'three'
@@ -265,9 +266,13 @@ export function Piece({ project }: { project: string }) {
      in monitor units — and the gallery they came from fitted them into a case
      for exactly this reason. `size` on the panel is how a card gets to read
      as a card again afterwards. */
+  /* A bay measures cheaply; everything else keeps the vertex-by-vertex box it
+     always had. See `Precise` in `src/three/detail.tsx`. */
+  const precise = useContext(Precise)
+
   return (
-    <Center>
-      <Resize>{node}</Resize>
+    <Center precise={precise}>
+      <Resize precise={precise}>{node}</Resize>
     </Center>
   )
 }

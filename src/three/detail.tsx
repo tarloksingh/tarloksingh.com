@@ -26,12 +26,21 @@ import type { ComponentProps } from 'react'
    geometry they always did. `MechSlots` provides a lower value around the
    pieces in the bank, and only there.
 
-   At 0.5 a box is 1188 vertices instead of 3876 and ten of them take 5ms
-   rather than 41. What changes on screen is the number of facets around a
-   bevel whose radius is about five per cent of the object — four instead of
-   eight, on a corner a few pixels across, with creased normals doing the
-   shading either way. If a bay ever grows large enough for that to show, raise
-   the number; it is one value in one place.
+   At 0.25 a box is a few hundred vertices instead of 3876. What changes on
+   screen is the number of facets around a bevel whose radius is about five
+   per cent of the object — two instead of eight, on a corner a few pixels
+   across in a box seventy-five pixels tall, with creased normals doing the
+   shading either way. It was 0.5 first, and taken to 0.25 when the bays were
+   measured against each other and the two were indistinguishable; if a bay
+   ever grows large enough for that to show, raise the number. It is one value
+   in one place (`BAY_DETAIL` in `MechSlots.tsx`).
+
+   **It is worth much less than it looks, and only on a wide window.** Halving
+   this again was measured on a 4× throttled phone as *no change whatsoever* —
+   a phone has one or two bays on screen and the cost there is the face, not
+   the boxes. On a 1512×900 desktop, where seven bays build, it took the
+   entrance's remaining long task from 65ms to none. Do not reach for it as a
+   fix for anything a handset is doing.
 
    **A failure here is silent and safe.** If the context did not reach a piece
    — a portal that does not forward it, say — `detail` stays 1 and the geometry
@@ -40,6 +49,37 @@ import type { ComponentProps } from 'react'
 
 /** Multiplier on a rounded box's segment counts. 1 is as authored. */
 export const Detail = createContext(1)
+
+/* ---- how a subject is measured, as against how finely it is built ----
+
+   drei's `Center` and `Resize` both default to `precise`, and a subject on
+   this site is always inside both — one to put its middle at the origin, one
+   to normalise it to a unit cube. `precise` means `Box3.setFromObject(obj,
+   true)`, which does not read the geometry's own bounding box: it walks
+   **every vertex** through `Object3D.getVertexPosition`, and that function
+   applies every morph influence and every skin weight per vertex.
+
+   On `adam-face.glb` that is 113,502 vertices against 47 morph targets, twice
+   — once for `Center` and once for `Resize` — on the single frame that bay
+   mounts. Measured at 49ms of the entrance's 194ms long task on a 4×
+   throttled phone. And it is not geometry the way `Detail` above is: cutting
+   the segment counts does not touch it, which is why the two are separate
+   knobs and why halving `Detail` alone measured as doing nothing at all.
+
+   `precise={false}` uses `geometry.boundingBox` instead, computed once per
+   geometry and cached on it — so eleven subjects sharing a cloned scene share
+   one measurement. What it costs is that the box is the mesh's *rest* box
+   rather than its posed one. Nothing in a bay is posed: the influences are
+   zero and the skeletons are at bind pose on the frame this runs, and the
+   bays were checked against the precise ones on screen.
+
+   Provided by the bank and nowhere else, exactly like `Detail`. A project
+   screen, the v2 gallery and the unmounted cast all keep the precise
+   measurement they always had, so if the rest box ever *is* looser than the
+   posed one, the place it would show is the place still measuring properly. */
+
+/** Whether a subject's bounding box is measured vertex by vertex. */
+export const Precise = createContext(true)
 
 type Props = ComponentProps<typeof RoundedBox>
 

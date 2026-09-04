@@ -12,7 +12,8 @@ the shape it is; this file says how fast it runs and what is left.
 `scripts/perf/` are the whole apparatus. This page has been wrong repeatedly,
 always the same way — *the most conspicuous thing on the screen is not the
 expensive thing on the screen.* The boot ripple has now been blamed and
-cleared **four** times.
+cleared **five** times — the last one was the intro stall, which turned out to
+be forty-seven morph targets on a face seventy-five pixels tall.
 
 ---
 
@@ -31,6 +32,7 @@ node scripts/perf/boot.mjs   phone 4          # cold first load, staged
 node scripts/perf/frames.mjs phone 4          # frame durations, banded
 node scripts/perf/canvas.mjs phone            # backing store + sample counts
 node scripts/perf/nav.mjs    desktop 4        # what a crossing costs
+node scripts/perf/intro.mjs  phone 4 5        # long tasks and gaps, medianed
 node scripts/perf/models.mjs                  # no browser needed
 
 node scripts/compress-models.mjs --dry        # what the GLBs weigh
@@ -107,8 +109,8 @@ four, which spread 1603–1675ms at the cover.
   intro       4080ms        2280ms
   INTRO-DONE  6080ms        3903ms   ← home settles 2.2s sooner
 
-  long tasks  6 / 2029ms    2 /  271ms     ← main thread busy, −87%
-  worst task     1531ms        214ms
+  long tasks  6 / 2029ms    1 /   50ms     ← main thread busy, −98%
+  worst task     1531ms         50ms
   models         12.0 MB       3.3 MB
 ```
 
@@ -195,7 +197,37 @@ on most frames, ~40% never painted. Both directions are on `requestAnimationFram
 now with the count computed from **elapsed time**, which is what keeps the
 authored pace instead of re-timing every line to the display.
 
-### 7. Tooling fixed along the way
+### 7. The intro stall: forty-seven morph targets in a seventy-five-pixel bay
+
+The last thing on this page that read as *broken* rather than slow — the intro
+animation stopping dead partway across a phone and then completing. One 184ms
+long task in the entrance band, and it was one bay: `adam-face.glb`'s 47 morph
+targets, packed into a `DataArrayTexture` by three on the frame the mesh first
+renders and then walked vertex-by-vertex twice more by drei's `Center` and
+`Resize`. `stripMorphs` in `MechSlots.tsx` gives the bay's clone a geometry
+with the morph attributes left off; nothing in a bay drives one.
+
+Phone, 4×, median of nine: entrance long tasks **184ms → 0**, whole-load long
+tasks **244ms → 50ms**, worst frame in the band **192ms → 43ms**, frames drawn
+in the band 60–75 → **84–88**.
+
+Two smaller things shipped with it, and **neither is worth anything on a
+phone** — a handset has one or two bays on screen and the cost there is the
+face. On a 1512×900 desktop, where seven build, together they take the
+entrance's remaining 65ms to none:
+
+- **`Precise`** in `src/three/detail.tsx`. drei's `Center` and `Resize` both
+  default to walking every vertex; a bay reads the geometry's cached bounding
+  box instead. 49ms of the baseline task.
+- **`BAY_DETAIL` 0.5 → 0.25.** Checked on screen against the old one and
+  indistinguishable at bay size.
+
+Five candidates were built behind a `?intro=` URL flag first, and the two this
+file predicted would win did nothing at all. That comparison is the reason the
+entry in **ruled out** below is as long as it is; read it before proposing any
+of them again.
+
+### 8. Tooling fixed along the way
 
 - **`serve.mjs` now answers Range requests.** It returned 200 with the whole
   body and ignored `Range`. Desktop Chrome tolerates that for `<video>`; **iOS
@@ -214,6 +246,14 @@ authored pace instead of re-timing every line to the display.
   unrelated install. `optimizeDeps.exclude` in `vite.config.ts`.
 - **The revolver is on an 85mm lens** instead of 18, which was a fisheye and
   read worst on a phone where the subject is largest.
+- **`intro.mjs` reads long tasks as well as frame gaps**, medianed over N
+  loads, banded, and reporting the **whole load** beside the band. That last
+  column is what separated a fix from a relocation: three candidates emptied
+  the entrance band and every one of them had simply put the stall somewhere
+  else. A single load of this page spreads about two to one on the worst
+  frame, so nothing here should be read off one run.
+- **`frames.mjs` takes a path**, so a variant on a query string can be
+  measured without editing the script.
 
 ---
 
@@ -232,34 +272,49 @@ next entry.
 **The ripple is what is on screen when the entrance lands on top of it.** That
 is the whole illusion, and it is why it keeps getting blamed.
 
-### The entrance's worst frame is one subject's build, not scheduling
+### The entrance's worst frame — solved, and not by any of the five candidates
 
-Two mechanisms were tried against the ~240ms frame and **neither moved it**:
+**This entry used to be open work and it is now done.** It is kept because
+three of the five things proposed against it are still wrong, and two of them
+look right in a measurement that only reads the entrance band.
 
-- **One geometry build per animation frame** (a module-level rAF queue in
-  `MechSlots`): 264/188/198ms against a 243ms baseline. The note in that file
-  says builds "queue up nose to tail", which reads like several landing
-  together — but `arrive` *already* staggers them 55ms apart, so the queue
-  rarely holds more than one. **It is one build that is itself a quarter of a
-  second**, not several colliding.
-- **Gating `Track`'s per-frame `getBoundingClientRect` on the ripple being
-  gone**: 256/230/284ms. A whole-load CPU profile puts that call second in self
-  time (354ms), which is what made it look promising.
+The frame was one bay's first build, and the bay was Mr. Takahashi's. It was
+**not** geometry: 47 morph targets over 113,502 vertices, packed into a
+`DataArrayTexture` by three the frame the mesh first renders, and walked
+vertex-by-vertex twice more by drei's `Center` and `Resize`, both of which
+default to `precise` and apply every morph influence per vertex. `stripMorphs`
+in `MechSlots.tsx` gives the bay's clone a geometry with the morph attributes
+left off. Phone, 4×, median of nine: entrance long tasks **184ms → 0**, whole
+load **244ms → 50ms**, worst frame in the band **192ms → 43ms**.
 
-Both are reverted. What the frame actually is, from a profile bucketed to the
-busiest 300ms rather than averaged over the load:
+Full account, including the profile and the trap in cloning the geometry, in
+**The intro stall was forty-seven faces nobody could see** in `README.md`.
 
-```
-  47ms  15.5%  r                     three.module  (toCreasedNormals)
-  56ms  ~19%   getX / getY / getZ    three.module  (BufferAttribute reads)
-  25ms   8.4%  fromBufferAttribute   three.module
-  19ms   6.2%  getProgramInfoLog     (first shader link)
-  16ms   5.3%  texSubImage3D         (first texture upload)
-   9ms   2.9%  getVertexPosition     (Box3.expandByObject)
-```
+**What was ruled out along the way, so nobody spends it again:**
 
-**Only making that work smaller or moving it off the entrance will help.**
-Scheduling it differently will not. That is open work, and it is item 1 below.
+- **Cheaper bay geometry** (`BAY_DETAIL` 0.5 → 0.25 → the floor) and **shared
+  geometry** (memoising `RoundedBox`'s `ExtrudeGeometry` by its arguments) were
+  the two this file predicted would win. On a phone they measured as **nothing
+  at all** — 184ms against a 184ms baseline. `BAY_DETAIL` did ship at 0.25
+  because on a *desktop*, where seven bays build instead of one, it is worth
+  the last 65ms; the shared-geometry copy of drei's internals was deleted,
+  because with the detail change in place it bought nothing.
+- **Building behind the cover, building after the entrance, and dealing the
+  bank later** all take the entrance band to zero and none of them removes any
+  work. Whole-load long tasks: 254ms, 380ms and 380ms against a 244ms
+  baseline. The first puts a 190ms frame into the ripple; the other two put a
+  bigger one into the two seconds after the entrance. **A band-only reading
+  cannot tell a fix from a relocation** — which is why `intro.mjs` reports the
+  whole load next to the band.
+- **One geometry build per animation frame** (a module-level rAF queue) and
+  **gating `Track`'s per-frame `getBoundingClientRect`**: 264/188/198ms and
+  256/230/284ms against a 243ms baseline. Both reverted, before any of the
+  above.
+
+**And frame gaps out of headless are half fiction.** A profile of the worst gap
+in the entrance came back 46ms `(program)` and 29ms `(idle)` — three quarters
+of a "frame" in which the main thread had nothing to do. Long tasks are main
+thread by definition. `intro.mjs` prints both.
 
 ### There is already a loading gate. Do not add a second one.
 
@@ -271,73 +326,7 @@ ripple gets an idle thread. What it lacks is a *voice* — see item 3.
 
 # Open work
 
-## 1. The intro stall — **build several, deploy them, pick one**
-
-**This is the priority, and the way it is to be done is not "pick the best fix
-and ship it".** Build the candidates below so they can all be seen on a real
-phone against each other, deploy that, and decide from what it looks like.
-Measuring will tell you which is fastest; only looking will tell you which is
-acceptable, and every one of these trades something visible.
-
-### What the defect is
-
-`frames.mjs` puts a **~240ms frame** in the entrance band on a phone. It lands
-while the ripple is still on screen — the ripple runs to ~2320ms, the cover
-lifts at ~1650ms — so what a person sees is *the intro animation stopping dead
-partway across and then completing*. That is the reported symptom and it is
-real; the ripple is the victim, not the cause.
-
-The cost is one bay subject being built for the first time: `toCreasedNormals`
-over a bevelled solid, `Box3` expansion, a first shader link, a first texture
-upload. `arrive` already staggers builds 55ms apart, so this is a single item.
-
-### How to ship the comparison
-
-**One deployment, not four branches.** Put the variant behind a URL flag read
-once at boot — `?intro=a`, `?intro=b`, … defaulting to today's behaviour — so
-the same build can be compared on the same device by editing the address bar.
-Branches would mean four Vercel URLs, four cold caches and no way to A/B on one
-phone. Read it in `Mech.tsx`, thread it to `MechSlots`, and keep the whole thing
-behind one exported const so it is one commit to delete afterwards.
-
-Report, for each variant: `frames.mjs phone 4` entrance band (worst, >33ms
-count), `boot.mjs` COVER and INTRO-DONE, and a screenshot of a bay at rest.
-
-### The candidates
-
-**A — cheaper bay geometry.** `BAY_DETAIL` in `MechSlots.tsx` is `0.5` and
-multiplies drei `RoundedBox`'s `smoothness`/`bevelSegments` through
-`src/three/detail.tsx`. Take it to `0.25`, and separately to `0`. At a
-75-pixel bay the bevel is a few pixels; the question is only whether the
-silhouette survives. **Cheapest to try, least visual risk, try it first.**
-
-**B — share the geometry.** `toCreasedNormals` runs per instance, and the
-bays repeat: `DiscHolder`, `PosStation`, `Phone3D`, `WyteCard` and
-`VideoFrame` between them build 35 `RoundedBox`es. Memoise by
-`args + smoothness + bevelSegments` in `detail.tsx` and hand the same
-`BufferGeometry` to every box that matches. **Zero visual change if it works**,
-which also makes it the one to verify hardest — check a bay is pixel-identical.
-
-**C — build behind the cover.** The boot already holds ~1.6s with the cover
-down and the thread mostly idle (`primed`). Build the bays' geometry *there*,
-before the ripple starts, instead of after it. Extend the existing gate rather
-than adding a second one — see *ruled out*. Risk: it lengthens the cover, so
-measure COVER, not just the frame.
-
-**D — do not build during the entrance at all.** Hold every bay subject until
-the entrance has settled (the name finished typing), so the boxes deal in empty
-and the subjects arrive after. Honest about the trade: it moves the cost
-somewhere quieter rather than removing it, and the bank is visibly late.
-
-**E — de-collide by timing.** Move the bank's deal to after the typing settles.
-`PERFORMANCE.md` has proposed this twice and it has never been tried because it
-is a choreography change and therefore a design call. It is on this list so it
-can be *seen* alongside the others rather than argued about.
-
-A and B are the two that could be strictly free. C, D and E all trade
-something. Expect the answer to be A+B together.
-
-## 2. Give the existing load gate something to say
+## 1. Give the existing load gate something to say
 
 1.9s is already being spent on black behind a bare grid, which reads as a
 broken site rather than a loading one. A progress readout in the machine's own
@@ -347,17 +336,16 @@ already going by. The inputs exist: `Warmth.tsx` subscribes to drei's
 **Do not add a second gate in front of the existing one**; that makes the site
 strictly slower.
 
-## 3. Home replays its entrance in full on every arrival
+## 2. Home replays its entrance in full on every arrival
 
 `MechCluster` is home-only, so returning home is a fresh mount and every beat in
 `IN` runs again from zero — the dials sweep their whole range, the name types,
 the intro types all 190 characters. A machine that has already been switched on
 should not switch on again. A session flag giving second and later arrivals a
 compressed entrance (beats at about a third, text placed rather than typed) is
-the fix. Design call; worth doing alongside item 1's deployment so both can be
-looked at once.
+the fix. Design call; worth doing alongside item 1 so both can be looked at once.
 
-## 4. `adam-face.glb` has 8-bit normals
+## 3. `adam-face.glb` has 8-bit normals
 
 It stores normals as `i8 normalized` — 8 bits per axis, base mesh plus all 47
 morph targets, from a `gltfpack -vn 8` default. It is the only model in the set
@@ -374,7 +362,7 @@ replacement — 2,781 verts against 113,502, and differently named morphs
 It is also now the single heaviest thing home fetches, 2.2 MB of 3.3, so a
 re-export is worth pairing with a meshopt pass.
 
-## 5. Loose end: `mr-takahashi.glb` ships and is unreachable
+## 4. Loose end: `mr-takahashi.glb` ships and is unreachable
 
 556 KB, tracked, referenced only from `src/archive/`, which is out of the build
 — but `public/` is copied verbatim, so Rollup dropping the code does not drop

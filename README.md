@@ -2843,6 +2843,105 @@ numbers, so it is not in the file. The desktop's remaining 434ms is diffuse:
 shader compilation, texture upload and the first render of four subjects that
 have never been drawn. Both are the cost of the thing actually happening.
 
+### The intro stall was forty-seven faces nobody could see
+
+The complaint: on a phone, the intro animation stops dead partway across and
+then completes. It is the last thing on this page that read as broken rather
+than as slow, and it survived every round of work above.
+
+**It is one long task, and it lands under the ripple.** `frames.mjs phone 4`
+puts a ~190ms frame in the band after `ripple-gone`; `boot.mjs` says the whole
+load carries 244ms of long tasks and 184ms of it is that one. The ripple runs
+to about 2320ms and the cover lifts at 1650ms, so the stall happens while the
+ripple is still on screen — which is the fifth time the ripple has been blamed
+for standing in front of something else.
+
+**Everything the ledger expected to fix it did nothing.** `PERFORMANCE.md`
+listed five candidates and predicted "A+B together": cheaper bay geometry, and
+sharing the geometry between boxes with the same arguments. Both were built,
+put behind a `?intro=` flag so one deployment could be compared on one device,
+and measured. On a phone, median of five loads:
+
+| variant | entrance long tasks | whole load |
+|---|---|---|
+| today | 184ms | 244ms |
+| A — `BAY_DETAIL` 0.25 | 186ms | 228ms |
+| B — shared geometry | 186ms | — |
+| C — build behind the cover | **0ms** | 254ms |
+| D — build after the entrance | **0ms** | 380ms |
+| E — deal the bank later | **0ms** | 380ms |
+
+A and B are inside the noise. C, D and E empty the entrance band and the
+whole-load column shows what they actually did: **moved it**. C puts a 190ms
+frame into the ripple instead, D and E put it into the two seconds after the
+entrance and make it bigger. Three ways to relocate a stall and none to remove
+one.
+
+**So it was profiled instead of reasoned about.** `Profiler` over the long
+task, self time, on the baseline:
+
+```
+  49ms  Box3.expandByObject / getVertexPosition / getX,Y,Z
+  26ms  WebGLMorphtargets.update  (+ 4ms texSubImage3D)
+  19ms  MeshoptDecoder.decodeGltfBuffer
+  17ms  getBoundingClientRect      (Track, per frame)
+  12ms  getProgramInfoLog          (first shader link)
+   7ms  bufferData
+```
+
+Not eleven bays. **One bay**, and it is Mr. Takahashi's. `adam-face.glb`
+carries 47 morph targets over 113,502 vertices, and two separate things on
+that list are the morph targets:
+
+- three packs every target into a `DataArrayTexture` the frame the mesh first
+  renders — `WebGLMorphtargets.update`, plus the upload behind it, plus
+  `USE_MORPHTARGETS` making the first shader link bigger.
+- drei's `Center` and `Resize` both default to `precise`, which does not read
+  the geometry's bounding box: it walks every vertex through
+  `Object3D.getVertexPosition`, and that applies **every morph influence per
+  vertex**. Twice, because the subject is inside both.
+
+Nothing in a bay drives a morph. `Drift` in `MechSlots.tsx` turns the subject,
+tilts it and floats it; the eyes and the mouth belong to the project screen,
+where `FaceScene` reads `gaze` and `drift`. So the bay's copy does not carry
+them: `stripMorphs` walks the clone and gives every mesh a fresh
+`BufferGeometry` holding **the same** `BufferAttribute` objects with
+`morphAttributes` left off.
+
+Both halves of that sentence matter. `SkeletonUtils.clone` shares geometry with
+the original, so deleting `morphAttributes` off it would take them off the
+project screen as well and Mr. Takahashi would arrive on the stage unable to
+blink. And the attributes must be the same objects, because three keys its GPU
+buffers off the attribute rather than off the geometry — a deep clone would
+upload 113,502 vertices twice.
+
+| phone, 4×, median of 9 | before | after |
+|---|---|---|
+| entrance worst frame | 192ms | **43ms** |
+| entrance long tasks | 184ms | **0ms** |
+| whole-load long tasks | 244ms | **50ms** |
+| frames in the entrance band | 60–75 | **84–88** |
+
+**The stall is gone rather than moved** — that is what the whole-load column is
+for, and it is the reason it is in `intro.mjs`.
+
+Two smaller things shipped with it and both are written up where they live:
+`Precise` in `src/three/detail.tsx` (the per-vertex measurement, off in a bay —
+49ms of pure waste in a box seventy-five pixels tall) and `BAY_DETAIL` at 0.25
+rather than 0.5. **Neither is worth anything on a phone**, which is the whole
+lesson of the table above: a handset has one or two bays on screen and the cost
+there is the face. On a 1512×900 desktop, where seven bays build, they take the
+entrance's remaining 65ms to none.
+
+`?intro=` and `src/v3/intro.ts` are gone, as designed — one commit to add, one
+to delete. `scripts/perf/intro.mjs` stayed: it is the script that reads long
+tasks as well as frame gaps, and the distinction between the two is what kept
+C, D and E from being shipped as fixes. A profile of the worst *gap* in the
+entrance came back 46ms `(program)` and 29ms `(idle)` — three quarters of a
+"frame" in which the main thread had nothing to do and the compositor simply
+had not presented, which is the headless artifact `cdp.mjs` warns about. A long
+task is main thread by definition. Read both.
+
 ### Still slow to load on a phone, and the splitting that was not splitting
 
 Reported after all of the frame-rate work above, and it is a different
