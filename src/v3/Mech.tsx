@@ -411,6 +411,25 @@ interface LeadersProps {
 const IN_STEP = { from: 240, by: 170 }
 const OUT_STEP = { by: 90, most: 260 }
 
+/** Safari leaves a leader's line unpainted at its pre-fit position — mark
+ *  visible, line stub short, never reaching the card — on roughly a third of
+ *  the leaders on a first, cold load. Measured cause: `fitCards`'s correction
+ *  (below) can land after `.mech-leader-card`'s own entrance animation has
+ *  already started, and any *active* CSS `animation` on that card — fade
+ *  alone is enough, the `scale()` in `mech-card` was not required to
+ *  reproduce it — promotes it to its own compositing layer in Safari. Once
+ *  that layer exists, the sibling `<line>` in the same SVG `<g>` stops
+ *  painting the correction, even though its own x1/y1 and computed
+ *  stroke-dasharray/dashoffset are correct throughout — confirmed by reading
+ *  both back live, not by eye. Killing the card's animation outright (no
+ *  compositing layer to go stale) fixed every leader on every reload tried;
+ *  nothing short of that did — not reordering the fit passes, not bypassing
+ *  the `--l` custom property, not forcing a layout or paint flush. Scoped to
+ *  Safari only: Chrome never reproduces this, and the card's open-from-corner
+ *  entrance is worth keeping everywhere it isn't broken. */
+const LEADER_CARD_INSTANT =
+  typeof navigator !== 'undefined' && /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent)
+
 /* ---- fitting a card to its own lines ----
 
    A card is `width: max-content` capped at whatever room its seat has, so a
@@ -680,7 +699,7 @@ function Leaders({ notes, box, space, floats, lit, onLit }: LeadersProps) {
                 data-x={leader.sx === 1 ? 'left' : 'right'}
                 data-y={leader.sy === 1 ? 'top' : 'bottom'}
               >
-                <p className="mech-leader-card">{leader.value}</p>
+                <p className="mech-leader-card" data-instant={LEADER_CARD_INSTANT}>{leader.value}</p>
               </div>
             </foreignObject>
           </g>

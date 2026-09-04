@@ -1278,6 +1278,16 @@
   animation: mech-card 380ms var(--ease) calc(var(--d) + 430ms) both;
 }
 
+/* Safari only, set from `LEADER_CARD_INSTANT` in Mech.tsx — see the comment
+   there. Any active `animation` on this element, whatever it animates, is
+   enough to make Safari leave the sibling leader line unpainted at its
+   pre-fit position on a cold load. The card just appears with the rest of
+   its leader's cascade instead of opening from the corner. */
+.mech-leader-card[data-instant='true'] {
+  opacity: 1;
+  animation: none;
+}
+
 @keyframes mech-card {
   from {
     opacity: 0;
