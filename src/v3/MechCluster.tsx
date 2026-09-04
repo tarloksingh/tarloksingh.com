@@ -1,6 +1,7 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import Segment from './Segment'
 import Typed from './Typed'
+import { switchedOn, switchOn } from './ignition'
 import { useNarrow } from './narrow'
 import { CELLS as BANK_CELLS } from './MechBank'
 import { SLOTS, FIELDS, FIELD_LABEL, type Field } from './bank'
@@ -253,6 +254,17 @@ const IN = {
   arcZero: 1700,
   arcLive: 1960
 }
+
+/** How much of the entrance a *second* arrival gets — see `ignition.ts`. The
+ *  order of the beats is unchanged and every block still arrives in turn; the
+ *  whole sequence is simply played at about a third, which is the difference
+ *  between a machine being switched on and one being come back to.
+ *
+ *  The same number is `--in-k` in `MechCluster.css`, where the blocks' own CSS
+ *  entrances are hung. Two places because a CSS animation cannot read a JS
+ *  timer and a JS timer should not be parsed out of a stylesheet; they are
+ *  next to each other in the same commit and both say so. */
+const AGAIN = 0.35
 
 const reduced = () =>
   typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -963,10 +975,33 @@ export default function MechCluster({ covered, leaving, tuning }: Props) {
      already staggered in CSS and these only have to be *later than* the block
      they sit in. */
   const up = !covered
+
+  /* ---- the second time you arrive, the machine is already on ----
+
+     Read **once**, at mount, and held: `switchedOn()` flips during this
+     component's own life, and an entrance that changed pace halfway through
+     because its own last beat landed would be a worse thing than either speed.
+     `again` is what this arrival is, not what the flag currently says.
+
+     Everything below is `beat(...)` rather than `IN.…` — including the two
+     typed lines, which are handed `speed: 0` and place themselves in one frame
+     instead of spelling out. See `ignition.ts` for why this is a module flag
+     and not something stored. */
+  const again = useRef(switchedOn()).current
+  const beat = useCallback((ms: number) => (again ? Math.round(ms * AGAIN) : ms), [again])
+
+  /* And the flag itself, set at the *end* of the entrance rather than at its
+     start — an entrance the reader left two beats into, by opening a project,
+     has not been seen. `arcLive` is the last beat there is. */
+  useEffect(() => {
+    if (!up || again) return
+    const seen = window.setTimeout(switchOn, IN.arcLive)
+    return () => window.clearTimeout(seen)
+  }, [up, again])
   /* Two readings that climb rather than switch on, so they wait for the block
      around them to have finished arriving before they start. */
-  const revUp = useBeat(up, IN.tach)
-  const countsUp = useBeat(up, IN.counts)
+  const revUp = useBeat(up, beat(IN.tach))
+  const countsUp = useBeat(up, beat(IN.counts))
 
   /* The field dials' ignition sweep: all the way round, back to nothing, then
      live. Three timers rather than a keyframe because the dial has no
@@ -987,12 +1022,12 @@ export default function MechCluster({ covered, leaving, tuning }: Props) {
       return
     }
     const timers = [
-      window.setTimeout(() => setArc('full'), IN.arcFull),
-      window.setTimeout(() => setArc('zero'), IN.arcZero),
-      window.setTimeout(() => setArc('live'), IN.arcLive)
+      window.setTimeout(() => setArc('full'), beat(IN.arcFull)),
+      window.setTimeout(() => setArc('zero'), beat(IN.arcZero)),
+      window.setTimeout(() => setArc('live'), beat(IN.arcLive))
     ]
     return () => timers.forEach(window.clearTimeout)
-  }, [up])
+  }, [up, beat])
 
   const slot = picked === null ? null : SLOTS[picked]
 
@@ -1129,11 +1164,14 @@ export default function MechCluster({ covered, leaving, tuning }: Props) {
         <span className="mech-ident-typed">
           {/* Last on the panel, and it types from the moment the cover
               lifts rather than from mount — see `start` on `Typed`. */}
+          {/* Placed rather than spelled on a second arrival: `speed={0}`
+              makes the elapsed-time count `Infinity` on the first frame, so
+              the whole line lands at once — see `Typed.tsx`. */}
           <Typed
             text={NAME}
-            run="cluster-name"
-            delay={1.25}
-            speed={96}
+            run={`cluster-name${again ? '-again' : ''}`}
+            delay={beat(1250) / 1000}
+            speed={again ? 0 : 96}
             caret={false}
             start={up}
             back={covered}
@@ -1187,7 +1225,7 @@ export default function MechCluster({ covered, leaving, tuning }: Props) {
      either side of it — see `.mech-display-role` in MechCluster.css. */
   const roleDisplay = (
     <div className="mech-display mech-display-role" data-on={slot !== null} data-warn>
-      <Segment text={reading} cells={ROLE_CELLS} arrive wait={IN.role} start={up} back={covered} label={reading} warn />
+      <Segment text={reading} cells={ROLE_CELLS} arrive wait={beat(IN.role)} start={up} back={covered} label={reading} warn />
     </div>
   )
 
@@ -1207,7 +1245,7 @@ export default function MechCluster({ covered, leaving, tuning }: Props) {
              the one thing in the column not lining up with anything. */
           align={narrow ? 'center' : 'left'}
           arrive
-          wait={IN.intro}
+          wait={beat(IN.intro)}
           start={up}
           back={covered}
           label="intro"
@@ -1216,7 +1254,15 @@ export default function MechCluster({ covered, leaving, tuning }: Props) {
       </span>
 
       <p className="mech-profile">
-        <Typed text={PROFILE} run="cluster-intro" delay={0.6} speed={9} caret={false} back={covered} backSpeed={3} />
+        <Typed
+          text={PROFILE}
+          run={`cluster-intro${again ? '-again' : ''}`}
+          delay={beat(600) / 1000}
+          speed={again ? 0 : 9}
+          caret={false}
+          back={covered}
+          backSpeed={3}
+        />
       </p>
     </section>
   )
@@ -1224,6 +1270,9 @@ export default function MechCluster({ covered, leaving, tuning }: Props) {
   return (
     <div
       className="mech-cluster"
+      /* Which entrance the CSS blocks play — see `--in-k` in MechCluster.css
+         and `ignition.ts`. */
+      data-again={again}
       data-covered={covered}
       data-leaving={leaving}
       style={{

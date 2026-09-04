@@ -12,6 +12,7 @@ import Tour from './Tour'
 import { tourSeen, takeReplay, useReplaySignal, replayTour, type Flow } from './tourState'
 import MechHud from './MechHud'
 import MechTiles from './MechTiles'
+import MechWarming from './MechWarming'
 import { slotOf } from './bank'
 import { useModelTuning } from './modelTuning'
 import { useProductTuning } from './productTuning'
@@ -1057,6 +1058,11 @@ const CHUNK_CAP = 4000
  *  taking a beat to mount its loader. */
 const WARM_GRACE = 350
 
+/** How long the load readout stays in the tree after the page is primed, so
+ *  it can fade rather than vanish. Longer than its own 260ms exit; it is
+ *  behind the ripple by then and costs a fade on three nodes. */
+const WARMING_OUT = 420
+
 /** How long after the cover lifts the overview fold puts itself down — see
  *  *the overview puts itself down* in the component. Long enough that the side
  *  column's own entrance (`mech-in`, 420ms on a stagger) has finished, so the
@@ -1360,6 +1366,16 @@ export default function Mech({ id, onProject, onHome }: Props) {
      visitor's first real gesture elsewhere resumes it (see `audio()` in
      `sound.ts`, which resumes on every call) — but the visual boot runs
      regardless. */
+  /** The load readout, kept a beat past `primed` so it has an exit rather than
+   *  a cut. Its own fade, under the ripple; see `MechWarming.css`. */
+  const [warming, setWarming] = useState(true)
+
+  useEffect(() => {
+    if (!primed) return
+    const off = window.setTimeout(() => setWarming(false), WARMING_OUT)
+    return () => window.clearTimeout(off)
+  }, [primed])
+
   useEffect(() => {
     if (!primed) return
     sound.boot()
@@ -1876,6 +1892,12 @@ export default function Mech({ id, onProject, onHome }: Props) {
           `MechTiles.tsx`. It has no exit to miss — every cell animates to
           nothing and the layer removes itself. */}
       {primed && <MechTiles />}
+      {/* What the gate above is waiting for, said out loud — see
+          `MechWarming.tsx`. It dresses time that is already going by and
+          holds nothing up: `warming` goes false the frame `primed` goes true,
+          and the readout plays a 260ms exit under the ripple that is already
+          running over it. */}
+      {warming && <MechWarming fonts={fonts} heavy={heavy} quiet={quiet} up={!primed} />}
       {/* Renders nothing and suspends until the 3D chunk lands, so a `null`
           fallback is the whole of what it looks like either way. */}
       <Suspense fallback={null}>

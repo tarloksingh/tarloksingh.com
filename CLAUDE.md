@@ -97,6 +97,8 @@ being false (which is why `navigator.clipboard` does not exist — see
 | `../three/detail.tsx` | How finely a piece is tessellated for whoever is looking — a bay asks for less |
 | `subjects.ts` | **Which project has an object, named without loading one.** Imports nothing, and must not |
 | `Warmth.tsx` | The loader's report, and the signal that the 3D chunk has landed |
+| `MechWarming.tsx`, `MechWarming.css` | **What the boot is waiting for, said out loud** — three gates, named one at a time, over a bar that fills by how many have cleared. Adds no time; see below |
+| `ignition.ts` | Whether home's entrance has run once this page load — the second arrival gets it compressed |
 | `modelTuning.ts`, `wallTuning.ts` | Leva panels, and the source they paste back |
 | `leva-prod.tsx` | Leva's stand-in in a build — see the alias in `vite.config.ts` |
 | `clipboard.ts` | Copying that works off localhost |
@@ -475,6 +477,33 @@ it took. `sound.boot()` went back onto the load; `Typed.tsx` is what every
 readout is drawn with, as it always was. The argument the note was answering
 (the gun is undiscoverable) is still open and is written up in **The note
 before the boot, and why it is gone** in `README.md`.
+
+**The load gate has a voice, and it is not a second gate.** `primed` in
+`Mech.tsx` already holds the screen while the fonts resolve, the 3D chunk
+lands and three's loading manager goes quiet — most of two seconds of black
+behind a bare grid on a phone, which reads as broken rather than loading.
+`MechWarming.tsx` reports what is outstanding — `TYPE`, `SYSTEM`, `ASSETS`,
+then `READY` — on a `Segment`, over a bar whose position is how many of the
+three have cleared. **Nothing is waited for here**: it dresses time that was
+already going by, and it is gone the frame `primed` flips. Do not put anything
+in front of the existing gate — that makes the site strictly slower, and
+`PERFORMANCE.md` says so twice. And there is no honest percentage available:
+`import()` reports no progress, and drei's `useProgress` does not exist until
+the chunk it lives in has already landed. Three real readings beat one
+invented one.
+
+**Home does not switch itself on twice.** `MechCluster` is home-only, so
+coming back from a project is a fresh mount and every beat in `IN` used to run
+again from zero — the dials sweeping their whole range, the name typing, the
+intro spelling out all 190 characters in front of someone who watched it two
+minutes ago. `ignition.ts` is a module flag set at the **end** of the first
+entrance (an entrance abandoned two beats in has not been seen), and a second
+arrival plays the same sequence at about a third: `AGAIN` in `MechCluster.tsx`
+for the beats that are timers, `--in-k` in `MechCluster.css` for the ones that
+are keyframes, and `speed={0}` on the two `Typed` lines, which places them in
+one frame. Same order, same blocks, same assembly — just the speed of coming
+back rather than starting. Per page load, deliberately: a reload *is* the
+machine being switched off and on again.
 
 **Home's narrow layout is reordered around the name.** One tap opens a project
 instead of two, and the field dials are hidden (they reported on a selection

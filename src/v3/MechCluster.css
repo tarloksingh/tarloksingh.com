@@ -1673,8 +1673,30 @@
   }
 }
 
+/* ---- and how much of that entrance this arrival gets ----
+
+   `--in-k` multiplies every duration and delay in the block below. It is 1 on
+   the first arrival and about a third on every one after it, because
+   `MechCluster` is home-only and a fresh mount every time you come back — so
+   without this the panel switches itself on again in front of someone who
+   watched it switch on two minutes ago. See `ignition.ts`, and `AGAIN` in
+   `MechCluster.tsx`, which is the same number for the beats that are timers
+   rather than keyframes.
+
+   A multiplier rather than a second set of rules: the order the blocks arrive
+   in is the entrance, and a compressed entrance that reordered anything would
+   be a different animation rather than the same one played quickly. Every
+   `calc()` below is the authored number, untouched, times this. */
+.mech-cluster {
+  --in-k: 1;
+}
+
+.mech-cluster[data-again='true'] {
+  --in-k: 0.35;
+}
+
 .mech-cluster[data-covered='false'] .mech-display {
-  animation: mech-cluster-strike 420ms 90ms var(--ease) both;
+  animation: mech-cluster-strike calc(420ms * var(--in-k)) calc(90ms * var(--in-k)) var(--ease) both;
 }
 
 /* Last. The name is the one line on this screen that is not a reading — it is
@@ -1683,7 +1705,7 @@
    is held to the same beat by `start` on `Typed`; see `IN` in
    MechCluster.tsx, which is the list these delays have to be read beside. */
 .mech-cluster[data-covered='false'] .mech-ident {
-  animation: mech-cluster-in 620ms 1000ms var(--ease) both;
+  animation: mech-cluster-in calc(620ms * var(--in-k)) calc(1000ms * var(--in-k)) var(--ease) both;
 }
 
 /* Not `.mech-intro` — on the wide layout it rides inside `.mech-tach`'s own
@@ -1691,7 +1713,7 @@
    for a doubled drop. It keeps its own `transform` (the `--intro-y` nudge)
    free this way too. */
 .mech-cluster[data-covered='false'] .mech-tach {
-  animation: mech-cluster-in 620ms 420ms var(--ease) both;
+  animation: mech-cluster-in calc(620ms * var(--in-k)) calc(420ms * var(--in-k)) var(--ease) both;
 }
 
 /* It came in from the left edge it is welded to, which was the panel
@@ -1702,7 +1724,7 @@
    `Segment`) and the three bars climb from empty (`start` on `Counts`). The
    movement moved from the housing into the instruments. */
 .mech-cluster[data-covered='false'] .mech-flank {
-  animation: mech-cluster-fade 620ms 240ms var(--ease) both;
+  animation: mech-cluster-fade calc(620ms * var(--in-k)) calc(240ms * var(--in-k)) var(--ease) both;
 }
 
 /* The slots' own deal is in the bank's block above, not here: the rail is
@@ -1910,7 +1932,7 @@
 /* Narrow drops the intro out of `.mech-tach` into its own place after the
    counts, so it has to carry the boot entrance itself down here. */
 .mech[data-narrow='true'] .mech-cluster[data-covered='false'] .mech-intro {
-  animation: mech-cluster-in 620ms 420ms var(--ease) both;
+  animation: mech-cluster-in calc(620ms * var(--in-k)) calc(420ms * var(--in-k)) var(--ease) both;
 }
 
 .mech[data-narrow='true'] .mech-cluster[data-leaving='true'] .mech-intro {

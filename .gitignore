@@ -4,10 +4,18 @@ node_modules/
 # build output
 dist/
 
-# 3D models for the unmounted scenes (DanceFloorScene, Door) — kept local
-# only. Product models used by the live page are tracked.
+# 3D models for the unmounted scenes (DanceFloorScene, Door, CapsuleHome) —
+# kept local only. Product models used by the live page are tracked.
+#
+# `public/` is copied verbatim into `dist`, so Rollup dropping the code that
+# references one of these does not drop the asset: the only thing that keeps
+# an unreachable model out of the deploy is Vercel cloning a repo that does
+# not contain it. `mr-takahashi.glb` is the earlier face — 2,781 verts against
+# `adam-face.glb`'s 113,502, with differently named morphs — and is referenced
+# only from `src/archive/`, which `App.tsx` does not render.
 public/models/dance/
 public/models/medieval-door.glb
+public/models/mr-takahashi.glb
 
 # macOS
 .DS_Store

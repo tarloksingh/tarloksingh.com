@@ -2942,6 +2942,74 @@ entrance came back 46ms `(program)` and 29ms `(idle)` — three quarters of a
 had not presented, which is the headless artifact `cdp.mjs` warns about. A long
 task is main thread by definition. Read both.
 
+### The gate had no voice, and home switched itself on twice
+
+Two things that are not about milliseconds. Both were on the ledger as design
+calls and both were done in the same pass as the intro stall, because they are
+the rest of what "the boot feels bad" turned out to mean.
+
+**The gate had nothing to say.** `primed` in `Mech.tsx` holds the boot until
+the fonts resolve, three's loading manager goes quiet and the 3D chunk is
+fetched and parsed. On a phone over a real network that is most of two seconds
+of black behind a bare grid — time that is being spent *well*, because the
+ripple then gets an idle thread, and time that reads as a site that is broken.
+
+`MechWarming.tsx` dresses it. Three gates, the outstanding one named on a
+`Segment` — `TYPE`, `SYSTEM`, `ASSETS`, then `READY` — over a bar whose
+position is how many have cleared.
+
+- **It adds no time and it is not a second gate.** Nothing here is waited for.
+  It is mounted while the existing gate is open and removed 420ms after
+  `primed` flips, which is its own fade playing under a ripple that is by then
+  already running. A loading screen in front of the existing one would make
+  the site strictly slower, which is the opposite of the complaint.
+- **It does not invent a percentage, and there is not one to invent.**
+  `import()` reports no progress at all, and drei's `useProgress` does not
+  exist until the chunk it is inside has landed — by which time two of the
+  three gates are already through. So the bar moves in thirds: three real
+  readings rather than one smooth fiction, eased between, which is what any
+  needle does on its way between two true values. It is also the right idiom —
+  a cluster on ignition runs its lamps and reports what it has checked.
+- The three words are literal. `TYPE` is `document.fonts.ready`; a readout that
+  reflows into its own typeface was switched on too early. `SYSTEM` is the 3D
+  chunk, ~386KB to fetch and a couple of megabytes of synchronous main-thread
+  parse. `ASSETS` is the loading manager, which on home is usually nothing and
+  on a project deep link is that project's own model.
+
+**And home switched itself on twice.** `MechCluster` is home-only, so every
+trip back is a fresh mount and every beat in `IN` ran again from zero: the
+dials sweeping their whole range, the name typing, the intro spelling out all
+190 of its characters. A cluster sweeping its needles is a machine reporting
+that it has just been switched on, and the second time you see it on one visit
+that is not true — the reader watched it come up and is now sitting through it
+again to get back to something they already had.
+
+So the second and later arrivals get the same entrance compressed to about a
+third. Not skipped: the blocks arrive in the same order and the screen still
+assembles, at the speed of coming back rather than of starting. Measured on a
+4× throttled desktop, from the cover lifting: the intro complete at **277ms**
+against about 2310, the name at **512ms** against about 2400.
+
+- `ignition.ts` holds the flag, and it is **module scope on purpose**. That is
+  per page load, which is exactly what "this visit" means — a reload is the
+  machine being switched off and on again and should look like one. Nothing is
+  stored, so there is no scratchpad to go stale and no second source of truth
+  to reset.
+- **Set at the end of the first entrance, not at its start.** What it records
+  is that the entrance was *seen*, and one abandoned two beats in — by opening
+  a project — was not.
+- **Read once, at mount, and held.** The flag flips during the component's own
+  life; an entrance that changed pace halfway through because its own last beat
+  landed would be worse than either speed.
+- Two mechanisms because there are two kinds of beat: `AGAIN` in
+  `MechCluster.tsx` scales the timers, `--in-k` in `MechCluster.css` multiplies
+  every duration and delay in the keyframe block. A multiplier rather than a
+  second set of rules — the order the blocks arrive in *is* the entrance, and a
+  compressed one that reordered anything would be a different animation rather
+  than the same one played quickly. The two typed lines take `speed={0}`, which
+  makes `Typed`'s elapsed-time count `Infinity` on the first frame and places
+  the whole line at once.
+
 ### Still slow to load on a phone, and the splitting that was not splitting
 
 Reported after all of the frame-rate work above, and it is a different

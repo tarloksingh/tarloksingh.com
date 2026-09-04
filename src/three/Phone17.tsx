@@ -96,4 +96,23 @@ export default function Phone17({ videoUrl, scale = 1 }: Phone17Props) {
   )
 }
 
-useGLTF.preload(SRC)
+/* ---- and no module-scope preload ----
+
+   There used to be one here, and it was the same bug `MechRider.tsx` was
+   caught by: `MechProduct.tsx` imports this file statically, so
+   `useGLTF.preload(SRC)` at module scope fetched 724KB of handset on **every
+   page** the 3D chunk landed on — Capsule C1's project screen, Mr.
+   Takahashi's, and a phone's home where this bay is eight slots down a rail
+   and may never be built at all. Measured: it was a third of what a project
+   screen for a different project fetched.
+
+   It also worked directly against the thing the bank is built around. A bay's
+   subject is deferred until an `IntersectionObserver` says someone could see
+   it (`useNear` in `MechSlots.tsx`) precisely so eleven models are not
+   requested at once; a module-scope preload is unconditional by construction
+   and skips that gate.
+
+   `useGLTF` inside the component starts the fetch on mount, which is when the
+   thing is actually wanted, and is what every other piece on this site does.
+   **A module-scope preload will outlive whatever made it reasonable** — see
+   item 5 in `PERFORMANCE.md` and the audit under it. */

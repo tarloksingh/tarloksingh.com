@@ -98,8 +98,9 @@ presentation artifact. Quote frame *durations* off the main thread.
 
 ## Done — and what each was worth
 
-Cold load, phone at 4× throttle. *Before* is one run; *after* is the median of
-four, which spread 1603–1675ms at the cover.
+Cold load, phone at 4× throttle. *Before* is one run; *after* is a median,
+re-taken against the current build (`intro.mjs phone 4 7`), which spreads
+1570–1710ms at the cover.
 
 ```
              before        after
@@ -111,7 +112,7 @@ four, which spread 1603–1675ms at the cover.
 
   long tasks  6 / 2029ms    1 /   50ms     ← main thread busy, −98%
   worst task     1531ms         50ms
-  models         12.0 MB       3.3 MB
+  models         12.0 MB       2.6 MB
 ```
 
 Crossings (`nav.mjs`, desktop 4×): the rail's freeze of 1211ms project-to-
@@ -227,7 +228,73 @@ file predicted would win did nothing at all. That comparison is the reason the
 entry in **ruled out** below is as long as it is; read it before proposing any
 of them again.
 
-### 8. Tooling fixed along the way
+### 8. The load gate got a voice, and home stopped switching on twice
+
+Two design calls off the old open list, done in the same pass. Neither is
+worth milliseconds and both are what "the boot feels bad" also meant.
+
+- **`MechWarming.tsx`.** The ~1.9s the gate already holds was black behind a
+  bare grid. It now names the outstanding gate on a `Segment` — `TYPE`,
+  `SYSTEM`, `ASSETS`, then `READY` — over a bar filling by how many of the
+  three have cleared. **It adds no time and it is not a second gate**: mounted
+  while the existing one is open, removed 420ms after `primed`, its own fade
+  playing under a ripple that is already running. And there is no honest
+  percentage to draw — `import()` reports no progress and `useProgress` does
+  not exist until the chunk it is inside has landed — so the bar moves in
+  thirds, which is three real readings rather than one smooth fiction.
+- **`ignition.ts`.** `MechCluster` is home-only and a fresh mount every
+  arrival, so every beat in `IN` ran again from zero. Second and later
+  arrivals now play the same sequence at about a third — `AGAIN` for the
+  timers, `--in-k` for the keyframes, `speed={0}` on the two typed lines.
+  Desktop 4×, from the cover: intro complete **2310ms → 277ms**, name
+  **~2400ms → 512ms**. Module scope, so a reload is still a cold start, which
+  is what a reload is.
+
+Full account in **The gate had no voice, and home switched itself on twice**
+in `README.md`.
+
+### 9. `mr-takahashi.glb` no longer ships
+
+556KB, tracked, referenced only from `src/archive/`, which `App.tsx` does not
+render — but `public/` is copied verbatim into `dist`, so Rollup dropping the
+code did not drop the asset. It is `.gitignore`d now and untracked, alongside
+`public/models/dance/` and `medieval-door.glb`, which were already handled
+exactly this way and for exactly this reason. (This file used to say
+`medieval-door.glb` was gitignored *and* that only a local `dist` was fat —
+the first half was right and it is the whole mechanism.) The file stays on disk locally;
+Vercel builds from a clone that does not contain it. `src/archive/` itself is
+untouched — see `CLAUDE.md`.
+
+### 10. The audit found a second unconditional preload
+
+`Phone17.tsx` had `useGLTF.preload(SRC)` at module scope and `MechProduct.tsx`
+imports it statically, so **724KB of handset was fetched on every page the 3D
+chunk landed on** — Capsule C1's project screen, Mr. Takahashi's, and a phone's
+home, where that bay is eight slots down a rail and may never be built at all.
+Exactly the shape of item 5, found by running the audit item 5 asked for.
+
+It also worked directly against the mechanism the bank is built on: a bay's
+subject waits for an `IntersectionObserver` (`useNear`) so eleven models are
+not requested at once, and a module-scope preload skips that gate by
+construction. Deleted rather than gated — `useGLTF` inside the component
+fetches on mount, which is when the thing is wanted, and is what every other
+piece on this site does. Plus One's own screen is unaffected.
+
+| phone, 4× | before | after |
+|---|---|---|
+| home | 3.3 MB / 3 files | **2.6 MB / 2** |
+| `/p/capsule-c1` | 1.4 MB / 3 files | **0.7 MB / 2** |
+| `/p/openup` | unchanged | unchanged |
+
+`AdamFace.tsx` has the third and it is inert: nothing in the v3 build imports
+it — only `src/site/products.tsx` does, and `App.tsx` renders `V3` alone, so
+the module never evaluates. Worth knowing rather than changing.
+
+```bash
+grep -rn "preload(" src/    # the audit, in full
+```
+
+### 11. Tooling fixed along the way
 
 - **`serve.mjs` now answers Range requests.** It returned 200 with the whole
   body and ignored `Range`. Desktop Chrome tolerates that for `<video>`; **iOS
@@ -320,32 +387,16 @@ thread by definition. `intro.mjs` prints both.
 
 `primed` in `Mech.tsx` holds the boot until `document.fonts` resolves and the
 3D chunk is fetched and parsed, capped by `WARM_CAP` / `CHUNK_CAP`, so the
-ripple gets an idle thread. What it lacks is a *voice* — see item 3.
+ripple gets an idle thread. It has a voice now (`MechWarming.tsx`, item 8) and
+that voice **waits for nothing** — it is mounted alongside the existing gate
+and removed 420ms after it opens. Anything put in *front* of that gate makes
+the site strictly slower, whatever it looks like while it is doing it.
 
 ---
 
 # Open work
 
-## 1. Give the existing load gate something to say
-
-1.9s is already being spent on black behind a bare grid, which reads as a
-broken site rather than a loading one. A progress readout in the machine's own
-idiom — a percentage on a segment display, a filling bar — dresses time that is
-already going by. The inputs exist: `Warmth.tsx` subscribes to drei's
-`useProgress`, and `heavy` / `fonts` / `quiet` in `Mech.tsx` are the gates.
-**Do not add a second gate in front of the existing one**; that makes the site
-strictly slower.
-
-## 2. Home replays its entrance in full on every arrival
-
-`MechCluster` is home-only, so returning home is a fresh mount and every beat in
-`IN` runs again from zero — the dials sweep their whole range, the name types,
-the intro types all 190 characters. A machine that has already been switched on
-should not switch on again. A session flag giving second and later arrivals a
-compressed entrance (beats at about a third, text placed rather than typed) is
-the fix. Design call; worth doing alongside item 1 so both can be looked at once.
-
-## 3. `adam-face.glb` has 8-bit normals
+## 1. `adam-face.glb` has 8-bit normals — **blocked on a re-export**
 
 It stores normals as `i8 normalized` — 8 bits per axis, base mesh plus all 47
 morph targets, from a `gltfpack -vn 8` default. It is the only model in the set
@@ -359,14 +410,27 @@ cheeks and hardens the UV seams. Reverted. `mr-takahashi.glb` is not a drop-in
 replacement — 2,781 verts against 113,502, and differently named morphs
 (`LookUp`/`LookDown` where the code writes `HorizontalLook`/`VerticalLook`).
 
-It is also now the single heaviest thing home fetches, 2.2 MB of 3.3, so a
-re-export is worth pairing with a meshopt pass.
+It is also the single heaviest thing home fetches — **2.2 MB of the 2.6 that
+is left**, now the phone preload above is gone — so a re-export is worth
+pairing with a meshopt pass.
 
-## 4. Loose end: `mr-takahashi.glb` ships and is unreachable
+**Confirmed against the file, so nobody has to look again.** Every accessor,
+counted out of the glTF JSON:
 
-556 KB, tracked, referenced only from `src/archive/`, which is out of the build
-— but `public/` is copied verbatim, so Rollup dropping the code does not drop
-the asset. `public/models/dance/` (9.3 MB) and `medieval-door.glb` are the same
-shape of problem but are **gitignored**, so Vercel builds from a clone that does
-not contain them and only a local `dist` is fat. Deploy weight only, and not
-much of it. `src/archive/` itself must stay — see `CLAUDE.md`.
+```
+  NORMAL          i8  normalized  × 16 primitives
+  POSITION        i16 normalized  × 16
+  TARGET NORMAL   i8  normalized  × 47
+  TARGET POSITION i16 normalized  × 47
+```
+
+There is nothing in the file to recover — eight bits per axis is what was
+written. This is **blocked on the Blender source**, not on anything in this
+repo, and it is the only item on this list that is.
+
+---
+
+**That is the list empty except for one asset.** Everything else on this page
+is either done and measured or ruled out and explained. The next round should
+start by re-running the four commands at the top against a fresh build rather
+than by reading the numbers here — see *the one instruction*.
