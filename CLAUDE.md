@@ -13,12 +13,11 @@ real documentation** — this file is the map for finding things in it.
   reach a visitor and Rollup emits no chunk for them. Two small modules are
   genuinely shared and still imported — see **v3 is the site** in `README.md`.
   Don't "clean up" either directory.
-- **Deployment is the one thing not wired up here.** The domain is still served
-  from a different repo (`tarloksingh/my-portfolio`, the old Vue site) via
-  Vercel, so pushing this still deploys nothing until that Vercel project's
-  connected repo is switched to `tarloksingh/tarloksingh.com`. `vercel.json` is
-  in place for when it is: the routes above are real URLs and 404 on a hard
-  load without its rewrite.
+- **This is what `tarloksingh.com` serves.** Vercel builds this repo's `main`,
+  and a push deploys. `vercel.json`'s catch-all rewrite is what makes the
+  routes above real URLs — without it `/p/<id>` works inside the app and 404s
+  on a hard load, so don't remove it. The old Vue site is still in
+  `tarloksingh/my-portfolio` and is the rollback.
 - `git fetch` first if a branch seems missing — the local clone can be behind.
 
 ## Running it

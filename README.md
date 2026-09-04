@@ -19,9 +19,10 @@ so the site is reachable over the tailnet while `npm run dev` is running —
 `http://tarloks-mac-mini.tail795683.ts.net:5173`. That is how to check the
 phone layout on an actual phone.
 
-> Not live yet. `main` still holds the old Vue site, and the domain is served
-> from a **different repo** (`tarloksingh/my-portfolio`, private) via Vercel.
-> Pushing this branch does not deploy anything.
+> **Live.** `tarloksingh.com` is this repo's `main`, built by Vercel; a push
+> deploys. The old Vue site stays in `tarloksingh/my-portfolio` as the
+> rollback. `vercel.json`'s catch-all rewrite is load-bearing — every route
+> below is a real URL and 404s on a hard load without it.
 
 ---
 
