@@ -4466,6 +4466,22 @@ frame rather than an animation timed to look like it. Two clocks that agree at
 the start and not a minute later is the sort of thing nobody can name and
 everybody notices.
 
+**A card's own entrance animation can leave its line unpainted, in Safari
+only.** `fitCards`'s correction above (`aimLeader` in `Mech.tsx`) can land
+after `.mech-leader-card`'s open-from-corner animation has already started —
+on a slow first load, fonts and the correction can resolve after the
+animation's own delay has elapsed. Any *active* CSS animation on the card at
+that point, whatever it animates, is enough to promote it to its own
+compositing layer in Safari, and once that layer exists the sibling `<line>`
+in the same `<g>` stops painting the corrected position — mark visible, a
+short stub of line next to it, the card floating with nothing reaching it —
+even though the line's own attributes and computed `stroke-dasharray` /
+`dashoffset` read back correctly throughout. `LEADER_CARD_INSTANT` skips the
+animation on Safari specifically, so the card still arrives with the rest of
+its leader's cascade, just without the pop; Chrome, which never reproduced
+this, keeps the entrance. Full account, including the five fixes that were
+tried and failed before this one, in **item 4** of `PERFORMANCE.md`.
+
 ### The leaders, on a phone
 
 There are none. A phone gets the **marks** on the picture and the sentences in

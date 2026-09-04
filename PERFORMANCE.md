@@ -675,17 +675,86 @@ There is nothing in the file to recover — eight bits per axis is what was
 written. This is **blocked on the Blender source**, not on anything in this
 repo, and it is the only item on this list that is.
 
+## 4. A project's leader lines, unpainted in Safari — **found, fixed, and unrelated to item 1b**
+
+*Reported as: "labels are all old looking like the lines don't connect,"
+alongside item 1b's desktop stagger.* **These are two different faults on two
+different browsers, and only this one is closed.** Chrome was never wrong
+here. Safari was, and only Safari.
+
+On a first, cold Safari load — confirmed independently on an unrelated
+machine, first visit, nothing cached — roughly a third of a project screen's
+leader lines never reached their card: the mark on the picture drew, a short
+stub of line drew next to it, and the card sat with nothing connecting to it.
+The other leaders on the same screen were fine. Reloading sometimes cleared
+it, sometimes didn't.
+
+**Every plausible cheap explanation was checked and ruled out first,** because
+a bug reported alongside a real, unrelated one (item 1b) is exactly how two
+faults get diagnosed as one: not a stale CDN or service worker (this app has
+none, and `curl` with a Chrome and a Safari user-agent returned byte-identical
+HTML from the edge); not a leftover browser extension (reproduced on a
+completely different machine with none installed); not `localStorage` tuning
+overrides (reproduced on a first-ever visit, nothing stored yet).
+
+**The measurement trap this cost a first wrong answer to.** `fitCards` in
+`Mech.tsx` corrects a leader's line after the card's real size is known —
+see **The leaders** in `README.md` — and the first read said the correction
+was landing fine: `card.getBoundingClientRect()` and the line's own
+`getBoundingClientRect()` agreed to within a few pixels, matching Chrome.
+That check was wrong in a specific way: a `<line>`'s bounding box reports
+whichever end has the smaller x/y, which for a short, broken line is the
+*mark* end, not the corrected end — so the check was quietly comparing
+mark-to-card distance and calling it fine. Redone by transforming the line's
+actual `x1,y1` through the SVG's own `getScreenCTM()` into real screen
+coordinates, the gap was real: correct immediately after mount, then
+measurably wrong by the time everything had settled.
+
+**Root cause, found by killing one variable at a time** — each of these five
+was tried and measured, and none of the first four changed anything:
+reordering `fitCards`'s passes, killing the per-frame ancestor `transform`
+mutation the labels ride on (`useRide`), bypassing the `--l` custom property
+that drives the line's `stroke-dasharray`/`dashoffset` and setting those
+properties directly, forcing a layout flush right after the correction. The
+fifth did: forcing a *hard* repaint (toggling the card's containing element
+out of and back into `display` to make Safari tear down and rebuild
+whatever layer it had) still did nothing — but removing the card's own CSS
+`animation` entirely made every leader connect, every time. Isolating further:
+it was never the `scale()` in `mech-card` specifically — a plain opacity fade
+with no transform at all reproduced the same broken lines. **Any active CSS
+animation on the card, regardless of what it animates, is enough.**
+
+The working theory: an active animation promotes `.mech-leader-card` to its
+own compositing layer in Safari. `fitCards`'s correction can land after that
+layer already exists — the animation has its own delay, and on a slow first
+load fonts and the correction can resolve after that delay has elapsed — and
+once the layer exists, the *sibling* `<line>` in the same SVG `<g>` stops
+painting the corrected position, even though its own attributes and computed
+`stroke-dasharray`/`dashoffset` read back correctly the entire time. That last
+part is inference, not something proven line by line inside WebKit — what is
+proven, repeatedly, is that removing the animation removes the symptom and
+nothing short of that does.
+
+**The fix is Safari-only.** `LEADER_CARD_INSTANT` in `Mech.tsx` skips
+`mech-card`'s open-from-corner entrance on Safari specifically — the card
+still arrives with the rest of its leader's cascade, just without the pop —
+and leaves Chrome's animation untouched, confirmed by reading
+`getComputedStyle(card).animationName` back on both. There was no cost found
+to imitating this more broadly; it wasn't tried, because Chrome was never
+broken and the entrance is worth keeping wherever it isn't.
+
 ---
 
-**Item 1b is the open fault, and it is unexplained.** Everything under
-**Done** is measured and most of it is now confirmed on a device — a handset
-reports the crossings and the entrance smooth, and only the boot ripple left.
-What is not explained is a desktop's home entrance, which is **not** a
-regression, is **not** the main thread, and is not any of the seven things
-tried against it. The next round starts with the one asymmetry nobody has
-used: eight scene renders a frame on the layout that is slow against two on
-the layout that is not — measured by stopping the bank's loop, not by hiding
-its canvas.
+**Item 1b is still the open fault, and this did not touch it.** Everything
+under **Done**, plus item 4 above, is measured and closed. What is not
+explained is a desktop's home entrance staggering — **not** a regression,
+**not** the main thread, **not** any of the seven things tried against it,
+and **not** the same bug as item 4: different browser (Chrome, not Safari),
+different symptom (frame pacing, not geometry), found on a completely
+separate investigation. The next round on it starts with the one asymmetry
+nobody has used: eight scene renders a frame on the layout that is slow
+against two on the layout that is not — measured by stopping the bank's loop,
+not by hiding its canvas.
 
 A page of green numbers next to a machine that still feels wrong is the exact
 failure this file was written to stop. It happened again on 2026-09-04, three
