@@ -1281,10 +1281,16 @@
 /* Safari only, set from `LEADER_CARD_INSTANT` in Mech.tsx — see the comment
    there. Any active `animation` on this element, whatever it animates, is
    enough to make Safari leave the sibling leader line unpainted at its
-   pre-fit position on a cold load. The card just appears with the rest of
-   its leader's cascade instead of opening from the corner. */
+   pre-fit position on a cold load. Starts hidden, same as the animated
+   version — `aimLeader` in Mech.tsx sets `opacity: 1` itself, directly,
+   the first time it has actually corrected this card's position, so
+   there is never a frame where a visible card is sitting at a guessed
+   position waiting to be corrected. Revealing it immediately on mount
+   instead (tried first) traded the unpainted-line bug for a visible snap
+   on a project or media switch — Safari has no fade left to hide the
+   correction inside, so it read as the label jumping. */
 .mech-leader-card[data-instant='true'] {
-  opacity: 1;
+  opacity: 0;
   animation: none;
 }
 

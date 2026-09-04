@@ -546,6 +546,17 @@ const aimLeader = (leader: SVGGElement, card: HTMLElement) => {
   // The draw-in animation runs on a dash the length of the line, so the length
   // has to move with the end that moved or the last of it never arrives.
   line.style.setProperty('--l', String(Math.hypot(tip[0] - meets[0], tip[1] - meets[1])))
+
+  // A Safari card (`data-instant`, see the CSS) starts hidden rather than
+  // animated in, and is revealed right here — the first time its position is
+  // actually correct — instead of on `mech-card`'s timer. Revealing it on
+  // mount instead let a project or media switch show the card sitting at its
+  // pre-fit guess and then visibly snap once fonts or a resize corrected it;
+  // Chrome never showed that because its fade was still hiding the card at
+  // the point a correction usually lands, but Safari's card has no fade left
+  // to hide inside. `card.style.opacity` rather than a class: only this one
+  // card, and only once — every later call is a plain reposition.
+  if (card.dataset.instant === 'true' && card.style.opacity !== '1') card.style.opacity = '1'
 }
 
 /* The labels ride the same bob the subject is on, read from what the float

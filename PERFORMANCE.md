@@ -743,6 +743,42 @@ and leaves Chrome's animation untouched, confirmed by reading
 to imitating this more broadly; it wasn't tried, because Chrome was never
 broken and the entrance is worth keeping wherever it isn't.
 
+**That fix traded the disconnected line for a visible snap on a switch, and
+that is now also fixed.** Reported next: on Safari specifically, switching
+project or media (image, video, or model) — never on a first load — a
+label would jump to a different part of the screen partway through
+arriving. Same leaders, same fix, one step further, not a new bug.
+
+The first version of `LEADER_CARD_INSTANT` set the card to `opacity: 1`
+immediately, on mount, in place of `mech-card`'s animation. That is what
+removed the compositing layer that broke the line — but it also meant the
+card was visible from the very first frame, at whatever position `fitCards`
+had managed to compute *by then*. Normally that is already right. When it
+is not — the `fonts.ready` pass correcting a metrics guess taken before the
+face had loaded, most likely on a switch rather than a first load, when
+there is more competing for the main thread — the correction now had a
+fully visible card to move, with nothing left to hide the jump inside.
+Chrome never showed this because its card was still mid-fade at the point a
+correction usually lands; removing Safari's fade removed that cover too.
+
+Fixed by moving *when* the reveal happens rather than reintroducing the
+animation: the Safari card still starts at `opacity: 0`, but nothing times
+its arrival any more. `aimLeader` in `Mech.tsx` sets `opacity: 1` itself,
+directly, the first time it has actually corrected that card's position —
+so there is no longer a frame where a visible card is sitting at a guess
+waiting to be moved. A later correction (a second switch, a resize) still
+repositions it exactly as before; only the *first* reveal is gated.
+
+Verified by reloading the fixed build fresh in Safari and confirming the
+original fault — the disconnected line — is still closed. **Not yet
+click-verified inside a live switch in Safari itself**: this tool has only
+screenshot access to Safari, not the ability to click or drive it, and by
+the time this was isolated the Chrome extension used for the rest of this
+page's testing had disconnected from repeated reloads. The fix follows
+directly from the mechanism above rather than from watching it happen, so
+it is worth switching project and media a few times in real Safari to
+confirm before calling this one closed for good.
+
 ---
 
 **Item 1b is still the open fault, and this did not touch it.** Everything

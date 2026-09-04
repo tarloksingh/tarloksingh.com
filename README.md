@@ -4482,6 +4482,17 @@ its leader's cascade, just without the pop; Chrome, which never reproduced
 this, keeps the entrance. Full account, including the five fixes that were
 tried and failed before this one, in **item 4** of `PERFORMANCE.md`.
 
+**And that traded the disconnected line for a visible jump on a switch.**
+Revealing the Safari card on mount meant it was visible from the first
+frame at whatever position was known *by then* — usually right, but a
+`fonts.ready` correction landing after that point now had a fully visible
+card to move, with Chrome's still-fading card no longer around to hide the
+same correction inside. `aimLeader` reveals the Safari card itself now,
+directly, the first time it has actually corrected that card's position,
+rather than `mech-card`'s timer doing it on a schedule that knows nothing
+about whether the position is right yet. See the addendum to item 4 in
+`PERFORMANCE.md`.
+
 ### The leaders, on a phone
 
 There are none. A phone gets the **marks** on the picture and the sentences in
