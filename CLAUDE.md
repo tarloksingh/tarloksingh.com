@@ -18,6 +18,11 @@ real documentation** — this file is the map for finding things in it.
   routes above real URLs — without it `/p/<id>` works inside the app and 404s
   on a hard load, so don't remove it. The old Vue site is still in
   `tarloksingh/my-portfolio` and is the rollback.
+- **`PERFORMANCE.md` is the open ledger.** What has been measured, what has
+  been ruled out (the boot ripple, three times — don't blame it a fourth), and
+  the six things left to do in the order worth doing. Read it before
+  optimising anything here, and re-measure with `scripts/perf/` rather than
+  trusting its numbers.
 - `git fetch` first if a branch seems missing — the local clone can be behind.
 
 ## Running it
@@ -27,7 +32,13 @@ npm install
 npm run dev      # vite, bound to 0.0.0.0 on :5173
 npm run build    # tsc -b && vite build — run this before committing
 node scripts/check-media.mjs   # every filename the project data quotes exists
+node scripts/perf/models.mjs   # what is inside every model the bank fetches
 ```
+
+**Never measure performance off `npm run dev`** — Vite serves unbundled
+modules and the boot is visibly worse there than in a build, always. The
+harness in `scripts/perf/` runs against `dist/`; see the top of
+`PERFORMANCE.md` for the four commands.
 
 **The browser may not be on this machine.** The dev server binds `0.0.0.0` and
 `vite.config.ts` allow-lists `.ts.net`, because the browser used to look at
