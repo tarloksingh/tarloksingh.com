@@ -28,16 +28,18 @@ const bankFrameloopOff = (() => {
   }
 })()
 
-/** `?skip=<slot id>` — item 1b again. Keeps one bay from ever building (its
- *  GLB is never fetched, let alone decoded), to isolate which subject's
- *  decode cost is behind the long tasks `?diag=fps` found landing right
- *  after a model's download finishes. `?skip=mr-takahashi` is the first
- *  thing worth trying: `adam-face.glb` is the heaviest thing home fetches. */
-const skipSlot = (() => {
+/** `?skip=<slot id>[,<slot id>...]` — item 1b again. Keeps one or more bays
+ *  from ever building (their GLBs are never fetched, let alone decoded), to
+ *  isolate which subject's decode cost is behind the long tasks `?diag=fps`
+ *  found landing right after a model's download finishes. Skipping
+ *  `mr-takahashi` alone or `capsule-c1` alone each shrank it but did not
+ *  clear it — both are near on the initial rail view, so the cost is
+ *  spread across whichever bank subjects load first, not one subject. */
+const skipSlots = (() => {
   try {
-    return new URLSearchParams(window.location.search).get('skip')
+    return new Set((new URLSearchParams(window.location.search).get('skip') ?? '').split(','))
   } catch {
-    return null
+    return new Set<string>()
   }
 })()
 
@@ -405,7 +407,7 @@ function Environment() {
  *  grew into it. */
 export function SlotView({ id, live, arrive }: { id: string; live: boolean; arrive: boolean }) {
   const box = useRef<HTMLElement>(null)
-  const near = useNear(box) && id !== skipSlot
+  const near = useNear(box) && !skipSlots.has(id)
   const [mounted, setMounted] = useState(false)
 
   /* ---- and only the ones you could be looking at ----
