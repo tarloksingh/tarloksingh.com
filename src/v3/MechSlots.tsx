@@ -12,6 +12,22 @@ import { Detail, Precise } from '../three/detail'
 import { GLBS } from './subjects'
 import { useNarrow } from './narrow'
 
+/** `?bank=off` — item 1b in PERFORMANCE.md, the desktop entrance stagger.
+ *  Same convention as `?ripple=` in MechTiles.tsx. The next thing to try
+ *  against it is stopping the bank's frameloop during the entrance *without*
+ *  unmounting or hiding the canvas — the bays stay exactly as expensive to
+ *  lay out and composite, only r3f's own render calls stop — which is the
+ *  one comparison PERFORMANCE.md says the earlier attempt (`display: none`,
+ *  which only stops compositing, not rendering) got wrong. Read against the
+ *  ordinary `frameloop={up ? 'always' : 'never'}` baseline below. */
+const bankFrameloopOff = (() => {
+  try {
+    return new URLSearchParams(window.location.search).get('bank') === 'off'
+  } catch {
+    return false
+  }
+})()
+
 /* ---- the subjects in the bank ----
 
    Every slot on the home screen holds the project's own subject, live: Mr.
@@ -565,7 +581,7 @@ export default function MechSlots({ up }: { up: boolean }) {
          a 700ms fade starting 380ms after this flips, and the slots do not
          begin dealing until 620ms, so the first rendered frame lands long
          before anything is transparent enough to show it missing. */
-      frameloop={up ? 'always' : 'never'}
+      frameloop={bankFrameloopOff ? 'never' : up ? 'always' : 'never'}
       /* **`dpr` 1 on a phone was not a low setting, it was a magnifying
          glass.** Measured at ratio 1.0 on a dpr-3 screen (`canvas.mjs
          phone`), every rendered pixel was being blown up over *nine* device

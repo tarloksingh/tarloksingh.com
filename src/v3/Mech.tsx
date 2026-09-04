@@ -29,6 +29,7 @@ import { findProject, thumbOf, type Entry, type Frame } from './model'
 import { focus, notesFor, pins, type Note } from './notes'
 import { useLabelTuning, type Handed } from './labelTuning'
 import { boxOf, CARD, FRAME_SPACE, leadersFor, mediaBox, meetsCard, type Space } from './leaders'
+import { diagOn, diagLog, startFrameWatch } from './diag'
 import './Mech.css'
 
 /* The project stage: one canvas holding whichever subject the project has, and
@@ -457,7 +458,7 @@ const LEADER_CARD_INSTANT =
    **The face.** Clash Display is `font-display: swap`, so a card measured
    before it arrives is a card fitted to Helvetica's metrics — and then clipping
    its own last word a moment later. Hence the second pass off `fonts.ready`. */
-const fitCards = (root: SVGGElement | null) => {
+const fitCards = (root: SVGGElement | null, source: string) => {
   if (!root) return
   const range = document.createRange()
   root.querySelectorAll<SVGGElement>('g').forEach((leader) => {
@@ -490,7 +491,7 @@ const fitCards = (root: SVGGElement | null) => {
       card.style.width = `${Math.ceil(widest) + 1 + chrome}px`
     }
 
-    aimLeader(leader, card)
+    aimLeader(leader, card, source)
   })
 }
 
@@ -515,7 +516,14 @@ const fitCards = (root: SVGGElement | null) => {
    Inside a `foreignObject`, CSS pixels are the viewBox's own user units, so
    `offsetWidth`/`offsetHeight` need no conversion; the seat's 34px padding is
    `CARD.glow`, the slack the halo is drawn into. */
-const aimLeader = (leader: SVGGElement, card: HTMLElement) => {
+/** `?diag=leaders` — item 5 in PERFORMANCE.md, the Safari label jump on a
+ *  switch. Keyed by label so a correction can be compared against the last
+ *  one this same leader had, which is what makes a "jump" — a moved corner
+ *  on a card that was already visible — distinguishable from an ordinary
+ *  first placement. */
+const lastAim = new Map<string, { x: number; y: number; opacity: string }>()
+
+const aimLeader = (leader: SVGGElement, card: HTMLElement, source = 'unknown') => {
   const line = leader.querySelector<SVGLineElement>('.mech-leader')
   const mark = leader.querySelector<SVGCircleElement>('.mech-leader-mark')
   const note = leader.querySelector<SVGForeignObjectElement>('.mech-leader-note')
@@ -557,6 +565,20 @@ const aimLeader = (leader: SVGGElement, card: HTMLElement) => {
   // to hide inside. `card.style.opacity` rather than a class: only this one
   // card, and only once — every later call is a plain reposition.
   if (card.dataset.instant === 'true' && card.style.opacity !== '1') card.style.opacity = '1'
+
+  if (diagOn('leaders')) {
+    // Keyed on the card's own text rather than `leader.label` — the `<g>`
+    // carries that only as a React key, never a DOM attribute.
+    const key = (card.textContent ?? '').slice(0, 24)
+    const prev = lastAim.get(key)
+    const moved = prev ? Math.hypot(meets[0] - prev.x, meets[1] - prev.y) : 0
+    const opacity = card.style.opacity || getComputedStyle(card).opacity
+    const anim = getComputedStyle(card).animationName
+    diagLog(
+      `${prev && moved > 2 ? 'JUMP' : 'fit '} [${source}] "${key}" moved ${moved.toFixed(1)}px  opacity=${opacity}  anim=${anim}  instant=${card.dataset.instant}`
+    )
+    lastAim.set(key, { x: meets[0], y: meets[1], opacity })
+  }
 }
 
 /* The labels ride the same bob the subject is on, read from what the float
@@ -602,11 +624,13 @@ function Leaders({ notes, box, space, floats, lit, onLit }: LeadersProps) {
      is drawn from and the box they are placed in, which is what is watched
      here. */
   useLayoutEffect(() => {
-    const fit = () => fitCards(group.current)
-    fit()
+    const fit = (source: string) => fitCards(group.current, source)
+    // Fires on a mount *and* on a project/media switch alike — `notes`
+    // and `box` are what changed, not whether this is the first run.
+    fit('notes')
     let live = true
     document.fonts?.ready.then(() => {
-      if (live) fit()
+      if (live) fit('fonts')
     })
     /* And again on a resize, which is also what browser zoom fires. A card's
        type is `14px * --type-k` — the ratio between the frame unit and the
@@ -614,10 +638,11 @@ function Leaders({ notes, box, space, floats, lit, onLit }: LeadersProps) {
        a width that was measured for a different size, and the fit has to be
        taken again. `space` only changes on the narrow layout, so it cannot
        stand in for this. */
-    window.addEventListener('resize', fit)
+    const onResize = () => fit('resize')
+    window.addEventListener('resize', onResize)
     return () => {
       live = false
-      window.removeEventListener('resize', fit)
+      window.removeEventListener('resize', onResize)
     }
   }, [notes, box.x, box.y, box.w, box.h, space.w, space.h])
 
@@ -1145,6 +1170,11 @@ export default function Mech({ id, onProject, onHome }: Props) {
      It is declared first because three tuning hooks below have to key off it,
      and one of them used to key off `id` instead — see the note on `tuning`. */
   const [shownId, setShownId] = useState<string | null>(id)
+  /* `?diag=fps` — item 1b in PERFORMANCE.md, the desktop entrance stagger.
+     See diag.ts for why this is an on-page panel and not a console.log. */
+  useEffect(() => {
+    startFrameWatch()
+  }, [])
   /* Keyed on whichever model is **on screen**, which is `shownId` and not
      `id`. The two GLB models used to share one rig, so Capsule C1 — an
      injection-moulded enclosure — was lit by a setup built around a face. At
