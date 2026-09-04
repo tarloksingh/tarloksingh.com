@@ -407,7 +407,15 @@ in the entrance came back 46ms `(program)` and 29ms `(idle)` — three quarters
 of a "frame" in which the main thread had nothing to do. Long tasks are main
 thread by definition. `intro.mjs` prints both.
 
-### The desktop crossings did not get worse — measured against the old build
+### The desktop crossings did not get worse — but see open item 1b
+
+**Superseded in part.** The comparison below is sound and the conclusion —
+nothing in the three commits moved the crossings — was confirmed later by
+building four revisions and looking at them. What is wrong here is the
+reasoning about `getBoundingClientRect`, which is corrected in item 1b: it is
+not merely "not it", it is *nothing*, and the ceiling test that proves it is
+recorded there.
+
 
 Reported after the deploy: *"on desktop the performance has degraded going
 from page to page — home to project is bad, project to home is bad, project to
@@ -468,60 +476,131 @@ the site strictly slower, whatever it looks like while it is doing it.
 
 # Open work
 
-## 1. The ripple's fill rate — **the one cost never measured on the right GPU**
+## 1. Two open faults, and the desktop one is unexplained
 
-**The intro fix is confirmed on a handset.** Reported after the deploy:
-*"intro staggers still during the ripple only, everything else is fine on
-mobile."* That closes the morph-target item — the entrance itself, where the
-name types in and the blocks come up, is clean on a device — and it narrows
-what is left to a window of about a second.
+Everything below was reported off a **deployed** build on the reporter's own
+machines, and the harness in this folder reproduces **neither**. Read the
+apparatus section at the end of this item before measuring anything: three of
+the instruments used on 2026-09-04 were wrong, and two of them were wrong in
+the direction of a confident false positive.
 
-**And it is the one class of cost this whole apparatus cannot see.** Trap 3
-says it in one line: resolutions, samples, bytes and main-thread milliseconds
-transfer to a phone, **fill rate and raster do not**. Every clearing of the
-ripple on this page — all five — was a main-thread finding, and every one of
-them is still right. The main thread is quiet during the ripple: 17ms median
-across 512 cells, one frame over 33ms. What was never tested anywhere but on
-an M-series GPU is what a handset is being asked to *paint*:
+### 1a. A phone: the pixel intro, and nothing else
 
-- ~500 cells, each carrying a **blurred `box-shadow`** (a 10-unit glow),
-- animating `opacity` and `transform` for 420ms each,
-- under a **`mask-image`**, which makes the subtree one rasterised layer — so
-  it cannot composite, and the **whole viewport is re-rasterised every frame**
-  with five hundred blurred shadows in it, at **dpr 3**.
+*"Everything runs smooth on mobile but the pixel intro effect, before any text
+of my name and stuff comes in."* So the morph-target work (item 7) and the
+crossings are **confirmed good on a device**, and what is left on a handset is
+the boot ripple and only the boot ripple.
 
-The one control that was ever run against this — the glow removed, raster
-1539ms → 1498ms, 2.7%, "inside noise" — was run on the wrong GPU, so it
-settled nothing. Ten to thirty times slower on the fragment side is exactly
-the gap between "inside noise" and "the only thing on screen stutters".
+**Fill rate is ruled out, on the device, by looking.** `?ripple=a|b|c|d` was
+shipped for exactly this (the four variants are still in `MechTiles.tsx` and
+`Mech.css`): `a` is what ships, `b` drops the per-cell blurred `box-shadow`,
+`c` drops the `mask-image` so the subtree can composite, `d` drops both.
+Verdict after loading all four on the handset: **"all 4 perform about the same
+on mobile."**
 
-**`?ripple=a|b|c|d` is committed**, and comparing them is a job for the
-handset, not for this folder:
+That is the sixth clearing of the ripple, and the first one that tested paint
+rather than the main thread. The remaining candidates are what the ripple is
+*on top of* — it is the only thing on screen while the 3D chunk parses and the
+loading manager drains — which is the reading **the ripple is what is on
+screen when the entrance lands on top of it** has always pointed at. The flag
+can now be deleted; it did its job.
 
-| | glow | mask | what it is testing |
-|---|---|---|---|
-| **a** | yes | yes | what ships. The control. |
-| **b** | no | yes | the per-cell blur radius |
-| **c** | yes | no | the full-viewport re-raster |
-| **d** | no | no | both |
+### 1b. A desktop: home's entrance staggers, and nothing here explains it
 
-Load `tarloksingh.com/?ripple=d` on the phone and reload between letters.
-**If `d` is smooth and `a` is not, it is fill rate and this table says which
-half.** If all four stagger identically, it is not paint, and the next move is
-a trace off the device itself rather than another candidate from here.
+*"Home page with my name all big and stuff staggers, only when I load in the
+home screen initially or go back to it. Only for desktop."* Mobile is smooth
+on the same routes.
 
-Everything is one declaration each (`.mech-tiles[data-ripple=…]` in
-`Mech.css`), on purpose: nothing touches the timing, the pitch or the
-keyframes, so what is being compared is the same effect paid for differently.
-The pitch has already been ruled out twice and is not on this table.
+**It is not a regression.** Four builds were served side by side on the
+reporter's own machine and compared by eye — `fd93bc2` (the last one
+remembered as good), `8b7d960` (the first commit after it that touches any
+code at all — `d77e77c`, `536c261` and `3cd5482` are documentation only),
+`2398cb5`, and current `main`. **All four stagger identically.** The servers
+were verified to be serving four distinct builds (four distinct entry hashes;
+only `main`'s carries `data-ripple` and `MechWarming`), so this is a real
+comparison and not four copies of one thing.
 
-**This flag ships rather than being deleted at the end of the session**, which
-is the correction to what item 7 in **Done** admits went wrong with `?intro=`:
-the variants were built, measured headless, compared as desktop screenshots,
-decided and deleted in one working tree, leaving nothing in git to go back and
-look at. Measuring picks the fastest; only looking picks the acceptable one.
-Delete this block when a variant has been chosen and pasted into the defaults
-— not before.
+So the fault predates every commit on this page's **Done** list, and "it
+started yesterday" is not what happened.
+
+**What it is not, each measured on the machine that has the fault:**
+
+| tried | result |
+|---|---|
+| `--in-k` forced from 0.35 back to 1 (undo `ignition`'s compressed entrance) | 51.2fps vs 49.5 baseline — **no** |
+| name's third halo 130 → 45 units | 54.4 vs 50 — partial, and see below |
+| name's third halo removed outright | 54.1 — partial |
+| `will-change: opacity` on the entrance's four blocks | 48.3 — **no** |
+| `will-change: opacity, transform` on the same four | 54.6 — partial |
+| **blur cap + promotion together, built and looked at** | **still staggers** |
+| `--g: 0`, every glow on the site off | **59.8 / 60.2fps, zero frames over 33ms** |
+
+**And the glow is not the answer, however that last row reads.** A phone
+renders the same glows and is smooth. Removing the largest paint on the page
+buys back enough budget to hide the fault; it does not identify it. The one
+change built from that reading — the 130 → 45 blur cap plus the four promoted
+blocks — was served alongside the baseline and **staggers exactly the same**.
+Do not re-derive the glow from the `--g: 0` number; it is a real number and a
+false lead, and this entry exists to stop it being found a third time.
+
+**Zero long tasks in every condition above.** It is not the main thread.
+
+**Where to look next: what a desktop does that a phone does not.** The
+asymmetry is the whole clue and it has not been used yet. On a 1634-wide
+window the rail has **about eight bays on screen**, each a `<View>` with its
+own scene, its own lights and its own scissored pass; a phone has one or two
+near enough for `useNear` to have built. That is eight scene renders a frame
+against two, on the screen that is slow, on the layout that is slow.
+
+**It is not ruled out — the control that appeared to rule it out was
+invalid.** The bank canvas was hidden with `display: none` and the frame rate
+did not move (48fps against a 50fps baseline), which was written down as "the
+canvas is innocent". `display: none` stops the canvas being **composited**; it
+does not stop r3f rendering into it. `frameloop` was still `'always'` and
+every view still drew. **Redo it by stopping the loop, not by hiding the
+element** — and note that a screen with the bank genuinely off is also a
+screen with eleven fewer subjects, so the honest comparison is against bays
+that exist and do not draw.
+
+### The apparatus was wrong three times on 2026-09-04
+
+Written down because all three produced clean, confident, wrong numbers.
+
+- **A leak that was not there, twice.** Home was measured as gaining six and
+  then eight live `requestAnimationFrame` loops per visit — 8 → 16 → 24 → 32.
+  The first counter counted *requests minus runs*, so every **cancelled**
+  frame (a callback that by definition never fires) read as a leak. The second
+  counted fires but the tally was never reset between windows, so it counted
+  its own accumulation. Correctly instrumented: **8.0 loops a frame, flat over
+  six round trips**, with listeners, nodes and contexts all stable. There is
+  no leak.
+- **A control that controlled nothing.** `display: none` on a WebGL canvas,
+  above.
+- **`getBoundingClientRect`, 600 calls a second, worth nothing.** It profiled
+  top of the JS list on any crossing (315ms of a 4.5s leg). It is drei's
+  `<View>`: each mounted bay reads its own `.mech-slot-shot` rect once a frame.
+  A per-element per-frame cache was patched in at the page level — the ceiling
+  of any possible fix — and changed **nothing at all**. Only the first read of
+  the ten forces a layout; the rest are cheap because nothing between two
+  views writes to layout. A `Track` guard was written for the same suspicion,
+  measured (`Track` was already once a frame, in every build), and reverted.
+
+### And headless cannot see this fault at all
+
+`scripts/perf/` holds 59fps through every crossing, at 4× throttle and at
+none, at 1512×900 **and at the reporter's own 2560×1262 at dpr 2**. The
+machine that has the fault reports **46–50fps on home with four stalls over
+100ms**. Everything in this folder is still right about main-thread
+milliseconds and bytes; it is blind to whatever this is.
+
+Measuring in the reporter's own Chrome works and is worth the trouble
+(`mcp__claude-in-chrome__javascript_tool`, a `requestAnimationFrame` gap
+recorder), with one hard constraint: **Chrome does not animate a background
+tab**, so every reading taken while the tab was not frontmost came back as
+zero frames or as nonsense. A probe there must wait on
+`document.visibilityState` rather than assume it, and the person has to be
+looking at the tab. Four builds on four ports, compared **by eye**, produced
+the single most useful result of the day.
 
 ## 2. The subject's hitbox on a phone — **found, fixed, and it is a route**
 
@@ -598,8 +677,17 @@ repo, and it is the only item on this list that is.
 
 ---
 
-**Item 1 is now the whole of what is next.** Everything under
-**Done** is measured; nothing under it is *confirmed on a device*, and one
-user-visible defect (the hitbox) arrived unexplained. A page of green numbers
-next to a phone that still feels wrong is the exact failure this file was
-written to stop, so the next round starts on a handset, not in the harness.
+**Item 1b is the open fault, and it is unexplained.** Everything under
+**Done** is measured and most of it is now confirmed on a device — a handset
+reports the crossings and the entrance smooth, and only the boot ripple left.
+What is not explained is a desktop's home entrance, which is **not** a
+regression, is **not** the main thread, and is not any of the seven things
+tried against it. The next round starts with the one asymmetry nobody has
+used: eight scene renders a frame on the layout that is slow against two on
+the layout that is not — measured by stopping the bank's loop, not by hiding
+its canvas.
+
+A page of green numbers next to a machine that still feels wrong is the exact
+failure this file was written to stop. It happened again on 2026-09-04, three
+times in one day, and the three bad instruments are written up in item 1b so
+the next round starts by distrusting the apparatus rather than the report.
