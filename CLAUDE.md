@@ -420,14 +420,16 @@ the preload back with the rendering.
 **A wide glow does not belong on text that is moving.** Chrome 152 turned on
 Skia Graphite, and a blurred `text-shadow` is re-rastered whenever anything
 under it moves — so the name's 779px halo was being redrawn once per typed
-character. The two wide terms live on `.mech-ident-full` now (the full-name
-sizer that was already there), promoted and faded in with `opacity`; the intro
-paragraph's waits on `data-lit` + `data-typing` and blooms in three steps.
-Home's entrance went from 2233ms of dropped frames to 200ms, the crossing to a
-project from 1350ms to nothing, and the way back from 583-751ms to ~190ms
-while now typing both lines instead of placing them. Don't put a wide halo back on a typed
-line, and don't smooth the paragraph's bloom — both are measured in
-`PERFORMANCE.md` item 12.
+character. The intro paragraph's wide term waits on `data-lit` +
+`data-typing` and blooms in three steps once the line is still. The name's own
+wide terms lived on `.mech-ident-full` the same way, promoted and faded in
+with `opacity` — that fade read as overshooting on the way up and came back
+out as an experiment, so the name currently carries only its hot edge, no
+halo. Home's entrance went from 2233ms of dropped frames to 200ms, the
+crossing to a project from 1350ms to nothing, and the way back from
+583-751ms to ~190ms, while now typing both lines instead of placing them.
+Don't smooth the paragraph's bloom, and if the name's halo comes back, don't
+re-measure the bisection — both are in `PERFORMANCE.md` item 12.
 
 **Type it with the frame clock, not a timer.** `Typed.tsx` runs both
 directions on `requestAnimationFrame` with the character count computed from

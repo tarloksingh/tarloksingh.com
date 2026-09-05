@@ -342,100 +342,33 @@
      name`'s by-eye scale on top still means the same thing across a font
      swap. See `clusterTuning.ts`. */
   font-size: calc(var(--cluster-name, 1) * 100cqw / (var(--name-len, 12) * 1.15));
-  /* Three, not two. The reference's digits carry a hot edge, a halo and then
-     a wash of light on the housing well past the glyph — and the third term is
-     the one that turns "warm type with a glow" into "a lamp behind glass". */
-  /* The hot edge, and only the hot edge. The halo and the wash behind it are
-     drawn by `.mech-ident-full` underneath — see the block below. */
+  /* The hot edge only — a wider halo lived here briefly and came back out;
+     see the note above `.mech-ident-full`. */
   text-shadow: 0 0 calc(9 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.58 * var(--g)));
   animation: mech-flicker 7s steps(1, end) infinite;
 }
 
-/* ---- the halo waits for the line to stand still, then blooms in ----
+/* ---- the halo, tried and pulled back out ----
 
-   **A blurred `text-shadow` is re-rastered whenever anything under it moves**
-   — the text changing, or the block it sits in animating. At `--g: 5` the
-   third term here is a **779px** blur radius and the name spells itself out a
-   character at a time, so that halo was being redrawn once per character, and
-   the intro paragraph was doing the same 189 times over a 120px radius.
-
-   That was free on Chrome's old rasterizer and is not free on **Skia
-   Graphite**, which Chrome 152.0.7977.76 turned on by default. Measured on a
-   2560x1440 window, home's entrance lost **2116ms** to dropped frames against
-   **148ms** of main-thread long tasks — a 14:1 ratio, so the main thread was
-   idle for almost all of it, which is why every earlier hunt for this (six of
-   them, all on the main thread) came back clean. Holding the two wide terms
-   back until the line is still takes the entrance to **298ms lost, 279 of 300
-   frames**, and the crossing home from a project from **616ms to nothing**.
-
-   **Two gates, because there are two ways for the line to be moving.**
-   `data-lit` is the cluster's own entrance finishing (`IN.arcLive`, so it
-   rides `--in-k` and a second arrival lights sooner); `:has([data-typing])`
-   is `Typed` still writing characters. The first covers coming home from a
-   project, where both lines are *placed* rather than typed and the cost is
-   the block sliding in under the halo; the second covers a cold load, where
-   the line is still being spelled out well after `arcLive`.
-
-   **A settled halo costs nothing** — the same window measured after
-   everything lands is 0ms lost with the halos on. This is not a glow budget
-   and it is not `--g`; do not turn either down.
-
-   **The bloom is stepped, and that is not a style choice.** It is a
-   transition on the base rule above, from one term to three — CSS pads the
-   shorter shadow list with transparent terms, so the halo grows in from
-   nothing rather than snapping on the frame the last character lands. But a
-   transitioning shadow is a *moving* shadow, which is the very thing this
-   whole block exists to avoid: the same bloom on a smooth 820ms curve
-   measured **2034ms lost**, worse than the bug it was added to soften.
-   `steps(3, end)` re-blurs three times instead of fifty and costs **434ms
-   against the 318ms of no bloom at all**. Measured: steps(3) 434ms, steps(5)
-   766ms, steps(8) 833ms, smooth 2034ms. Do not make this a smooth transition,
-   and do not raise the step count much — the cost is per redraw, and it is
-   linear in exactly that. See **The halo and the typewriter** in
-   `PERFORMANCE.md`, and `data-typing` in `Typed.tsx`. */
+   A second, wide pair of shadow terms lived here briefly, on a copy of the
+   name that stays static so the blur only rasters once and what animates is
+   its `opacity` — the fix for the Skia Graphite cost described in **The halo
+   and the typewriter** in `PERFORMANCE.md`. The fade itself stepped visibly
+   on the way up rather than reading as smooth, so it came back out as an
+   experiment: the name carries only the hot edge below, no wide bloom. If it
+   comes back, that write-up has the numbers already measured; don't re-derive
+   them. */
 
 /* The whole name, at the whole size, painted in nothing — the box the typing
    happens inside. See the note beside it in MechCluster.tsx for why the
    heading cannot be allowed to size itself off however far `Typed` has got.
 
-   `visibility: hidden` and not `opacity: 0`: the glow above is a `text-shadow`,
-   and a transparent copy of the finished name still throws all three of its
-   halos onto the panel, so the whole line would be lit before a single
-   character had arrived. */
+   `color: transparent` rather than `visibility: hidden`: this used to also
+   carry the halo's shadow and needed to paint something even with no ink.
+   Nothing but the sizing is left on it now, so either would do — left as
+   `color` since a shadow may come back. */
 .mech-ident-full {
-  /* **And it draws the halo.** The two wide terms used to sit on
-     `.mech-ident-name` with the hot edge, which meant they were on the *typed*
-     text — so every character redrew a 779px blur, 13 times on the way in, and
-     the bloom that softened the last one had to redraw it again per frame.
-     Here they are on a copy of the whole name that never changes, so the blur
-     is rastered **once** and what animates is this element's `opacity`, which
-     the compositor does on its own. Measured: a *smooth* fade this way costs
-     216ms against 283ms for a three-step bloom on the text itself, and 318ms
-     for no bloom at all — it is both the better-looking option and the
-     cheaper one. See **The halo and the typewriter** in `PERFORMANCE.md`.
-
-     `color: transparent` rather than `visibility: hidden`, which is what this
-     was: hidden paints nothing, and this now has something to paint. The
-     glyphs still contribute no ink — only their shadow — so the sizer's other
-     two jobs (giving the heading its height and its width, above) are
-     unchanged. `opacity: 0` is what keeps the finished name's halo off the
-     panel while a single character is still arriving, which is the job the
-     `visibility` was doing. */
   color: transparent;
-  text-shadow:
-    0 0 calc(42 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.34 * var(--g))),
-    0 0 calc(130 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.2 * var(--g)));
-  opacity: 0;
-  /* The promotion is worth 82ms of the 216 — without it the layer is
-     re-rastered per frame and the fade is an expensive one again. */
-  will-change: opacity;
-  transition: opacity calc(560ms * var(--in-k)) linear;
-}
-
-/* Lit when the panel is up and the name has stopped moving — the same two
-   gates the intro paragraph's own halo waits on. */
-.mech-cluster[data-lit='true'] .mech-ident-name:not(:has([data-typing])) .mech-ident-full {
-  opacity: 1;
 }
 
 /* The characters as they land, on the box's own left edge rather than its
@@ -538,13 +471,13 @@
 
 /* ---- and the bloom is an entrance only ----
 
-   Leaving home takes `data-lit` back off and backspaces the name out, so both
-   lines would step their halos *down* over 560ms on top of the exit — a
-   moving blur again, on the one leg that had been made free. Measured: the
-   crossing to a project went 35ms to 966ms on the bloom alone. Cut the
-   transition while the panel is leaving and the halo simply goes with it,
-   which is what a lamp does when the power drops. */
-.mech-cluster[data-leaving='true'] .mech-ident-full,
+   Leaving home takes `data-lit` back off, so the profile's halo would step
+   *down* over 560ms on top of the exit — a moving blur again, on the one leg
+   that had been made free. Measured: the crossing to a project went 35ms to
+   966ms on the bloom alone. Cut the transition while the panel is leaving and
+   the halo simply goes with it, which is what a lamp does when the power
+   drops. The name had the same rule while it carried a bloom of its own; see
+   the note above `.mech-ident-full`. */
 .mech-cluster[data-leaving='true'] .mech-profile {
   transition: none;
 }

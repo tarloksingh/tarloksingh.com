@@ -430,6 +430,14 @@ visible. Giving *it* a smooth transition instead costs 700ms — don't.
 And the bloom is cut on `data-leaving`: letting the halos step *down* over the
 exit took the crossing to a project from 35ms back to 966ms.
 
+**The name's bloom came back out.** The 216ms opacity fade above measured
+clean, but visually it read as overshooting past its final brightness before
+settling — a look problem, not a cost one, and not one this harness measures.
+Pulled as an experiment rather than chased further: the name now carries only
+its 9px hot edge, no wide halo at all, and the page reads fine without one.
+The numbers above stay accurate for if it comes back — don't re-measure the
+same bisection to reinvent them.
+
 ### 11. Tooling fixed along the way
 
 - **`serve.mjs` now answers Range requests.** It returned 200 with the whole

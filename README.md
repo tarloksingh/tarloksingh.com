@@ -697,7 +697,7 @@ characters of the actual name rather than carried over from the old face — so
 swap.
 
 **The name types itself in over a copy of itself drawn in nothing.** The `h1`
-holds two spans: `.mech-ident-full`, the finished line at `visibility: hidden`,
+holds two spans: `.mech-ident-full`, the finished line at `color: transparent`,
 and `.mech-ident-typed`, absolutely positioned on its top-left corner, which is
 what `Typed` writes into. That sizer does two jobs, and both of them were bugs
 before it existed.
@@ -3017,6 +3017,14 @@ across the exit took the crossing to a project from 35ms back to 966ms.
 
   and the return leg now *types* both lines, where before it placed them.
 ```
+
+**The name's halo came back out again, on looks rather than cost.** The
+216ms smooth fade measured clean, but visually it overshot past its final
+brightness before settling back — nothing this harness has a number for. It
+was pulled as an experiment rather than chased: `.mech-ident-name` now carries
+only its 9px hot edge, `.mech-ident-full` is back to being a plain sizer, and
+the page reads fine without the wider glow. Everything measured above is
+still accurate if it comes back.
 
 Full account, including everything that was measured and cleared on the way
 (the ripple for a seventh time, the 34 tachometer columns and 51 gauge

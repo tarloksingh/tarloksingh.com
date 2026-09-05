@@ -46,11 +46,18 @@ function MechDeck() {
 
   // Start the music on the first interaction anywhere — a browser will not let
   // it play before one. The pill is left out: pressing it is already an
-  // explicit choice, handled by `toggle`.
+  // explicit choice, handled by `toggle`. `started` (not `wantPlay`) is what
+  // this waits on: it was `wantPlay` before, so pausing the pill turned
+  // `wantPlay` back to false and re-armed this same listener — the next
+  // click anywhere on the page started the music back up again. `started`
+  // latches the first time either path fires and never resets, so a pause
+  // stays a pause.
+  const started = useRef(false)
   useEffect(() => {
-    if (wantPlay) return
+    if (started.current) return
     const start = (event: Event) => {
       if ((event.target as Element | null)?.closest?.('.mech-deck')) return
+      started.current = true
       sound.wake()
       setWantPlay(true)
     }
@@ -60,7 +67,7 @@ function MechDeck() {
       window.removeEventListener('pointerdown', start)
       window.removeEventListener('keydown', start)
     }
-  }, [wantPlay])
+  }, [])
 
   // One reconcile: run on mount, on intent changes, and on every `levels`
   // change (a slider, or a clip starting / stopping).
@@ -108,6 +115,7 @@ function MechDeck() {
   }, [wantPlay])
 
   const toggle = () => {
+    started.current = true
     sound.wake()
     sound.select()
     setWantPlay((was) => !was)
