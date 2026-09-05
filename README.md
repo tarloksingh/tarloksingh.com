@@ -3026,6 +3026,14 @@ only its 9px hot edge, `.mech-ident-full` is back to being a plain sizer, and
 the page reads fine without the wider glow. Everything measured above is
 still accurate if it comes back.
 
+**And the hot edge picked up the same two gates the wide halo had.** On
+narrow the name's font-size formula runs larger relative to the viewport, and
+`--g` is a flat 5 on both layouts, so even a single 9px term blurs wide
+enough to bleed across a character before it has landed — the glow read as
+arriving ahead of the word rather than after it, which is the opposite of
+what was asked for. `.mech-ident-name` now carries no shadow at all until
+`data-lit` and the line is still, exactly like `.mech-ident-full` did.
+
 Full account, including everything that was measured and cleared on the way
 (the ripple for a seventh time, the 34 tachometer columns and 51 gauge
 segments, `mix-blend-mode`, `mask-image`, `filter`, and the bank subjects'
@@ -5755,6 +5763,17 @@ effect catches that first `pointerdown` or `keydown` anywhere on the page (the
 deck's own pill excepted, since pressing it is already a choice) and sets it.
 From then on the pill is a normal toggle. There is no autoplay attribute doing
 this and there cannot be; it is a deferred start, not a played-on-load.
+
+That listener is meant to fire exactly once, ever, and used to fire on every
+qualifying event for the rest of the page's life instead — a `started` ref is
+what it checks now, set the first time either this listener or the pill fires,
+checked on the way *into* the handler rather than only once at the effect's
+own setup. Without that check, pausing the pill did not stop the music for
+long: the next `pointerdown` outside `.mech-deck` called `setWantPlay(true)`
+again. A mouse wheel does not fire `pointerdown`, so a desktop scroll never
+tripped it and only a stray click did; a touch scroll on a phone *starts* with
+one, so a phone visitor who paused and then scrolled heard the song come back
+within a screen's height.
 
 **A clip and the music are never heard together.** Not a duck — the deck
 stops, but on a ramp: a reconcile effect eases the `<audio>` element's own

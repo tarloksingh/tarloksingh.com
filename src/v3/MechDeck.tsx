@@ -46,16 +46,22 @@ function MechDeck() {
 
   // Start the music on the first interaction anywhere — a browser will not let
   // it play before one. The pill is left out: pressing it is already an
-  // explicit choice, handled by `toggle`. `started` (not `wantPlay`) is what
-  // this waits on: it was `wantPlay` before, so pausing the pill turned
-  // `wantPlay` back to false and re-armed this same listener — the next
-  // click anywhere on the page started the music back up again. `started`
-  // latches the first time either path fires and never resets, so a pause
-  // stays a pause.
+  // explicit choice, handled by `toggle`. `started` latches the first time
+  // either path fires and never resets, so a pause stays a pause.
+  //
+  // The check has to be *inside* `start`, not just at the effect's own setup.
+  // It was only at setup before — the effect has `[]` for deps and mounts
+  // once, so the listener itself was added exactly once, but nothing ever
+  // took it back off or checked `started` on the way in. Every pointerdown
+  // anywhere outside `.mech-deck`, for the rest of the page's life, called
+  // `setWantPlay(true)` unconditionally — including the one that starts a
+  // touch scroll on a phone. Desktop mostly hid this: a mouse wheel doesn't
+  // fire `pointerdown`, so only a stray click reopened it there, and a phone
+  // opens it on every scroll.
   const started = useRef(false)
   useEffect(() => {
-    if (started.current) return
     const start = (event: Event) => {
+      if (started.current) return
       if ((event.target as Element | null)?.closest?.('.mech-deck')) return
       started.current = true
       sound.wake()

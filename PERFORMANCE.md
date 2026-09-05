@@ -438,6 +438,17 @@ its 9px hot edge, no wide halo at all, and the page reads fine without one.
 The numbers above stay accurate for if it comes back — don't re-measure the
 same bisection to reinvent them.
 
+**And the hot edge that was left got the same two gates.** On narrow the
+name's font-size formula runs larger relative to the viewport than wide's
+does, and `--g` is a flat 5 on both layouts, so a single glyph's 9px term at
+that size blurs wide enough to bleed into the next character before it has
+even landed — the glow read as arriving ahead of the word rather than
+following it. `.mech-ident-name` carries no shadow at all until `data-lit`
+and the line is done, same as the wide terms did. Confirmed by computed
+style, not just a screenshot: `textShadow` reads `none` mid-type and the full
+value the instant `data-lit` flips, on the same window that has always been
+used for this fault.
+
 ### 11. Tooling fixed along the way
 
 - **`serve.mjs` now answers Range requests.** It returned 200 with the whole

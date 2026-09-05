@@ -424,12 +424,28 @@ character. The intro paragraph's wide term waits on `data-lit` +
 `data-typing` and blooms in three steps once the line is still. The name's own
 wide terms lived on `.mech-ident-full` the same way, promoted and faded in
 with `opacity` — that fade read as overshooting on the way up and came back
-out as an experiment, so the name currently carries only its hot edge, no
-halo. Home's entrance went from 2233ms of dropped frames to 200ms, the
-crossing to a project from 1350ms to nothing, and the way back from
-583-751ms to ~190ms, while now typing both lines instead of placing them.
-Don't smooth the paragraph's bloom, and if the name's halo comes back, don't
-re-measure the bisection — both are in `PERFORMANCE.md` item 12.
+out as an experiment. The hot edge that is left waits on the same two gates
+now too: on narrow the name's font-size formula runs larger and `--g` is a
+flat 5 on both layouts, so even that single term's blur was wide enough to
+bleed across a character's neighbours before the word had finished — the
+glow read as arriving ahead of the letters. No shadow at all while typing,
+lit once `data-lit` and the line is still. Home's entrance went from 2233ms
+of dropped frames to 200ms, the crossing to a project from 1350ms to nothing,
+and the way back from 583-751ms to ~190ms, while now typing both lines
+instead of placing them. Don't smooth the paragraph's bloom, and if the
+name's wide halo comes back, don't re-measure the bisection — both are in
+`PERFORMANCE.md` item 12.
+
+**A one-shot listener has to check its own flag, not just its own setup.**
+`MechDeck`'s "start the music on the first interaction anywhere" listener is
+added once, in an effect with no dependencies, so it is genuinely added only
+once — but the handler itself never checked whether it had already fired.
+Every `pointerdown` outside `.mech-deck`, for the rest of the page's life,
+called `setWantPlay(true)`, pause included. A mouse wheel doesn't fire
+`pointerdown`, so a desktop scroll never tripped it and only a stray click
+did; a phone's scroll *starts* with one, so it fired on every scroll. The
+`started` ref it sets is checked inside `start` now, first line, not only at
+the effect's own setup.
 
 **Type it with the frame clock, not a timer.** `Typed.tsx` runs both
 directions on `requestAnimationFrame` with the character count computed from

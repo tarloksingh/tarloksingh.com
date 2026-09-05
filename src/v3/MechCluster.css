@@ -342,10 +342,18 @@
      name`'s by-eye scale on top still means the same thing across a font
      swap. See `clusterTuning.ts`. */
   font-size: calc(var(--cluster-name, 1) * 100cqw / (var(--name-len, 12) * 1.15));
-  /* The hot edge only — a wider halo lived here briefly and came back out;
-     see the note above `.mech-ident-full`. */
-  text-shadow: 0 0 calc(9 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.58 * var(--g)));
   animation: mech-flicker 7s steps(1, end) infinite;
+}
+
+/* The hot edge, and it waits for the line to stand still like the wide halo
+   used to. On narrow this blur is wide relative to the glyphs — the name's
+   font-size formula runs larger there and `--g` is a flat 5 on both layouts
+   — so a character landing already carrying it read as the glow arriving
+   ahead of the letters, each new glyph's blur bleeding into the next before
+   the word had finished. No shadow while typing, then it lights once the
+   name is whole: the letters come first now, same as asked for. */
+.mech-cluster[data-lit='true'] .mech-ident-name:not(:has([data-typing])) {
+  text-shadow: 0 0 calc(9 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.58 * var(--g)));
 }
 
 /* ---- the halo, tried and pulled back out ----
