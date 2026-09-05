@@ -1173,6 +1173,20 @@
   animation-delay: calc(620ms + var(--i, 0) * 55ms);
 }
 
+/* And hidden outright before that — `animation-fill-mode: both` only holds
+   the "from" keyframe once the `animation` property itself is applied, which
+   is the instant `data-booting` flips to `false`. Until then there is no
+   animation on either element at all, so with no rule here they render at
+   their plain opacity of 1 for the whole boot: the full rail, painted, behind
+   the ripple. Then the fade-in rule above attaches, its `both` fill snaps
+   both back to their `from` state, and they play the entrance a second
+   time — which is the flash of "it's already there, then it isn't, then it
+   comes in again" this covers. */
+.mech-bank-col[data-booting='true'] .mech-work-rail,
+.mech-bank-col[data-booting='true'] .mech-slot {
+  opacity: 0;
+}
+
 /* The rail fills whatever column it is given rather than declaring
    `--panel-h` twice. On a project that is the same number it always was; on
    home it is `--rail-h`, the box left over once the dials have taken theirs.
