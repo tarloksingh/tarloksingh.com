@@ -1,5 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 
+/** Marks the node while its text is still moving, so a wide `text-shadow` can
+ *  stand down until it lands. Set only on a change, because an attribute
+ *  written with the value it already had still invalidates style — the same
+ *  rule the character write below follows. */
+const typing = (el: HTMLElement | null, on: boolean): void => {
+  if (!el || el.hasAttribute('data-typing') === on) return
+  if (on) el.setAttribute('data-typing', '')
+  else el.removeAttribute('data-typing')
+}
+
 /** Reveals its text a character at a time — and, when asked, takes it back
  *  the same way.
  *
@@ -22,7 +32,20 @@ import { useEffect, useRef, useState } from 'react'
  *  word. Fading a typed line out is the one exit that says "this was never
  *  really typed"; backspacing says the machine is still holding the caret.
  *  See the name handing itself to the header in Mech.tsx, which is one line
- *  backspacing and another typing what it gave up. */
+ *  backspacing and another typing what it gave up.
+ *
+ *  **`data-typing` on the output span, while the text is moving.** A blurred
+ *  `text-shadow` is re-rastered whenever the text under it changes, so a line
+ *  spelled out a character at a time re-blurs its whole halo once per
+ *  character — 189 times, for the intro paragraph. That was free until
+ *  Chrome 152 turned on Skia Graphite, and is now the single most expensive
+ *  thing on home's entrance. The mark lets the two lines carrying wide halos
+ *  (`.mech-ident-name`, `.mech-profile`) drop to their narrowest term while
+ *  they are moving and take the full stack back the moment they land — the
+ *  settled screen is unchanged, and a settled halo costs nothing. Written
+ *  straight to the node for the same reason the text is: state here re-renders
+ *  the whole panel per character. See **The halo and the typewriter** in
+ *  `PERFORMANCE.md`. */
 export default function Typed({
   text,
   run,
@@ -92,6 +115,7 @@ export default function Typed({
     const step = (now: number) => {
       if (!began) began = now
       const n = Math.min(text.length, Math.floor((now - began) / speed))
+      typing(out.current, n < text.length)
       /* Only when it has actually changed. A property or a text node written
          with the value it already had still invalidates style and layout —
          the same trap the deck's meter and the compass were both caught by;
@@ -109,6 +133,7 @@ export default function Typed({
     return () => {
       window.clearTimeout(open)
       cancelAnimationFrame(frame)
+      typing(out.current, false)
     }
   }, [text, run, delay, speed, back, start])
 
@@ -124,6 +149,7 @@ export default function Typed({
     const step = (now: number) => {
       if (!began) began = now
       const n = Math.max(0, from - Math.floor((now - began) / backSpeed))
+      typing(out.current, n > 0)
       if (n !== at.current) {
         at.current = n
         if (out.current) out.current.textContent = text.slice(0, n)
@@ -132,7 +158,10 @@ export default function Typed({
       frame = requestAnimationFrame(step)
     }
     frame = requestAnimationFrame(step)
-    return () => cancelAnimationFrame(frame)
+    return () => {
+      cancelAnimationFrame(frame)
+      typing(out.current, false)
+    }
   }, [back, text, backSpeed])
 
   return (

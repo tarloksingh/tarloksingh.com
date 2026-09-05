@@ -345,11 +345,60 @@
   /* Three, not two. The reference's digits carry a hot edge, a halo and then
      a wash of light on the housing well past the glyph — and the third term is
      the one that turns "warm type with a glow" into "a lamp behind glass". */
+  /* The hot edge, always on. The halo and the wash behind it wait for the
+     line to stop moving and then bloom — see the block below. */
+  text-shadow: 0 0 calc(9 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.58 * var(--g)));
+  transition: text-shadow calc(560ms * var(--in-k)) steps(3, end);
+  animation: mech-flicker 7s steps(1, end) infinite;
+}
+
+/* ---- the halo waits for the line to stand still, then blooms in ----
+
+   **A blurred `text-shadow` is re-rastered whenever anything under it moves**
+   — the text changing, or the block it sits in animating. At `--g: 5` the
+   third term here is a **779px** blur radius and the name spells itself out a
+   character at a time, so that halo was being redrawn once per character, and
+   the intro paragraph was doing the same 189 times over a 120px radius.
+
+   That was free on Chrome's old rasterizer and is not free on **Skia
+   Graphite**, which Chrome 152.0.7977.76 turned on by default. Measured on a
+   2560x1440 window, home's entrance lost **2116ms** to dropped frames against
+   **148ms** of main-thread long tasks — a 14:1 ratio, so the main thread was
+   idle for almost all of it, which is why every earlier hunt for this (six of
+   them, all on the main thread) came back clean. Holding the two wide terms
+   back until the line is still takes the entrance to **298ms lost, 279 of 300
+   frames**, and the crossing home from a project from **616ms to nothing**.
+
+   **Two gates, because there are two ways for the line to be moving.**
+   `data-lit` is the cluster's own entrance finishing (`IN.arcLive`, so it
+   rides `--in-k` and a second arrival lights sooner); `:has([data-typing])`
+   is `Typed` still writing characters. The first covers coming home from a
+   project, where both lines are *placed* rather than typed and the cost is
+   the block sliding in under the halo; the second covers a cold load, where
+   the line is still being spelled out well after `arcLive`.
+
+   **A settled halo costs nothing** — the same window measured after
+   everything lands is 0ms lost with the halos on. This is not a glow budget
+   and it is not `--g`; do not turn either down.
+
+   **The bloom is stepped, and that is not a style choice.** It is a
+   transition on the base rule above, from one term to three — CSS pads the
+   shorter shadow list with transparent terms, so the halo grows in from
+   nothing rather than snapping on the frame the last character lands. But a
+   transitioning shadow is a *moving* shadow, which is the very thing this
+   whole block exists to avoid: the same bloom on a smooth 820ms curve
+   measured **2034ms lost**, worse than the bug it was added to soften.
+   `steps(3, end)` re-blurs three times instead of fifty and costs **434ms
+   against the 318ms of no bloom at all**. Measured: steps(3) 434ms, steps(5)
+   766ms, steps(8) 833ms, smooth 2034ms. Do not make this a smooth transition,
+   and do not raise the step count much — the cost is per redraw, and it is
+   linear in exactly that. See **The halo and the typewriter** in
+   `PERFORMANCE.md`, and `data-typing` in `Typed.tsx`. */
+.mech-cluster[data-lit='true'] .mech-ident-name:not(:has([data-typing])) {
   text-shadow:
     0 0 calc(9 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.58 * var(--g))),
     0 0 calc(42 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.34 * var(--g))),
     0 0 calc(130 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.2 * var(--g)));
-  animation: mech-flicker 7s steps(1, end) infinite;
 }
 
 /* The whole name, at the whole size, painted in nothing — the box the typing
@@ -445,11 +494,34 @@
      and a stale one in localStorage is why "make it brighter" kept not
      taking. */
   color: var(--accent);
+  text-shadow: 0 0 calc(6 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.55 * var(--g)));
+  transition: text-shadow calc(560ms * var(--in-k)) steps(3, end);
+  font-size: calc(var(--profile-size, 11) * var(--type));
+  line-height: 1.6;
+}
+
+/* The wide term waits on the same two gates as the name's, and this is the
+   more expensive of the pair: 189 characters at `speed={9}` is a redraw a
+   frame for most of two seconds. Holding this one alone takes the entrance
+   from 2116ms lost to 731ms; the name is the rest. See the note on
+   `.mech-cluster[data-lit='true'] .mech-ident-name`. */
+.mech-cluster[data-lit='true'] .mech-profile:not(:has([data-typing])) {
   text-shadow:
     0 0 calc(6 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.55 * var(--g))),
     0 0 calc(20 * var(--px) * var(--g)) rgba(var(--accent-rgb), calc(0.3 * var(--g)));
-  font-size: calc(var(--profile-size, 11) * var(--type));
-  line-height: 1.6;
+}
+
+/* ---- and the bloom is an entrance only ----
+
+   Leaving home takes `data-lit` back off and backspaces the name out, so both
+   lines would step their halos *down* over 560ms on top of the exit — a
+   moving blur again, on the one leg that had been made free. Measured: the
+   crossing to a project went 35ms to 966ms on the bloom alone. Cut the
+   transition while the panel is leaving and the halo simply goes with it,
+   which is what a lamp does when the power drops. */
+.mech-cluster[data-leaving='true'] .mech-ident-name,
+.mech-cluster[data-leaving='true'] .mech-profile {
+  transition: none;
 }
 
 /* ---- the scale, under the bank ----

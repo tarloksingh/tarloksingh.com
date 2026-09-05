@@ -1003,6 +1003,14 @@ export default function MechCluster({ covered, leaving, tuning }: Props) {
   const revUp = useBeat(up, beat(IN.tach))
   const countsUp = useBeat(up, beat(IN.counts))
 
+  /* The panel is up and nothing is still sliding into place, so the two lines
+     carrying wide halos can have them — see the note beside
+     `.mech-cluster[data-lit='true'] .mech-ident-name` in MechCluster.css.
+     `arcLive` because it is the last beat of the entrance, and `beat(...)` so
+     a second arrival lights on its own compressed clock rather than waiting
+     out the full one. */
+  const lit = useBeat(up, beat(IN.arcLive))
+
   /* The field dials' ignition sweep: all the way round, back to nothing, then
      live. Three timers rather than a keyframe because the dial has no
      animation of its own — it is twelve blocks lit by a transition off
@@ -1273,6 +1281,7 @@ export default function MechCluster({ covered, leaving, tuning }: Props) {
       /* Which entrance the CSS blocks play — see `--in-k` in MechCluster.css
          and `ignition.ts`. */
       data-again={again}
+      data-lit={lit}
       data-covered={covered}
       data-leaving={leaving}
       style={{

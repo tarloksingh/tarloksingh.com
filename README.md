@@ -2942,6 +2942,76 @@ entrance came back 46ms `(program)` and 29ms `(idle)` — three quarters of a
 had not presented, which is the headless artifact `cdp.mjs` warns about. A long
 task is main thread by definition. Read both.
 
+### The halo and the typewriter
+
+Home's entrance staggered on Chrome desktop — badly, on two different machines,
+while Safari and every phone were smooth — and it started overnight with
+nothing pushed. Both halves of that are true, and they are the same fact:
+**Chrome 152.0.7977.76 turned on Skia Graphite**, its Metal/Dawn rasterizer,
+and a blurred `text-shadow` that had been free on the old one is not free on
+the new one. Same binary, same build, one flag apart: `lost:2316ms` with
+Graphite on, `lost:0ms` with `--disable-features=SkiaGraphite`.
+
+**A blurred shadow is re-rastered whenever anything under it moves.** Not
+whenever it is *on screen* — a settled halo costs nothing at all, and that is
+the whole reason the fix is possible. What moves it here is the typing.
+`--g` is 5, so `.mech-ident-name`'s third term is a **779px** blur radius and
+`.mech-profile`'s second is **120px**, and both of those lines are spelled out
+a character at a time by `Typed` — 189 characters for the paragraph, each one
+redrawing its entire halo.
+
+So the halos wait for their line to stand still. Two gates, because there are
+two ways for a line to be moving:
+
+- **`data-typing`**, set on `Typed`'s own output node while it is writing
+  characters (either direction — a line backspacing out is moving too). Written
+  straight to the DOM, for the same reason the text is: state here re-renders
+  the whole panel per character.
+- **`data-lit`** on `.mech-cluster`, off until the entrance's last beat
+  (`IN.arcLive`, through `beat()` so a second arrival lights on its own
+  compressed clock). This is the one that covers **coming home from a
+  project**, where `ignition` *places* both lines instead of typing them and
+  the cost is the block sliding in underneath the halo rather than the text
+  changing.
+
+The full stack returns when both are clear. The finished screen is exactly what
+it was.
+
+**Why this took seven attempts and six of them cleared the wrong thing.** The
+fault has almost no main thread in it — 2116ms of lost frames against 148ms of
+long tasks, a 14:1 ratio — and every instrument in `scripts/perf/` reads the
+main thread through headless Chrome, which never presents to a real display and
+so never exercises the path this lives on. The boot ripple got blamed and
+cleared *seven* times because it is what is visibly happening at the moment the
+stagger is felt. `scripts/perf/headed.mjs` is the instrument that finally saw
+it: lost-ms out of a real window, beside the long-task total that would account
+for it, running unattended because `CalculateNativeWinOcclusion` is off.
+
+**The bloom is stepped, and that is a measurement rather than a taste.**
+Snapping three halos on at the frame the last character lands reads as a slap,
+so they grow in — but a *transitioning* shadow is a moving shadow, which is the
+entire cost this section is about. A smooth 820ms bloom measured **2034ms
+lost, worse than the bug it was added to soften**. `steps(3, end)` re-blurs
+three times instead of fifty and costs 434ms against the 318ms of no bloom at
+all; steps(5) is 766ms and steps(8) is 833ms. Neither `will-change: opacity` on
+a separate faded halo layer (1550ms) nor a shorter duration (1616ms) helped,
+because the cost is per redraw and linear in exactly that. **Do not make this a
+smooth transition, and do not raise the step count.**
+
+And the bloom is cut outright on `data-leaving`: letting the halos step *down*
+across the exit took the crossing to a project from 35ms back to 966ms.
+
+```
+  home load        2233-2482ms / 149-172 frames  ->  334ms / 279 frames
+  home -> project  1350/1117ms / 188-203 frames  ->    0ms / 270 frames
+  project -> home    583/751ms / 223-232 frames  ->  334/367ms / 247 frames
+```
+
+Full account, including everything that was measured and cleared on the way
+(the ripple for a seventh time, the 34 tachometer columns and 51 gauge
+segments, `mix-blend-mode`, `mask-image`, `filter`, and the bank subjects'
+build cost that item 1b had named), in **item 12** of `PERFORMANCE.md`.
+
 ### The gate had no voice, and home switched itself on twice
 
 Two things that are not about milliseconds. Both were on the ledger as design

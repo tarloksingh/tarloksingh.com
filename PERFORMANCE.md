@@ -24,8 +24,11 @@ the shape it is; this file says how fast it runs and what is left.
 `scripts/perf/` are the whole apparatus. This page has been wrong repeatedly,
 always the same way — *the most conspicuous thing on the screen is not the
 expensive thing on the screen.* The boot ripple has now been blamed and
-cleared **five** times — the last one was the intro stall, which turned out to
-be forty-seven morph targets on a face seventy-five pixels tall.
+cleared **seven** times — most recently as the desktop stagger, which turned
+out to be two blurred `text-shadow`s and a rasterizer Chrome switched on
+overnight (item 12). **And check the browser before the build**: that fault
+arrived with a Chrome update while this repo sat still, and the first day of
+it was spent bisecting commits that were all identical.
 
 ---
 
@@ -46,6 +49,7 @@ node scripts/perf/canvas.mjs phone            # backing store + sample counts
 node scripts/perf/nav.mjs    desktop 4        # what a crossing costs
 node scripts/perf/intro.mjs  phone 4 5        # long tasks and gaps, medianed
 node scripts/perf/models.mjs                  # no browser needed
+node scripts/perf/headed.mjs                  # frames lost vs main-thread time
 
 node scripts/compress-models.mjs --dry        # what the GLBs weigh
 ```
@@ -53,6 +57,32 @@ node scripts/compress-models.mjs --dry        # what the GLBs weigh
 `phone` is 390×844 at dpr 3, under `narrow`'s 700px breakpoint; `desktop` is
 1512×900 at dpr 2. The second argument is the CPU throttle. Each script's
 header says what question it answers and what its trap is.
+
+**`headed.mjs` is the one to reach for when a fault is *seen* rather than
+measured.** Everything else in this folder reads the main thread through
+`--headless=new`; it reports **lost-ms** — how much animation did not happen —
+out of a real Chrome window, beside the long-task total that would explain it.
+When the two are close the fault is script; when lost-ms dwarfs it the fault is
+paint or raster, and nothing else in this folder can see it. It runs unattended
+because `--disable-features=CalculateNativeWinOcclusion` stops Chrome
+suspending `requestAnimationFrame` on a covered window. **This is the
+instrument that found item 1b**, after six main-thread investigations had each
+come back clean. `--css` injects a suppression before app code, so a candidate
+can be bisected without a rebuild.
+
+**For item 5, none of the above can see the fault — use `src/v3/diag.ts` on a
+real, focused, non-headless tab instead**, because it is on Safari, which
+nothing here can click. `?diag=fps` on any page — a rolling frame-gap window
+plus real `longtask` entries, written to a small fixed on-page panel rather
+than the console. `?diag=leaders` on a project page — every
+`fitCards`/`aimLeader` correction, tagged with source and flagged `JUMP` on a
+re-placement.
+
+`?bank=off` and `?skip=<id>[,<id>...]` in `MechSlots.tsx` were built for item
+1b and are kept: they isolate a bank subject's build cost, which is real, is
+about 150ms, and turned out **not** to be that fault — see item 12 in
+**Done**. `?diag=fps` needed a person watching the glass; `headed.mjs` does
+not, and that is the difference that closed it.
 
 ---
 
@@ -318,6 +348,75 @@ the module never evaluates. Worth knowing rather than changing.
 grep -rn "preload(" src/    # the audit, in full
 ```
 
+### 12. The halo and the typewriter — and Chrome's new rasterizer
+
+**The fault reported as "it was fine yesterday", and it was.** Nothing in this
+repo changed. **Chrome 152.0.7977.76 turned on Skia Graphite**, its
+Metal/Dawn rasterizer, and a blurred `text-shadow` that had been free on the
+old one is not free on the new one. Proved by flag, not by argument — same
+binary, same build, same window:
+
+```
+  skia_graphite enabled_on    lost:2316ms   frames:160/300
+  --disable-features=SkiaGraphite   lost:   0ms   frames:300/300
+```
+
+That is also why Safari was fine (never used Graphite), why a phone was fine
+(a different GPU path entirely), why it appeared on a second machine the same
+week (Chrome updates everywhere), and why resetting the Mac did nothing.
+
+**What it costs, and why six investigations missed it.** A blurred shadow is
+re-rastered whenever anything under it moves — the text changing, or the block
+it sits in animating. Home's entrance lost **2116ms** to dropped frames against
+**148ms** of long tasks: a **14:1 ratio**, so the main thread was idle for
+almost all of it. Every earlier hunt measured the main thread and came back
+clean, which is exactly what a GPU-side fault looks like from there.
+
+**It was two elements.** `--g` is **5**, so the name's third term is a **779px**
+blur radius and the intro paragraph's second is **120px** — and both lines are
+*typed*, so each halo was redrawn once per character, 189 times for the
+paragraph. Bisected with `headed.mjs --css`:
+
+```
+  baseline                        lost:2116ms  frames:172
+  every shadow on the page off    lost:   0ms  frames:300
+  .mech-profile halo off          lost: 284ms  frames:280
+  both halos down to one term     lost:  67ms  frames:293
+  the ripple (?ripple=b/c/d)      lost:2149-2250ms — unchanged, cleared a 7th time
+  .mech-tach-col + gauges off     lost:1966ms  — 85 shadows, worth nothing
+```
+
+**The fix is not a glow budget.** A *settled* halo costs nothing at all — the
+same window measured after everything lands is 0ms lost with every halo on. So
+the halos simply wait for their line to stand still: `data-typing` in
+`Typed.tsx` while characters are moving, `data-lit` on `.mech-cluster` until
+the entrance's last beat, and the full stack the moment both are done. The
+finished screen is pixel-identical to what it was.
+
+```
+  home load        2233-2482ms / 149-172 frames  ->  334ms / 279 frames
+  home -> project  1350/1117ms / 188-203 frames  ->    0ms / 270 frames
+  project -> home    583/751ms / 223-232 frames  ->  334/367ms / 247 frames
+```
+
+**The bloom is stepped, and that is a measurement not a taste.** Snapping the
+halo on the frame the last character lands reads badly, so it grows in — but a
+*transitioning* shadow is a moving shadow, which is the whole cost. A smooth
+820ms bloom measured **2034ms lost, worse than the bug it was softening**.
+`steps(3, end)` re-blurs three times instead of fifty:
+
+```
+  no bloom      318ms      steps(5)   766ms
+  steps(3)      434ms      steps(8)   833ms
+  smooth 820ms 2034ms      alpha-only at fixed radius 1947ms
+```
+
+`will-change: opacity` on a faded halo layer (1550ms) and a shorter duration
+(1616ms) both bought nothing — the cost is per redraw and is linear in exactly
+that, not in the number of transition frames. And the bloom is cut on
+`data-leaving`: letting it step *down* over the exit took the crossing to a
+project from 35ms back to 966ms.
+
 ### 11. Tooling fixed along the way
 
 - **`serve.mjs` now answers Range requests.** It returned 200 with the whole
@@ -543,24 +642,115 @@ blocks — was served alongside the baseline and **staggers exactly the same**.
 Do not re-derive the glow from the `--g: 0` number; it is a real number and a
 false lead, and this entry exists to stop it being found a third time.
 
-**Zero long tasks in every condition above.** It is not the main thread.
+**Zero long tasks in every condition above — superseded below.** True under
+the conditions tested (headless/CDP profiling of specific CSS changes on the
+reporter's machine). Not true in general: see the next section, where the
+same fault, measured with a real `PerformanceObserver` on a real focused tab,
+shows real long tasks. The difference was the instrument, not the machine.
 
-**Where to look next: what a desktop does that a phone does not.** The
-asymmetry is the whole clue and it has not been used yet. On a 1634-wide
-window the rail has **about eight bays on screen**, each a `<View>` with its
-own scene, its own lights and its own scissored pass; a phone has one or two
-near enough for `useNear` to have built. That is eight scene renders a frame
-against two, on the screen that is slow, on the layout that is slow.
+**Solved, 2026-09-04 (second pass). It is not render count, not the ripple,
+and it is not glow-adjacent at all — it is model-build cost, landing in a
+burst.**
 
-**It is not ruled out — the control that appeared to rule it out was
-invalid.** The bank canvas was hidden with `display: none` and the frame rate
-did not move (48fps against a 50fps baseline), which was written down as "the
-canvas is innocent". `display: none` stops the canvas being **composited**; it
-does not stop r3f rendering into it. `frameloop` was still `'always'` and
-every view still drew. **Redo it by stopping the loop, not by hiding the
-element** — and note that a screen with the bank genuinely off is also a
-screen with eleven fewer subjects, so the honest comparison is against bays
-that exist and do not draw.
+The reasoning above ("eight scene renders a frame against two") was never
+actually tested — the `display: none` control that was supposed to test it
+was invalid (see the paragraph this replaces). Retested properly this time,
+plus two things nobody had tried yet: watching real `longtask` entries on a
+genuinely focused tab, and skipping individual bank subjects to see which one
+the cost belongs to.
+
+**New tooling, committed, because headless cannot see this fault at all (see
+above) and the reporter's own machine is the only thing that can.**
+`src/v3/diag.ts` is a `?diag=` flag family that writes to a small fixed
+on-page panel instead of the console, because a fixed panel is the one thing
+that survives being screenshotted or watched live without a devtools pane
+open:
+- `?diag=fps` — a rolling one-second frame-gap window, plus a
+  `PerformanceObserver` on `longtask` entries, each logged with its duration
+  and start time. Says `tab hidden — rAF suspended` outright rather than
+  reading a background tab as a smooth 60fps — **Chrome fully suspends
+  `requestAnimationFrame` on a backgrounded tab**, confirmed live while
+  building this: an automated browser session driving the tab through the
+  extension is backgrounded by definition, so this fault (and item 5's) can
+  only ever be measured on a tab a person is actually looking at.
+- `?diag=leaders` — instruments `fitCards`/`aimLeader` for item 5, unrelated
+  to this item; see its own section.
+- `?bank=off` in `MechSlots.tsx` — forces the bank canvas's `frameloop` to
+  `'never'` without hiding or unmounting it, which is the control the
+  `display: none` attempt above should have been.
+- `?skip=<slot id>[,<slot id>...]` in `MechSlots.tsx` — keeps one or more bank
+  subjects from ever building (their GLB is never fetched, their `Slot` never
+  renders), to find out which subject's build cost a long task belongs to.
+
+**Measured live, real Chrome, real focus, both on `localhost` and on the
+deployed site — same shape both places:**
+
+```
+  baseline              3 long tasks, 62–197ms, clustered ~t=2.6–3.6s
+  skip mr-takahashi      2 long tasks, similar total — smaller, not gone
+  skip capsule-c1        2 long tasks, similar total — smaller, not gone
+  skip both together      1 long task, ~130ms — smaller again, not gone
+  skip all 3 (+mecha-station)   0 long tasks in the window — clean
+```
+
+`mr-takahashi`, `capsule-c1` and `mecha-station` are the three bank subjects
+that sit in the initial (unscrolled) view of the rail. `mr-takahashi`
+(`adam-face.glb`) and `capsule-c1` (`capsule-c1.glb`, Draco) each cost a real
+GLB decode; `mecha-station` is a primitive piece and pays `RoundedBox`'s
+`toCreasedNormals` instead (the same mechanism PERFORMANCE.md's item 7 fixed
+for the *bay*-sized version of this exact cost — this is that cost's sibling,
+on the three subjects that happen to be near on first paint, not on one
+subject with 47 morph targets). `useNear`'s `IntersectionObserver` fires for
+all three within the same short window because they are all visible at once,
+so their build costs land together instead of spread out — that is the
+"burst," and it is what a long, unbroken 350ms-ish main-thread block actually
+is: three separate ~60–200ms jobs with no idle time between them.
+
+**Two things were tested and directly ruled out, at the user's own request,
+because the ripple was the standing suspicion:**
+
+- `?ripple=d` (an existing flag from item 1a — strips the ripple's blur *and*
+  its mask, the two paint costs that flag family was built to isolate) —
+  long tasks unchanged, same window, same count.
+- The ripple (`MechTiles`) *and* the loading readout (`MechWarming`)
+  **removed from the code entirely** — both imports and both render calls
+  commented out, rebuilt, reserved on `localhost`, watched live. Long tasks
+  still present in the same window, just smaller in total (2 tasks instead of
+  3) because there is genuinely less on the page competing for the thread.
+  **The ripple is not the cause of this fault either** — it is, again (see
+  the "what is on screen when the entrance lands on top of it" framing
+  earlier on this page), the thing that is visibly happening at the same
+  moment, which is why it keeps getting blamed. `MechWarming` is not new
+  enough to be a "since yesterday" regression either — it predates this
+  investigation and the four-build regression check above already covered it.
+
+**Viewport width is also ruled out, which matters because it is the
+difference between "desktop" and "the reporter's own report."** Chrome
+resized to 420×900 (phone width) on the reporter's own machine staggers just
+as badly — worse, in one run (583ms worst frame against 317ms at desktop
+width). So it is not "eight bays near vs one or two"; at narrow width the
+same three subjects are still near (the rail scrolls, but the initial view is
+similar), and the same build cost still lands.
+
+**So why is Safari fine and Chrome is not, on the same machine, the same
+subjects, the same code?** Not measured directly yet — the working theory is
+that this is a GLB-decode/geometry-build cost running through WASM
+(Draco for `capsule-c1`, meshopt for `adam-face.glb`) plus JS
+(`toCreasedNormals` for the piece), and V8's and JavaScriptCore's WASM/JS
+performance for this specific work are not identical. Worth confirming with
+a real profile on both engines before assuming it; not done here.
+
+**Superseded, 2026-09-04 (third pass) — the model builds were real and were
+not the fault.** See item 12 in **Done**. Measured with `headed.mjs`, the
+entrance loses ~2100ms of frames against ~150ms of long tasks; the model
+builds are most of that 150ms and none of the other 1950ms. `?skip=` did shrink
+the long tasks, which is why it read as the answer — it was measuring the
+tenth of the problem the main thread can see.
+
+**Do not build the staggered `useNear`.** It was the next step proposed here
+and it would have bought about 150ms of a 2100ms fault, at the cost of
+complicating the one mechanism the bank's whole memory story rests on. The
+fault was two blurred `text-shadow`s and Chrome's new rasterizer.
 
 ### The apparatus was wrong three times on 2026-09-04
 
@@ -811,15 +1001,30 @@ re-diagnosing:
 
 ---
 
-**Two faults are open now, on two different browsers, and neither is the
-other.** Everything under **Done**, plus item 4, is measured and closed.
+**One fault is understood now and one is still open, on two different
+browsers.** Everything under **Done**, plus item 4, is measured and closed.
 
-**Item 1b**: a desktop Chrome home entrance staggering — **not** a
-regression, **not** the main thread, **not** any of the seven things tried
-against it. The next round on it starts with the one asymmetry nobody has
-used: eight scene renders a frame on the layout that is slow against two on
-the layout that is not — measured by stopping the bank's loop, not by hiding
-its canvas.
+**Item 1b**: **closed, 2026-09-04 (third pass) — see item 12 in Done.** It is
+two blurred `text-shadow`s being redrawn once per typed character, under a
+rasterizer Chrome switched on the day before it was reported. The account
+below is the second pass and is kept because its *method* was right and its
+conclusion was not: it isolated real model-build cost with `?skip=` and then
+read a tenth of the fault as the whole of it, because every instrument it had
+watched the main thread. Superseded, not deleted.
+
+**Item 1b, second pass**: **found, 2026-09-04.** Not a regression, not
+render count, not the ripple, not `MechWarming`, not glow, not viewport
+width. It is three bank subjects (`mr-takahashi`, `capsule-c1`,
+`mecha-station`) all becoming "near" and building — a real GLB decode or a
+real `toCreasedNormals` pass each — inside the same second, on a real
+focused tab with real `longtask` entries proving it (`?diag=fps`), confirmed
+by isolation (`?skip=`): remove all three and the fault is gone; remove any
+one or two and it only shrinks. Reported as Chrome-only (Safari's fine on
+the same machine); not yet confirmed why, but likely V8 vs JavaScriptCore on
+the WASM/JS decode work rather than anything about desktop vs phone as
+such — a resized narrow Chrome window staggers too. **Not yet done: the
+actual fix** — stagger when each near bay's build fires instead of letting
+`IntersectionObserver` release all three at once.
 
 **Item 5**: a Safari label jumping on a project or media switch, closed line
 connection notwithstanding. One fix tried against a specific, reasoned
