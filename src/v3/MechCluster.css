@@ -343,6 +343,11 @@
      swap. See `clusterTuning.ts`. */
   font-size: calc(var(--cluster-name, 1) * 100cqw / (var(--name-len, 12) * 1.15));
   animation: mech-flicker 7s steps(1, end) infinite;
+  /* Same shape as the lit value below, alpha zeroed rather than absent — a
+     shadow list transitions to another of the same shape, not from `none`,
+     which can only snap. */
+  text-shadow: 0 0 calc(9 * var(--px) * var(--g)) rgba(var(--warn-rgb), 0);
+  transition: text-shadow calc(560ms * var(--in-k)) linear;
 }
 
 /* The hot edge, and it waits for the line to stand still like the wide halo
@@ -350,11 +355,20 @@
    font-size formula runs larger there and `--g` is a flat 5 on both layouts
    — so a character landing already carrying it read as the glow arriving
    ahead of the letters, each new glyph's blur bleeding into the next before
-   the word had finished. No shadow while typing, then it lights once the
-   name is whole: the letters come first now, same as asked for. */
+   the word had finished. No shadow while typing, and *fading* in rather than
+   snapping once it is: this is one redraw for the length of the fade, not one
+   per character, so the smooth transition the wide halo could not afford is
+   free here. */
 .mech-cluster[data-lit='true'] .mech-ident-name:not(:has([data-typing])) {
   text-shadow: 0 0 calc(9 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.58 * var(--g)));
 }
+
+/* No `transition: none` on `data-leaving` here, unlike `.mech-ident-full` and
+   `.mech-profile` above — `lit` drops the moment `up` does, so leaving runs
+   this same transition backwards and the glow fades out with the exit rather
+   than cutting with it. Measured at ~250ms lost on the crossing, against the
+   966ms the *wide* terms cost doing the same thing; one small term is cheap
+   enough to afford both directions. */
 
 /* ---- the halo, tried and pulled back out ----
 

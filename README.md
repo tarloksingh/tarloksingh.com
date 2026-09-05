@@ -3032,7 +3032,11 @@ narrow the name's font-size formula runs larger relative to the viewport, and
 enough to bleed across a character before it has landed — the glow read as
 arriving ahead of the word rather than after it, which is the opposite of
 what was asked for. `.mech-ident-name` now carries no shadow at all until
-`data-lit` and the line is still, exactly like `.mech-ident-full` did.
+`data-lit` and the line is still, exactly like `.mech-ident-full` did — and
+unlike `.mech-ident-full`, it transitions both ways: no `data-leaving` cut, so
+the glow fades back out on the crossing instead of snapping off with the
+rest of the panel. A single 9px term affords that; ~250ms lost, against the
+966ms the wide terms cost doing the same thing.
 
 Full account, including everything that was measured and cleared on the way
 (the ripple for a seventh time, the 34 tachometer columns and 51 gauge

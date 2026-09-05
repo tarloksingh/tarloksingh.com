@@ -445,9 +445,15 @@ that size blurs wide enough to bleed into the next character before it has
 even landed — the glow read as arriving ahead of the word rather than
 following it. `.mech-ident-name` carries no shadow at all until `data-lit`
 and the line is done, same as the wide terms did. Confirmed by computed
-style, not just a screenshot: `textShadow` reads `none` mid-type and the full
-value the instant `data-lit` flips, on the same window that has always been
+style, not just a screenshot: `textShadow` reads `none` mid-type and ramps to
+the full value once `data-lit` flips, on the same window that has always been
 used for this fault.
+
+Unlike the wide terms, this one transitions both ways: `data-leaving` does
+not cut it, so the glow fades back out on the crossing rather than cutting
+with the exit. Measured at ~250ms lost, against the 966ms the wide terms cost
+doing the same thing — a single 9px term is cheap enough to run in both
+directions where two much wider ones were not.
 
 ### 11. Tooling fixed along the way
 
