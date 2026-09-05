@@ -345,10 +345,9 @@
   /* Three, not two. The reference's digits carry a hot edge, a halo and then
      a wash of light on the housing well past the glyph — and the third term is
      the one that turns "warm type with a glow" into "a lamp behind glass". */
-  /* The hot edge, always on. The halo and the wash behind it wait for the
-     line to stop moving and then bloom — see the block below. */
+  /* The hot edge, and only the hot edge. The halo and the wash behind it are
+     drawn by `.mech-ident-full` underneath — see the block below. */
   text-shadow: 0 0 calc(9 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.58 * var(--g)));
-  transition: text-shadow calc(560ms * var(--in-k)) steps(3, end);
   animation: mech-flicker 7s steps(1, end) infinite;
 }
 
@@ -394,12 +393,6 @@
    and do not raise the step count much — the cost is per redraw, and it is
    linear in exactly that. See **The halo and the typewriter** in
    `PERFORMANCE.md`, and `data-typing` in `Typed.tsx`. */
-.mech-cluster[data-lit='true'] .mech-ident-name:not(:has([data-typing])) {
-  text-shadow:
-    0 0 calc(9 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.58 * var(--g))),
-    0 0 calc(42 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.34 * var(--g))),
-    0 0 calc(130 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.2 * var(--g)));
-}
 
 /* The whole name, at the whole size, painted in nothing — the box the typing
    happens inside. See the note beside it in MechCluster.tsx for why the
@@ -410,7 +403,39 @@
    halos onto the panel, so the whole line would be lit before a single
    character had arrived. */
 .mech-ident-full {
-  visibility: hidden;
+  /* **And it draws the halo.** The two wide terms used to sit on
+     `.mech-ident-name` with the hot edge, which meant they were on the *typed*
+     text — so every character redrew a 779px blur, 13 times on the way in, and
+     the bloom that softened the last one had to redraw it again per frame.
+     Here they are on a copy of the whole name that never changes, so the blur
+     is rastered **once** and what animates is this element's `opacity`, which
+     the compositor does on its own. Measured: a *smooth* fade this way costs
+     216ms against 283ms for a three-step bloom on the text itself, and 318ms
+     for no bloom at all — it is both the better-looking option and the
+     cheaper one. See **The halo and the typewriter** in `PERFORMANCE.md`.
+
+     `color: transparent` rather than `visibility: hidden`, which is what this
+     was: hidden paints nothing, and this now has something to paint. The
+     glyphs still contribute no ink — only their shadow — so the sizer's other
+     two jobs (giving the heading its height and its width, above) are
+     unchanged. `opacity: 0` is what keeps the finished name's halo off the
+     panel while a single character is still arriving, which is the job the
+     `visibility` was doing. */
+  color: transparent;
+  text-shadow:
+    0 0 calc(42 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.34 * var(--g))),
+    0 0 calc(130 * var(--px) * var(--g)) rgba(var(--warn-rgb), calc(0.2 * var(--g)));
+  opacity: 0;
+  /* The promotion is worth 82ms of the 216 — without it the layer is
+     re-rastered per frame and the fade is an expensive one again. */
+  will-change: opacity;
+  transition: opacity calc(560ms * var(--in-k)) linear;
+}
+
+/* Lit when the panel is up and the name has stopped moving — the same two
+   gates the intro paragraph's own halo waits on. */
+.mech-cluster[data-lit='true'] .mech-ident-name:not(:has([data-typing])) .mech-ident-full {
+  opacity: 1;
 }
 
 /* The characters as they land, on the box's own left edge rather than its
@@ -519,7 +544,7 @@
    crossing to a project went 35ms to 966ms on the bloom alone. Cut the
    transition while the panel is leaving and the halo simply goes with it,
    which is what a lamp does when the power drops. */
-.mech-cluster[data-leaving='true'] .mech-ident-name,
+.mech-cluster[data-leaving='true'] .mech-ident-full,
 .mech-cluster[data-leaving='true'] .mech-profile {
   transition: none;
 }

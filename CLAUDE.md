@@ -417,6 +417,18 @@ while Solomon being `locked: true` meant *neither* render site would mount it
 gated on that same flag now rather than deleted, so unlocking Solomon brings
 the preload back with the rendering.
 
+**A wide glow does not belong on text that is moving.** Chrome 152 turned on
+Skia Graphite, and a blurred `text-shadow` is re-rastered whenever anything
+under it moves — so the name's 779px halo was being redrawn once per typed
+character. The two wide terms live on `.mech-ident-full` now (the full-name
+sizer that was already there), promoted and faded in with `opacity`; the intro
+paragraph's waits on `data-lit` + `data-typing` and blooms in three steps.
+Home's entrance went from 2233ms of dropped frames to 200ms, the crossing to a
+project from 1350ms to nothing, and the way back from 583-751ms to ~190ms
+while now typing both lines instead of placing them. Don't put a wide halo back on a typed
+line, and don't smooth the paragraph's bloom — both are measured in
+`PERFORMANCE.md` item 12.
+
 **Type it with the frame clock, not a timer.** `Typed.tsx` runs both
 directions on `requestAnimationFrame` with the character count computed from
 elapsed time rather than incremented per tick. On `setInterval` at
@@ -499,9 +511,11 @@ intro spelling out all 190 characters in front of someone who watched it two
 minutes ago. `ignition.ts` is a module flag set at the **end** of the first
 entrance (an entrance abandoned two beats in has not been seen), and a second
 arrival plays the same sequence at about a third: `AGAIN` in `MechCluster.tsx`
-for the beats that are timers, `--in-k` in `MechCluster.css` for the ones that
-are keyframes, and `speed={0}` on the two `Typed` lines, which places them in
-one frame. Same order, same blocks, same assembly — just the speed of coming
+for the beats that are timers and `--in-k` in `MechCluster.css` for the ones
+that are keyframes. **The two `Typed` lines are the exception and spell out at
+full speed every time** — they were `speed={0}`, placed in one frame, and a
+name that was simply *there* on arrival read as a broken effect rather than a
+warm machine. Same order, same blocks, same assembly — just the speed of coming
 back rather than starting. Per page load, deliberately: a reload *is* the
 machine being switched off and on again.
 

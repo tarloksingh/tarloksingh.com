@@ -1172,14 +1172,17 @@ export default function MechCluster({ covered, leaving, tuning }: Props) {
         <span className="mech-ident-typed">
           {/* Last on the panel, and it types from the moment the cover
               lifts rather than from mount — see `start` on `Typed`. */}
-          {/* Placed rather than spelled on a second arrival: `speed={0}`
-              makes the elapsed-time count `Infinity` on the first frame, so
-              the whole line lands at once — see `Typed.tsx`. */}
+          {/* Spelled out on every arrival, including the ones after the
+              first. It was `speed={again ? 0 : 96}` — placed in one frame on
+              a second arrival — and the typing is the thing people come back
+              to look at, so the compression now applies to the beats around
+              it and not to this. Cheap again since the halo moved off the
+              typed text: see `.mech-ident-full` in MechCluster.css. */}
           <Typed
             text={NAME}
             run={`cluster-name${again ? '-again' : ''}`}
             delay={beat(1250) / 1000}
-            speed={again ? 0 : 96}
+            speed={96}
             caret={false}
             start={up}
             back={covered}
@@ -1266,7 +1269,7 @@ export default function MechCluster({ covered, leaving, tuning }: Props) {
           text={PROFILE}
           run={`cluster-intro${again ? '-again' : ''}`}
           delay={beat(600) / 1000}
-          speed={again ? 0 : 9}
+          speed={9}
           caret={false}
           back={covered}
           backSpeed={3}

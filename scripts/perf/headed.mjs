@@ -175,13 +175,17 @@ for (let i = 0; i < runs; i++) {
   await c.send('Page.navigate', { url: BASE + path })
   await sleep(dwell)
   const hidden = await c.evaluate('document.visibilityState')
+  /* Did the app actually mount? A page that never loaded animates nothing and
+     reports a flawless 300/300 — which is how a dead `serve.mjs` reads as the
+     best result this script has ever produced. Ask the DOM, not the frames. */
+  const mounted = await c.evaluate("!!document.querySelector('.mech')")
   const rec = JSON.parse(await c.evaluate('JSON.stringify(window.__rec)'))
   await c.send('Page.removeScriptToEvaluateOnNewDocument', { identifier })
   const band = rec.frames.filter(([t]) => t >= t0 && t <= t1)
   const lost = band.filter(([, g]) => g > 33.3).reduce((a, [, g]) => a + (g - 16.7), 0)
   const task = rec.tasks.filter((t) => t.s >= t0 && t.s <= t1).reduce((a, t) => a + t.d, 0)
   const worst = band.length ? Math.max(...band.map((x) => x[1])) : 0
-  out.push({ lost, task, worst, n: band.length, css: rec.css, vis: hidden })
+  out.push({ lost, task, worst, n: band.length, css: rec.css, vis: hidden, mounted })
   c.close()
 }
 
@@ -195,6 +199,7 @@ console.log(
     `runs=[${out.map((o) => o.lost.toFixed(0)).join(',')}]`
 )
 /* Both of these have produced a confident wrong number on this page before. */
+if (out.some((o) => !o.mounted)) console.log('  !! .mech never mounted — the page did not load. Is serve.mjs up on :8100?')
 if (out.some((o) => o.vis !== 'visible')) console.log('  !! tab was not visible — rAF suspended, the reading is fiction')
 if (css && out.some((o) => !o.css)) console.log('  !! --css never landed — the suppression was not applied')
 if (frames < 40) console.log('  !! almost no frames in the window — the recorder probably threw')

@@ -2969,10 +2969,8 @@ two ways for a line to be moving:
   the whole panel per character.
 - **`data-lit`** on `.mech-cluster`, off until the entrance's last beat
   (`IN.arcLive`, through `beat()` so a second arrival lights on its own
-  compressed clock). This is the one that covers **coming home from a
-  project**, where `ignition` *places* both lines instead of typing them and
-  the cost is the block sliding in underneath the halo rather than the text
-  changing.
+  compressed clock). It covers the stretch where the block itself is sliding
+  in underneath the halo, which is movement the text knows nothing about.
 
 The full stack returns when both are clear. The finished screen is exactly what
 it was.
@@ -2987,24 +2985,37 @@ stagger is felt. `scripts/perf/headed.mjs` is the instrument that finally saw
 it: lost-ms out of a real window, beside the long-task total that would account
 for it, running unattended because `CalculateNativeWinOcclusion` is off.
 
-**The bloom is stepped, and that is a measurement rather than a taste.**
+**The bloom, and why the name's is smooth while the paragraph's is stepped.**
 Snapping three halos on at the frame the last character lands reads as a slap,
 so they grow in — but a *transitioning* shadow is a moving shadow, which is the
-entire cost this section is about. A smooth 820ms bloom measured **2034ms
-lost, worse than the bug it was added to soften**. `steps(3, end)` re-blurs
-three times instead of fifty and costs 434ms against the 318ms of no bloom at
-all; steps(5) is 766ms and steps(8) is 833ms. Neither `will-change: opacity` on
-a separate faded halo layer (1550ms) nor a shorter duration (1616ms) helped,
-because the cost is per redraw and linear in exactly that. **Do not make this a
-smooth transition, and do not raise the step count.**
+entire cost this section is about. Animating the shadow is linear in redraws
+and never cheap: steps(3) 301ms, steps(6) 417ms, steps(10) 949ms, smooth
+1083ms, against 318ms for no bloom at all.
+
+**The name escapes that by not animating a shadow at all.** Its two wide terms
+moved onto `.mech-ident-full` — the full-name copy already in the markup as the
+heading's sizer — which is `will-change: opacity` and simply faded in. The blur
+is rastered **once** and the compositor does the rest, so a *smooth* fade there
+costs **216ms: less than a three-step bloom on the text (283ms), and less than
+no bloom at all (318ms)**. The promotion is worth 82ms of that. This is the
+general shape of the fix, and the better one — *put a wide halo on something
+that does not change, and animate that thing's opacity.*
+
+The intro paragraph has no full-text copy in the markup, so it keeps
+`steps(3, end)`; its widest term is 120px against the name's 779px, and the
+stepping is correspondingly hard to see. Giving it a smooth transition instead
+costs 700ms. **Do not smooth the paragraph's bloom, and do not raise its step
+count** — give it a sizer copy and fade that, or leave it alone.
 
 And the bloom is cut outright on `data-leaving`: letting the halos step *down*
 across the exit took the crossing to a project from 35ms back to 966ms.
 
 ```
-  home load        2233-2482ms / 149-172 frames  ->  334ms / 279 frames
+  home load        2233-2482ms / 149-172 frames  ->  200ms / 287 frames
   home -> project  1350/1117ms / 188-203 frames  ->    0ms / 270 frames
-  project -> home    583/751ms / 223-232 frames  ->  334/367ms / 247 frames
+  project -> home    583/751ms / 223-232 frames  ->  183/200ms / 257 frames
+
+  and the return leg now *types* both lines, where before it placed them.
 ```
 
 Full account, including everything that was measured and cleared on the way
@@ -3076,9 +3087,11 @@ against about 2310, the name at **512ms** against about 2400.
   every duration and delay in the keyframe block. A multiplier rather than a
   second set of rules — the order the blocks arrive in *is* the entrance, and a
   compressed one that reordered anything would be a different animation rather
-  than the same one played quickly. The two typed lines take `speed={0}`, which
-  makes `Typed`'s elapsed-time count `Infinity` on the first frame and places
-  the whole line at once.
+  than the same one played quickly. **The two typed lines are the exception and
+  spell out at full speed on every arrival** — they took `speed={0}` here once,
+  which placed the whole line in a frame, and a name that was simply *there* on
+  arrival read as a broken effect rather than a warm machine. See *The halo and
+  the typewriter* for why a character became a cheap thing to write again.
 
 ### Still slow to load on a phone, and the splitting that was not splitting
 

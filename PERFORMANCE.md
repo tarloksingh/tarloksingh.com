@@ -299,10 +299,17 @@ worth milliseconds and both are what "the boot feels bad" also meant.
 - **`ignition.ts`.** `MechCluster` is home-only and a fresh mount every
   arrival, so every beat in `IN` ran again from zero. Second and later
   arrivals now play the same sequence at about a third — `AGAIN` for the
-  timers, `--in-k` for the keyframes, `speed={0}` on the two typed lines.
-  Desktop 4×, from the cover: intro complete **2310ms → 277ms**, name
-  **~2400ms → 512ms**. Module scope, so a reload is still a cold start, which
-  is what a reload is.
+  timers, `--in-k` for the keyframes. Desktop 4×, from the cover: intro
+  complete **2310ms → 277ms**, name **~2400ms → 512ms**. Module scope, so a
+  reload is still a cold start, which is what a reload is.
+
+  **The two typed lines were `speed={0}` here too and are not any more** — see
+  item 12. Placing them meant coming home to a name that was simply *there*,
+  which read as the effect having broken rather than as the machine being
+  warm, and the typing is what people come back to look at. It costs what it
+  costs now that the halos are off the typed text: the crossing home is
+  ~200ms of dropped frames with both lines spelling out, against 583–751ms
+  before any of this.
 
 Full account in **The gate had no voice, and home switched itself on twice**
 in `README.md`.
@@ -394,28 +401,34 @@ the entrance's last beat, and the full stack the moment both are done. The
 finished screen is pixel-identical to what it was.
 
 ```
-  home load        2233-2482ms / 149-172 frames  ->  334ms / 279 frames
+  home load        2233-2482ms / 149-172 frames  ->  200ms / 287 frames
   home -> project  1350/1117ms / 188-203 frames  ->    0ms / 270 frames
-  project -> home    583/751ms / 223-232 frames  ->  334/367ms / 247 frames
+  project -> home    583/751ms / 223-232 frames  ->  183/200ms / 257 frames
+
+  and the return leg now *types* both lines, where before it placed them.
 ```
 
-**The bloom is stepped, and that is a measurement not a taste.** Snapping the
-halo on the frame the last character lands reads badly, so it grows in — but a
-*transitioning* shadow is a moving shadow, which is the whole cost. A smooth
-820ms bloom measured **2034ms lost, worse than the bug it was softening**.
-`steps(3, end)` re-blurs three times instead of fifty:
+**The bloom: stepped for the paragraph, and a promoted layer for the name.**
+Snapping three halos on at the frame the last character lands reads as a slap,
+so they grow in — but a *transitioning* shadow is a moving shadow, which is the
+whole cost. Animating the shadow itself is linear in redraws and never cheap:
+steps(3) 301ms, steps(6) 417ms, steps(10) 949ms, steps(16) 1000ms, smooth
+1083ms — against 318ms for no bloom at all.
 
-```
-  no bloom      318ms      steps(5)   766ms
-  steps(3)      434ms      steps(8)   833ms
-  smooth 820ms 2034ms      alpha-only at fixed radius 1947ms
-```
+**The name escapes that entirely by not animating a shadow.** Its two wide
+terms moved onto `.mech-ident-full` — the full-name copy that was already in
+the markup as the heading's sizer — which is `will-change: opacity` and faded
+in. The blur is rastered **once** and the compositor does the rest, so a
+*smooth* fade there costs **216ms, less than the 283ms of a three-step bloom on
+the text and less than the 318ms of no bloom at all**. Promotion is worth 82ms
+of that (216 vs 283 without `will-change`).
 
-`will-change: opacity` on a faded halo layer (1550ms) and a shorter duration
-(1616ms) both bought nothing — the cost is per redraw and is linear in exactly
-that, not in the number of transition frames. And the bloom is cut on
-`data-leaving`: letting it step *down* over the exit took the crossing to a
-project from 35ms back to 966ms.
+The intro paragraph has no such copy in the markup and keeps `steps(3, end)`;
+its widest term is 120px against the name's 779px, so the stepping is far less
+visible. Giving *it* a smooth transition instead costs 700ms — don't.
+
+And the bloom is cut on `data-leaving`: letting the halos step *down* over the
+exit took the crossing to a project from 35ms back to 966ms.
 
 ### 11. Tooling fixed along the way
 

@@ -10,10 +10,17 @@
    to something they had.
 
    So the second and later arrivals get the same entrance, compressed: the
-   beats at about a third, and the two typed lines *placed* rather than spelled
-   out. Not skipped. The blocks still arrive in the same order, so the screen
-   still assembles rather than cutting in — it simply does it at the speed of
-   something coming back rather than something starting.
+   beats at about a third. Not skipped. The blocks still arrive in the same
+   order, so the screen still assembles rather than cutting in — it simply does
+   it at the speed of something coming back rather than something starting.
+
+   **The two typed lines are the exception, and they spell out every time.**
+   They were `speed={0}` here too — placed in a single frame — and coming home
+   to a name that was simply *there* read as the effect having failed rather
+   than as the machine being warm. The typing is the thing worth coming back
+   to. It is also no longer expensive: the wide halos moved off the typed text
+   in `MechCluster.css`, which is what made a character a cheap thing to write
+   again. See **The halo and the typewriter** in `README.md`.
 
    **A module-scope flag, and that is the right scope.** It is per page load,
    which is exactly what "this visit" means: a reload is a machine being
